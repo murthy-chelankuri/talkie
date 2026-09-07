@@ -1017,7 +1017,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         setProject(openedProject)
         setTimeline(items)
       })
-      .catch((err) => setError(String(err)))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
 
   async function handleImportImage(): Promise<void> {
@@ -1033,7 +1033,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       const path = await renderClient.exportVideo(projectId)
       setExportedPath(path)
     } catch (err) {
-      setError(String(err))
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setExporting(false)
     }
