@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject } from './projectApi'
+import { createProject, listProjects } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
 describe('createProject', () => {
@@ -48,5 +48,45 @@ describe('createProject', () => {
     const dir = findProjectDir(metadata.id, baseDir) as string
 
     expect(dir.endsWith(`${metadata.id}-checkout-flow`)).toBe(true)
+  })
+})
+
+describe('listProjects', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('returns an empty list when no projects exist', () => {
+    expect(listProjects(baseDir)).toEqual([])
+  })
+
+  it('lists created projects newest first', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+    const first = createProject('First Project', baseDir)
+
+    vi.setSystemTime(new Date('2026-01-01T00:00:01.000Z'))
+    const second = createProject('Second Project', baseDir)
+    vi.useRealTimers()
+
+    const summaries = listProjects(baseDir)
+
+    expect(summaries.map((p) => p.id)).toEqual([second.id, first.id])
+  })
+
+  it('omits schemaVersion from the summary', () => {
+    createProject('Checkout Flow', baseDir)
+
+    expect(listProjects(baseDir)[0]).toEqual({
+      id: expect.any(String),
+      name: 'Checkout Flow',
+      createdAt: expect.any(String)
+    })
   })
 })
