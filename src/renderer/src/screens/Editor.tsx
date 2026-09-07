@@ -1,28 +1,92 @@
 import { useEffect, useState } from 'react'
-import { projectClient, type ProjectMetadata } from '../api/projectClient'
+import { Player } from '@remotion/player'
+import { projectClient, timelineClient, renderClient, type ProjectMetadata, type TimelineItem } from '../api/projectClient'
+import { DemoComposition } from '../../../remotion/DemoComposition'
+import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
+import { computeTimelineDuration } from '../../../remotion/timelineDuration'
+import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/types'
 
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
+  const [timeline, setTimeline] = useState<TimelineItem[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportedPath, setExportedPath] = useState<string | null>(null)
 
   useEffect(() => {
-    projectClient
-      .open(projectId)
-      .then(setProject)
+    Promise.all([projectClient.open(projectId), timelineClient.read(projectId)])
+      .then(([openedProject, items]) => {
+        setProject(openedProject)
+        setTimeline(items)
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
+
+  async function handleImportImage(): Promise<void> {
+    const item = await projectClient.importImage(projectId)
+    if (item) {
+      setTimeline(await timelineClient.read(projectId))
+    }
+  }
+
+  async function handleExport(): Promise<void> {
+    setExporting(true)
+    try {
+      const path = await renderClient.exportVideo(projectId)
+      setExportedPath(path)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (error) return <div>{error}</div>
   if (!project) return <div>Loading…</div>
 
+  // Cast: schema.ts's zod-inferred TimelineItem treats `data` as optional (z.unknown() accepts
+  // undefined), while remotion/types.ts's hand-written TimelineItem requires it. Both describe
+  // the same real shape validated by TimelineItemSchema.superRefine, so the optionality is a
+  // static-typing artifact, not a runtime possibility. Same workaround as renderProject.ts /
+  // timelineHandlers.ts.
+  const remotionTimeline = timeline as unknown as RemotionTimelineItem[]
+
   return (
     <div style={{ display: 'grid', gridTemplateRows: '1fr auto', height: '100vh' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 260px' }}>
-        <aside>Sources &amp; Agents</aside>
-        <main>Preview — {project.name}</main>
+        <aside>
+          <p>Sources &amp; Agents</p>
+          <button onClick={handleImportImage}>Import Image</button>
+          <button onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting…' : 'Export Video'}
+          </button>
+          {exportedPath && <p>Exported to: {exportedPath}</p>}
+        </aside>
+        <main>
+          {timeline.length > 0 ? (
+            <Player
+              component={DemoComposition}
+              inputProps={{ timeline: remotionTimeline }}
+              durationInFrames={computeTimelineDuration(remotionTimeline)}
+              fps={FPS}
+              compositionWidth={WIDTH}
+              compositionHeight={HEIGHT}
+              style={{ width: '100%', height: '100%' }}
+              controls
+            />
+          ) : (
+            <p>Preview — {project.name}</p>
+          )}
+        </main>
         <aside>Transcript</aside>
       </div>
-      <footer style={{ height: 160 }}>Timeline</footer>
+      <footer style={{ height: 160, display: 'flex', gap: 4 }}>
+        {timeline.map((item) => (
+          <div key={item.id} style={{ width: `${item.duration}px`, background: '#cfe8ff' }}>
+            {item.kind}
+          </div>
+        ))}
+      </footer>
     </div>
   )
 }
