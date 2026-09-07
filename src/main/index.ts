@@ -1,6 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { registerProjectHandlers } from './ipc/projectHandlers'
+import { registerTimelineHandlers } from './ipc/timelineHandlers'
+
+let mainWindowRef: BrowserWindow | null = null
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -11,6 +14,7 @@ function createWindow(): void {
       sandbox: false
     }
   })
+  mainWindowRef = mainWindow
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -21,6 +25,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   registerProjectHandlers(ipcMain)
+  registerTimelineHandlers(ipcMain, () => mainWindowRef)
   createWindow()
 
   app.on('activate', function () {
