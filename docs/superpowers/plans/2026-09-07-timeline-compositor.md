@@ -598,6 +598,244 @@ git commit -m "Add Remotion composition for the image timeline item kind"
 
 ---
 
+### Task 4b: Local asset server for project media
+
+**Why this task exists (added mid-execution, not in the original plan draft):** Task 4's real render test discovered that headless Chromium hard-blocks `file://` subresource loads from the `http://localhost` page Remotion always serves its composition from — this is documented Remotion/Chromium behavior (https://www.remotion.dev/docs/miscellaneous/absolute-paths), not a version quirk, and it means `ImageItem`'s original `file://<path>` approach can never load a real project image during an actual render or live preview. Remotion's own recommended fix is to serve local media over plain HTTP instead. This task builds that server as its own small, independently-testable unit; Task 5 (export) and Task 7 (the IPC layer behind the live preview) both call it.
+
+**Files:**
+- Create: `src/main/render/assetServer.ts`
+- Test: `src/main/render/assetServer.test.ts`
+- Modify: `src/remotion/items/ImageItem.tsx` (simplify — see Step 6)
+
+**Interfaces:**
+- Consumes: `type TimelineItem` (Task 4, `src/remotion/types.ts`)
+- Produces:
+  - `getAssetServer(rootDir: string): Promise<{ url: string; close(): Promise<void> }>` — a memoized singleton keyed by `rootDir`: repeated calls with the same `rootDir` return the same running server; calling with a different `rootDir` closes the old one and starts a new one. Used by Task 5 (`renderProjectVideo`) and Task 7 (`project:timeline:read` IPC handler).
+  - `closeAssetServer(): Promise<void>` — closes and clears the cached singleton, for test cleanup
+  - `resolveAssetUrl(absolutePath: string, rootDir: string, serverUrl: string): string`
+  - `resolveTimelineAssetUrls(timeline: TimelineItem[], rootDir: string, serverUrl: string): TimelineItem[]` — rewrites `image`-kind items' `data.src` from an absolute path to a fetchable URL; other kinds pass through unchanged (there's only one kind right now — this being kind-specific rather than registry-driven is a deliberate, disclosed YAGNI cut, same as the plan's other single-kind simplifications; generalize this when a second kind with a file-path field exists)
+
+**A critical constraint this task must not violate:** URL resolution happens ONLY at the point of handing data to Remotion (Player `inputProps` / `renderMedia` `inputProps`) — never inside `readTimeline`/`addTimelineItem` themselves. Those functions are also used internally for read-modify-write (`addTimelineItem` reads the current array before appending and writing it back); if `readTimeline` returned HTTP-resolved URLs, `addTimelineItem` would permanently bake a transient server port into `timeline.json` on disk. `resolveTimelineAssetUrls` must only ever be called on a timeline that's about to be handed to Remotion for rendering/preview, never on one about to be re-persisted.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+import { describe, expect, it, afterEach } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { getAssetServer, closeAssetServer, resolveAssetUrl, resolveTimelineAssetUrls } from './assetServer'
+
+describe('asset server', () => {
+  afterEach(async () => {
+    await closeAssetServer()
+  })
+
+  it('serves a real file over HTTP from the given root directory', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'photo.png'), 'fake-png-bytes')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/photo.png`)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('fake-png-bytes')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('serves nested files using their relative path', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    mkdirSync(join(rootDir, 'sub'), { recursive: true })
+    writeFileSync(join(rootDir, 'sub', 'photo.png'), 'nested-bytes')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/sub/photo.png`)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('nested-bytes')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('returns 404 for a path that escapes the root directory', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/../../../etc/passwd`)
+
+    expect(response.status).toBe(404)
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('reuses the same server instance for repeated calls with the same rootDir', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+
+    const first = await getAssetServer(rootDir)
+    const second = await getAssetServer(rootDir)
+
+    expect(second.url).toBe(first.url)
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('resolveAssetUrl converts an absolute path under root into a fetchable URL', () => {
+    const url = resolveAssetUrl('/root/sources/images/photo.png', '/root', 'http://127.0.0.1:5000')
+
+    expect(url).toBe('http://127.0.0.1:5000/sources/images/photo.png')
+  })
+
+  it('resolveTimelineAssetUrls rewrites image item src fields only', () => {
+    const timeline = [
+      { id: 'a', kind: 'image', start: 0, duration: 90, data: { src: '/root/sources/images/photo.png' } }
+    ]
+
+    const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000')
+
+    expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
+  })
+})
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `npx vitest run src/main/render/assetServer.test.ts`
+Expected: FAIL — `Cannot find module './assetServer'`
+
+- [ ] **Step 3: Write `src/main/render/assetServer.ts`**
+
+```ts
+import { createServer, type Server } from 'http'
+import { createReadStream, existsSync, statSync } from 'fs'
+import { extname, join, normalize, relative } from 'path'
+import type { AddressInfo } from 'net'
+import type { TimelineItem } from '../../remotion/types'
+
+const MIME_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp'
+}
+
+export interface AssetServer {
+  url: string
+  close: () => Promise<void>
+}
+
+let cachedServer: AssetServer | null = null
+let cachedRootDir: string | null = null
+
+function startAssetServer(rootDir: string): Promise<AssetServer> {
+  return new Promise((resolve, reject) => {
+    const server: Server = createServer((req, res) => {
+      const requestedPath = decodeURIComponent((req.url ?? '/').split('?')[0])
+      const filePath = normalize(join(rootDir, requestedPath))
+
+      if (!filePath.startsWith(rootDir) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+        res.writeHead(404)
+        res.end()
+        return
+      }
+
+      res.writeHead(200, { 'Content-Type': MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream' })
+      createReadStream(filePath).pipe(res)
+    })
+
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as AddressInfo
+      resolve({
+        url: `http://127.0.0.1:${port}`,
+        close: () => new Promise((res) => server.close(() => res()))
+      })
+    })
+  })
+}
+
+export async function getAssetServer(rootDir: string): Promise<AssetServer> {
+  if (cachedServer && cachedRootDir === rootDir) {
+    return cachedServer
+  }
+  if (cachedServer) {
+    await cachedServer.close()
+  }
+  cachedServer = await startAssetServer(rootDir)
+  cachedRootDir = rootDir
+  return cachedServer
+}
+
+export async function closeAssetServer(): Promise<void> {
+  if (cachedServer) {
+    await cachedServer.close()
+    cachedServer = null
+    cachedRootDir = null
+  }
+}
+
+export function resolveAssetUrl(absolutePath: string, rootDir: string, serverUrl: string): string {
+  const rel = relative(rootDir, absolutePath)
+  return `${serverUrl}/${rel
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')}`
+}
+
+export function resolveTimelineAssetUrls(timeline: TimelineItem[], rootDir: string, serverUrl: string): TimelineItem[] {
+  return timeline.map((item) => {
+    if (item.kind !== 'image') return item
+    const data = item.data as { src: string }
+    return { ...item, data: { ...data, src: resolveAssetUrl(data.src, rootDir, serverUrl) } }
+  })
+}
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `npx vitest run src/main/render/assetServer.test.ts`
+Expected: PASS (6 tests)
+
+- [ ] **Step 5: Run the full suite**
+
+Run: `npm run test`
+Expected: all suites pass, including Task 4's `composition.test.ts` (unaffected by this task — it already had its own inline HTTP-serving workaround)
+
+- [ ] **Step 6: Simplify `ImageItem.tsx`**
+
+Task 4's implementer added scheme-detection logic to `ImageItem.tsx` as a stopgap (pass through an already-schemed URL, otherwise assume a bare filesystem path and prepend `file://`). Now that URL resolution is a real, established contract enforced upstream (Step 3 above, wired into every caller in Tasks 5 and 7), `data.src` will always already be a fetchable URL by the time it reaches this component — simplify it back down and document the contract instead of defending against a case that can no longer occur:
+
+Replace `src/remotion/items/ImageItem.tsx` with:
+
+```tsx
+import { Img } from 'remotion'
+
+export function ImageItem({ data }: { data: unknown }): JSX.Element {
+  // data.src must already be a fetchable URL (http://...) by the time it reaches this
+  // component — Remotion's headless Chromium cannot load file:// subresources from the
+  // http://localhost page it serves compositions from. Callers resolve local project
+  // paths to URLs via resolveTimelineAssetUrls (assetServer.ts) before this ever runs.
+  const { src } = data as { src: string }
+
+  return <Img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+}
+```
+
+- [ ] **Step 7: Confirm the composition smoke test still passes**
+
+Run: `npx vitest run src/main/render/composition.test.ts`
+Expected: PASS — this test already passes a fully-formed `http://` URL as `data.src` (via its own local test server), so simplifying `ImageItem.tsx` should not affect it. If it fails, re-check that the test's `imageUrl` really does carry a scheme.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/main/render/assetServer.ts src/main/render/assetServer.test.ts src/remotion/items/ImageItem.tsx
+git commit -m "Add local asset server for serving project media to Remotion over HTTP"
+```
+
+---
+
 ### Task 5: Export pipeline
 
 **Files:**
@@ -605,7 +843,7 @@ git commit -m "Add Remotion composition for the image timeline item kind"
 - Test: `src/main/render/renderProject.test.ts`
 
 **Interfaces:**
-- Consumes: `readTimeline` (Task 3), `findProjectDir` (Plan 1), `computeTimelineDuration`, `FPS`/`WIDTH`/`HEIGHT`, `COMPOSITION_ID` (Task 4)
+- Consumes: `readTimeline` (Task 3), `findProjectDir`, `projectsRootDir` (Plan 1), `computeTimelineDuration`, `FPS`/`WIDTH`/`HEIGHT`, `COMPOSITION_ID` (Task 4), `getAssetServer`, `resolveTimelineAssetUrls` (Task 4b)
 - Produces: `renderProjectVideo(id: string, baseDir?: string): Promise<string>` (returns the absolute path of the rendered MP4) — used by Task 7 (IPC handler)
 
 - [ ] **Step 1: Write the failing test**
@@ -613,7 +851,7 @@ git commit -m "Add Remotion composition for the image timeline item kind"
 This is a real end-to-end render — creates an actual project via `ProjectAPI`, adds a real image item, and renders a real MP4. Slower than a unit test (expect tens of seconds), but it is the test that actually proves the export pipeline works, not a mock of it.
 
 ```ts
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, statSync, readdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -621,11 +859,16 @@ import { createProject } from '../project/projectApi'
 import { addTimelineItem } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { renderProjectVideo } from './renderProject'
+import { closeAssetServer } from './assetServer'
 
 const ONE_PIXEL_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
 describe('renderProjectVideo', () => {
+  afterEach(async () => {
+    await closeAssetServer()
+  })
+
   it('renders the project timeline to a real MP4 file in renders/', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-render-test-'))
     const project = createProject('Render Test', baseDir)
@@ -657,9 +900,10 @@ import { join } from 'path'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
 import { readTimeline } from '../project/projectApi'
-import { findProjectDir } from '../project/paths'
+import { findProjectDir, projectsRootDir } from '../project/paths'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import { COMPOSITION_ID } from '../../remotion/index'
+import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 
 export async function renderProjectVideo(id: string, baseDir: string = homedir()): Promise<string> {
   const dir = findProjectDir(id, baseDir)
@@ -667,8 +911,12 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     throw new Error(`No project found with id ${id}`)
   }
 
-  const timeline = readTimeline(id, baseDir)
-  const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.ts') })
+  const rootDir = projectsRootDir(baseDir)
+  const rawTimeline = readTimeline(id, baseDir)
+  const assetServer = await getAssetServer(rootDir)
+  const timeline = resolveTimelineAssetUrls(rawTimeline, rootDir, assetServer.url)
+
+  const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
   const composition = await selectComposition({
     serveUrl: bundleLocation,
     id: COMPOSITION_ID,
@@ -678,7 +926,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   const outputPath = join(dir, 'renders', `export-${Date.now()}.mp4`)
 
   await renderMedia({
-    composition: { ...composition, durationInFrames: computeTimelineDuration(timeline) },
+    composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },
     serveUrl: bundleLocation,
     codec: 'h264',
     outputLocation: outputPath,
@@ -688,6 +936,10 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   return outputPath
 }
 ```
+
+Note `computeTimelineDuration(rawTimeline)` uses the UN-resolved timeline (`start`/`duration` are unaffected by URL resolution, but there's no reason to resolve first) — either would work, `rawTimeline` avoids the resolution work mattering for this call at all.
+
+Do NOT call `closeAssetServer()` anywhere in this function — the asset server is a shared, long-lived singleton also used by the live preview (Task 7's IPC handler); closing it after every export would break any preview relying on the same server. Only tests close it, in their own cleanup.
 
 As with Task 4's smoke test, if the installed Remotion version's types don't match `selectComposition`/`renderMedia`'s exact parameter shape, check `node_modules/@remotion/renderer/dist/index.d.ts` and adapt — the approach (bundle once, select with real `inputProps`, override the resolved duration with the real computed one, render) is what matters, not the exact parameter names.
 
@@ -828,26 +1080,36 @@ git commit -m "Add importImage"
 - Modify: `src/preload/index.d.ts`
 
 **Interfaces:**
-- Consumes: `readTimeline`, `addTimelineItem`, `importImage` (Tasks 3, 6), `renderProjectVideo` (Task 5)
+- Consumes: `readTimeline`, `addTimelineItem`, `importImage` (Tasks 3, 6), `renderProjectVideo` (Task 5), `findProjectDir`/`projectsRootDir` (Plan 1), `getAssetServer`/`resolveTimelineAssetUrls` (Task 4b)
 - Produces:
-  - `window.api.timeline.read(id): Promise<TimelineItem[]>`
+  - `window.api.timeline.read(id): Promise<TimelineItem[]>` — returns items with `image`-kind `src` fields already resolved to real `http://` URLs, ready to hand straight to `<Player>`
   - `window.api.timeline.addItem(id, item): Promise<TimelineItem>`
   - `window.api.render.exportVideo(id): Promise<string>`
   - `window.api.project.importImage(id): Promise<TimelineItem>` (shows a native file picker internally; no path argument from the renderer)
   - Used by Task 8 (`projectClient.ts`, `Editor.tsx`)
 
-This is IPC plumbing over already-tested logic — no new business logic, so verification is manual/DOM-based rather than unit-tested, matching Plan 1's Task 9 pattern.
+This is IPC plumbing over already-tested logic — no new business logic beyond the URL resolution below, so verification is manual/DOM-based rather than unit-tested, matching Plan 1's Task 9 pattern.
+
+**Why `project:timeline:read` resolves URLs but `project:timeline:addItem` doesn't need to:** the renderer only ever renders (via `<Player>`) the timeline it gets from `read` — see Task 8, which re-fetches via `timeline.read()` after every mutation rather than using a mutation's raw return value directly. `addItem`'s return value is used by callers only to confirm success, not fed to `<Player>`, so it stays a plain, unresolved `TimelineItem` (also keeps it consistent with what's actually stored on disk).
 
 - [ ] **Step 1: Write `src/main/ipc/timelineHandlers.ts`**
 
 ```ts
 import type { IpcMain, BrowserWindow } from 'electron'
 import { dialog } from 'electron'
+import { homedir } from 'os'
 import { readTimeline, addTimelineItem, importImage } from '../project/projectApi'
+import { projectsRootDir } from '../project/paths'
 import { renderProjectVideo } from '../render/renderProject'
+import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 
 export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null): void {
-  ipcMain.handle('project:timeline:read', (_event, id: string) => readTimeline(id))
+  ipcMain.handle('project:timeline:read', async (_event, id: string) => {
+    const timeline = readTimeline(id)
+    const rootDir = projectsRootDir(homedir())
+    const assetServer = await getAssetServer(rootDir)
+    return resolveTimelineAssetUrls(timeline, rootDir, assetServer.url)
+  })
 
   ipcMain.handle(
     'project:timeline:addItem',
@@ -1107,10 +1369,13 @@ Expected: exits 0, and `out/renderer/assets/*.js` should be noticeably larger th
 
 Add a temporary (NOT committed) `did-finish-load` block to `src/main/index.ts`'s `createWindow()` — follow the exact pattern used in Plan 1's Task 9-11 (a `webContents.executeJavaScript` call that waits for initial data to load, drives the DOM with simulated native input events, and logs `document.body.innerText` or specific element state). For this task:
 
-1. Simulate opening the project you'll create for this check (or create one via the same input+click simulation Plan 1's `ProjectBrowser` task used).
-2. Once in the Editor, click the "Import Image" button via simulated click. Since `importImage` opens a real native OS file dialog (`dialog.showOpenDialog`), which cannot be driven by DOM simulation, this manual check should instead directly call `window.api.project.importImage` is not testable this way — SKIP driving the actual dialog. Instead, verify the import path programmatically: call `window.api.timeline.addItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '<path to a real tiny test PNG you write to a temp location first> ' } })` directly via `executeJavaScript`, matching how Task 4/5's tests created their own test image.
-3. After adding the item, capture `document.body.innerText` — it should not show the placeholder `Preview — ` text anymore (since `timeline.length > 0` now), and should show the imported item's `kind` (`image`) in the footer timeline strip.
-4. Revert the temporary instrumentation from `src/main/index.ts` — confirm with `git diff src/main/index.ts` that it shows no changes for this task.
+Since `importImage` opens a real native OS file dialog (`dialog.showOpenDialog`), which cannot be driven by DOM simulation, this check does not drive the actual "Import Image" button — instead it seeds a real timeline item directly via IPC BEFORE the Editor mounts, so that the Editor's own normal mount-time `timelineClient.read()` call naturally picks it up (there is no manual "refresh" affordance to trigger otherwise — a raw `addItem` call made AFTER the Editor has already mounted would not appear, since nothing in `Editor.tsx` re-fetches in response to it; only `handleImportImage`'s own explicit re-fetch does, and that path isn't reachable without the real dialog):
+
+1. Create a project by calling `window.api.project.create('Timeline UI Test')` directly (not by simulating a click on `ProjectBrowser`'s Create button) — this gives you the created project's `id` directly from the call's return value, with the app still sitting on the `ProjectBrowser` screen (nothing has navigated yet).
+2. With that `id`, write a real tiny test PNG to a temp location (same 1x1 PNG base64 fixture Task 4/4b/5's tests used) and call `window.api.timeline.addItem(id, { kind: 'image', start: 0, duration: 90, data: { src: '<path to that temp PNG>' } })` directly — the project now has one real timeline item before the Editor has ever mounted for it.
+3. Simulate clicking that project's entry in the `ProjectBrowser` list (`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Timeline UI Test'))`, then `.click()`) so `App.tsx` navigates to `Editor`, which mounts fresh and runs its normal `useEffect` — this is what actually fetches and resolves the timeline (via Task 7's now-URL-resolving `project:timeline:read` handler).
+4. After navigation, capture `document.body.innerText` — it should not show the placeholder `Preview — ` text (since `timeline.length > 0` now), and should show the imported item's `kind` (`image`) in the footer timeline strip.
+5. Revert the temporary instrumentation from `src/main/index.ts` — confirm with `git diff src/main/index.ts` that it shows no changes for this task.
 
 - [ ] **Step 5: Commit**
 
