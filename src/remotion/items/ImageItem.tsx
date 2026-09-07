@@ -1,13 +1,11 @@
 import { Img } from 'remotion'
 
-// Matches an already-present URL scheme (file://, http://, https://, data:, ...).
-const HAS_URL_SCHEME = /^[a-z][a-z0-9+.-]*:/i
-
 export function ImageItem({ data }: { data: unknown }): JSX.Element {
+  // data.src must already be a fetchable URL (http://...) by the time it reaches this
+  // component — Remotion's headless Chromium cannot load file:// subresources from the
+  // http://localhost page it serves compositions from. Callers resolve local project
+  // paths to URLs via resolveTimelineAssetUrls (assetServer.ts) before this ever runs.
   const { src } = data as { src: string }
-  // A bare filesystem path (no scheme) is treated as a local absolute path and converted
-  // to a file:// URL. A src that already carries a scheme is passed through unchanged.
-  const url = HAS_URL_SCHEME.test(src) ? src : `file://${src}`
 
-  return <Img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+  return <Img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
 }
