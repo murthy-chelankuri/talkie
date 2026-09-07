@@ -879,6 +879,7 @@ git commit -m "Add createProject"
 Append to `src/main/project/projectApi.test.ts`:
 
 ```ts
+import { vi } from 'vitest'
 import { listProjects } from './projectApi'
 
 describe('listProjects', () => {
@@ -897,8 +898,13 @@ describe('listProjects', () => {
   })
 
   it('lists created projects newest first', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     const first = createProject('First Project', baseDir)
+
+    vi.setSystemTime(new Date('2026-01-01T00:00:01.000Z'))
     const second = createProject('Second Project', baseDir)
+    vi.useRealTimers()
 
     const summaries = listProjects(baseDir)
 
