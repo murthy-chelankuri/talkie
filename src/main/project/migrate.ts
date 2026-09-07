@@ -1,0 +1,36 @@
+import { ProjectMetadataSchema, CURRENT_SCHEMA_VERSION, type ProjectMetadata } from './schema'
+
+export class UnsupportedSchemaVersionError extends Error {
+  constructor(foundVersion: number) {
+    super(
+      `This project was created by a newer version of Demo Editor (schema v${foundVersion}, this app supports up to v${CURRENT_SCHEMA_VERSION}). Update the app to open it.`
+    )
+    this.name = 'UnsupportedSchemaVersionError'
+  }
+}
+
+type Migration = (metadata: Record<string, unknown>) => Record<string, unknown>
+
+// Keyed by the version a migration upgrades FROM. Empty until the schema
+// changes for the first time after v1 — see spec §4/§11.
+const MIGRATIONS: Record<number, Migration> = {}
+
+export function migrateProjectMetadata(raw: Record<string, unknown>): ProjectMetadata {
+  let version = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 0
+  let data = raw
+
+  if (version > CURRENT_SCHEMA_VERSION) {
+    throw new UnsupportedSchemaVersionError(version)
+  }
+
+  while (version < CURRENT_SCHEMA_VERSION) {
+    const migrate = MIGRATIONS[version]
+    if (!migrate) {
+      throw new Error(`No migration registered from schema v${version}`)
+    }
+    data = migrate(data)
+    version += 1
+  }
+
+  return ProjectMetadataSchema.parse(data)
+}
