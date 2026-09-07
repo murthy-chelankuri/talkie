@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, listProjects } from './projectApi'
+import { createProject, listProjects, openProject } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
 describe('createProject', () => {
@@ -88,5 +88,29 @@ describe('listProjects', () => {
       name: 'Checkout Flow',
       createdAt: expect.any(String)
     })
+  })
+})
+
+describe('openProject', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('returns the full metadata for an existing project', () => {
+    const created = createProject('Checkout Flow', baseDir)
+
+    expect(openProject(created.id, baseDir)).toEqual(created)
+  })
+
+  it('throws a clear error when the project does not exist', () => {
+    expect(() => openProject('does-not-exist', baseDir)).toThrow(
+      'No project found with id does-not-exist'
+    )
   })
 })

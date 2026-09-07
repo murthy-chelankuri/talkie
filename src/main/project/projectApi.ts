@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { CURRENT_SCHEMA_VERSION, type ProjectMetadata, type ProjectSummary } from './schema'
-import { projectsRootDir, projectDirName, PROJECT_SUBDIRS } from './paths'
+import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from './paths'
 import { slugify } from './slug'
 import { writeJsonAtomic } from './atomicWrite'
 import { migrateProjectMetadata } from './migrate'
@@ -48,4 +48,14 @@ export function listProjects(baseDir: string = homedir()): ProjectSummary[] {
     })
     .filter((summary): summary is ProjectSummary => summary !== undefined)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function openProject(id: string, baseDir: string = homedir()): ProjectMetadata {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const raw = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf-8'))
+  return migrateProjectMetadata(raw)
 }
