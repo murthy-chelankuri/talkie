@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, listProjects, openProject } from './projectApi'
+import { createProject, listProjects, openProject, readTimeline, addTimelineItem } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
 describe('createProject', () => {
@@ -169,5 +169,67 @@ describe('openProject', () => {
     mkdirSync(join(root, `${id}-partial-project`), { recursive: true })
 
     expect(() => openProject(id, baseDir)).toThrow(`No project found with id ${id}`)
+  })
+})
+
+describe('readTimeline', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('returns an empty array for a freshly created project', () => {
+    const project = createProject('Empty Timeline', baseDir)
+
+    expect(readTimeline(project.id, baseDir)).toEqual([])
+  })
+
+  it('throws when the project does not exist', () => {
+    expect(() => readTimeline('does-not-exist', baseDir)).toThrow('No project found with id does-not-exist')
+  })
+})
+
+describe('addTimelineItem', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('appends a validated item and returns it with a generated id', () => {
+    const project = createProject('Add Item', baseDir)
+
+    const added = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+
+    expect(added.id).toBeTruthy()
+    expect(added.kind).toBe('image')
+    expect(readTimeline(project.id, baseDir)).toEqual([added])
+  })
+
+  it('appends a second item after the first without overwriting it', () => {
+    const project = createProject('Add Two Items', baseDir)
+
+    const first = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+    const second = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/tmp/b.png' } }, baseDir)
+
+    expect(readTimeline(project.id, baseDir)).toEqual([first, second])
+  })
+
+  it('rejects invalid item data and writes nothing', () => {
+    const project = createProject('Reject Invalid', baseDir)
+
+    expect(() => addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: {} }, baseDir)).toThrow(
+      /Invalid data for kind "image"/
+    )
+    expect(readTimeline(project.id, baseDir)).toEqual([])
   })
 })

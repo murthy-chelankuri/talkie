@@ -12,6 +12,8 @@ import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from
 import { slugify } from './slug'
 import { writeJsonAtomic } from './atomicWrite'
 import { migrateProjectMetadata } from './migrate'
+import { TimelineItemSchema, type TimelineItem } from './timeline/schema'
+import { z } from 'zod'
 
 export function createProject(name: string, baseDir: string = homedir()): ProjectMetadata {
   const id = randomUUID()
@@ -68,4 +70,46 @@ export function openProject(id: string, baseDir: string = homedir()): ProjectMet
 
   const raw = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf-8'))
   return migrateProjectMetadata(raw)
+}
+
+export function readTimeline(id: string, baseDir: string = homedir()): TimelineItem[] {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const raw = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
+  try {
+    return raw.map((item: unknown) => TimelineItemSchema.parse(item))
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
+}
+
+export function addTimelineItem(
+  id: string,
+  item: { kind: string; start: number; duration: number; data: unknown },
+  baseDir: string = homedir()
+): TimelineItem {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  let newItem: TimelineItem
+  try {
+    newItem = TimelineItemSchema.parse({ id: randomUUID(), ...item })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
+  const timeline = readTimeline(id, baseDir)
+  timeline.push(newItem)
+  writeJsonAtomic(join(dir, 'timeline.json'), timeline)
+  return newItem
 }
