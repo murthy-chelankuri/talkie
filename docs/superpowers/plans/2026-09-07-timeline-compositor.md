@@ -624,6 +624,7 @@ import { describe, expect, it, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { request as httpRequest } from 'http'
 import { getAssetServer, closeAssetServer, resolveAssetUrl, resolveTimelineAssetUrls } from './assetServer'
 
 describe('asset server', () => {
@@ -669,6 +670,38 @@ describe('asset server', () => {
     rmSync(rootDir, { recursive: true, force: true })
   })
 
+  it('returns 404 for a sibling directory that merely shares a string prefix with the root', async () => {
+    // Regression test for a directory-boundary bug: a naive `filePath.startsWith(rootDir)`
+    // check would wrongly accept a sibling like '<rootDir>-sibling/secret.txt' since it's a
+    // string prefix of rootDir even though it is NOT a subpath of it. This uses a raw
+    // http.request rather than fetch deliberately: fetch/URL parsing normalizes ".." out of
+    // the path before the request is ever sent (verified: a fetch to ".../../root-sibling/x"
+    // arrives at the server as "/root-sibling/x", not exercising this code path at all), which
+    // would silently make this test pass against the vulnerable code too.
+    const parentDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    const rootDir = join(parentDir, 'root')
+    const siblingDir = join(parentDir, 'root-sibling')
+    mkdirSync(rootDir, { recursive: true })
+    mkdirSync(siblingDir, { recursive: true })
+    writeFileSync(join(siblingDir, 'secret.txt'), 'should not be servable')
+
+    const server = await getAssetServer(rootDir)
+    const serverUrl = new URL(server.url)
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        { host: serverUrl.hostname, port: serverUrl.port, path: '/../root-sibling/secret.txt' },
+        (res) => resolve(res.statusCode ?? 0)
+      )
+      req.on('error', reject)
+      req.end()
+    })
+
+    expect(status).toBe(404)
+
+    rmSync(parentDir, { recursive: true, force: true })
+  })
+
   it('reuses the same server instance for repeated calls with the same rootDir', async () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
 
@@ -708,7 +741,7 @@ Expected: FAIL — `Cannot find module './assetServer'`
 ```ts
 import { createServer, type Server } from 'http'
 import { createReadStream, existsSync, statSync } from 'fs'
-import { extname, join, normalize, relative } from 'path'
+import { extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
 import type { TimelineItem } from '../../remotion/types'
 
@@ -733,8 +766,11 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
     const server: Server = createServer((req, res) => {
       const requestedPath = decodeURIComponent((req.url ?? '/').split('?')[0])
       const filePath = normalize(join(rootDir, requestedPath))
+      // A bare `startsWith(rootDir)` is a directory-boundary bug: rootDir '/tmp/foo' would
+      // wrongly accept '/tmp/foobar/secret' since it's a string prefix but not a real subpath.
+      const isInsideRoot = filePath === rootDir || filePath.startsWith(rootDir + sep)
 
-      if (!filePath.startsWith(rootDir) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+      if (!isInsideRoot || !existsSync(filePath) || !statSync(filePath).isFile()) {
         res.writeHead(404)
         res.end()
         return
@@ -795,7 +831,7 @@ export function resolveTimelineAssetUrls(timeline: TimelineItem[], rootDir: stri
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run src/main/render/assetServer.test.ts`
-Expected: PASS (6 tests)
+Expected: PASS (7 tests)
 
 - [ ] **Step 5: Run the full suite**
 
