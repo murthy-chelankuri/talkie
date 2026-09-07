@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'http'
 import { createReadStream, existsSync, statSync } from 'fs'
-import { extname, join, normalize, relative } from 'path'
+import { extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
 import type { TimelineItem } from '../../remotion/types'
 
@@ -25,8 +25,11 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
     const server: Server = createServer((req, res) => {
       const requestedPath = decodeURIComponent((req.url ?? '/').split('?')[0])
       const filePath = normalize(join(rootDir, requestedPath))
+      // A bare `startsWith(rootDir)` is a directory-boundary bug: rootDir '/tmp/foo' would
+      // wrongly accept '/tmp/foobar/secret' since it's a string prefix but not a real subpath.
+      const isInsideRoot = filePath === rootDir || filePath.startsWith(rootDir + sep)
 
-      if (!filePath.startsWith(rootDir) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+      if (!isInsideRoot || !existsSync(filePath) || !statSync(filePath).isFile()) {
         res.writeHead(404)
         res.end()
         return

@@ -2,6 +2,7 @@ import { describe, expect, it, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { request as httpRequest } from 'http'
 import { getAssetServer, closeAssetServer, resolveAssetUrl, resolveTimelineAssetUrls } from './assetServer'
 
 describe('asset server', () => {
@@ -45,6 +46,31 @@ describe('asset server', () => {
     expect(response.status).toBe(404)
 
     rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('returns 404 for a sibling directory that merely shares a string prefix with the root', async () => {
+    const parentDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    const rootDir = join(parentDir, 'root')
+    const siblingDir = join(parentDir, 'root-sibling')
+    mkdirSync(rootDir, { recursive: true })
+    mkdirSync(siblingDir, { recursive: true })
+    writeFileSync(join(siblingDir, 'secret.txt'), 'should not be servable')
+
+    const server = await getAssetServer(rootDir)
+    const serverUrl = new URL(server.url)
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        { host: serverUrl.hostname, port: serverUrl.port, path: '/../root-sibling/secret.txt' },
+        (res) => resolve(res.statusCode ?? 0)
+      )
+      req.on('error', reject)
+      req.end()
+    })
+
+    expect(status).toBe(404)
+
+    rmSync(parentDir, { recursive: true, force: true })
   })
 
   it('reuses the same server instance for repeated calls with the same rootDir', async () => {
