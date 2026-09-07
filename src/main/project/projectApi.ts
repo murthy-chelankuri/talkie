@@ -1,7 +1,7 @@
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'fs'
-import { join } from 'path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'fs'
+import { basename, join } from 'path'
 import {
   CURRENT_SCHEMA_VERSION,
   ProjectMetadataSchema,
@@ -112,4 +112,21 @@ export function addTimelineItem(
   timeline.push(newItem)
   writeJsonAtomic(join(dir, 'timeline.json'), timeline)
   return newItem
+}
+
+const DEFAULT_IMAGE_DURATION_FRAMES = 90
+
+export function importImage(id: string, sourcePath: string, baseDir: string = homedir()): TimelineItem {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const destPath = join(dir, 'sources', 'images', `${randomUUID()}-${basename(sourcePath)}`)
+  copyFileSync(sourcePath, destPath)
+
+  const timeline = readTimeline(id, baseDir)
+  const start = timeline.length === 0 ? 0 : Math.max(...timeline.map((item) => item.start + item.duration))
+
+  return addTimelineItem(id, { kind: 'image', start, duration: DEFAULT_IMAGE_DURATION_FRAMES, data: { src: destPath } }, baseDir)
 }

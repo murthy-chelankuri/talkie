@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, listProjects, openProject, readTimeline, addTimelineItem } from './projectApi'
+import { createProject, listProjects, openProject, readTimeline, addTimelineItem, importImage } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
 describe('createProject', () => {
@@ -231,5 +231,54 @@ describe('addTimelineItem', () => {
       /Invalid data for kind "image"/
     )
     expect(readTimeline(project.id, baseDir)).toEqual([])
+  })
+})
+
+describe('importImage', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('copies the source file into sources/images and adds a timeline item', () => {
+    const project = createProject('Import Image', baseDir)
+    const sourcePath = join(baseDir, 'original.png')
+    writeFileSync(sourcePath, 'fake-png-bytes')
+
+    const item = importImage(project.id, sourcePath, baseDir)
+
+    expect(item.kind).toBe('image')
+    const data = item.data as { src: string }
+    expect(existsSync(data.src)).toBe(true)
+    expect(readFileSync(data.src, 'utf-8')).toBe('fake-png-bytes')
+    expect(readTimeline(project.id, baseDir)).toEqual([item])
+  })
+
+  it('places the copy inside the project sources/images directory, not the source location', () => {
+    const project = createProject('Import Image Location', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    const sourcePath = join(baseDir, 'original.png')
+    writeFileSync(sourcePath, 'fake-png-bytes')
+
+    const item = importImage(project.id, sourcePath, baseDir)
+
+    const data = item.data as { src: string }
+    expect(data.src.startsWith(join(dir, 'sources', 'images'))).toBe(true)
+  })
+
+  it('appends after the current end of the timeline rather than always starting at 0', () => {
+    const project = createProject('Import Sequential', baseDir)
+    const sourcePath = join(baseDir, 'original.png')
+    writeFileSync(sourcePath, 'fake-png-bytes')
+
+    const first = importImage(project.id, sourcePath, baseDir)
+    const second = importImage(project.id, sourcePath, baseDir)
+
+    expect(second.start).toBe(first.start + first.duration)
   })
 })
