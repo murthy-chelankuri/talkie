@@ -1,8 +1,6 @@
 import { registerRoot, Composition } from 'remotion'
 import { DemoComposition } from './DemoComposition'
-import { FPS, WIDTH, HEIGHT } from './constants'
-
-export const COMPOSITION_ID = 'Demo'
+import { FPS, WIDTH, HEIGHT, COMPOSITION_ID } from './constants'
 
 function RemotionRoot(): JSX.Element {
   return (

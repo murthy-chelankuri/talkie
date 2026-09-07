@@ -1,7 +1,7 @@
 import type { IpcMain, BrowserWindow } from 'electron'
 import { dialog } from 'electron'
 import { homedir } from 'os'
-import { readTimeline, addTimelineItem, importImage } from '../project/projectApi'
+import { readTimelineLenient, addTimelineItem, importImage } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
@@ -14,7 +14,7 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     // requires it. Both describe the same real shape validated by TimelineItemSchema.superRefine,
     // so the optionality is a static-typing artifact, not a runtime possibility. Same workaround
     // as renderProject.ts.
-    const timeline = readTimeline(id) as unknown as RemotionTimelineItem[]
+    const timeline = readTimelineLenient(id) as unknown as RemotionTimelineItem[]
     const rootDir = projectsRootDir(homedir())
     const assetServer = await getAssetServer(rootDir)
     return resolveTimelineAssetUrls(timeline, rootDir, assetServer.url)

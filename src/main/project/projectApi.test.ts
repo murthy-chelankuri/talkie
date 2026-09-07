@@ -2,7 +2,15 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, listProjects, openProject, readTimeline, addTimelineItem, importImage } from './projectApi'
+import {
+  createProject,
+  listProjects,
+  openProject,
+  readTimeline,
+  readTimelineLenient,
+  addTimelineItem,
+  importImage
+} from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
 describe('createProject', () => {
@@ -191,6 +199,60 @@ describe('readTimeline', () => {
 
   it('throws when the project does not exist', () => {
     expect(() => readTimeline('does-not-exist', baseDir)).toThrow('No project found with id does-not-exist')
+  })
+})
+
+describe('readTimeline missing timeline.json', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('throws "No project found" when timeline.json is missing', () => {
+    const project = createProject('Missing Timeline', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    rmSync(join(dir, 'timeline.json'))
+
+    expect(() => readTimeline(project.id, baseDir)).toThrow(`No project found with id ${project.id}`)
+  })
+})
+
+describe('readTimelineLenient', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('skips an item with an unrecognized kind and returns the valid ones', () => {
+    const project = createProject('Lenient Read', baseDir)
+    addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    const timeline = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
+    timeline.push({ id: 'bad-item', kind: 'slide', start: 90, duration: 60, data: {} })
+    writeFileSync(join(dir, 'timeline.json'), JSON.stringify(timeline))
+
+    const result = readTimelineLenient(project.id, baseDir)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].kind).toBe('image')
+  })
+
+  it('throws "No project found" when timeline.json is missing, same as readTimeline', () => {
+    const project = createProject('Lenient Missing', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    rmSync(join(dir, 'timeline.json'))
+
+    expect(() => readTimelineLenient(project.id, baseDir)).toThrow(`No project found with id ${project.id}`)
   })
 })
 

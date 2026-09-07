@@ -10,7 +10,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [exportedPath, setExportedPath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -23,19 +25,25 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }, [projectId])
 
   async function handleImportImage(): Promise<void> {
-    const item = await projectClient.importImage(projectId)
-    if (item) {
-      setTimeline(await timelineClient.read(projectId))
+    setImportError(null)
+    try {
+      const item = await projectClient.importImage(projectId)
+      if (item) {
+        setTimeline(await timelineClient.read(projectId))
+      }
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : String(err))
     }
   }
 
   async function handleExport(): Promise<void> {
     setExporting(true)
+    setExportError(null)
     try {
       const path = await renderClient.exportVideo(projectId)
       setExportedPath(path)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setExportError(err instanceof Error ? err.message : String(err))
     } finally {
       setExporting(false)
     }
@@ -57,9 +65,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <aside>
           <p>Sources &amp; Agents</p>
           <button onClick={handleImportImage}>Import Image</button>
+          {importError && <p style={{ color: 'red' }}>{importError}</p>}
           <button onClick={handleExport} disabled={exporting}>
             {exporting ? 'Exporting…' : 'Export Video'}
           </button>
+          {exportError && <p style={{ color: 'red' }}>{exportError}</p>}
           {exportedPath && <p>Exported to: {exportedPath}</p>}
         </aside>
         <main>

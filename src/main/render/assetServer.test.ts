@@ -48,6 +48,13 @@ describe('asset server', () => {
     rmSync(rootDir, { recursive: true, force: true })
   })
 
+  // Regression test for a directory-boundary bug: a naive `filePath.startsWith(rootDir)`
+  // check would wrongly accept a sibling like '<rootDir>-sibling/secret.txt' since it's a
+  // string prefix of rootDir even though it is NOT a subpath of it. This uses a raw
+  // http.request rather than fetch deliberately: fetch/URL parsing normalizes ".." out of
+  // the path before the request is ever sent (verified: a fetch to ".../../root-sibling/x"
+  // arrives at the server as "/root-sibling/x", not exercising this code path at all), which
+  // would silently make this test pass against the vulnerable code too.
   it('returns 404 for a sibling directory that merely shares a string prefix with the root', async () => {
     const parentDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
     const rootDir = join(parentDir, 'root')
@@ -78,6 +85,16 @@ describe('asset server', () => {
 
     const first = await getAssetServer(rootDir)
     const second = await getAssetServer(rootDir)
+
+    expect(second.url).toBe(first.url)
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('resolves to the same server when called concurrently with the same rootDir', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+
+    const [first, second] = await Promise.all([getAssetServer(rootDir), getAssetServer(rootDir)])
 
     expect(second.url).toBe(first.url)
 

@@ -2,17 +2,12 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
-import { readTimeline } from '../project/projectApi'
+import { readTimelineLenient } from '../project/projectApi'
 import { findProjectDir, projectsRootDir } from '../project/paths'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
-
-// Remotion's composition id. Not statically imported from '../../remotion/index' (a .tsx file):
-// tsconfig.node.json (which typechecks src/main/**/*) has no "jsx" compiler option, so pulling
-// that module into the program fails to parse. src/main/render/composition.test.ts hit the same
-// constraint and worked around it the same way, treating the id as a plain string.
-const COMPOSITION_ID = 'Demo'
+import { COMPOSITION_ID } from '../../remotion/constants'
 
 export async function renderProjectVideo(id: string, baseDir: string = homedir()): Promise<string> {
   const dir = findProjectDir(id, baseDir)
@@ -27,7 +22,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   // (every item's `data` is checked against its kind's schema, so it's always present) — the
   // optionality is a static-typing artifact of two independently-defined interfaces, not a
   // runtime possibility.
-  const rawTimeline = readTimeline(id, baseDir) as unknown as RemotionTimelineItem[]
+  const rawTimeline = readTimelineLenient(id, baseDir) as unknown as RemotionTimelineItem[]
   const assetServer = await getAssetServer(rootDir)
   const timeline = resolveTimelineAssetUrls(rawTimeline, rootDir, assetServer.url)
 

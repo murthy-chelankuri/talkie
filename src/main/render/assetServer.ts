@@ -17,7 +17,7 @@ export interface AssetServer {
   close: () => Promise<void>
 }
 
-let cachedServer: AssetServer | null = null
+let cachedServerPromise: Promise<AssetServer> | null = null
 let cachedRootDir: string | null = null
 
 function startAssetServer(rootDir: string): Promise<AssetServer> {
@@ -50,22 +50,29 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
   })
 }
 
-export async function getAssetServer(rootDir: string): Promise<AssetServer> {
-  if (cachedServer && cachedRootDir === rootDir) {
-    return cachedServer
+export function getAssetServer(rootDir: string): Promise<AssetServer> {
+  if (cachedServerPromise && cachedRootDir === rootDir) {
+    return cachedServerPromise
   }
-  if (cachedServer) {
-    await cachedServer.close()
-  }
-  cachedServer = await startAssetServer(rootDir)
+
+  const previous = cachedServerPromise
   cachedRootDir = rootDir
-  return cachedServer
+  cachedServerPromise = (async () => {
+    if (previous) {
+      const previousServer = await previous
+      await previousServer.close()
+    }
+    return startAssetServer(rootDir)
+  })()
+
+  return cachedServerPromise
 }
 
 export async function closeAssetServer(): Promise<void> {
-  if (cachedServer) {
-    await cachedServer.close()
-    cachedServer = null
+  if (cachedServerPromise) {
+    const server = await cachedServerPromise
+    await server.close()
+    cachedServerPromise = null
     cachedRootDir = null
   }
 }

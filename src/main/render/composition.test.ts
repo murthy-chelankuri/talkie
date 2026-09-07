@@ -7,6 +7,7 @@ import { join } from 'path'
 import { createServer } from 'http'
 import { readFileSync } from 'fs'
 import type { AddressInfo } from 'net'
+import { COMPOSITION_ID } from '../../remotion/constants'
 
 // A minimal valid 1x1 PNG, so the test doesn't depend on any real image asset.
 const ONE_PIXEL_PNG_BASE64 =
@@ -45,7 +46,7 @@ describe('DemoComposition (real Remotion render)', () => {
     try {
       const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
       const timeline = [{ id: 'a', kind: 'image', start: 0, duration: 90, data: { src: imageUrl } }]
-      const composition = await selectComposition({ serveUrl: bundleLocation, id: 'Demo', inputProps: { timeline } })
+      const composition = await selectComposition({ serveUrl: bundleLocation, id: COMPOSITION_ID, inputProps: { timeline } })
 
       await renderStill({
         composition,

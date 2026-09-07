@@ -74,7 +74,7 @@ export function openProject(id: string, baseDir: string = homedir()): ProjectMet
 
 export function readTimeline(id: string, baseDir: string = homedir()): TimelineItem[] {
   const dir = findProjectDir(id, baseDir)
-  if (!dir) {
+  if (!dir || !existsSync(join(dir, 'timeline.json'))) {
     throw new Error(`No project found with id ${id}`)
   }
 
@@ -87,6 +87,24 @@ export function readTimeline(id: string, baseDir: string = homedir()): TimelineI
     }
     throw err
   }
+}
+
+export function readTimelineLenient(id: string, baseDir: string = homedir()): TimelineItem[] {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir || !existsSync(join(dir, 'timeline.json'))) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const raw = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
+  const items: TimelineItem[] = []
+  for (const item of raw) {
+    try {
+      items.push(TimelineItemSchema.parse(item))
+    } catch (err) {
+      console.error(`Skipping invalid timeline item in project ${id}:`, err)
+    }
+  }
+  return items
 }
 
 export function addTimelineItem(
