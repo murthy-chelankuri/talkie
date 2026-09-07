@@ -31,3 +31,8 @@ go.work.sum
 # .idea/
 # .vscode/
 .superpowers/
+# Node / Electron
+node_modules/
+out/
+dist/
+.vite/
