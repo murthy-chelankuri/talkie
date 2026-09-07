@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { createProject, listProjects, openProject } from './projectApi'
@@ -49,6 +49,16 @@ describe('createProject', () => {
 
     expect(dir.endsWith(`${metadata.id}-checkout-flow`)).toBe(true)
   })
+
+  it('throws instead of writing an unopenable project when the name is empty', () => {
+    expect(() => createProject('', baseDir)).toThrow()
+
+    // No project.json should have been written anywhere under the root.
+    const root = projectsRootDir(baseDir)
+    if (existsSync(root)) {
+      expect(listProjects(baseDir)).toEqual([])
+    }
+  })
 })
 
 describe('listProjects', () => {
@@ -89,6 +99,45 @@ describe('listProjects', () => {
       createdAt: expect.any(String)
     })
   })
+
+  it('skips a project with unparseable project.json but still returns healthy ones', () => {
+    const healthy = createProject('Healthy Project', baseDir)
+
+    const root = projectsRootDir(baseDir)
+    const brokenDir = join(root, 'broken-id-broken-project')
+    mkdirSync(brokenDir, { recursive: true })
+    writeFileSync(join(brokenDir, 'project.json'), '{ this is not valid json', 'utf-8')
+
+    const summaries = listProjects(baseDir)
+
+    expect(summaries).toEqual([
+      { id: healthy.id, name: healthy.name, createdAt: healthy.createdAt }
+    ])
+  })
+
+  it('skips a project with a schemaVersion newer than supported but still returns healthy ones', () => {
+    const healthy = createProject('Healthy Project', baseDir)
+
+    const root = projectsRootDir(baseDir)
+    const futureDir = join(root, 'future-id-future-project')
+    mkdirSync(futureDir, { recursive: true })
+    writeFileSync(
+      join(futureDir, 'project.json'),
+      JSON.stringify({
+        id: 'future-id',
+        name: 'Future Project',
+        createdAt: new Date().toISOString(),
+        schemaVersion: 999
+      }),
+      'utf-8'
+    )
+
+    const summaries = listProjects(baseDir)
+
+    expect(summaries).toEqual([
+      { id: healthy.id, name: healthy.name, createdAt: healthy.createdAt }
+    ])
+  })
 })
 
 describe('openProject', () => {
@@ -112,5 +161,13 @@ describe('openProject', () => {
     expect(() => openProject('does-not-exist', baseDir)).toThrow(
       'No project found with id does-not-exist'
     )
+  })
+
+  it('throws the same clear error when the matched directory has no project.json', () => {
+    const root = projectsRootDir(baseDir)
+    const id = 'partial-id'
+    mkdirSync(join(root, `${id}-partial-project`), { recursive: true })
+
+    expect(() => openProject(id, baseDir)).toThrow(`No project found with id ${id}`)
   })
 })
