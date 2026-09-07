@@ -1,12 +1,13 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { registerProjectHandlers } from './ipc/projectHandlers'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
     }
   })
@@ -19,6 +20,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerProjectHandlers(ipcMain)
   createWindow()
 
   app.on('activate', function () {
