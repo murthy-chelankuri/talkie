@@ -32,8 +32,8 @@ Electron app, two processes:
 
 - **Main process** (Node/TypeScript): owns the filesystem, spawns Playwright
   for capture, spawns/embeds the Remotion renderer for export, runs the agent
-  host (Claude Agent SDK), and exposes all of this to the renderer as a typed
-  `ProjectAPI` over IPC.
+  host (a self-owned, provider-agnostic tool-use loop — see §8), and exposes
+  all of this to the renderer as a typed `ProjectAPI` over IPC.
 - **Renderer process** (React): the editor UI — project browser, timeline,
   transcript panel, `@remotion/player` for live preview.
 
@@ -54,7 +54,8 @@ implementation never requires changing the registry or engine code.
 | `CaptureSource` | Produces timeline clips + an action log | Playwright browser session | Terminal recording, native screen capture, video file import |
 | `TimelineItem` (`kind`) | A schema + Remotion component + optional canvas overlay | `clip`, `image`, `slide`, `callout`, `caption`, `zoom`, `music` | `lower-third`, `intro`/`outro` branding |
 | `Agent` | A named, tool-scoped AI job | `transcript-writer` | `scene-splitter`, `qa-pass`, `translator` |
-| `TTSProvider` / `LLMProvider` | Swappable narration/AI backends | macOS `say` (default), pluggable ElevenLabs/OpenAI | Any future provider |
+| `TTSProvider` | Swappable narration backend | macOS `say` (default), pluggable ElevenLabs/OpenAI | Any future TTS vendor |
+| `LLMProvider` | Swappable model backend for agents | Anthropic (native), OpenAI-compatible (covers OpenAI + local/hosted servers) | Google, or any other native integration |
 
 ### Compositor
 
@@ -221,8 +222,15 @@ automatic chapter markers.
 
 ## 8. Agent system
 
-One agent host in the main process runs the Claude Agent SDK. Each agent is
-a manifest:
+One agent host in the main process runs a self-owned, provider-agnostic
+tool-use loop (send messages + tool definitions to the configured
+`LLMProvider` → execute any requested tool calls against `ProjectAPI` →
+append results → repeat until the model returns a final answer). This is
+deliberately not tied to any single vendor's agent framework, since model
+choice (§ below) is a first-class, per-agent setting rather than a fixed
+dependency.
+
+Each agent is a manifest:
 
 ```ts
 {
@@ -230,15 +238,38 @@ a manifest:
   trigger: "manual" | "on-capture-complete",
   inputSchema: z.object({ sessionId: z.string() }),
   allowedTools: ["readActionLog", "readTimeline", "writeTranscriptSegment"],
-  systemPrompt: "..."
+  systemPrompt: "...",
+  defaultModel: "project-default" | { provider: string; model: string }
 }
 ```
 
 `allowedTools` are handles into the same `ProjectAPI` the UI calls — an
 agent can never perform an action a human couldn't perform by clicking.
-Every run is logged in full to `agents/runs/<runId>.json` (input, every tool
-call and result, final output), making a bad AI edit diffable and every run
-re-playable and re-runnable rather than a black box.
+Every run is logged in full to `agents/runs/<runId>.json` (input, provider +
+model used, every tool call and result, final output), making a bad AI edit
+diffable and every run re-playable and re-runnable rather than a black box.
+
+### Model configuration
+
+- A project has a **default provider + model** (e.g. "Anthropic: Claude
+  Sonnet" or "Ollama: qwen2.5-coder:32b"), set once in project settings.
+- Each agent can **override** the project default in its own settings —
+  e.g. running the transcript writer against a local model for privacy
+  while a future QA pass uses a stronger hosted model.
+- Two `LLMProvider` implementations ship in v1:
+  - **Anthropic** — native Messages API.
+  - **OpenAI-compatible** — one client implementation covering anything
+    that speaks the OpenAI chat-completions + tools protocol: OpenAI
+    itself, local servers (Ollama, LM Studio, vLLM), and hosted
+    aggregators (OpenRouter, Groq, Together). This is the mechanism that
+    satisfies "most frontier models including local hosted models"
+    without a bespoke integration per vendor.
+- The model picker in settings shows a **tool-calling support hint**
+  (`supports tools: yes / no / untested`) per model, since this varies
+  widely across local models. An agent assigned a model with no tool
+  support automatically degrades to a plain single-shot prompt (no tool
+  calls) rather than failing at run time — a documented limitation of that
+  model choice, not a crash.
 
 - **Transcript Agent** (v1, runs automatically on capture completion):
   drafts the transcript as described in §7. Writes directly since there is
