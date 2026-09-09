@@ -36,3 +36,34 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
 }
+
+/*
+ * Temporary shim: Tailwind's Preflight (@tailwind base) strips native
+ * browser default styling from form elements globally, which visually
+ * regresses the screens this plan does not restyle yet (ProjectBrowser,
+ * Editor, TranscriptPanel). Restore plain, unstyled browser-default-like
+ * affordances here using hardcoded colors only (no design tokens) so this
+ * does not participate in the theme system. Remove this block once those
+ * screens receive real styling in a later phase.
+ */
+@layer base {
+  input,
+  textarea,
+  select {
+    border: 1px solid #767676;
+    padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  button {
+    border: 1px solid #767676;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #e0e0e0;
+  }
+}
