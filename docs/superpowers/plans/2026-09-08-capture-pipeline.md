@@ -350,6 +350,13 @@ describe('startRecordingSession (real Playwright)', () => {
     await session.page.click('#test-link')
     session.markAnnotation('important')
 
+    // The injected listener calls window.__demoEditorRecordAction(...) without awaiting it
+    // (a fire-and-forget call from the page's perspective), so a page.click()/fill() promise
+    // resolving does not guarantee the corresponding Node-side exposeFunction callback — and
+    // therefore the action-log write — has completed yet. Give any in-flight calls a moment
+    // to land before reading the log back.
+    await session.page.waitForTimeout(300)
+
     const result = await session.stop()
 
     expect(existsSync(result.videoPath)).toBe(true)
