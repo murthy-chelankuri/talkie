@@ -167,6 +167,22 @@ export function readTranscript(id: string, baseDir: string = homedir()): Transcr
   }
 }
 
+export function readNarrationAudioPaths(id: string, baseDir: string = homedir()): Map<string, string> {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const transcript = readTranscript(id, baseDir)
+  const paths = new Map<string, string>()
+  for (const segment of transcript) {
+    if (segment.status === 'narrated' && segment.audioFile) {
+      paths.set(segment.timelineItemId, join(dir, 'audio', segment.audioFile))
+    }
+  }
+  return paths
+}
+
 export function addTranscriptSegment(
   id: string,
   input: { text: string; timelineItemId: string },

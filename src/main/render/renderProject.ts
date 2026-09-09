@@ -2,7 +2,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
-import { readTimelineLenient } from '../project/projectApi'
+import { readTimelineLenient, readNarrationAudioPaths } from '../project/projectApi'
 import { findProjectDir, projectsRootDir } from '../project/paths'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -24,7 +24,8 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   // runtime possibility.
   const rawTimeline = readTimelineLenient(id, baseDir) as unknown as RemotionTimelineItem[]
   const assetServer = await getAssetServer(rootDir)
-  const timeline = resolveTimelineAssetUrls(rawTimeline, rootDir, assetServer.url)
+  const narrationAudioPaths = readNarrationAudioPaths(id, baseDir)
+  const timeline = resolveTimelineAssetUrls(rawTimeline, rootDir, assetServer.url, narrationAudioPaths)
 
   const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
   const composition = await selectComposition({

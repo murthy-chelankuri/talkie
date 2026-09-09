@@ -116,4 +116,41 @@ describe('asset server', () => {
 
     expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
   })
+
+  it('resolveTimelineAssetUrls merges a resolved audioUrl for items with narrated audio', () => {
+    const timeline = [
+      { id: 'a', kind: 'image', start: 0, duration: 90, data: { src: '/root/sources/images/photo.png' } }
+    ]
+    const narrationAudioPaths = new Map([['a', '/root/audio/seg-1.wav']])
+
+    const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000', narrationAudioPaths)
+
+    expect(resolved[0].data).toEqual({
+      src: 'http://127.0.0.1:5000/sources/images/photo.png',
+      audioUrl: 'http://127.0.0.1:5000/audio/seg-1.wav'
+    })
+  })
+
+  it('resolveTimelineAssetUrls leaves items with no narrated audio unaffected', () => {
+    const timeline = [
+      { id: 'a', kind: 'image', start: 0, duration: 90, data: { src: '/root/sources/images/photo.png' } }
+    ]
+
+    const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000', new Map())
+
+    expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
+  })
+
+  it('serves a .wav file with the audio/wav content type', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.wav'), 'fake-wav-bytes')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.wav`)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('audio/wav')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
 })

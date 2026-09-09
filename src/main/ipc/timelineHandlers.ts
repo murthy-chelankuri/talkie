@@ -1,7 +1,13 @@
 import type { IpcMain, BrowserWindow } from 'electron'
 import { dialog } from 'electron'
 import { homedir } from 'os'
-import { readTimelineLenient, addTimelineItem, importImage, reorderTimelineItems } from '../project/projectApi'
+import {
+  readTimelineLenient,
+  addTimelineItem,
+  importImage,
+  reorderTimelineItems,
+  readNarrationAudioPaths
+} from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
@@ -17,7 +23,8 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     const timeline = readTimelineLenient(id) as unknown as RemotionTimelineItem[]
     const rootDir = projectsRootDir(homedir())
     const assetServer = await getAssetServer(rootDir)
-    return resolveTimelineAssetUrls(timeline, rootDir, assetServer.url)
+    const narrationAudioPaths = readNarrationAudioPaths(id)
+    return resolveTimelineAssetUrls(timeline, rootDir, assetServer.url, narrationAudioPaths)
   })
 
   ipcMain.handle(

@@ -9,7 +9,8 @@ const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
-  '.webp': 'image/webp'
+  '.webp': 'image/webp',
+  '.wav': 'audio/wav'
 }
 
 export interface AssetServer {
@@ -85,10 +86,28 @@ export function resolveAssetUrl(absolutePath: string, rootDir: string, serverUrl
     .join('/')}`
 }
 
-export function resolveTimelineAssetUrls(timeline: TimelineItem[], rootDir: string, serverUrl: string): TimelineItem[] {
+export function resolveTimelineAssetUrls(
+  timeline: TimelineItem[],
+  rootDir: string,
+  serverUrl: string,
+  narrationAudioPaths: Map<string, string> = new Map()
+): TimelineItem[] {
   return timeline.map((item) => {
-    if (item.kind !== 'image') return item
+    const audioPath = narrationAudioPaths.get(item.id)
+    const audioUrl = audioPath ? resolveAssetUrl(audioPath, rootDir, serverUrl) : undefined
+
+    if (item.kind !== 'image') {
+      return audioUrl ? { ...item, data: { ...(item.data as object), audioUrl } } : item
+    }
+
     const data = item.data as { src: string }
-    return { ...item, data: { ...data, src: resolveAssetUrl(data.src, rootDir, serverUrl) } }
+    return {
+      ...item,
+      data: {
+        ...data,
+        src: resolveAssetUrl(data.src, rootDir, serverUrl),
+        ...(audioUrl ? { audioUrl } : {})
+      }
+    }
   })
 }

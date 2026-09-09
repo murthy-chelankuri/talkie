@@ -15,7 +15,8 @@ import {
   updateTranscriptSegmentText,
   updateTranscriptSegmentAudio,
   updateTimelineItemDuration,
-  reorderTimelineItems
+  reorderTimelineItems,
+  readNarrationAudioPaths
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -578,5 +579,41 @@ describe('reorderTimelineItems', () => {
     expect(() => reorderTimelineItems(project.id, [a.id, 'does-not-exist'], baseDir)).toThrow(
       `orderedIds must be a permutation of the existing timeline item ids for project ${project.id}`
     )
+  })
+})
+
+describe('readNarrationAudioPaths', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('returns an empty map when no segments are narrated', () => {
+    const project = createProject('No Narration', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
+
+    expect(readNarrationAudioPaths(project.id, baseDir).size).toBe(0)
+  })
+
+  it('maps a narrated segment\'s timelineItemId to its absolute audio path', () => {
+    const project = createProject('Narrated', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+
+    const paths = readNarrationAudioPaths(project.id, baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+
+    expect(paths.get(item.id)).toBe(join(dir, 'audio', `${segment.id}.wav`))
+  })
+
+  it('throws when the project does not exist', () => {
+    expect(() => readNarrationAudioPaths('does-not-exist', baseDir)).toThrow('No project found with id does-not-exist')
   })
 })
