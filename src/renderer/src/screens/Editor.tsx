@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Player } from '@remotion/player'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { CircleCheck, Circle, Download, ImagePlus } from 'lucide-react'
 import {
   projectClient,
@@ -32,6 +35,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout', storage: localStorage })
+  const [reorderError, setReorderError] = useState<string | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   useEffect(() => {
     Promise.all([projectClient.open(projectId), timelineClient.read(projectId)])
@@ -44,6 +49,29 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   async function refreshTimeline(): Promise<void> {
     setTimeline(await timelineClient.read(projectId))
+  }
+
+  async function handleDragEnd(event: DragEndEvent): Promise<void> {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = timeline.findIndex((item) => item.id === active.id)
+    const newIndex = timeline.findIndex((item) => item.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(timeline, oldIndex, newIndex)
+    setTimeline(reordered)
+    setReorderError(null)
+    try {
+      const updated = await timelineClient.reorder(
+        projectId,
+        reordered.map((item) => item.id)
+      )
+      setTimeline(updated)
+    } catch (err) {
+      setReorderError(err instanceof Error ? err.message : String(err))
+      await refreshTimeline()
+    }
   }
 
   async function handleImportImage(): Promise<void> {
@@ -181,16 +209,34 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           </Panel>
         </ResizablePanel>
       </Group>
-      <footer className="flex h-40 items-center gap-2 overflow-x-auto border-t border-border bg-surface p-2">
-        {timeline.map((item) => (
-          <div
-            key={item.id}
-            className="flex h-full w-32 shrink-0 items-center justify-center rounded-md border border-border bg-bg text-sm text-text"
-          >
-            {item.kind}
-          </div>
-        ))}
+      <footer className="flex h-40 flex-col gap-1 border-t border-border bg-surface p-2">
+        {reorderError && <ErrorBanner message={reorderError} />}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={timeline.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
+            <div className="flex flex-1 items-center gap-2 overflow-x-auto">
+              {timeline.map((item) => (
+                <TimelineClip key={item.id} item={item} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </footer>
+    </div>
+  )
+}
+
+function TimelineClip({ item }: { item: TimelineItem }): JSX.Element {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      {...attributes}
+      {...listeners}
+      className="flex h-full w-32 shrink-0 cursor-grab items-center justify-center rounded-md border border-border bg-bg text-sm text-text active:cursor-grabbing"
+    >
+      {item.kind}
     </div>
   )
 }
