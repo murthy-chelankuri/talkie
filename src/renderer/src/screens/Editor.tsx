@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Player } from '@remotion/player'
-import { projectClient, timelineClient, renderClient, type ProjectMetadata, type TimelineItem } from '../api/projectClient'
+import { projectClient, timelineClient, renderClient, captureClient, type ProjectMetadata, type TimelineItem } from '../api/projectClient'
 import { DemoComposition } from '../../../remotion/DemoComposition'
 import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
 import { computeTimelineDuration } from '../../../remotion/timelineDuration'
@@ -49,6 +49,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     }
   }
 
+  async function handleRecordSession(): Promise<void> {
+    await captureClient.openToolbar(projectId)
+  }
+
   if (error) return <div>{error}</div>
   if (!project) return <div>Loading…</div>
 
@@ -71,6 +75,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           </button>
           {exportError && <p style={{ color: 'red' }}>{exportError}</p>}
           {exportedPath && <p>Exported to: {exportedPath}</p>}
+          <button onClick={handleRecordSession}>Record Session</button>
         </aside>
         <main>
           {timeline.length > 0 ? (

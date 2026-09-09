@@ -28,3 +28,7 @@ export const timelineClient = {
 export const renderClient = {
   exportVideo: (id: string): Promise<string> => window.api.render.exportVideo(id)
 }
+
+export const captureClient = {
+  openToolbar: (projectId: string): Promise<void> => window.api.capture.openToolbar(projectId)
+}
