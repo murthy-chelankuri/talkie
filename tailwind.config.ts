@@ -14,6 +14,7 @@ export default {
         'text-muted': 'var(--color-text-muted)',
         accent: 'var(--color-accent)',
         'accent-hover': 'var(--color-accent-hover)',
+        'accent-foreground': 'var(--color-accent-foreground)',
         danger: 'var(--color-danger)',
         'danger-bg': 'var(--color-danger-bg)'
       }
