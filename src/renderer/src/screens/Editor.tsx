@@ -14,6 +14,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportedPath, setExportedPath] = useState<string | null>(null)
+  const [recordError, setRecordError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([projectClient.open(projectId), timelineClient.read(projectId)])
@@ -50,7 +51,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }
 
   async function handleRecordSession(): Promise<void> {
-    await captureClient.openToolbar(projectId)
+    setRecordError(null)
+    try {
+      await captureClient.openToolbar(projectId)
+    } catch (err) {
+      setRecordError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   if (error) return <div>{error}</div>
@@ -76,6 +82,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           {exportError && <p style={{ color: 'red' }}>{exportError}</p>}
           {exportedPath && <p>Exported to: {exportedPath}</p>}
           <button onClick={handleRecordSession}>Record Session</button>
+          {recordError && <p style={{ color: 'red' }}>{recordError}</p>}
         </aside>
         <main>
           {timeline.length > 0 ? (

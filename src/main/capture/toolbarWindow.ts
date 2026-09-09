@@ -3,7 +3,12 @@ import { join } from 'path'
 
 let toolbarWindow: BrowserWindow | null = null
 
-export function openToolbarWindow(projectId: string): BrowserWindow {
+export function openToolbarWindow(projectId: string, onClosed: () => void): BrowserWindow {
+  if (toolbarWindow) {
+    toolbarWindow.focus()
+    return toolbarWindow
+  }
+
   toolbarWindow = new BrowserWindow({
     width: 360,
     height: 160,
@@ -19,6 +24,7 @@ export function openToolbarWindow(projectId: string): BrowserWindow {
 
   toolbarWindow.on('closed', () => {
     toolbarWindow = null
+    onClosed()
   })
 
   return toolbarWindow
