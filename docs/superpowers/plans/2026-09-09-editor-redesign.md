@@ -4,7 +4,7 @@
 
 **Goal:** Replace the Editor's bare, unstyled 3-column grid with a resizable/collapsible panel layout, an icon-based toolbar (Import/Export/Record with in-flight status), a drag-and-drop-reorderable timeline clip strip, and a restyled `TranscriptPanel` — all built on the Phase A primitive library and Phase B's conventions, plus one small backend addition (`reorderTimelineItems`) to persist the new clip order.
 
-**Architecture:** `Editor.tsx` is restructured around `react-resizable-panels`' `PanelGroup`/`Panel`/`PanelResizeHandle` for the 3-column layout (Sources, Preview, Transcript), with the Phase A `Panel` UI primitive providing each column's titled header/border treatment. The footer timeline strip becomes a `@dnd-kit` `SortableContext`; dragging a clip calls a new `reorderTimelineItems` main-process function (mirroring every other timeline-mutation function in `projectApi.ts`) through a new `project:timeline:reorder` IPC channel, then reconciles local state from the server's recomputed `start` values. `TranscriptPanel.tsx` gets the same `Card`/`Input`/`Textarea`/`Button`/`ErrorBanner` treatment Phase B gave `ProjectBrowser`, plus one new behavior: a disabled-while-adding guard mirroring the existing disabled-while-narrating guard.
+**Architecture:** `Editor.tsx` is restructured around `react-resizable-panels`' `Group`/`Panel`/`Separator` for the 3-column layout (Sources, Preview, Transcript), with the Phase A `Panel` UI primitive providing each column's titled header/border treatment. (Note: the installed `react-resizable-panels@4.x` renamed the v2-era `PanelGroup`/`PanelResizeHandle`/`autoSaveId` API this plan was originally drafted against to `Group`/`Separator`/`useDefaultLayout` — see Task 3's corrected code.) The footer timeline strip becomes a `@dnd-kit` `SortableContext`; dragging a clip calls a new `reorderTimelineItems` main-process function (mirroring every other timeline-mutation function in `projectApi.ts`) through a new `project:timeline:reorder` IPC channel, then reconciles local state from the server's recomputed `start` values. `TranscriptPanel.tsx` gets the same `Card`/`Input`/`Textarea`/`Button`/`ErrorBanner` treatment Phase B gave `ProjectBrowser`, plus one new behavior: a disabled-while-adding guard mirroring the existing disabled-while-narrating guard.
 
 **Tech Stack:** `react-resizable-panels` (resizable/collapsible panel groups), `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` (drag-and-drop reordering) — both new. Reuses Phase A's `components/ui/` primitives, `lucide-react`, and the existing Vitest + RTL renderer test setup; reuses the exact `projectApi.ts` write pattern (zod validation + `writeJsonAtomic`) for the new backend function.
 
@@ -57,7 +57,7 @@ src/renderer/src/
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: `react-resizable-panels` (`Panel`, `PanelGroup`, `PanelResizeHandle`), `@dnd-kit/core` (`DndContext`, `closestCenter`, `PointerSensor`, `useSensor`, `useSensors`, `DragEndEvent`), `@dnd-kit/sortable` (`SortableContext`, `arrayMove`, `horizontalListSortingStrategy`, `useSortable`), `@dnd-kit/utilities` (`CSS`) — available to Task 3 and Task 4. No test file — pure dependency install, verified by a successful build.
+- Produces: `react-resizable-panels` (actual v4.x API, confirmed by reading `node_modules/react-resizable-panels/dist/react-resizable-panels.d.ts` during Task 3: `Panel`, `Group`, `Separator`, `useDefaultLayout` — not the `PanelGroup`/`PanelResizeHandle`/`autoSaveId` names this plan was drafted against), `@dnd-kit/core` (`DndContext`, `closestCenter`, `PointerSensor`, `useSensor`, `useSensors`, `DragEndEvent`), `@dnd-kit/sortable` (`SortableContext`, `arrayMove`, `horizontalListSortingStrategy`, `useSortable`), `@dnd-kit/utilities` (`CSS`) — available to Task 3 and Task 4. No test file — pure dependency install, verified by a successful build.
 
 - [ ] **Step 1: Install dependencies**
 
@@ -292,7 +292,7 @@ git commit -m "Add reorderTimelineItems backend function and wire it through IPC
 - Modify: `src/renderer/src/screens/Editor.tsx`
 
 **Interfaces:**
-- Consumes: `Panel as ResizablePanel, PanelGroup, PanelResizeHandle` from `react-resizable-panels` (Task 1); `Panel` from `../components/ui/Panel`, `Toolbar` from `../components/ui/Toolbar`, `IconButton` from `../components/ui/IconButton`, `Spinner` from `../components/ui/Spinner`, `ErrorBanner` from `../components/ui/ErrorBanner` (Phase A)
+- Consumes: `Group, Panel as ResizablePanel, Separator, useDefaultLayout` from `react-resizable-panels` (Task 1 — real v4.x API, not the `PanelGroup`/`PanelResizeHandle`/`autoSaveId` names originally assumed; `defaultSize`/`minSize` take percentage **strings**, since a bare number means pixels in this version); `Panel` from `../components/ui/Panel`, `Toolbar` from `../components/ui/Toolbar`, `IconButton` from `../components/ui/IconButton`, `Spinner` from `../components/ui/Spinner`, `ErrorBanner` from `../components/ui/ErrorBanner` (Phase A)
 - Produces: `Editor({ projectId }: { projectId: string }): JSX.Element` — unchanged external signature. The footer timeline strip in this task is still a static, styled (but non-draggable) row of clips — Task 4 upgrades it to drag-and-drop.
 
 No test file for this task (see Global Constraints — Editor.tsx interaction-heavy restructure is manually verified in Task 6).
@@ -302,7 +302,7 @@ No test file for this task (see Global Constraints — Editor.tsx interaction-he
 ```tsx
 import { useEffect, useState } from 'react'
 import { Player } from '@remotion/player'
-import { Panel as ResizablePanel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
 import { CircleCheck, Circle, Download, ImagePlus } from 'lucide-react'
 import {
   projectClient,
@@ -333,6 +333,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [exportedPath, setExportedPath] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout', storage: localStorage })
 
   useEffect(() => {
     Promise.all([projectClient.open(projectId), timelineClient.read(projectId)])
@@ -410,8 +411,13 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <PanelGroup direction="horizontal" autoSaveId="editor-layout" className="min-h-0 flex-1">
-        <ResizablePanel id="sources" collapsible defaultSize={20} minSize={12}>
+      <Group
+        orientation="horizontal"
+        defaultLayout={defaultLayout}
+        onLayoutChanged={onLayoutChanged}
+        className="min-h-0 flex-1"
+      >
+        <ResizablePanel id="sources" collapsible defaultSize="20" minSize="12">
           <Panel title="Sources & Agents" className="h-full">
             <Toolbar className="border-0 bg-transparent p-0">
               <IconButton aria-label="Import Image" onClick={handleImportImage}>
@@ -451,8 +457,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             </div>
           </Panel>
         </ResizablePanel>
-        <PanelResizeHandle className="w-1 bg-border transition-colors hover:bg-accent" />
-        <ResizablePanel id="preview" defaultSize={55} minSize={30}>
+        <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
+        <ResizablePanel id="preview" defaultSize="55" minSize="30">
           <div className="flex h-full items-center justify-center bg-bg p-4">
             {timeline.length > 0 ? (
               <Player
@@ -470,13 +476,13 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </ResizablePanel>
-        <PanelResizeHandle className="w-1 bg-border transition-colors hover:bg-accent" />
-        <ResizablePanel id="transcript" collapsible defaultSize={25} minSize={15}>
+        <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
+        <ResizablePanel id="transcript" collapsible defaultSize="25" minSize="15">
           <Panel title="Transcript" className="h-full">
             <TranscriptPanel projectId={projectId} timeline={timeline} onTimelineChange={refreshTimeline} />
           </Panel>
         </ResizablePanel>
-      </PanelGroup>
+      </Group>
       <footer className="flex h-40 items-center gap-2 overflow-x-auto border-t border-border bg-surface p-2">
         {timeline.map((item) => (
           <div
@@ -498,7 +504,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 npm run typecheck
 ```
 
-Expected: exit 0. If `react-resizable-panels`' types don't match (e.g. a renamed prop), fix here before continuing — this is the fail-fast checkpoint for that dependency's API.
+Expected: exit 0. (During execution, this step caught exactly the API mismatch flagged above — `react-resizable-panels@4.x` uses `Group`/`Separator`/`useDefaultLayout`, not `PanelGroup`/`PanelResizeHandle`/`autoSaveId` — and the code above reflects the corrected version. If a future dependency bump changes the API again, this is the checkpoint that will catch it.)
 
 - [ ] **Step 3: Run the full test suite** (confirms this restructure didn't break `TranscriptPanel`'s pre-existing behavior, still used unchanged here)
 
