@@ -1,7 +1,7 @@
 import type { IpcMain, BrowserWindow } from 'electron'
 import { dialog } from 'electron'
 import { homedir } from 'os'
-import { readTimelineLenient, addTimelineItem, importImage } from '../project/projectApi'
+import { readTimelineLenient, addTimelineItem, importImage, reorderTimelineItems } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
@@ -24,6 +24,10 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     'project:timeline:addItem',
     (_event, id: string, item: { kind: string; start: number; duration: number; data: unknown }) =>
       addTimelineItem(id, item)
+  )
+
+  ipcMain.handle('project:timeline:reorder', (_event, id: string, orderedIds: string[]) =>
+    reorderTimelineItems(id, orderedIds)
   )
 
   ipcMain.handle('project:render:export', (_event, id: string) => renderProjectVideo(id))

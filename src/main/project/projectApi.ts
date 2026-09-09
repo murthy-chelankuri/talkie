@@ -290,3 +290,41 @@ export function updateTimelineItemDuration(
   writeJsonAtomic(join(dir, 'timeline.json'), timeline)
   return updated
 }
+
+export function reorderTimelineItems(id: string, orderedIds: string[], baseDir: string = homedir()): TimelineItem[] {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const timeline = readTimeline(id, baseDir)
+  const existingIds = new Set(timeline.map((item) => item.id))
+  const isPermutation =
+    orderedIds.length === timeline.length &&
+    new Set(orderedIds).size === orderedIds.length &&
+    orderedIds.every((itemId) => existingIds.has(itemId))
+  if (!isPermutation) {
+    throw new Error(`orderedIds must be a permutation of the existing timeline item ids for project ${id}`)
+  }
+
+  const byId = new Map(timeline.map((item) => [item.id, item]))
+  let cursor = 0
+  const reordered: TimelineItem[] = []
+  for (const itemId of orderedIds) {
+    const existing = byId.get(itemId) as TimelineItem
+    let updated: TimelineItem
+    try {
+      updated = TimelineItemSchema.parse({ ...existing, start: cursor })
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new Error(err.issues.map((issue) => issue.message).join('; '))
+      }
+      throw err
+    }
+    reordered.push(updated)
+    cursor += updated.duration
+  }
+
+  writeJsonAtomic(join(dir, 'timeline.json'), reordered)
+  return reordered
+}

@@ -13,7 +13,9 @@ const projectApi = {
 const timelineApi = {
   read: (id: string): Promise<TimelineItem[]> => ipcRenderer.invoke('project:timeline:read', id),
   addItem: (id: string, item: { kind: string; start: number; duration: number; data: unknown }): Promise<TimelineItem> =>
-    ipcRenderer.invoke('project:timeline:addItem', id, item)
+    ipcRenderer.invoke('project:timeline:addItem', id, item),
+  reorder: (id: string, orderedIds: string[]): Promise<TimelineItem[]> =>
+    ipcRenderer.invoke('project:timeline:reorder', id, orderedIds)
 }
 
 const renderApi = {

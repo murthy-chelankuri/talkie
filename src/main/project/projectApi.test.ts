@@ -14,7 +14,8 @@ import {
   addTranscriptSegment,
   updateTranscriptSegmentText,
   updateTranscriptSegmentAudio,
-  updateTimelineItemDuration
+  updateTimelineItemDuration,
+  reorderTimelineItems
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -500,5 +501,82 @@ describe('updateTimelineItemDuration', () => {
     expect(message.length).toBeGreaterThan(0)
     // The original timeline item must be left untouched.
     expect(readTimeline(project.id, baseDir)[0].duration).toBe(90)
+  })
+})
+
+describe('reorderTimelineItems', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('reorders items and recomputes sequential start values from durations', () => {
+    const project = createProject('Reorder', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const b = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+    const c = addTimelineItem(project.id, { kind: 'image', start: 150, duration: 30, data: { src: '/c.png' } }, baseDir)
+
+    const reordered = reorderTimelineItems(project.id, [c.id, a.id, b.id], baseDir)
+
+    expect(reordered.map((item) => item.id)).toEqual([c.id, a.id, b.id])
+    expect(reordered[0].start).toBe(0)
+    expect(reordered[1].start).toBe(30)
+    expect(reordered[2].start).toBe(120)
+  })
+
+  it('preserves each item\'s own duration', () => {
+    const project = createProject('Reorder Durations', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const b = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+
+    const reordered = reorderTimelineItems(project.id, [b.id, a.id], baseDir)
+
+    expect(reordered.find((item) => item.id === a.id)?.duration).toBe(90)
+    expect(reordered.find((item) => item.id === b.id)?.duration).toBe(60)
+  })
+
+  it('persists the new order to timeline.json', () => {
+    const project = createProject('Reorder Persist', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const b = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+
+    reorderTimelineItems(project.id, [b.id, a.id], baseDir)
+
+    expect(readTimeline(project.id, baseDir).map((item) => item.id)).toEqual([b.id, a.id])
+  })
+
+  it('throws a clear error when orderedIds is missing an existing item', () => {
+    const project = createProject('Reorder Missing', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+
+    expect(() => reorderTimelineItems(project.id, [a.id], baseDir)).toThrow(
+      `orderedIds must be a permutation of the existing timeline item ids for project ${project.id}`
+    )
+  })
+
+  it('throws a clear error when orderedIds contains a duplicate', () => {
+    const project = createProject('Reorder Duplicate', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const b = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+
+    expect(() => reorderTimelineItems(project.id, [a.id, a.id], baseDir)).toThrow(
+      `orderedIds must be a permutation of the existing timeline item ids for project ${project.id}`
+    )
+    void b
+  })
+
+  it('throws a clear error when orderedIds contains an unknown id', () => {
+    const project = createProject('Reorder Unknown', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+
+    expect(() => reorderTimelineItems(project.id, [a.id, 'does-not-exist'], baseDir)).toThrow(
+      `orderedIds must be a permutation of the existing timeline item ids for project ${project.id}`
+    )
   })
 })
