@@ -481,4 +481,24 @@ describe('updateTimelineItemDuration', () => {
       'No timeline item found with id does-not-exist'
     )
   })
+
+  it('throws a flattened, non-JSON-escaped message when the duration is invalid', () => {
+    const project = createProject('Update Duration Invalid', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+
+    let thrown: unknown
+    try {
+      updateTimelineItemDuration(project.id, item.id, 0, baseDir)
+    } catch (err) {
+      thrown = err
+    }
+
+    expect(thrown).toBeInstanceOf(Error)
+    const message = (thrown as Error).message
+    expect(message).not.toContain('\\"')
+    expect(message).not.toContain('ZodError')
+    expect(message.length).toBeGreaterThan(0)
+    // The original timeline item must be left untouched.
+    expect(readTimeline(project.id, baseDir)[0].duration).toBe(90)
+  })
 })

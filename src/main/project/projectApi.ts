@@ -177,12 +177,20 @@ export function addTranscriptSegment(
     throw new Error(`No project found with id ${id}`)
   }
 
-  const newSegment = TranscriptSegmentSchema.parse({
-    id: randomUUID(),
-    text: input.text,
-    timelineItemId: input.timelineItemId,
-    status: 'edited'
-  })
+  let newSegment: TranscriptSegment
+  try {
+    newSegment = TranscriptSegmentSchema.parse({
+      id: randomUUID(),
+      text: input.text,
+      timelineItemId: input.timelineItemId,
+      status: 'edited'
+    })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
 
   const transcript = readTranscript(id, baseDir)
   transcript.push(newSegment)
@@ -207,7 +215,15 @@ export function updateTranscriptSegmentText(
     throw new Error(`No transcript segment found with id ${segmentId}`)
   }
 
-  const updated = TranscriptSegmentSchema.parse({ ...transcript[index], text, status: 'edited' })
+  let updated: TranscriptSegment
+  try {
+    updated = TranscriptSegmentSchema.parse({ ...transcript[index], text, status: 'edited' })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
   transcript[index] = updated
   writeJsonAtomic(join(dir, 'transcript.json'), transcript)
   return updated
@@ -230,7 +246,15 @@ export function updateTranscriptSegmentAudio(
     throw new Error(`No transcript segment found with id ${segmentId}`)
   }
 
-  const updated = TranscriptSegmentSchema.parse({ ...transcript[index], audioFile, status: 'narrated' })
+  let updated: TranscriptSegment
+  try {
+    updated = TranscriptSegmentSchema.parse({ ...transcript[index], audioFile, status: 'narrated' })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
   transcript[index] = updated
   writeJsonAtomic(join(dir, 'transcript.json'), transcript)
   return updated
@@ -253,7 +277,15 @@ export function updateTimelineItemDuration(
     throw new Error(`No timeline item found with id ${timelineItemId}`)
   }
 
-  const updated = TimelineItemSchema.parse({ ...timeline[index], duration })
+  let updated: TimelineItem
+  try {
+    updated = TimelineItemSchema.parse({ ...timeline[index], duration })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
   timeline[index] = updated
   writeJsonAtomic(join(dir, 'timeline.json'), timeline)
   return updated
