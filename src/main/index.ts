@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { registerProjectHandlers } from './ipc/projectHandlers'
 import { registerTimelineHandlers } from './ipc/timelineHandlers'
+import { registerCaptureHandlers } from './ipc/captureHandlers'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -26,6 +27,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)
+  registerCaptureHandlers(ipcMain)
   createWindow()
 
   app.on('activate', function () {

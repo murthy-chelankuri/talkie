@@ -19,8 +19,13 @@ const renderApi = {
   exportVideo: (id: string): Promise<string> => ipcRenderer.invoke('project:render:export', id)
 }
 
-contextBridge.exposeInMainWorld('api', { project: projectApi, timeline: timelineApi, render: renderApi })
+const captureApi = {
+  openToolbar: (projectId: string): Promise<void> => ipcRenderer.invoke('project:capture:openToolbar', projectId)
+}
+
+contextBridge.exposeInMainWorld('api', { project: projectApi, timeline: timelineApi, render: renderApi, capture: captureApi })
 
 export type ProjectApi = typeof projectApi
 export type TimelineApi = typeof timelineApi
 export type RenderApi = typeof renderApi
+export type CaptureApi = typeof captureApi

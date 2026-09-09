@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Recording Toolbar</title>
+</head>
+<body>
+  <div id="setup">
+    <input id="url-input" type="text" placeholder="https://..." style="width: 250px" />
+    <button id="start">Start Recording</button>
+  </div>
+  <div id="controls" style="display: none">
+    <button id="important">Important</button>
+    <button id="redo">Redo</button>
+    <button id="skip">Skip</button>
+    <button id="stop">Stop</button>
+  </div>
+  <script>
+    const { ipcRenderer } = require('electron')
+    const projectId = new URLSearchParams(window.location.search).get('projectId')
+
+    document.getElementById('start').onclick = async () => {
+      const url = document.getElementById('url-input').value
+      await ipcRenderer.invoke('project:capture:start', projectId, url)
+      document.getElementById('setup').style.display = 'none'
+      document.getElementById('controls').style.display = 'block'
+    }
+
+    document.getElementById('important').onclick = () => ipcRenderer.invoke('project:capture:mark', 'important')
+    document.getElementById('redo').onclick = () => ipcRenderer.invoke('project:capture:mark', 'redo')
+    document.getElementById('skip').onclick = () => ipcRenderer.invoke('project:capture:mark', 'skip')
+
+    document.getElementById('stop').onclick = async () => {
+      await ipcRenderer.invoke('project:capture:stop')
+      window.close()
+    }
+  </script>
+</body>
+</html>
