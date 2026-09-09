@@ -3,6 +3,7 @@ import { startRecordingSession, type RecordingSession } from '../capture/recordS
 import { openToolbarWindow } from '../capture/toolbarWindow'
 
 let activeSession: RecordingSession | null = null
+let starting = false
 let stopping = false
 
 export function registerCaptureHandlers(ipcMain: IpcMain): void {
@@ -11,11 +12,16 @@ export function registerCaptureHandlers(ipcMain: IpcMain): void {
   })
 
   ipcMain.handle('project:capture:start', async (_event, projectId: string, url: string) => {
-    if (activeSession) {
+    if (activeSession || starting) {
       throw new Error('A recording session is already in progress')
     }
-    activeSession = await startRecordingSession(projectId, url)
-    return { sessionId: activeSession.sessionId }
+    starting = true
+    try {
+      activeSession = await startRecordingSession(projectId, url)
+      return { sessionId: activeSession.sessionId }
+    } finally {
+      starting = false
+    }
   })
 
   ipcMain.handle('project:capture:mark', (_event, annotation: 'important' | 'redo' | 'skip') => {
