@@ -1,6 +1,8 @@
 import type { TimelineItem } from '../../../main/project/timeline/schema'
+import type { TranscriptSegment } from '../../../main/transcript/schema'
 
 export type { TimelineItem }
+export type { TranscriptSegment }
 
 export interface ProjectSummary {
   id: string
@@ -31,4 +33,16 @@ export const renderClient = {
 
 export const captureClient = {
   openToolbar: (projectId: string): Promise<void> => window.api.capture.openToolbar(projectId)
+}
+
+export const transcriptClient = {
+  read: (projectId: string): Promise<TranscriptSegment[]> => window.api.transcript.read(projectId),
+  addSegment: (
+    projectId: string,
+    input: { text: string; timelineItemId: string }
+  ): Promise<TranscriptSegment> => window.api.transcript.addSegment(projectId, input),
+  updateText: (projectId: string, segmentId: string, text: string): Promise<TranscriptSegment> =>
+    window.api.transcript.updateText(projectId, segmentId, text),
+  narrate: (projectId: string, segmentId: string): Promise<TranscriptSegment> =>
+    window.api.transcript.narrate(projectId, segmentId)
 }

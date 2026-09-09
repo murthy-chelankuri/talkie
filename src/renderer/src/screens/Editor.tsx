@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Player } from '@remotion/player'
 import { projectClient, timelineClient, renderClient, captureClient, type ProjectMetadata, type TimelineItem } from '../api/projectClient'
+import { TranscriptPanel } from '../components/TranscriptPanel'
 import { DemoComposition } from '../../../remotion/DemoComposition'
 import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
 import { computeTimelineDuration } from '../../../remotion/timelineDuration'
@@ -100,7 +101,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             <p>Preview — {project.name}</p>
           )}
         </main>
-        <aside>Transcript</aside>
+        <aside>
+          <TranscriptPanel projectId={projectId} timeline={timeline} />
+        </aside>
       </div>
       <footer style={{ height: 160, display: 'flex', gap: 4 }}>
         {timeline.map((item) => (
