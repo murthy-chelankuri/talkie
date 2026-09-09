@@ -3,6 +3,7 @@ import { join } from 'path'
 import { registerProjectHandlers } from './ipc/projectHandlers'
 import { registerTimelineHandlers } from './ipc/timelineHandlers'
 import { registerCaptureHandlers } from './ipc/captureHandlers'
+import { registerTranscriptHandlers } from './ipc/transcriptHandlers'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -28,6 +29,7 @@ app.whenReady().then(() => {
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)
   registerCaptureHandlers(ipcMain)
+  registerTranscriptHandlers(ipcMain)
   createWindow()
 
   app.on('activate', function () {

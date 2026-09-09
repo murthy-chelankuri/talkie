@@ -1,4 +1,4 @@
-import type { ProjectApi, TimelineApi, RenderApi, CaptureApi } from './index'
+import type { ProjectApi, TimelineApi, RenderApi, CaptureApi, TranscriptApi } from './index'
 
 declare global {
   interface Window {
@@ -7,6 +7,7 @@ declare global {
       timeline: TimelineApi
       render: RenderApi
       capture: CaptureApi
+      transcript: TranscriptApi
     }
   }
 }

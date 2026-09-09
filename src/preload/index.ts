@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ProjectMetadata, ProjectSummary } from '../main/project/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
+import type { TranscriptSegment } from '../main/transcript/schema'
 
 const projectApi = {
   create: (name: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:create', name),
@@ -23,9 +24,28 @@ const captureApi = {
   openToolbar: (projectId: string): Promise<void> => ipcRenderer.invoke('project:capture:openToolbar', projectId)
 }
 
-contextBridge.exposeInMainWorld('api', { project: projectApi, timeline: timelineApi, render: renderApi, capture: captureApi })
+const transcriptApi = {
+  read: (projectId: string): Promise<TranscriptSegment[]> => ipcRenderer.invoke('project:transcript:read', projectId),
+  addSegment: (
+    projectId: string,
+    input: { text: string; timelineItemId: string }
+  ): Promise<TranscriptSegment> => ipcRenderer.invoke('project:transcript:addSegment', projectId, input),
+  updateText: (projectId: string, segmentId: string, text: string): Promise<TranscriptSegment> =>
+    ipcRenderer.invoke('project:transcript:updateText', projectId, segmentId, text),
+  narrate: (projectId: string, segmentId: string): Promise<TranscriptSegment> =>
+    ipcRenderer.invoke('project:transcript:narrate', projectId, segmentId)
+}
+
+contextBridge.exposeInMainWorld('api', {
+  project: projectApi,
+  timeline: timelineApi,
+  render: renderApi,
+  capture: captureApi,
+  transcript: transcriptApi
+})
 
 export type ProjectApi = typeof projectApi
 export type TimelineApi = typeof timelineApi
 export type RenderApi = typeof renderApi
 export type CaptureApi = typeof captureApi
+export type TranscriptApi = typeof transcriptApi
