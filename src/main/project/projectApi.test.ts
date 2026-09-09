@@ -9,7 +9,12 @@ import {
   readTimeline,
   readTimelineLenient,
   addTimelineItem,
-  importImage
+  importImage,
+  readTranscript,
+  addTranscriptSegment,
+  updateTranscriptSegmentText,
+  updateTranscriptSegmentAudio,
+  updateTimelineItemDuration
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -342,5 +347,138 @@ describe('importImage', () => {
     const second = importImage(project.id, sourcePath, baseDir)
 
     expect(second.start).toBe(first.start + first.duration)
+  })
+})
+
+describe('readTranscript', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('returns an empty array for a freshly created project', () => {
+    const project = createProject('Empty Transcript', baseDir)
+
+    expect(readTranscript(project.id, baseDir)).toEqual([])
+  })
+
+  it('throws when the project does not exist', () => {
+    expect(() => readTranscript('does-not-exist', baseDir)).toThrow('No project found with id does-not-exist')
+  })
+})
+
+describe('addTranscriptSegment', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('appends a segment with status "edited" and a generated id', () => {
+    const project = createProject('Add Segment', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+
+    const segment = addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
+
+    expect(segment.id).toBeTruthy()
+    expect(segment.text).toBe('Hello')
+    expect(segment.timelineItemId).toBe(item.id)
+    expect(segment.status).toBe('edited')
+    expect(readTranscript(project.id, baseDir)).toEqual([segment])
+  })
+})
+
+describe('updateTranscriptSegmentText', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('updates the text and resets status to "edited"', () => {
+    const project = createProject('Update Text', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Original', timelineItemId: item.id }, baseDir)
+
+    const updated = updateTranscriptSegmentText(project.id, segment.id, 'Changed', baseDir)
+
+    expect(updated.text).toBe('Changed')
+    expect(updated.status).toBe('edited')
+    expect(readTranscript(project.id, baseDir)[0].text).toBe('Changed')
+  })
+
+  it('throws a clear error when the segment does not exist', () => {
+    const project = createProject('Update Missing', baseDir)
+
+    expect(() => updateTranscriptSegmentText(project.id, 'does-not-exist', 'x', baseDir)).toThrow(
+      'No transcript segment found with id does-not-exist'
+    )
+  })
+})
+
+describe('updateTranscriptSegmentAudio', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('sets audioFile and status to "narrated"', () => {
+    const project = createProject('Update Audio', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Hi', timelineItemId: item.id }, baseDir)
+
+    const updated = updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+
+    expect(updated.audioFile).toBe(`${segment.id}.wav`)
+    expect(updated.status).toBe('narrated')
+  })
+})
+
+describe('updateTimelineItemDuration', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('updates only the duration of the matching item', () => {
+    const project = createProject('Update Duration', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
+
+    const updated = updateTimelineItemDuration(project.id, item.id, 200, baseDir)
+
+    expect(updated.duration).toBe(200)
+    expect(updated.id).toBe(item.id)
+    expect(updated.start).toBe(0)
+  })
+
+  it('throws a clear error when the timeline item does not exist', () => {
+    const project = createProject('Update Duration Missing', baseDir)
+
+    expect(() => updateTimelineItemDuration(project.id, 'does-not-exist', 100, baseDir)).toThrow(
+      'No timeline item found with id does-not-exist'
+    )
   })
 })
