@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }): JSX.Element {
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </IconButton>
       </header>
-      <div className="flex-1 overflow-hidden">{children}</div>
+      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
     </div>
   )
 }
