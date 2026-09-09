@@ -26,12 +26,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
 
+  async function refreshTimeline(): Promise<void> {
+    setTimeline(await timelineClient.read(projectId))
+  }
+
   async function handleImportImage(): Promise<void> {
     setImportError(null)
     try {
       const item = await projectClient.importImage(projectId)
       if (item) {
-        setTimeline(await timelineClient.read(projectId))
+        await refreshTimeline()
       }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : String(err))
@@ -102,7 +106,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           )}
         </main>
         <aside>
-          <TranscriptPanel projectId={projectId} timeline={timeline} />
+          <TranscriptPanel projectId={projectId} timeline={timeline} onTimelineChange={refreshTimeline} />
         </aside>
       </div>
       <footer style={{ height: 160, display: 'flex', gap: 4 }}>

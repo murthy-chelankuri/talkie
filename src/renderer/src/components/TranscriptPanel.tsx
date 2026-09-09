@@ -4,10 +4,12 @@ import type { TimelineItem } from '../api/projectClient'
 
 export function TranscriptPanel({
   projectId,
-  timeline
+  timeline,
+  onTimelineChange
 }: {
   projectId: string
   timeline: TimelineItem[]
+  onTimelineChange: () => void | Promise<void>
 }): JSX.Element {
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
   const [newText, setNewText] = useState('')
@@ -50,6 +52,7 @@ export function TranscriptPanel({
     try {
       const updated = await transcriptClient.narrate(projectId, segmentId)
       setSegments((prev) => prev.map((s) => (s.id === segmentId ? updated : s)))
+      await onTimelineChange()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
