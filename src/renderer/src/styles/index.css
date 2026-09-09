@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f8f9fb;
+  --color-surface-hover: #eef0f3;
+  --color-border: #e2e4e9;
+  --color-text: #14151a;
+  --color-text-muted: #6b7280;
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-foreground: #ffffff;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #0f1115;
+  --color-surface: #181b21;
+  --color-surface-hover: #21252c;
+  --color-border: #2a2e37;
+  --color-text: #f2f3f5;
+  --color-text-muted: #9aa0ac;
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-foreground: #ffffff;
+  --color-danger: #f87171;
+  --color-danger-bg: #451a1a;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/*
+ * Temporary shim: Tailwind's Preflight (@tailwind base) strips native
+ * browser default styling from form elements globally, which visually
+ * regresses the screens this plan does not restyle yet (ProjectBrowser,
+ * Editor, TranscriptPanel). Restore plain, unstyled browser-default-like
+ * affordances here using hardcoded colors only (no design tokens) so this
+ * does not participate in the theme system. Remove this block once those
+ * screens receive real styling in a later phase.
+ */
+@layer base {
+  input,
+  textarea,
+  select {
+    border: 1px solid #767676;
+    padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  button {
+    border: 1px solid #767676;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #e0e0e0;
+  }
+}
