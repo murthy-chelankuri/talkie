@@ -853,7 +853,7 @@ export function TranscriptPanel({
           disabled={adding}
         />
         <Button onClick={handleAdd} disabled={adding || !newText.trim() || !newItemId}>
-          {adding ? <Spinner size="sm" /> : 'Add Segment'}
+          Add Segment
         </Button>
       </Card>
     </div>
