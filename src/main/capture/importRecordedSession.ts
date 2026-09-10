@@ -1,6 +1,7 @@
 import { homedir } from 'os'
 import { getVideoMetadata } from '@remotion/renderer'
 import { addTimelineItem, readTimeline } from '../project/projectApi'
+import { normalizeRecording } from './normalizeRecording'
 import { FPS } from '../../remotion/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 
@@ -16,14 +17,18 @@ export async function importRecordedSession(
   baseDir: string = homedir(),
   options: { contentStartMs?: number } = {}
 ): Promise<TimelineItem> {
+  // Convert before measuring, so the duration and the timeline item both describe the file
+  // that will actually be played.
+  const playablePath = await normalizeRecording(videoPath)
+
   let durationFrames = FALLBACK_DURATION_FRAMES
   try {
-    const { durationInSeconds } = await getVideoMetadata(videoPath)
+    const { durationInSeconds } = await getVideoMetadata(playablePath)
     if (durationInSeconds && durationInSeconds > 0) {
       durationFrames = Math.max(1, Math.round(durationInSeconds * FPS))
     }
   } catch (err) {
-    console.error(`Could not read duration of recorded video ${videoPath}:`, err)
+    console.error(`Could not read duration of recorded video ${playablePath}:`, err)
   }
 
   // Drop the blank page the recording opens with, but only while at least a second of clip
@@ -40,7 +45,7 @@ export async function importRecordedSession(
       kind: 'video',
       start,
       duration: Math.max(1, durationFrames - trimBefore),
-      data: trimBefore > 0 ? { src: videoPath, trimBefore } : { src: videoPath }
+      data: trimBefore > 0 ? { src: playablePath, trimBefore } : { src: playablePath }
     },
     baseDir
   )

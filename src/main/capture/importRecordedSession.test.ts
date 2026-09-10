@@ -21,7 +21,8 @@ describe('importRecordedSession (real Playwright recording)', () => {
     const item = await importRecordedSession(project.id, result.videoPath, baseDir)
 
     expect(item.kind).toBe('video')
-    expect((item.data as { src: string }).src).toBe(result.videoPath)
+    // The item points at the converted, seekable copy rather than the raw capture.
+    expect((item.data as { src: string }).src).toBe(result.videoPath.replace(/\.webm$/, '.mp4'))
     // Appended after the pre-existing 90-frame image item.
     expect(item.start).toBe(90)
     expect(item.duration).toBeGreaterThan(0)
@@ -39,7 +40,7 @@ describe('importRecordedSession (real Playwright recording)', () => {
 
     const fixtureUrl = `file://${join(__dirname, 'fixtures', 'recording-test-page.html')}`
     const session = await startRecordingSession(project.id, fixtureUrl, baseDir)
-    await session.page.waitForTimeout(2000)
+    await session.page.waitForTimeout(3000)
     const recording = await session.stop()
 
     const untrimmed = await importRecordedSession(project.id, recording.videoPath, baseDir)
