@@ -43,10 +43,13 @@ describe('renderProjectVideo', () => {
     // exact media the recording pipeline puts on the timeline.
     const fixtureUrl = `file://${join(__dirname, '..', 'capture', 'fixtures', 'recording-test-page.html')}`
     const session = await startRecordingSession(project.id, fixtureUrl, baseDir)
-    await session.page.waitForTimeout(1000)
+    // Long enough that the trimmed clip still clears the "keep at least a second" guard.
+    await session.page.waitForTimeout(2000)
     const recording = await session.stop()
-    const item = await importRecordedSession(project.id, recording.videoPath, baseDir)
+    // Import with a lead-in to trim, so this also covers rendering a trimmed clip.
+    const item = await importRecordedSession(project.id, recording.videoPath, baseDir, { contentStartMs: 300 })
     expect(item.kind).toBe('video')
+    expect((item.data as { trimBefore?: number }).trimBefore).toBe(9)
 
     const outputPath = await renderProjectVideo(project.id, baseDir)
 

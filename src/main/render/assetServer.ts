@@ -18,6 +18,26 @@ const MIME_TYPES: Record<string, string> = {
 // Timeline item kinds whose `data.src` is a local media path needing URL resolution.
 const SRC_MEDIA_KINDS = new Set(['image', 'video'])
 
+function parseByteRange(
+  header: string | undefined,
+  size: number
+): { start: number; end: number } | 'unsatisfiable' | null {
+  if (!header) return null
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
+  if (!match) return null
+
+  const [, rawStart, rawEnd] = match
+  if (rawStart === '' && rawEnd === '') return null
+
+  // A suffix range ("bytes=-500") asks for the last N bytes.
+  const start = rawStart === '' ? Math.max(0, size - Number(rawEnd)) : Number(rawStart)
+  const end = rawStart === '' || rawEnd === '' ? size - 1 : Math.min(Number(rawEnd), size - 1)
+
+  if (start >= size || start > end) return 'unsatisfiable'
+  return { start, end }
+}
+
 export interface AssetServer {
   url: string
   close: () => Promise<void>
@@ -41,13 +61,37 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
         return
       }
 
-      res.writeHead(200, {
-        'Content-Type': MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
+      const contentType = MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
+      const size = statSync(filePath).size
+      const commonHeaders = {
+        'Content-Type': contentType,
         // The renderer draws video frames onto a canvas to pick a timeline thumbnail, which
         // needs the pixels to be readable rather than origin-tainted. This server is bound to
         // 127.0.0.1 and only ever serves the user's own project directory.
-        'Access-Control-Allow-Origin': '*'
-      })
+        'Access-Control-Allow-Origin': '*',
+        // Without range support Chromium reports a media file's seekable range as empty and
+        // refuses to seek it at all, which strands recordings on their first frame.
+        'Accept-Ranges': 'bytes'
+      }
+
+      const range = parseByteRange(req.headers.range, size)
+      if (range === 'unsatisfiable') {
+        res.writeHead(416, { ...commonHeaders, 'Content-Range': `bytes */${size}` })
+        res.end()
+        return
+      }
+
+      if (range) {
+        res.writeHead(206, {
+          ...commonHeaders,
+          'Content-Range': `bytes ${range.start}-${range.end}/${size}`,
+          'Content-Length': range.end - range.start + 1
+        })
+        createReadStream(filePath, { start: range.start, end: range.end }).pipe(res)
+        return
+      }
+
+      res.writeHead(200, { ...commonHeaders, 'Content-Length': size })
       createReadStream(filePath).pipe(res)
     })
 

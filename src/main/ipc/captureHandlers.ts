@@ -12,11 +12,13 @@ let stopping = false
 // stop itself (which would strand the session). The Editor is only told to refresh on success.
 async function importAndNotify(
   projectId: string,
-  videoPath: string,
+  recording: { videoPath: string; contentStartMs: number },
   getWindow: () => BrowserWindow | null
 ): Promise<void> {
   try {
-    await importRecordedSession(projectId, videoPath)
+    await importRecordedSession(projectId, recording.videoPath, undefined, {
+      contentStartMs: recording.contentStartMs
+    })
     getWindow()?.webContents.send('project:capture:sessionImported', projectId)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)
@@ -30,7 +32,7 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     const { projectId } = activeSession
     activeSession
       .stop()
-      .then((result) => importAndNotify(projectId, result.videoPath, getWindow))
+      .then((result) => importAndNotify(projectId, result, getWindow))
       .catch((err) => console.error('Error stopping recording after toolbar closed:', err))
       .finally(() => {
         activeSession = null
@@ -73,7 +75,7 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     const { projectId } = activeSession
     try {
       const result = await activeSession.stop()
-      await importAndNotify(projectId, result.videoPath, getWindow)
+      await importAndNotify(projectId, result, getWindow)
       return result
     } finally {
       activeSession = null

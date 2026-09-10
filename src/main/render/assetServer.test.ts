@@ -141,6 +141,60 @@ describe('asset server', () => {
     expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
   })
 
+  it('advertises range support, without which Chromium reports media as unseekable', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.webm'), '0123456789')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.webm`)
+
+    expect(response.headers.get('accept-ranges')).toBe('bytes')
+    expect(response.headers.get('content-length')).toBe('10')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('serves a byte range as a 206 so media can be seeked', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.webm'), '0123456789')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.webm`, { headers: { Range: 'bytes=2-5' } })
+
+    expect(response.status).toBe(206)
+    expect(response.headers.get('content-range')).toBe('bytes 2-5/10')
+    expect(await response.text()).toBe('2345')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('serves an open-ended byte range to the end of the file', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.webm'), '0123456789')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.webm`, { headers: { Range: 'bytes=7-' } })
+
+    expect(response.status).toBe(206)
+    expect(response.headers.get('content-range')).toBe('bytes 7-9/10')
+    expect(await response.text()).toBe('789')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
+  it('rejects a range that starts past the end of the file', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.webm'), '0123456789')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.webm`, { headers: { Range: 'bytes=50-60' } })
+
+    expect(response.status).toBe(416)
+    expect(response.headers.get('content-range')).toBe('bytes */10')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
   it('allows cross-origin reads, so the renderer can sample video frames onto a canvas', async () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
     writeFileSync(join(rootDir, 'clip.webm'), 'fake-webm-bytes')

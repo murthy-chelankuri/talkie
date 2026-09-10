@@ -13,7 +13,8 @@ const FALLBACK_DURATION_FRAMES = 90
 export async function importRecordedSession(
   projectId: string,
   videoPath: string,
-  baseDir: string = homedir()
+  baseDir: string = homedir(),
+  options: { contentStartMs?: number } = {}
 ): Promise<TimelineItem> {
   let durationFrames = FALLBACK_DURATION_FRAMES
   try {
@@ -25,12 +26,22 @@ export async function importRecordedSession(
     console.error(`Could not read duration of recorded video ${videoPath}:`, err)
   }
 
+  // Drop the blank page the recording opens with, but only while at least a second of clip
+  // survives — a lead-in longer than that means the measurement is not to be trusted.
+  const requestedTrim = Math.max(0, Math.round(((options.contentStartMs ?? 0) / 1000) * FPS))
+  const trimBefore = requestedTrim > 0 && durationFrames - requestedTrim >= FPS ? requestedTrim : 0
+
   const timeline = readTimeline(projectId, baseDir)
   const start = timeline.length === 0 ? 0 : Math.max(...timeline.map((item) => item.start + item.duration))
 
   return addTimelineItem(
     projectId,
-    { kind: 'video', start, duration: durationFrames, data: { src: videoPath } },
+    {
+      kind: 'video',
+      start,
+      duration: Math.max(1, durationFrames - trimBefore),
+      data: trimBefore > 0 ? { src: videoPath, trimBefore } : { src: videoPath }
+    },
     baseDir
   )
 }

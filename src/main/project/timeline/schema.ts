@@ -5,7 +5,10 @@ export const ImageItemDataSchema = z.object({
 })
 
 export const VideoItemDataSchema = z.object({
-  src: z.string()
+  src: z.string(),
+  // Frames to skip at the start of the source video, used to drop the blank lead-in a browser
+  // recording begins with. Optional so timelines written before this existed still load.
+  trimBefore: z.number().int().min(0).optional()
 })
 
 export const TIMELINE_ITEM_DATA_SCHEMAS: Record<string, z.ZodSchema> = {

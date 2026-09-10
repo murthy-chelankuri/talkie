@@ -7,12 +7,20 @@ import { findProjectDir } from '../project/paths'
 import { appendActionLogEntry, type ActionLogEntry } from './actionLog'
 import { shouldRedactInputValue } from './redact'
 
+export interface RecordingResult {
+  sessionId: string
+  videoPath: string
+  actionLogPath: string
+  // How much of the start of the video is the blank page before the site loaded.
+  contentStartMs: number
+}
+
 export interface RecordingSession {
   sessionId: string
   projectId: string
   page: Page
   markAnnotation: (annotation: 'important' | 'redo' | 'skip') => void
-  stop: () => Promise<{ sessionId: string; videoPath: string; actionLogPath: string }>
+  stop: () => Promise<RecordingResult>
 }
 
 const INJECTED_LISTENER_SCRIPT = `
@@ -103,12 +111,16 @@ export async function startRecordingSession(
     })
 
     await page.goto(normalizeUrl(url))
+    // Recording begins at page creation, so everything up to here is the blank page before the
+    // site loaded — a white lead-in baked into the video. Reporting where it ends lets the
+    // import trim it instead of playing a white screen between clips.
+    const contentStartMs = Date.now() - startTime
 
     function markAnnotation(annotation: 'important' | 'redo' | 'skip'): void {
       appendActionLogEntry(actionLogPath, { t: Date.now() - startTime, type: 'annotation', annotation })
     }
 
-    async function stop(): Promise<{ sessionId: string; videoPath: string; actionLogPath: string }> {
+    async function stop(): Promise<RecordingResult> {
       const video = page.video()
       await context.close()
       await browser?.close()
@@ -121,7 +133,7 @@ export async function startRecordingSession(
         }
       }
 
-      return { sessionId, videoPath, actionLogPath }
+      return { sessionId, videoPath, actionLogPath, contentStartMs }
     }
 
     return { sessionId, projectId, page, markAnnotation, stop }
