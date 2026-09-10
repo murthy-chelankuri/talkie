@@ -39,7 +39,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
-  const [currentFrame, setCurrentFrame] = useState(0)
   const playerRef = useRef<PlayerRef>(null)
 
   useEffect(() => {
@@ -66,16 +65,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     })
   }, [projectId])
 
-  // The Player is the source of truth for playback position; the timeline mirrors it via this
-  // event and drives it back through seekTo.
-  useEffect(() => {
-    const player = playerRef.current
-    if (!player) return
-    const onFrameUpdate = ({ detail }: { detail: { frame: number } }): void => setCurrentFrame(detail.frame)
-    player.addEventListener('frameupdate', onFrameUpdate)
-    return () => player.removeEventListener('frameupdate', onFrameUpdate)
-  }, [timeline.length > 0])
-
   async function refreshTimeline(): Promise<void> {
     setTimeline(await timelineClient.read(projectId))
   }
@@ -86,7 +75,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   const handleSeek = useCallback((frame: number): void => {
     playerRef.current?.seekTo(frame)
-    setCurrentFrame(frame)
   }, [])
 
   function handleSelectClip(item: TimelineItem): void {
@@ -279,7 +267,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           timeline={timeline}
           segments={segments}
           totalFrames={computeTimelineDuration(remotionTimeline)}
-          currentFrame={currentFrame}
+          playerRef={playerRef}
           selectedItemId={selectedItemId}
           selectedSegmentId={selectedSegmentId}
           onSeek={handleSeek}

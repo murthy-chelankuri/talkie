@@ -1,4 +1,13 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type SyntheticEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+  type SyntheticEvent
+} from 'react'
+import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -156,7 +165,7 @@ export function Timeline({
   timeline,
   segments,
   totalFrames,
-  currentFrame,
+  playerRef,
   selectedItemId,
   selectedSegmentId,
   onSeek,
@@ -168,7 +177,7 @@ export function Timeline({
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
   totalFrames: number
-  currentFrame: number
+  playerRef: RefObject<PlayerRef | null>
   selectedItemId: string | null
   selectedSegmentId: string | null
   onSeek: (frame: number) => void
@@ -179,23 +188,61 @@ export function Timeline({
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
+  const playheadRef = useRef<HTMLDivElement | null>(null)
+  const timecodeRef = useRef<HTMLSpanElement | null>(null)
+  const rulerRef = useRef<HTMLDivElement | null>(null)
+  const frameRef = useRef(0)
+  // Which clip the playhead is inside. This only changes at clip boundaries, so it is the one
+  // piece of playback position worth putting in state — everything else is written to the DOM
+  // directly, because re-rendering the whole timeline 30 times a second starved the Player of
+  // the main thread and desynced its audio.
+  const [itemUnderPlayheadId, setItemUnderPlayheadId] = useState<string | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const contentWidth = offsetAtFrame(totalFrames, pixelsPerSecond, FPS)
   const tickSeconds = chooseTickIntervalSeconds(pixelsPerSecond)
   const tickCount = Math.floor(totalFrames / FPS / tickSeconds) + 1
-  const playheadLeft = offsetAtFrame(currentFrame, pixelsPerSecond, FPS)
+  const itemUnderPlayhead = timeline.find((item) => item.id === itemUnderPlayheadId)
 
-  // The clip the playhead sits inside, and where inside it — that is what a split acts on.
-  const itemUnderPlayhead = timeline.find(
-    (item) => currentFrame > item.start && currentFrame < item.start + item.duration
+  const paintFrame = useCallback(
+    (frame: number): void => {
+      frameRef.current = frame
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${offsetAtFrame(frame, pixelsPerSecond, FPS)}px)`
+      }
+      if (timecodeRef.current) {
+        timecodeRef.current.textContent = `${formatTimecode(frame / FPS)} / ${formatTimecode(totalFrames / FPS)}`
+      }
+      // Written here rather than rendered, for the same reason as the playhead: the slider has
+      // to report the live position without re-rendering the timeline on every frame.
+      rulerRef.current?.setAttribute('aria-valuenow', String(frame))
+      const containing = timeline.find(
+        (item) => frame > item.start && frame < item.start + item.duration
+      )
+      setItemUnderPlayheadId((previous) => (previous === (containing?.id ?? null) ? previous : containing?.id ?? null))
+    },
+    [pixelsPerSecond, timeline, totalFrames]
   )
+
+  useEffect(() => {
+    paintFrame(frameRef.current)
+  }, [paintFrame])
+
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) return
+    const onFrameUpdate = ({ detail }: { detail: { frame: number } }): void => paintFrame(detail.frame)
+    player.addEventListener('frameupdate', onFrameUpdate)
+    return () => player.removeEventListener('frameupdate', onFrameUpdate)
+  }, [playerRef, paintFrame])
 
   function seekFromPointer(event: ReactPointerEvent<HTMLElement>): void {
     const area = trackAreaRef.current
     if (!area) return
     const offset = event.clientX - area.getBoundingClientRect().left
-    onSeek(frameAtOffset(offset, pixelsPerSecond, FPS, totalFrames))
+    const frame = frameAtOffset(offset, pixelsPerSecond, FPS, totalFrames)
+    paintFrame(frame)
+    onSeek(frame)
   }
 
   function handleScrubStart(event: ReactPointerEvent<HTMLElement>): void {
@@ -238,7 +285,7 @@ export function Timeline({
         segment,
         left: itemLeft + width * indexInItem,
         width,
-        active: currentFrame >= item.start && currentFrame < item.start + item.duration
+        active: item.id === itemUnderPlayheadId
       }
     ]
   })
@@ -247,14 +294,14 @@ export function Timeline({
     <div className="flex h-56 flex-col border-t border-border bg-surface">
       <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
         <span className="text-xs font-medium text-text-muted">Timeline</span>
-        <span className="text-xs text-text-muted">
-          {formatTimecode(currentFrame / FPS)} / {formatTimecode(totalFrames / FPS)}
+        <span ref={timecodeRef} className="text-xs text-text-muted">
+          {formatTimecode(0)} / {formatTimecode(totalFrames / FPS)}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <IconButton
             aria-label="Split clip at playhead"
             disabled={!itemUnderPlayhead}
-            onClick={() => itemUnderPlayhead && onSplit(itemUnderPlayhead, currentFrame)}
+            onClick={() => itemUnderPlayhead && onSplit(itemUnderPlayhead, frameRef.current)}
           >
             <Scissors size={16} />
           </IconButton>
@@ -278,18 +325,19 @@ export function Timeline({
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
         <div ref={trackAreaRef} className="relative h-full" style={{ width: Math.max(contentWidth, 1) }}>
           <div
+            ref={rulerRef}
             role="slider"
             tabIndex={0}
             aria-label="Playhead"
             aria-valuemin={0}
             aria-valuemax={Math.max(totalFrames - 1, 0)}
-            aria-valuenow={currentFrame}
+            aria-valuenow={0}
             onPointerDown={handleScrubStart}
             onPointerMove={handleScrubMove}
             onPointerUp={handleScrubEnd}
             onKeyDown={(event) => {
-              if (event.key === 'ArrowLeft') onSeek(Math.max(0, currentFrame - 1))
-              if (event.key === 'ArrowRight') onSeek(Math.min(totalFrames - 1, currentFrame + 1))
+              if (event.key === 'ArrowLeft') onSeek(Math.max(0, frameRef.current - 1))
+              if (event.key === 'ArrowRight') onSeek(Math.min(totalFrames - 1, frameRef.current + 1))
             }}
             className="relative h-7 cursor-ew-resize select-none border-b border-border"
           >
@@ -340,9 +388,9 @@ export function Timeline({
 
           {totalFrames > 0 && (
             <div
+              ref={playheadRef}
               aria-hidden="true"
-              style={{ left: playheadLeft }}
-              className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-danger"
+              className="pointer-events-none absolute top-0 bottom-0 left-0 z-10 w-px bg-danger"
             >
               <div className="-ml-1.5 h-2 w-3 rounded-b bg-danger" />
             </div>
