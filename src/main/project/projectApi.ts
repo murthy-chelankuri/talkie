@@ -276,6 +276,25 @@ export function updateTranscriptSegmentAudio(
   return updated
 }
 
+// Timeline items play back-to-back with no gaps, so every `start` is fully determined by the
+// durations before it. Any write that changes a duration or an order has to re-derive them all.
+function withSequentialStarts(items: TimelineItem[]): TimelineItem[] {
+  let cursor = 0
+  return items.map((item) => {
+    let updated: TimelineItem
+    try {
+      updated = TimelineItemSchema.parse({ ...item, start: cursor })
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new Error(err.issues.map((issue) => issue.message).join('; '))
+      }
+      throw err
+    }
+    cursor += updated.duration
+    return updated
+  })
+}
+
 export function updateTimelineItemDuration(
   id: string,
   timelineItemId: string,
@@ -303,8 +322,9 @@ export function updateTimelineItemDuration(
     throw err
   }
   timeline[index] = updated
-  writeJsonAtomic(join(dir, 'timeline.json'), timeline)
-  return updated
+  const resequenced = withSequentialStarts(timeline)
+  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  return resequenced[index]
 }
 
 export function reorderTimelineItems(id: string, orderedIds: string[], baseDir: string = homedir()): TimelineItem[] {
@@ -324,22 +344,7 @@ export function reorderTimelineItems(id: string, orderedIds: string[], baseDir: 
   }
 
   const byId = new Map(timeline.map((item) => [item.id, item]))
-  let cursor = 0
-  const reordered: TimelineItem[] = []
-  for (const itemId of orderedIds) {
-    const existing = byId.get(itemId) as TimelineItem
-    let updated: TimelineItem
-    try {
-      updated = TimelineItemSchema.parse({ ...existing, start: cursor })
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw new Error(err.issues.map((issue) => issue.message).join('; '))
-      }
-      throw err
-    }
-    reordered.push(updated)
-    cursor += updated.duration
-  }
+  const reordered = withSequentialStarts(orderedIds.map((itemId) => byId.get(itemId) as TimelineItem))
 
   writeJsonAtomic(join(dir, 'timeline.json'), reordered)
   return reordered

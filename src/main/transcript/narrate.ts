@@ -1,7 +1,12 @@
 import { homedir } from 'os'
 import { join } from 'path'
 import { findProjectDir } from '../project/paths'
-import { readTranscript, updateTranscriptSegmentAudio, updateTimelineItemDuration } from '../project/projectApi'
+import {
+  readTranscript,
+  readTimeline,
+  updateTranscriptSegmentAudio,
+  updateTimelineItemDuration
+} from '../project/projectApi'
 import { sayTtsProvider } from '../tts/sayTtsProvider'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS } from '../../remotion/constants'
@@ -29,7 +34,13 @@ export async function narrateSegment(
 
   const durationSeconds = getWavDurationSeconds(audioPath)
   const durationFrames = Math.max(1, Math.round(durationSeconds * FPS))
-  updateTimelineItemDuration(projectId, segment.timelineItemId, durationFrames, baseDir)
+
+  // An image has no length of its own, so the narration defines it. A video does: shrinking it
+  // to fit a shorter narration would silently cut the recording off, so only ever grow it.
+  const linkedItem = readTimeline(projectId, baseDir).find((item) => item.id === segment.timelineItemId)
+  const nextDuration =
+    linkedItem && linkedItem.kind === 'video' ? Math.max(linkedItem.duration, durationFrames) : durationFrames
+  updateTimelineItemDuration(projectId, segment.timelineItemId, nextDuration, baseDir)
 
   return updateTranscriptSegmentAudio(projectId, segmentId, audioFileName, baseDir)
 }

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Player } from '@remotion/player'
+import { useEffect, useRef, useState } from 'react'
+import { Player, type PlayerRef } from '@remotion/player'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -14,6 +14,7 @@ import {
   type TimelineItem
 } from '../api/projectClient'
 import { TranscriptPanel } from '../components/TranscriptPanel'
+import { cn } from '../lib/cn'
 import { Panel } from '../components/ui/Panel'
 import { Toolbar } from '../components/ui/Toolbar'
 import { IconButton } from '../components/ui/IconButton'
@@ -36,6 +37,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [recordError, setRecordError] = useState<string | null>(null)
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const playerRef = useRef<PlayerRef>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   useEffect(() => {
@@ -59,6 +62,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   async function refreshTimeline(): Promise<void> {
     setTimeline(await timelineClient.read(projectId))
+  }
+
+  function handleSelectClip(item: TimelineItem): void {
+    setSelectedItemId(item.id)
+    playerRef.current?.seekTo(item.start)
   }
 
   async function handleDragEnd(event: DragEndEvent): Promise<void> {
@@ -198,6 +206,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           <div className="flex h-full items-center justify-center bg-bg p-4">
             {timeline.length > 0 ? (
               <Player
+                ref={playerRef}
                 component={DemoComposition}
                 inputProps={{ timeline: remotionTimeline }}
                 durationInFrames={computeTimelineDuration(remotionTimeline)}
@@ -225,7 +234,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           <SortableContext items={timeline.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
             <div className="flex flex-1 items-center gap-2 overflow-x-auto">
               {timeline.map((item) => (
-                <TimelineClip key={item.id} item={item} />
+                <TimelineClip
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedItemId}
+                  onSelect={handleSelectClip}
+                />
               ))}
             </div>
           </SortableContext>
@@ -235,18 +249,33 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   )
 }
 
-function TimelineClip({ item }: { item: TimelineItem }): JSX.Element {
+function TimelineClip({
+  item,
+  selected,
+  onSelect
+}: {
+  item: TimelineItem
+  selected: boolean
+  onSelect: (item: TimelineItem) => void
+}): JSX.Element {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
 
   return (
-    <div
+    <button
+      type="button"
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       {...attributes}
       {...listeners}
-      className="flex h-full w-32 shrink-0 cursor-grab items-center justify-center rounded-md border border-border bg-bg text-sm text-text active:cursor-grabbing"
+      onClick={() => onSelect(item)}
+      className={cn(
+        // p-0 and an explicit hover colour are needed because Preflight's shim in index.css
+        // gives every bare <button> hardcoded padding and a light grey hover background.
+        'flex h-full w-32 shrink-0 cursor-grab items-center justify-center rounded-md border bg-bg p-0 text-sm text-text hover:bg-surface-hover active:cursor-grabbing',
+        selected ? 'border-accent ring-2 ring-accent' : 'border-border'
+      )}
     >
       {item.kind}
-    </div>
+    </button>
   )
 }

@@ -484,6 +484,30 @@ describe('updateTimelineItemDuration', () => {
     )
   })
 
+  it('shifts later items so the timeline stays gap-free when an item grows', () => {
+    const project = createProject('Update Duration Grow', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const b = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+
+    updateTimelineItemDuration(project.id, a.id, 200, baseDir)
+
+    const timeline = readTimeline(project.id, baseDir)
+    expect(timeline.find((item) => item.id === a.id)?.start).toBe(0)
+    expect(timeline.find((item) => item.id === b.id)?.start).toBe(200)
+    expect(timeline.find((item) => item.id === b.id)?.duration).toBe(60)
+  })
+
+  it('shifts later items back when an item shrinks', () => {
+    const project = createProject('Update Duration Shrink', baseDir)
+    const a = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const b = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+
+    updateTimelineItemDuration(project.id, a.id, 30, baseDir)
+
+    const timeline = readTimeline(project.id, baseDir)
+    expect(timeline.find((item) => item.id === b.id)?.start).toBe(30)
+  })
+
   it('throws a flattened, non-JSON-escaped message when the duration is invalid', () => {
     const project = createProject('Update Duration Invalid', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)

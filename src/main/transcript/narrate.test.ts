@@ -35,4 +35,45 @@ describe('narrateSegment (real say + afconvert)', () => {
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 30_000)
+
+  it('never shortens a video item, so narrating cannot truncate the recording', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-video-test-'))
+    const project = createProject('Narrate Video Test', baseDir)
+    // A 20-second recording narrated with a short line: the clip must keep its own length.
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 600, data: { src: '/tmp/session/video.webm' } },
+      baseDir
+    )
+    const segment = addTranscriptSegment(project.id, { text: 'Short line.', timelineItemId: item.id }, baseDir)
+
+    await narrateSegment(project.id, segment.id, baseDir)
+
+    const updatedItem = readTimeline(project.id, baseDir).find((i) => i.id === item.id)
+    expect(updatedItem?.duration).toBe(600)
+
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
+
+  it('extends a video item when the narration outlasts the recording', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-video-long-test-'))
+    const project = createProject('Narrate Video Long Test', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 5, data: { src: '/tmp/session/video.webm' } },
+      baseDir
+    )
+    const segment = addTranscriptSegment(
+      project.id,
+      { text: 'This narration is definitely longer than five frames of video.', timelineItemId: item.id },
+      baseDir
+    )
+
+    await narrateSegment(project.id, segment.id, baseDir)
+
+    const updatedItem = readTimeline(project.id, baseDir).find((i) => i.id === item.id)
+    expect(updatedItem?.duration).toBeGreaterThan(5)
+
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
 })
