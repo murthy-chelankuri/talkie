@@ -7,6 +7,8 @@ import { addTimelineItem } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { renderProjectVideo } from './renderProject'
 import { closeAssetServer } from './assetServer'
+import { startRecordingSession } from '../capture/recordSession'
+import { importRecordedSession } from '../capture/importRecordedSession'
 
 const ONE_PIXEL_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
@@ -23,6 +25,28 @@ describe('renderProjectVideo', () => {
     const imagePath = join(dir, 'sources', 'images', 'pixel.png')
     writeFileSync(imagePath, Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'))
     addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: imagePath } }, baseDir)
+
+    const outputPath = await renderProjectVideo(project.id, baseDir)
+
+    expect(statSync(outputPath).size).toBeGreaterThan(0)
+    expect(readdirSync(join(dir, 'renders'))).toContain(outputPath.split('/').pop())
+
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 180_000)
+
+  it('renders a recorded video timeline item to a real MP4 file', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-render-video-test-'))
+    const project = createProject('Render Video Test', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+
+    // Produce a genuine .webm the same way a real capture session does, so this exercises the
+    // exact media the recording pipeline puts on the timeline.
+    const fixtureUrl = `file://${join(__dirname, '..', 'capture', 'fixtures', 'recording-test-page.html')}`
+    const session = await startRecordingSession(project.id, fixtureUrl, baseDir)
+    await session.page.waitForTimeout(1000)
+    const recording = await session.stop()
+    const item = await importRecordedSession(project.id, recording.videoPath, baseDir)
+    expect(item.kind).toBe('video')
 
     const outputPath = await renderProjectVideo(project.id, baseDir)
 

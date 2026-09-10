@@ -14,6 +14,29 @@ describe('TimelineItemSchema', () => {
     expect(TimelineItemSchema.parse(item)).toEqual(item)
   })
 
+  it('accepts a valid video item', () => {
+    const item = {
+      id: 'abc123',
+      kind: 'video',
+      start: 0,
+      duration: 300,
+      data: { src: '/tmp/session-1/video.webm' }
+    }
+
+    expect(TimelineItemSchema.parse(item)).toEqual(item)
+  })
+
+  it('rejects video data missing src', () => {
+    const item = { id: 'abc123', kind: 'video', start: 0, duration: 300, data: {} }
+
+    const result = TimelineItemSchema.safeParse(item)
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/Invalid data for kind "video"/)
+    }
+  })
+
   it('rejects an unknown kind', () => {
     const item = { id: 'abc123', kind: 'nonexistent-kind', start: 0, duration: 90, data: {} }
 

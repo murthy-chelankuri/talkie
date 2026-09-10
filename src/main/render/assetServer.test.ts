@@ -141,6 +141,29 @@ describe('asset server', () => {
     expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
   })
 
+  it('resolveTimelineAssetUrls rewrites video item src fields', () => {
+    const timeline = [
+      { id: 'a', kind: 'video', start: 0, duration: 300, data: { src: '/root/sources/session-1/video.webm' } }
+    ]
+
+    const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000')
+
+    expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/session-1/video.webm' })
+  })
+
+  it('serves a .webm file with the video/webm content type', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.webm'), 'fake-webm-bytes')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.webm`)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('video/webm')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
   it('serves a .wav file with the audio/wav content type', async () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
     writeFileSync(join(rootDir, 'clip.wav'), 'fake-wav-bytes')

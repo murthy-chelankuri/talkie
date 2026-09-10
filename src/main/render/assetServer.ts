@@ -10,8 +10,13 @@ const MIME_TYPES: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
-  '.wav': 'audio/wav'
+  '.wav': 'audio/wav',
+  '.webm': 'video/webm',
+  '.mp4': 'video/mp4'
 }
+
+// Timeline item kinds whose `data.src` is a local media path needing URL resolution.
+const SRC_MEDIA_KINDS = new Set(['image', 'video'])
 
 export interface AssetServer {
   url: string
@@ -96,7 +101,7 @@ export function resolveTimelineAssetUrls(
     const audioPath = narrationAudioPaths.get(item.id)
     const audioUrl = audioPath ? resolveAssetUrl(audioPath, rootDir, serverUrl) : undefined
 
-    if (item.kind !== 'image') {
+    if (!SRC_MEDIA_KINDS.has(item.kind)) {
       return audioUrl ? { ...item, data: { ...(item.data as object), audioUrl } } : item
     }
 

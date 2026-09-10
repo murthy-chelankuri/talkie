@@ -28,7 +28,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)
-  registerCaptureHandlers(ipcMain)
+  registerCaptureHandlers(ipcMain, () => mainWindowRef)
   registerTranscriptHandlers(ipcMain)
   createWindow()
 

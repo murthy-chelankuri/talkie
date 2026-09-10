@@ -33,7 +33,9 @@ export const renderClient = {
 }
 
 export const captureClient = {
-  openToolbar: (projectId: string): Promise<void> => window.api.capture.openToolbar(projectId)
+  openToolbar: (projectId: string): Promise<void> => window.api.capture.openToolbar(projectId),
+  onSessionImported: (callback: (projectId: string) => void): (() => void) =>
+    window.api.capture.onSessionImported(callback)
 }
 
 export const transcriptClient = {

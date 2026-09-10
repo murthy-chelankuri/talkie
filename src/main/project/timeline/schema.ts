@@ -4,8 +4,13 @@ export const ImageItemDataSchema = z.object({
   src: z.string()
 })
 
+export const VideoItemDataSchema = z.object({
+  src: z.string()
+})
+
 export const TIMELINE_ITEM_DATA_SCHEMAS: Record<string, z.ZodSchema> = {
-  image: ImageItemDataSchema
+  image: ImageItemDataSchema,
+  video: VideoItemDataSchema
 }
 
 export const TimelineItemSchema = z

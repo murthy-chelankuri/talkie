@@ -23,7 +23,14 @@ const renderApi = {
 }
 
 const captureApi = {
-  openToolbar: (projectId: string): Promise<void> => ipcRenderer.invoke('project:capture:openToolbar', projectId)
+  openToolbar: (projectId: string): Promise<void> => ipcRenderer.invoke('project:capture:openToolbar', projectId),
+  // Recording happens in a separate toolbar window, so the Editor cannot await its completion —
+  // the main process pushes this event once the finished recording is on the timeline.
+  onSessionImported: (callback: (projectId: string) => void): (() => void) => {
+    const listener = (_event: unknown, projectId: string): void => callback(projectId)
+    ipcRenderer.on('project:capture:sessionImported', listener)
+    return () => ipcRenderer.removeListener('project:capture:sessionImported', listener)
+  }
 }
 
 const transcriptApi = {

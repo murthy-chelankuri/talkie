@@ -47,6 +47,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
 
+  useEffect(() => {
+    return captureClient.onSessionImported((importedProjectId) => {
+      if (importedProjectId !== projectId) return
+      timelineClient
+        .read(projectId)
+        .then(setTimeline)
+        .catch((err: unknown) => setRecordError(err instanceof Error ? err.message : String(err)))
+    })
+  }, [projectId])
+
   async function refreshTimeline(): Promise<void> {
     setTimeline(await timelineClient.read(projectId))
   }

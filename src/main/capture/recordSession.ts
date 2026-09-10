@@ -9,6 +9,7 @@ import { shouldRedactInputValue } from './redact'
 
 export interface RecordingSession {
   sessionId: string
+  projectId: string
   page: Page
   markAnnotation: (annotation: 'important' | 'redo' | 'skip') => void
   stop: () => Promise<{ sessionId: string; videoPath: string; actionLogPath: string }>
@@ -123,7 +124,7 @@ export async function startRecordingSession(
       return { sessionId, videoPath, actionLogPath }
     }
 
-    return { sessionId, page, markAnnotation, stop }
+    return { sessionId, projectId, page, markAnnotation, stop }
   } catch (err) {
     if (browser) {
       await browser.close()
