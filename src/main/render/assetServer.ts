@@ -41,7 +41,13 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
         return
       }
 
-      res.writeHead(200, { 'Content-Type': MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream' })
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
+        // The renderer draws video frames onto a canvas to pick a timeline thumbnail, which
+        // needs the pixels to be readable rather than origin-tainted. This server is bound to
+        // 127.0.0.1 and only ever serves the user's own project directory.
+        'Access-Control-Allow-Origin': '*'
+      })
       createReadStream(filePath).pipe(res)
     })
 

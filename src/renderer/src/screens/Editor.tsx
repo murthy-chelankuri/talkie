@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type SyntheticEvent } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -15,6 +15,7 @@ import {
 } from '../api/projectClient'
 import { TranscriptPanel } from '../components/TranscriptPanel'
 import { cn } from '../lib/cn'
+import { hasVisibleContent } from '../lib/frameContent'
 import { Panel } from '../components/ui/Panel'
 import { Toolbar } from '../components/ui/Toolbar'
 import { IconButton } from '../components/ui/IconButton'
@@ -249,6 +250,68 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   )
 }
 
+// Give up scanning for a non-blank frame after this much of the recording, so a genuinely
+// blank capture settles on a frame instead of playing through to the end.
+const THUMBNAIL_SCAN_LIMIT_SECONDS = 8
+
+function VideoThumbnail({ src }: { src: string }): JSX.Element {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Playwright's .webm files carry no seek index, so setting currentTime just snaps back to 0 —
+  // the frame has to be reached by playing forward. The opening frames are the blank page
+  // before the site paints, so play muted until a frame actually has content, then hold it.
+  function handleTimeUpdate(event: SyntheticEvent<HTMLVideoElement>): void {
+    const video = event.currentTarget
+    if (video.paused) return
+
+    if (video.currentTime >= THUMBNAIL_SCAN_LIMIT_SECONDS) {
+      video.pause()
+      return
+    }
+
+    const canvas = (canvasRef.current ??= document.createElement('canvas'))
+    canvas.width = 32
+    canvas.height = 18
+    const context = canvas.getContext('2d')
+    if (!context) return
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    try {
+      if (hasVisibleContent(context.getImageData(0, 0, canvas.width, canvas.height).data)) {
+        video.pause()
+      }
+    } catch {
+      // Pixels unreadable (no CORS headers on this source): stop scanning and keep whatever
+      // frame is showing rather than playing the whole clip.
+      video.pause()
+    }
+  }
+
+  return (
+    <video
+      src={src}
+      muted
+      playsInline
+      autoPlay
+      preload="auto"
+      crossOrigin="anonymous"
+      onTimeUpdate={handleTimeUpdate}
+      className="h-full w-full object-cover"
+    />
+  )
+}
+
+function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
+  const src = (item.data as { src?: string } | null | undefined)?.src
+  if (!src) return null
+
+  if (item.kind === 'video') {
+    return <VideoThumbnail src={src} />
+  }
+
+  return <img src={src} alt="" className="h-full w-full object-cover" />
+}
+
 function TimelineClip({
   item,
   selected,
@@ -271,11 +334,14 @@ function TimelineClip({
       className={cn(
         // p-0 and an explicit hover colour are needed because Preflight's shim in index.css
         // gives every bare <button> hardcoded padding and a light grey hover background.
-        'flex h-full w-32 shrink-0 cursor-grab items-center justify-center rounded-md border bg-bg p-0 text-sm text-text hover:bg-surface-hover active:cursor-grabbing',
+        'relative flex h-full w-32 shrink-0 cursor-grab items-center justify-center overflow-hidden rounded-md border bg-surface p-0 text-sm text-text active:cursor-grabbing',
         selected ? 'border-accent ring-2 ring-accent' : 'border-border'
       )}
     >
-      {item.kind}
+      <ClipThumbnail item={item} />
+      {/* Deliberately not themed: this label sits on arbitrary footage, so it needs a fixed
+          dark scrim to stay legible in either theme. */}
+      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-xs text-white">{item.kind}</span>
     </button>
   )
 }

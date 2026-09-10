@@ -141,6 +141,18 @@ describe('asset server', () => {
     expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
   })
 
+  it('allows cross-origin reads, so the renderer can sample video frames onto a canvas', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'clip.webm'), 'fake-webm-bytes')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/clip.webm`)
+
+    expect(response.headers.get('access-control-allow-origin')).toBe('*')
+
+    rmSync(rootDir, { recursive: true, force: true })
+  })
+
   it('resolveTimelineAssetUrls rewrites video item src fields', () => {
     const timeline = [
       { id: 'a', kind: 'video', start: 0, duration: 300, data: { src: '/root/sources/session-1/video.webm' } }
