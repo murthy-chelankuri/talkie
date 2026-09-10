@@ -1,21 +1,19 @@
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { CircleCheck, Circle, Download, ImagePlus } from 'lucide-react'
 import {
   projectClient,
   timelineClient,
   renderClient,
   captureClient,
+  transcriptClient,
   type ProjectMetadata,
-  type TimelineItem
+  type TimelineItem,
+  type TranscriptSegment
 } from '../api/projectClient'
 import { TranscriptPanel } from '../components/TranscriptPanel'
-import { cn } from '../lib/cn'
-import { hasVisibleContent } from '../lib/frameContent'
+import { Timeline } from '../components/Timeline'
 import { Panel } from '../components/ui/Panel'
 import { Toolbar } from '../components/ui/Toolbar'
 import { IconButton } from '../components/ui/IconButton'
@@ -39,14 +37,21 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [segments, setSegments] = useState<TranscriptSegment[]>([])
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
+  const [currentFrame, setCurrentFrame] = useState(0)
   const playerRef = useRef<PlayerRef>(null)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   useEffect(() => {
-    Promise.all([projectClient.open(projectId), timelineClient.read(projectId)])
-      .then(([openedProject, items]) => {
+    Promise.all([
+      projectClient.open(projectId),
+      timelineClient.read(projectId),
+      transcriptClient.read(projectId)
+    ])
+      .then(([openedProject, items, transcript]) => {
         setProject(openedProject)
         setTimeline(items)
+        setSegments(transcript)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
@@ -61,35 +66,62 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     })
   }, [projectId])
 
+  // The Player is the source of truth for playback position; the timeline mirrors it via this
+  // event and drives it back through seekTo.
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) return
+    const onFrameUpdate = ({ detail }: { detail: { frame: number } }): void => setCurrentFrame(detail.frame)
+    player.addEventListener('frameupdate', onFrameUpdate)
+    return () => player.removeEventListener('frameupdate', onFrameUpdate)
+  }, [timeline.length > 0])
+
   async function refreshTimeline(): Promise<void> {
     setTimeline(await timelineClient.read(projectId))
   }
 
+  const refreshSegments = useCallback(async (): Promise<void> => {
+    setSegments(await transcriptClient.read(projectId))
+  }, [projectId])
+
+  const handleSeek = useCallback((frame: number): void => {
+    playerRef.current?.seekTo(frame)
+    setCurrentFrame(frame)
+  }, [])
+
   function handleSelectClip(item: TimelineItem): void {
     setSelectedItemId(item.id)
-    playerRef.current?.seekTo(item.start)
+    handleSeek(item.start)
   }
 
-  async function handleDragEnd(event: DragEndEvent): Promise<void> {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
+  function handleSelectSegment(segment: TranscriptSegment): void {
+    setSelectedSegmentId(segment.id)
+    const item = timeline.find((candidate) => candidate.id === segment.timelineItemId)
+    if (item) {
+      setSelectedItemId(item.id)
+      handleSeek(item.start)
+    }
+  }
 
-    const oldIndex = timeline.findIndex((item) => item.id === active.id)
-    const newIndex = timeline.findIndex((item) => item.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-
-    const reordered = arrayMove(timeline, oldIndex, newIndex)
-    setTimeline(reordered)
+  async function handleReorder(orderedIds: string[]): Promise<void> {
+    const byId = new Map(timeline.map((item) => [item.id, item]))
+    setTimeline(orderedIds.map((id) => byId.get(id) as TimelineItem))
     setReorderError(null)
     try {
-      const updated = await timelineClient.reorder(
-        projectId,
-        reordered.map((item) => item.id)
-      )
-      setTimeline(updated)
+      setTimeline(await timelineClient.reorder(projectId, orderedIds))
     } catch (err) {
       setReorderError(err instanceof Error ? err.message : String(err))
       await refreshTimeline()
+    }
+  }
+
+  async function handleSplit(item: TimelineItem, atFrame: number): Promise<void> {
+    setReorderError(null)
+    try {
+      await timelineClient.split(projectId, item.id, atFrame)
+      await refreshTimeline()
+    } catch (err) {
+      setReorderError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -225,123 +257,38 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
         <ResizablePanel id="transcript" collapsible defaultSize="25" minSize="15">
           <Panel title="Transcript" className="h-full">
-            <TranscriptPanel projectId={projectId} timeline={timeline} onTimelineChange={refreshTimeline} />
+            <TranscriptPanel
+              projectId={projectId}
+              timeline={timeline}
+              segments={segments}
+              selectedSegmentId={selectedSegmentId}
+              onSegmentsChange={refreshSegments}
+              onSelectSegment={setSelectedSegmentId}
+              onTimelineChange={refreshTimeline}
+            />
           </Panel>
         </ResizablePanel>
       </Group>
-      <footer className="flex h-40 flex-col gap-1 border-t border-border bg-surface p-2">
-        {reorderError && <ErrorBanner message={reorderError} />}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={timeline.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
-            <div className="flex flex-1 items-center gap-2 overflow-x-auto">
-              {timeline.map((item) => (
-                <TimelineClip
-                  key={item.id}
-                  item={item}
-                  selected={item.id === selectedItemId}
-                  onSelect={handleSelectClip}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      </footer>
+      <div className="flex flex-col">
+        {reorderError && (
+          <div className="px-3 pt-2">
+            <ErrorBanner message={reorderError} />
+          </div>
+        )}
+        <Timeline
+          timeline={timeline}
+          segments={segments}
+          totalFrames={computeTimelineDuration(remotionTimeline)}
+          currentFrame={currentFrame}
+          selectedItemId={selectedItemId}
+          selectedSegmentId={selectedSegmentId}
+          onSeek={handleSeek}
+          onSelectItem={handleSelectClip}
+          onSelectSegment={handleSelectSegment}
+          onReorder={handleReorder}
+          onSplit={handleSplit}
+        />
+      </div>
     </div>
-  )
-}
-
-// Give up scanning for a non-blank frame after this much of the recording, so a genuinely
-// blank capture settles on a frame instead of playing through to the end.
-const THUMBNAIL_SCAN_LIMIT_SECONDS = 8
-
-function VideoThumbnail({ src }: { src: string }): JSX.Element {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-
-  // Playwright's .webm files carry no seek index, so setting currentTime just snaps back to 0 —
-  // the frame has to be reached by playing forward. The opening frames are the blank page
-  // before the site paints, so play muted until a frame actually has content, then hold it.
-  function handleTimeUpdate(event: SyntheticEvent<HTMLVideoElement>): void {
-    const video = event.currentTarget
-    if (video.paused) return
-
-    if (video.currentTime >= THUMBNAIL_SCAN_LIMIT_SECONDS) {
-      video.pause()
-      return
-    }
-
-    const canvas = (canvasRef.current ??= document.createElement('canvas'))
-    canvas.width = 32
-    canvas.height = 18
-    const context = canvas.getContext('2d')
-    if (!context) return
-
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-    try {
-      if (hasVisibleContent(context.getImageData(0, 0, canvas.width, canvas.height).data)) {
-        video.pause()
-      }
-    } catch {
-      // Pixels unreadable (no CORS headers on this source): stop scanning and keep whatever
-      // frame is showing rather than playing the whole clip.
-      video.pause()
-    }
-  }
-
-  return (
-    <video
-      src={src}
-      muted
-      playsInline
-      autoPlay
-      preload="auto"
-      crossOrigin="anonymous"
-      onTimeUpdate={handleTimeUpdate}
-      className="h-full w-full object-cover"
-    />
-  )
-}
-
-function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
-  const src = (item.data as { src?: string } | null | undefined)?.src
-  if (!src) return null
-
-  if (item.kind === 'video') {
-    return <VideoThumbnail src={src} />
-  }
-
-  return <img src={src} alt="" className="h-full w-full object-cover" />
-}
-
-function TimelineClip({
-  item,
-  selected,
-  onSelect
-}: {
-  item: TimelineItem
-  selected: boolean
-  onSelect: (item: TimelineItem) => void
-}): JSX.Element {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
-
-  return (
-    <button
-      type="button"
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      {...attributes}
-      {...listeners}
-      onClick={() => onSelect(item)}
-      className={cn(
-        // p-0 and an explicit hover colour are needed because Preflight's shim in index.css
-        // gives every bare <button> hardcoded padding and a light grey hover background.
-        'relative flex h-full w-32 shrink-0 cursor-grab items-center justify-center overflow-hidden rounded-md border bg-surface p-0 text-sm text-text active:cursor-grabbing',
-        selected ? 'border-accent ring-2 ring-accent' : 'border-border'
-      )}
-    >
-      <ClipThumbnail item={item} />
-      {/* Deliberately not themed: this label sits on arbitrary footage, so it needs a fixed
-          dark scrim to stay legible in either theme. */}
-      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-xs text-white">{item.kind}</span>
-    </button>
   )
 }

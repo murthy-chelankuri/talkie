@@ -16,7 +16,8 @@ import {
   updateTranscriptSegmentAudio,
   updateTimelineItemDuration,
   reorderTimelineItems,
-  readNarrationAudioPaths
+  readNarrationAudioPaths,
+  splitTimelineItem
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -639,5 +640,119 @@ describe('readNarrationAudioPaths', () => {
 
   it('throws when the project does not exist', () => {
     expect(() => readNarrationAudioPaths('does-not-exist', baseDir)).toThrow('No project found with id does-not-exist')
+  })
+})
+
+describe('splitTimelineItem', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('splits an item into two clips that together keep the original length', () => {
+    const project = createProject('Split', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 300, data: { src: '/v.webm' } },
+      baseDir
+    )
+
+    const [first, second] = splitTimelineItem(project.id, item.id, 120, baseDir)
+
+    expect(first.duration).toBe(120)
+    expect(second.duration).toBe(180)
+    expect(first.start).toBe(0)
+    expect(second.start).toBe(120)
+  })
+
+  it('keeps the original id on the first half so transcript links survive', () => {
+    const project = createProject('Split Ids', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 300, data: { src: '/v.webm' } },
+      baseDir
+    )
+
+    const [first, second] = splitTimelineItem(project.id, item.id, 120, baseDir)
+
+    expect(first.id).toBe(item.id)
+    expect(second.id).not.toBe(item.id)
+  })
+
+  it('advances the second half past the footage the first half already shows', () => {
+    const project = createProject('Split Trim', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 300, data: { src: '/v.webm', trimBefore: 45 } },
+      baseDir
+    )
+
+    const [first, second] = splitTimelineItem(project.id, item.id, 100, baseDir)
+
+    expect((first.data as { trimBefore?: number }).trimBefore).toBe(45)
+    expect((second.data as { trimBefore?: number }).trimBefore).toBe(145)
+  })
+
+  it('leaves an image item\'s data untouched on both halves', () => {
+    const project = createProject('Split Image', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } },
+      baseDir
+    )
+
+    const [first, second] = splitTimelineItem(project.id, item.id, 30, baseDir)
+
+    expect(first.data).toEqual({ src: '/a.png' })
+    expect(second.data).toEqual({ src: '/a.png' })
+  })
+
+  it('shifts later items so the timeline stays back-to-back', () => {
+    const project = createProject('Split Resequence', baseDir)
+    const first = addTimelineItem(
+      project.id,
+      { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } },
+      baseDir
+    )
+    const later = addTimelineItem(
+      project.id,
+      { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } },
+      baseDir
+    )
+
+    splitTimelineItem(project.id, first.id, 40, baseDir)
+
+    const timeline = readTimeline(project.id, baseDir)
+    expect(timeline.map((i) => i.start)).toEqual([0, 40, 90])
+    expect(timeline[2].id).toBe(later.id)
+  })
+
+  it('rejects a split at the very start or end of the item', () => {
+    const project = createProject('Split Bounds', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 300, data: { src: '/v.webm' } },
+      baseDir
+    )
+
+    expect(() => splitTimelineItem(project.id, item.id, 0, baseDir)).toThrow(
+      `Cannot split timeline item ${item.id} at frame 0`
+    )
+    expect(() => splitTimelineItem(project.id, item.id, 300, baseDir)).toThrow(
+      `Cannot split timeline item ${item.id} at frame 300`
+    )
+  })
+
+  it('throws a clear error when the timeline item does not exist', () => {
+    const project = createProject('Split Missing', baseDir)
+
+    expect(() => splitTimelineItem(project.id, 'does-not-exist', 10, baseDir)).toThrow(
+      'No timeline item found with id does-not-exist'
+    )
   })
 })

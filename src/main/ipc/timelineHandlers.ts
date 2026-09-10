@@ -6,7 +6,8 @@ import {
   addTimelineItem,
   importImage,
   reorderTimelineItems,
-  readNarrationAudioPaths
+  readNarrationAudioPaths,
+  splitTimelineItem
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { renderProjectVideo } from '../render/renderProject'
@@ -35,6 +36,10 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
 
   ipcMain.handle('project:timeline:reorder', (_event, id: string, orderedIds: string[]) =>
     reorderTimelineItems(id, orderedIds)
+  )
+
+  ipcMain.handle('project:timeline:split', (_event, id: string, timelineItemId: string, atFrame: number) =>
+    splitTimelineItem(id, timelineItemId, atFrame)
   )
 
   ipcMain.handle('project:render:export', (_event, id: string) => renderProjectVideo(id))

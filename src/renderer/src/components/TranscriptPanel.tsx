@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Mic } from 'lucide-react'
 import { transcriptClient, type TranscriptSegment, type TimelineItem } from '../api/projectClient'
 import { Card } from './ui/Card'
@@ -6,36 +6,47 @@ import { Textarea } from './ui/Textarea'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
+import { EmptyState } from './ui/EmptyState'
 import { ErrorBanner } from './ui/ErrorBanner'
 
 export function TranscriptPanel({
   projectId,
   timeline,
+  segments,
+  selectedSegmentId,
+  onSegmentsChange,
+  onSelectSegment,
   onTimelineChange
 }: {
   projectId: string
   timeline: TimelineItem[]
+  segments: TranscriptSegment[]
+  selectedSegmentId: string | null
+  onSegmentsChange: () => void | Promise<void>
+  onSelectSegment: (segmentId: string) => void
   onTimelineChange: () => void | Promise<void>
 }): JSX.Element {
-  const [segments, setSegments] = useState<TranscriptSegment[]>([])
   const [newText, setNewText] = useState('')
   const [newItemId, setNewItemId] = useState('')
-  const [narratingId, setNarratingId] = useState<string | null>(null)
+  const [narrating, setNarrating] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [draftText, setDraftText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    transcriptClient.read(projectId).then(setSegments)
-  }, [projectId])
+  const selected = segments.find((segment) => segment.id === selectedSegmentId) ?? null
 
   async function handleAdd(): Promise<void> {
     if (!newText.trim() || !newItemId) return
     setError(null)
     setAdding(true)
     try {
-      await transcriptClient.addSegment(projectId, { text: newText.trim(), timelineItemId: newItemId })
+      const added = await transcriptClient.addSegment(projectId, {
+        text: newText.trim(),
+        timelineItemId: newItemId
+      })
       setNewText('')
-      setSegments(await transcriptClient.read(projectId))
+      await onSegmentsChange()
+      onSelectSegment(added.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -43,59 +54,64 @@ export function TranscriptPanel({
     }
   }
 
-  function handleLocalTextChange(segmentId: string, text: string): void {
-    setSegments((prev) => prev.map((s) => (s.id === segmentId ? { ...s, text } : s)))
-  }
-
   async function handleTextBlur(segmentId: string, text: string): Promise<void> {
     setError(null)
     try {
       await transcriptClient.updateText(projectId, segmentId, text)
+      setDraftText(null)
+      await onSegmentsChange()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
 
   async function handleNarrate(segmentId: string): Promise<void> {
-    setNarratingId(segmentId)
+    setNarrating(true)
     setError(null)
     try {
-      const updated = await transcriptClient.narrate(projectId, segmentId)
-      setSegments((prev) => prev.map((s) => (s.id === segmentId ? updated : s)))
+      await transcriptClient.narrate(projectId, segmentId)
+      await onSegmentsChange()
       await onTimelineChange()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
-      setNarratingId(null)
+      setNarrating(false)
     }
   }
 
   return (
     <div className="flex flex-col gap-3">
       {error && <ErrorBanner message={error} />}
-      {segments.map((segment) => (
-        <Card key={segment.id} className="flex flex-col gap-2">
+
+      {selected ? (
+        <Card className="flex flex-col gap-2">
           <Textarea
-            value={segment.text}
-            onChange={(e) => handleLocalTextChange(segment.id, e.target.value)}
-            onBlur={(e) => handleTextBlur(segment.id, e.target.value)}
+            value={draftText ?? selected.text}
+            onChange={(event) => setDraftText(event.target.value)}
+            onBlur={(event) => handleTextBlur(selected.id, event.target.value)}
           />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">{segment.status}</span>
+            <span className="text-xs text-text-muted">{selected.status}</span>
             <IconButton
-              aria-label={narratingId === segment.id ? 'Narrating' : 'Narrate'}
-              onClick={() => handleNarrate(segment.id)}
-              disabled={narratingId === segment.id}
+              aria-label={narrating ? 'Narrating' : 'Narrate'}
+              onClick={() => handleNarrate(selected.id)}
+              disabled={narrating}
             >
-              {narratingId === segment.id ? <Spinner size="sm" /> : <Mic size={16} />}
+              {narrating ? <Spinner size="sm" /> : <Mic size={16} />}
             </IconButton>
           </div>
         </Card>
-      ))}
+      ) : (
+        <EmptyState
+          title="No segment selected"
+          description="Pick a block on the transcript track to edit it, or add one below."
+        />
+      )}
+
       <Card className="flex flex-col gap-2">
         <select
           value={newItemId}
-          onChange={(e) => setNewItemId(e.target.value)}
+          onChange={(event) => setNewItemId(event.target.value)}
           disabled={adding}
           className="h-9 rounded-md border border-border bg-bg px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
         >
@@ -108,7 +124,7 @@ export function TranscriptPanel({
         </select>
         <Textarea
           value={newText}
-          onChange={(e) => setNewText(e.target.value)}
+          onChange={(event) => setNewText(event.target.value)}
           placeholder="New segment text"
           disabled={adding}
         />

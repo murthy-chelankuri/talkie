@@ -327,6 +327,64 @@ export function updateTimelineItemDuration(
   return resequenced[index]
 }
 
+export function splitTimelineItem(
+  id: string,
+  timelineItemId: string,
+  atFrame: number,
+  baseDir: string = homedir()
+): TimelineItem[] {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const timeline = readTimeline(id, baseDir)
+  const index = timeline.findIndex((item) => item.id === timelineItemId)
+  if (index === -1) {
+    throw new Error(`No timeline item found with id ${timelineItemId}`)
+  }
+
+  const item = timeline[index]
+  const offset = atFrame - item.start
+  if (offset <= 0 || offset >= item.duration) {
+    throw new Error(`Cannot split timeline item ${timelineItemId} at frame ${atFrame}`)
+  }
+
+  // The second half has to start where the first half stopped, or it would replay footage the
+  // first half already showed. Kinds without a trim (an image) are the same picture throughout.
+  const data = item.data as { trimBefore?: number } | undefined
+  const secondData =
+    data && typeof data.trimBefore === 'number'
+      ? { ...data, trimBefore: data.trimBefore + offset }
+      : item.kind === 'video'
+        ? { ...(data as object), trimBefore: offset }
+        : item.data
+
+  let halves: TimelineItem[]
+  try {
+    halves = [
+      TimelineItemSchema.parse({ ...item, duration: offset }),
+      TimelineItemSchema.parse({
+        ...item,
+        id: randomUUID(),
+        start: atFrame,
+        duration: item.duration - offset,
+        data: secondData
+      })
+    ]
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new Error(err.issues.map((issue) => issue.message).join('; '))
+    }
+    throw err
+  }
+
+  const split = [...timeline.slice(0, index), ...halves, ...timeline.slice(index + 1)]
+  const resequenced = withSequentialStarts(split)
+  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  return [resequenced[index], resequenced[index + 1]]
+}
+
 export function reorderTimelineItems(id: string, orderedIds: string[], baseDir: string = homedir()): TimelineItem[] {
   const dir = findProjectDir(id, baseDir)
   if (!dir) {

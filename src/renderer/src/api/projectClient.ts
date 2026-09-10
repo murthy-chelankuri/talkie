@@ -25,7 +25,9 @@ export const timelineClient = {
   read: (id: string): Promise<TimelineItem[]> => window.api.timeline.read(id),
   addItem: (id: string, item: { kind: string; start: number; duration: number; data: unknown }): Promise<TimelineItem> =>
     window.api.timeline.addItem(id, item),
-  reorder: (id: string, orderedIds: string[]): Promise<TimelineItem[]> => window.api.timeline.reorder(id, orderedIds)
+  reorder: (id: string, orderedIds: string[]): Promise<TimelineItem[]> => window.api.timeline.reorder(id, orderedIds),
+  split: (id: string, timelineItemId: string, atFrame: number): Promise<TimelineItem[]> =>
+    window.api.timeline.split(id, timelineItemId, atFrame)
 }
 
 export const renderClient = {
