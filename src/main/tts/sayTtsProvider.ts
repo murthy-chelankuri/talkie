@@ -4,6 +4,7 @@ import { unlinkSync } from 'fs'
 import type { TTSProvider } from './ttsProvider'
 import { readSettings } from '../settings/settingsStore'
 import { DEFAULT_VOICE } from '../settings/schema'
+import { toSpokenMarkup } from './prosody'
 
 const execFileAsync = promisify(execFile)
 
@@ -16,8 +17,18 @@ export const sayTtsProvider: TTSProvider = {
     // writes a near-empty (near-silent) audio file instead of erroring.
     // Passing an installed, known-good voice avoids that unresolved-default path,
     // so a blank setting falls back to the default rather than omitting the flag.
-    const voice = readSettings().speech.voice.trim() || DEFAULT_VOICE
-    await execFileAsync('say', ['-v', voice, '-o', aiffPath, text])
+    const speech = readSettings().speech
+    const voice = speech.voice.trim() || DEFAULT_VOICE
+
+    // Marked up rather than read flat: pace, pauses at punctuation, and a pitch that drifts
+    // down across the paragraph are what separate explaining from reciting.
+    const spoken = toSpokenMarkup(text, {
+      pace: speech.pace,
+      sentencePauseMs: speech.sentencePauseMs,
+      clausePauseMs: speech.clausePauseMs
+    })
+
+    await execFileAsync('say', ['-v', voice, '-o', aiffPath, spoken || text])
     await execFileAsync('afconvert', ['-f', 'WAVE', '-d', 'LEI16', aiffPath, outputPath])
 
     unlinkSync(aiffPath)

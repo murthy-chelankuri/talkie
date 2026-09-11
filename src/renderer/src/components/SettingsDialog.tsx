@@ -40,8 +40,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  async function patchSpeech(voice: string): Promise<void> {
-    setSettings(await settingsClient.update({ speech: { voice } }))
+  async function patchSpeech(next: Partial<Settings['speech']>): Promise<void> {
+    setSettings(await settingsClient.update({ speech: next }))
     notifySettingsChanged()
   }
 
@@ -157,7 +157,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
                       <select
                         aria-label="Narration voice"
                         value={settings.speech.voice}
-                        onChange={(event) => patchSpeech(event.target.value)}
+                        onChange={(event) => patchSpeech({ voice: event.target.value })}
                         className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
                       >
                         {groupVoices(voices).map(([locale, group]) => (
@@ -191,6 +191,37 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
                       Hear it
                     </Button>
                   </div>
+
+                  <label className="flex flex-col gap-1 text-xs text-text-muted">
+                    Pace — {settings.speech.pace} words a minute
+                    <input
+                      type="range"
+                      aria-label="Speaking pace"
+                      min={110}
+                      max={230}
+                      step={5}
+                      value={settings.speech.pace}
+                      onChange={(event) => patchSpeech({ pace: Number(event.target.value) })}
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-xs text-text-muted">
+                    Pause at a full stop — {(settings.speech.sentencePauseMs / 1000).toFixed(2)}s
+                    <input
+                      type="range"
+                      aria-label="Pause between sentences"
+                      min={0}
+                      max={1200}
+                      step={20}
+                      value={settings.speech.sentencePauseMs}
+                      onChange={(event) => patchSpeech({ sentencePauseMs: Number(event.target.value) })}
+                    />
+                  </label>
+
+                  <p className="text-xs text-text-muted">
+                    Narration already voiced keeps the pacing it was recorded with. Narrate it again
+                    to hear a change.
+                  </p>
                 </section>
               )}
 

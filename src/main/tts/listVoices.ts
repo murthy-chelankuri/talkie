@@ -1,6 +1,9 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 
+import { readSettings } from '../settings/settingsStore'
+import { toSpokenMarkup } from './prosody'
+
 const execFileAsync = promisify(execFile)
 
 export interface Voice {
@@ -73,7 +76,16 @@ export async function listVoices(): Promise<Voice[]> {
   }
 }
 
-/** Speak a short line so the user can hear a voice before choosing it. */
+/**
+ * Speak a short line so the user can hear a voice before choosing it — with the same pacing and
+ * pauses the narration will use, otherwise the preview is not what they will get.
+ */
 export async function previewVoice(name: string, text: string): Promise<void> {
-  await execFileAsync('say', ['-v', name, text], { timeout: 30_000 })
+  const speech = readSettings().speech
+  const spoken = toSpokenMarkup(text, {
+    pace: speech.pace,
+    sentencePauseMs: speech.sentencePauseMs,
+    clausePauseMs: speech.clausePauseMs
+  })
+  await execFileAsync('say', ['-v', name, spoken || text], { timeout: 30_000 })
 }

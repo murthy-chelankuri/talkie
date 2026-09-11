@@ -34,7 +34,13 @@ export const NarrationSettingsSchema = z.object({
 
 /** The macOS voice that reads the narration. Named explicitly — see sayTtsProvider. */
 export const SpeechSettingsSchema = z.object({
-  voice: z.string().default(DEFAULT_VOICE)
+  voice: z.string().default(DEFAULT_VOICE),
+  /** Words per minute. Lower sounds like explaining; higher like reading out. */
+  pace: z.number().min(90).max(300).default(170),
+  /** Silence at a full stop, in milliseconds. */
+  sentencePauseMs: z.number().min(0).max(2000).default(420),
+  /** Silence at a comma or dash, in milliseconds. */
+  clausePauseMs: z.number().min(0).max(1000).default(300)
 })
 
 export const SettingsSchema = z.object({
