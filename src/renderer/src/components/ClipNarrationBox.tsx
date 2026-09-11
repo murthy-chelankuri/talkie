@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Sparkles } from 'lucide-react'
+import { Circle, Mic, Sparkles, Square } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
-import { hasStaleVoice, narrationTextForItem, segmentsForItem, voiceOf } from '../lib/clipNarration'
+import { hasStaleVoice, narrationTextForItem, segmentsForItem, voiceOf, RECORDED_VOICE } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
@@ -15,6 +15,9 @@ export function ClipNarrationBox({
   narrating,
   currentVoice,
   drafting,
+  recording,
+  onRecord,
+  onStopRecording,
   onDraft,
   onCommit,
   onNarrate
@@ -25,6 +28,9 @@ export function ClipNarrationBox({
   narrating: boolean
   currentVoice: string
   drafting: boolean
+  recording: boolean
+  onRecord: (item: TimelineItem) => void | Promise<void>
+  onStopRecording: () => void | Promise<void>
   onDraft: (item: TimelineItem) => void | Promise<void>
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
@@ -64,13 +70,37 @@ export function ClipNarrationBox({
           )}
           aria-hidden="true"
         />
-        <span className={cn('truncate text-[10px]', staleVoice ? 'text-accent' : 'text-text-muted')}>
-          {staleVoice ? `Voiced by ${recordedVoice}` : narrated ? 'Voiced' : 'Silent'}
+        <span
+          className={cn(
+            'truncate text-[10px]',
+            recording ? 'text-danger' : staleVoice ? 'text-accent' : 'text-text-muted'
+          )}
+        >
+          {recording
+            ? 'Recording…'
+            : staleVoice
+              ? `Voiced by ${recordedVoice}`
+              : narrated
+                ? recordedVoice === RECORDED_VOICE
+                  ? 'Your voice'
+                  : 'Voiced'
+                : 'Silent'}
         </span>
         <IconButton
+          aria-label={recording ? `Stop recording ${label}` : `Record ${label} in your own voice`}
+          className={cn(
+            'ml-auto h-5 w-5 shrink-0',
+            recording ? 'text-danger' : 'text-text-muted hover:text-danger'
+          )}
+          disabled={narrating || drafting || !draft.trim()}
+          onClick={() => (recording ? onStopRecording() : onRecord(item))}
+        >
+          {recording ? <Square size={11} fill="currentColor" /> : <Circle size={11} fill="currentColor" />}
+        </IconButton>
+        <IconButton
           aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
-          className="ml-auto h-5 w-5 shrink-0 text-text-muted hover:text-accent"
-          disabled={drafting || narrating}
+          className="h-5 w-5 shrink-0 text-text-muted hover:text-accent"
+          disabled={drafting || narrating || recording}
           onClick={() => onDraft(item)}
         >
           {drafting ? <Spinner size="sm" /> : <Sparkles size={12} />}
@@ -78,7 +108,7 @@ export function ClipNarrationBox({
         <IconButton
           aria-label={narrating ? `Narrating ${label}` : `Narrate ${label}`}
           className="h-5 w-5 shrink-0 text-text-muted hover:text-accent"
-          disabled={narrating || !draft.trim() || draft !== savedText}
+          disabled={narrating || recording || !draft.trim() || draft !== savedText}
           onClick={() => onNarrate(item)}
         >
           {narrating ? <Spinner size="sm" /> : <Mic size={12} />}

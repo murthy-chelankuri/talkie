@@ -187,6 +187,9 @@ export function Timeline({
   narratingAll,
   needingNarration,
   currentVoice,
+  recordingItemId,
+  onRecord,
+  onStopRecording,
   draftingItemId,
   draftingAll,
   onDraft,
@@ -214,6 +217,9 @@ export function Timeline({
   narratingAll: boolean
   needingNarration: number
   currentVoice: string
+  recordingItemId: string | null
+  onRecord: (item: TimelineItem) => void | Promise<void>
+  onStopRecording: () => void | Promise<void>
   draftingItemId: string | null
   draftingAll: boolean
   onDraft: (item: TimelineItem) => void | Promise<void>
@@ -477,6 +483,9 @@ export function Timeline({
                   active={item.id === itemUnderPlayheadId}
                   narrating={narratingItemId === item.id}
                   currentVoice={currentVoice}
+                  recording={recordingItemId === item.id}
+                  onRecord={onRecord}
+                  onStopRecording={onStopRecording}
                   drafting={draftingAll || draftingItemId === item.id}
                   onDraft={onDraft}
                   onCommit={onNarrationCommit}

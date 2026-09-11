@@ -6,6 +6,8 @@ import {
   deleteTranscriptSegment
 } from '../project/projectApi'
 import { narrateSegment } from '../transcript/narrate'
+import { saveRecordedNarration } from '../transcript/recordNarration'
+import { ensureMicrophoneAccess } from '../transcript/microphone'
 import { withHistory } from '../project/history'
 
 export function registerTranscriptHandlers(ipcMain: IpcMain): void {
@@ -23,6 +25,17 @@ export function registerTranscriptHandlers(ipcMain: IpcMain): void {
 
   ipcMain.handle('project:transcript:deleteSegment', (_event, projectId: string, segmentId: string) =>
     withHistory(projectId, () => deleteTranscriptSegment(projectId, segmentId))
+  )
+
+  // macOS gates the microphone behind its own prompt, which has to be asked for before the
+  // page tries to use it, or getUserMedia simply fails with no explanation.
+  ipcMain.handle('project:transcript:requestMicrophone', () => ensureMicrophoneAccess())
+
+  // A take in the user's own voice, replacing whatever was there.
+  ipcMain.handle(
+    'project:transcript:saveRecording',
+    (_event, projectId: string, segmentId: string, audio: Uint8Array) =>
+      withHistory(projectId, () => saveRecordedNarration(projectId, segmentId, audio))
   )
 
   // Undo restores the words and timings around a narration, not the recorded audio itself.

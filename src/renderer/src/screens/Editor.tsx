@@ -52,6 +52,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [voice, setVoice] = useState('')
   const [importingDeck, setImportingDeck] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
+  const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
+  const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PlayerRef>(null)
@@ -69,6 +71,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
+
+  useEffect(() => {
+    return () => recorderRef.current?.cancel()
+  }, [])
 
   useEffect(() => {
     return agentClient.onDrafted((draftedProjectId) => {
@@ -273,6 +279,53 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     } finally {
       setImportingDeck(false)
       setDeckProgress(null)
+    }
+  }
+
+  /**
+   * Record a take in the user's own voice over this clip. The narration text stays as it is —
+   * it is the script being read from, not something the recording replaces.
+   */
+  async function handleRecord(item: TimelineItem): Promise<void> {
+    setTranscriptError(null)
+    try {
+      // macOS must be asked before the page touches the microphone.
+      const access = await transcriptClient.requestMicrophone()
+      if (!access.granted) {
+        setTranscriptError(access.reason ?? 'The microphone is not available.')
+        return
+      }
+
+      const { startVoiceRecording } = await import('../lib/voiceRecorder')
+      recorderRef.current = await startVoiceRecording()
+      setRecordingItemId(item.id)
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function handleStopRecording(): Promise<void> {
+    const recorder = recorderRef.current
+    const itemId = recordingItemId
+    recorderRef.current = null
+    setRecordingItemId(null)
+    if (!recorder || !itemId) return
+
+    try {
+      const audio = await recorder.stop()
+
+      // The recording needs a segment to attach to; a clip may have words but no saved segment
+      // yet if the user never blurred the box.
+      let segment = segmentsForItem(segments, itemId)[0]
+      if (!segment) {
+        segment = await transcriptClient.addSegment(projectId, { text: ' ', timelineItemId: itemId })
+      }
+
+      await transcriptClient.saveRecording(projectId, segment.id, audio)
+      await refreshSegments()
+      await refreshTimeline()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -490,6 +543,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           narratingItemId={narratingItemId}
           narratingAll={narratingAll}
           currentVoice={voice}
+          recordingItemId={recordingItemId}
+          onRecord={handleRecord}
+          onStopRecording={handleStopRecording}
           draftingItemId={draftingItemId}
           draftingAll={draftingAll}
           onDraft={handleDraft}

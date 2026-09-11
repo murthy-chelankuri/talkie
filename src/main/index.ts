@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { registerProjectHandlers } from './ipc/projectHandlers'
 import { registerTimelineHandlers } from './ipc/timelineHandlers'
@@ -32,6 +32,12 @@ app.whenReady().then(() => {
   // and point their media at wherever the files now sit.
   migrateStorageRoot()
   repairAssetPaths()
+
+  // Recording a narration take needs the microphone, and Electron denies it unless asked.
+  // Nothing else is granted: a request for anything but audio is refused.
+  session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
+    callback(permission === 'media')
+  })
 
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)

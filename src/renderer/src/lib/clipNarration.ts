@@ -18,6 +18,9 @@ export function narrationTextForItem(segments: TranscriptSegment[], itemId: stri
 /** What the voice was before it could be chosen: `say -v Samantha` was hardcoded. */
 export const LEGACY_VOICE = 'Samantha'
 
+/** Kept in step with RECORDED_VOICE in the transcript schema. */
+export const RECORDED_VOICE = 'your own voice'
+
 /**
  * Whether this clip's narration was recorded in a voice other than the one now chosen.
  *
@@ -27,6 +30,9 @@ export const LEGACY_VOICE = 'Samantha'
 export function hasStaleVoice(segments: TranscriptSegment[], itemId: string, currentVoice: string): boolean {
   const segment = segmentsForItem(segments, itemId)[0]
   if (!segment?.audioFile || segment.status !== 'narrated') return false
+
+  // A take in the user's own voice does not go out of date when the synthesised voice changes.
+  if (segment.voice === RECORDED_VOICE) return false
 
   return voiceOf(segments, itemId) !== currentVoice
 }

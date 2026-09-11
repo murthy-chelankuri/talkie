@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+/**
+ * Marks a take the user recorded themselves rather than one a voice read out. Changing the
+ * synthesised voice must never make a real recording look out of date.
+ */
+export const RECORDED_VOICE = 'your own voice'
+
 export const TranscriptSegmentSchema = z.object({
   id: z.string(),
   text: z.string(),

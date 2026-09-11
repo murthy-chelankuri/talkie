@@ -86,7 +86,11 @@ const transcriptApi = {
   narrate: (projectId: string, segmentId: string): Promise<TranscriptSegment> =>
     ipcRenderer.invoke('project:transcript:narrate', projectId, segmentId),
   deleteSegment: (projectId: string, segmentId: string): Promise<TranscriptSegment[]> =>
-    ipcRenderer.invoke('project:transcript:deleteSegment', projectId, segmentId)
+    ipcRenderer.invoke('project:transcript:deleteSegment', projectId, segmentId),
+  saveRecording: (projectId: string, segmentId: string, audio: Uint8Array): Promise<TranscriptSegment> =>
+    ipcRenderer.invoke('project:transcript:saveRecording', projectId, segmentId, audio),
+  requestMicrophone: (): Promise<{ granted: boolean; reason?: string }> =>
+    ipcRenderer.invoke('project:transcript:requestMicrophone')
 }
 
 contextBridge.exposeInMainWorld('api', {
