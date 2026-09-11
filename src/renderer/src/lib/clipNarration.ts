@@ -15,6 +15,32 @@ export function narrationTextForItem(segments: TranscriptSegment[], itemId: stri
     .join('\n\n')
 }
 
+/** What the voice was before it could be chosen: `say -v Samantha` was hardcoded. */
+export const LEGACY_VOICE = 'Samantha'
+
+/**
+ * Whether this clip's narration was recorded in a voice other than the one now chosen.
+ *
+ * Changing the voice does not re-record anything, so without this the old audio would keep
+ * playing in the preview with no sign of why.
+ */
+export function hasStaleVoice(segments: TranscriptSegment[], itemId: string, currentVoice: string): boolean {
+  const segment = segmentsForItem(segments, itemId)[0]
+  if (!segment?.audioFile || segment.status !== 'narrated') return false
+
+  return voiceOf(segments, itemId) !== currentVoice
+}
+
+/**
+ * Which voice read this clip. Narration recorded before the voice was choosable carries none,
+ * but it is not unknown: that build could only ever have used Samantha.
+ */
+export function voiceOf(segments: TranscriptSegment[], itemId: string): string | undefined {
+  const segment = segmentsForItem(segments, itemId)[0]
+  if (!segment?.audioFile) return segment?.voice
+  return segment.voice ?? LEGACY_VOICE
+}
+
 export type NarrationCommit =
   | { action: 'none' }
   | { action: 'create'; text: string }

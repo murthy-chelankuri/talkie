@@ -5,6 +5,7 @@ import { join } from 'path'
 import { createProject, addTimelineItem, addTranscriptSegment, readTranscript, readTimeline } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
+import { updateSettings } from '../settings/settingsStore'
 
 describe('narrateSegment (real say + afconvert)', () => {
   it('synthesizes real audio and extends the linked timeline item to fit', async () => {
@@ -77,4 +78,41 @@ describe('narrateSegment (real say + afconvert)', () => {
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 30_000)
+})
+
+describe('voice', () => {
+  it('records which voice read the narration', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-voice-test-'))
+    process.env.HOME = baseDir
+    updateSettings({ speech: { voice: 'Daniel' } }, baseDir)
+
+    const project = createProject('Voice Test', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Reading in a chosen voice.', timelineItemId: item.id }, baseDir)
+
+    const result = await narrateSegment(project.id, segment.id, baseDir)
+
+    expect(result.voice).toBe('Daniel')
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
+
+  it('re-narrating in a new voice replaces the recorded voice', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-renarrate-voice-test-'))
+    process.env.HOME = baseDir
+    updateSettings({ speech: { voice: 'Samantha' } }, baseDir)
+
+    const project = createProject('Revoice Test', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Reading this line aloud.', timelineItemId: item.id }, baseDir)
+
+    const first = await narrateSegment(project.id, segment.id, baseDir)
+    updateSettings({ speech: { voice: 'Daniel' } }, baseDir)
+    const second = await narrateSegment(project.id, segment.id, baseDir)
+
+    expect(first.voice).toBe('Samantha')
+    expect(second.voice).toBe('Daniel')
+    // A new take is a new file, so the old recording is never overwritten.
+    expect(second.audioFile).not.toBe(first.audioFile)
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 60_000)
 })

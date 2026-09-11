@@ -453,7 +453,7 @@ describe('updateTranscriptSegmentAudio', () => {
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/tmp/a.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Hi', timelineItemId: item.id }, baseDir)
 
-    const updated = updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+    const updated = updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, 'Samantha', baseDir)
 
     expect(updated.audioFile).toBe(`${segment.id}.wav`)
     expect(updated.status).toBe('narrated')
@@ -635,7 +635,7 @@ describe('readNarrationAudioPaths', () => {
     const project = createProject('Narrated', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
-    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, 'Samantha', baseDir)
 
     const dir = findProjectDir(project.id, baseDir) as string
     const audioPath = join(dir, 'audio', `${segment.id}.wav`)
@@ -653,7 +653,7 @@ describe('readNarrationAudioPaths', () => {
     const project = createProject('Narration Missing Audio', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
-    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, 'Samantha', baseDir)
 
     expect(readNarrationAudioPaths(project.id, baseDir).size).toBe(0)
   })
@@ -844,7 +844,7 @@ describe('listProjectOverviews', () => {
     )
     addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Words', timelineItemId: first.id }, baseDir)
-    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, 'Samantha', baseDir)
 
     const [overview] = listProjectOverviews(baseDir)
 
@@ -946,7 +946,7 @@ describe('sweepUnusedNarrationAudio', () => {
     const project = createProject('Sweep', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Words', timelineItemId: item.id }, baseDir)
-    updateTranscriptSegmentAudio(project.id, segment.id, 'keep-me.wav', baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, 'keep-me.wav', 'Samantha', baseDir)
 
     const dir = findProjectDir(project.id, baseDir) as string
     writeFileSync(join(dir, 'audio', 'keep-me.wav'), 'current take')

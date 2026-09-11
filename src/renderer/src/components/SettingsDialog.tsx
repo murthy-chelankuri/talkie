@@ -12,6 +12,7 @@ import { IconButton } from './ui/IconButton'
 import { Input } from './ui/Input'
 import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
+import { notifySettingsChanged } from '../lib/settingsChanged'
 
 export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -41,6 +42,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
 
   async function patchSpeech(voice: string): Promise<void> {
     setSettings(await settingsClient.update({ speech: { voice } }))
+    notifySettingsChanged()
   }
 
   async function patch(next: Partial<Settings['narration']>): Promise<void> {
@@ -49,6 +51,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     // Availability depends on the settings themselves — a key added, a model renamed.
     setProviders(await settingsClient.providers())
     setLocalServer(await settingsClient.localServer())
+    notifySettingsChanged()
   }
 
   const selected = settings?.narration.provider

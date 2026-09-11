@@ -8,6 +8,8 @@ import {
   updateTimelineItemDuration
 } from '../project/projectApi'
 import { sayTtsProvider } from '../tts/sayTtsProvider'
+import { readSettings } from '../settings/settingsStore'
+import { DEFAULT_VOICE } from '../settings/schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS } from '../../remotion/constants'
 import type { TranscriptSegment } from './schema'
@@ -32,6 +34,7 @@ export async function narrateSegment(
   // the new voice, and would let a cached URL keep playing the wrong audio.
   const audioFileName = `${segmentId}-${Date.now()}.wav`
   const audioPath = join(dir, 'audio', audioFileName)
+  const voice = readSettings(baseDir).speech.voice.trim() || DEFAULT_VOICE
   await sayTtsProvider.synthesize(segment.text, audioPath)
 
   const durationSeconds = getWavDurationSeconds(audioPath)
@@ -44,5 +47,6 @@ export async function narrateSegment(
     linkedItem && linkedItem.kind === 'video' ? Math.max(linkedItem.duration, durationFrames) : durationFrames
   updateTimelineItemDuration(projectId, segment.timelineItemId, nextDuration, baseDir)
 
-  return updateTranscriptSegmentAudio(projectId, segmentId, audioFileName, baseDir)
+  // Recording the voice is what lets the editor notice narration left over from a different one.
+  return updateTranscriptSegmentAudio(projectId, segmentId, audioFileName, voice, baseDir)
 }

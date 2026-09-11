@@ -404,6 +404,7 @@ export function updateTranscriptSegmentAudio(
   id: string,
   segmentId: string,
   audioFile: string,
+  voice: string,
   baseDir: string = homedir()
 ): TranscriptSegment {
   const dir = findProjectDir(id, baseDir)
@@ -419,7 +420,7 @@ export function updateTranscriptSegmentAudio(
 
   let updated: TranscriptSegment
   try {
-    updated = TranscriptSegmentSchema.parse({ ...transcript[index], audioFile, status: 'narrated' })
+    updated = TranscriptSegmentSchema.parse({ ...transcript[index], audioFile, voice, status: 'narrated' })
   } catch (err) {
     if (err instanceof z.ZodError) {
       throw new Error(err.issues.map((issue) => issue.message).join('; '))

@@ -16,7 +16,9 @@ import {
 import { Timeline } from '../components/Timeline'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { TransportBar } from '../components/TransportBar'
-import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
+import { hasStaleVoice, planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
+import { onSettingsChanged } from '../lib/settingsChanged'
+import { settingsClient } from '../api/projectClient'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { DemoComposition } from '../../../remotion/DemoComposition'
@@ -45,6 +47,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [narratingAll, setNarratingAll] = useState(false)
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
+  const [voice, setVoice] = useState('')
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PlayerRef>(null)
@@ -112,9 +115,19 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     setHistory(await projectClient.historyState(projectId))
   }, [projectId])
 
+  // Re-read the voice whenever settings change: narration recorded in the old one is stale.
+  useEffect(() => {
+    const load = (): void => {
+      void settingsClient.read().then((settings) => setVoice(settings.speech.voice))
+    }
+    load()
+    return onSettingsChanged(load)
+  }, [])
+
   const needingNarration = timeline.filter((item) => {
     const segment = segmentsForItem(segments, item.id)[0]
-    return segment && segment.status !== 'narrated'
+    if (!segment) return false
+    return segment.status !== 'narrated' || hasStaleVoice(segments, item.id, voice)
   })
 
   useEffect(() => {
@@ -432,6 +445,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onActiveItemChange={setActiveItemId}
           narratingItemId={narratingItemId}
           narratingAll={narratingAll}
+          currentVoice={voice}
           draftingItemId={draftingItemId}
           draftingAll={draftingAll}
           onDraft={handleDraft}

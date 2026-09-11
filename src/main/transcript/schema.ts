@@ -5,6 +5,8 @@ export const TranscriptSegmentSchema = z.object({
   text: z.string(),
   timelineItemId: z.string(),
   audioFile: z.string().optional(),
+  // Which voice read this take. Absent on narration recorded before the voice was choosable.
+  voice: z.string().optional(),
   status: z.enum(['draft', 'edited', 'narrated'])
 })
 

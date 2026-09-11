@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Mic, Sparkles } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
-import { narrationTextForItem, segmentsForItem } from '../lib/clipNarration'
+import { hasStaleVoice, narrationTextForItem, segmentsForItem, voiceOf } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
@@ -13,6 +13,7 @@ export function ClipNarrationBox({
   segments,
   active,
   narrating,
+  currentVoice,
   drafting,
   onDraft,
   onCommit,
@@ -22,6 +23,7 @@ export function ClipNarrationBox({
   segments: TranscriptSegment[]
   active: boolean
   narrating: boolean
+  currentVoice: string
   drafting: boolean
   onDraft: (item: TimelineItem) => void | Promise<void>
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
@@ -40,6 +42,9 @@ export function ClipNarrationBox({
   }, [savedText])
 
   const narrated = segmentsForItem(segments, item.id)[0]?.status === 'narrated'
+  // Changing the voice does not re-record anything, so say which voice this take is in.
+  const staleVoice = hasStaleVoice(segments, item.id, currentVoice)
+  const recordedVoice = voiceOf(segments, item.id)
   const label = `Narration for ${item.kind} at ${formatTimecode(item.start / FPS)}`
 
   return (
@@ -55,12 +60,12 @@ export function ClipNarrationBox({
         <span
           className={cn(
             'h-1.5 w-1.5 shrink-0 rounded-full',
-            narrated ? 'bg-success' : 'border border-text-muted'
+            staleVoice ? 'bg-accent' : narrated ? 'bg-success' : 'border border-text-muted'
           )}
           aria-hidden="true"
         />
-        <span className="truncate text-[10px] text-text-muted">
-          {narrated ? 'Voiced' : 'Silent'}
+        <span className={cn('truncate text-[10px]', staleVoice ? 'text-accent' : 'text-text-muted')}>
+          {staleVoice ? `Voiced by ${recordedVoice}` : narrated ? 'Voiced' : 'Silent'}
         </span>
         <IconButton
           aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
