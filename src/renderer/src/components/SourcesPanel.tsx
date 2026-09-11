@@ -1,4 +1,4 @@
-import { CircleCheck, Clapperboard, Download, Film, ImagePlus, Mic } from 'lucide-react'
+import { CircleCheck, Clapperboard, Download, Film, ImagePlus, Mic, Presentation } from 'lucide-react'
 import type { ProjectMetadata, TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { segmentsForItem } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
@@ -63,6 +63,9 @@ export function SourcesPanel({
   exportError,
   recordError,
   onImportImage,
+  onImportDeck,
+  importingDeck,
+  deckProgress,
   onRecordSession,
   onExport
 }: {
@@ -77,6 +80,9 @@ export function SourcesPanel({
   exportError: string | null
   recordError: string | null
   onImportImage: () => void
+  onImportDeck: () => void
+  importingDeck: boolean
+  deckProgress: string | null
   onRecordSession: () => void
   onExport: () => void
 }): JSX.Element {
@@ -111,6 +117,14 @@ export function SourcesPanel({
           label="Add an image"
           hint="Drop in a slide or screenshot"
           onClick={onImportImage}
+        />
+        <Action
+          icon={<Presentation size={16} />}
+          label={importingDeck ? 'Importing slides' : 'Import slides'}
+          hint={importingDeck ? (deckProgress ?? 'Working…') : 'From a .pptx or .pdf deck'}
+          busy={importingDeck}
+          disabled={importingDeck}
+          onClick={onImportDeck}
         />
         <Action
           icon={<Download size={16} />}

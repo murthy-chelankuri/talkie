@@ -12,6 +12,7 @@ import {
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { withHistory } from '../project/history'
+import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -68,4 +69,28 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
 
     return withHistory(id, () => importImage(id, result.filePaths[0]))
   })
+
+  ipcMain.handle('project:import:deck', async (_event, _id: string) => {
+    const window = getWindow()
+    const options = {
+      properties: ['openFile' as const],
+      filters: [{ name: 'Presentations', extensions: ['pptx', 'pdf'] }]
+    }
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { status: 'cancelled' } satisfies PreparedDeck
+    }
+
+    return prepareDeck(result.filePaths[0])
+  })
+
+  // Rasterising happens in the renderer, where a canvas exists, so the pages come back here.
+  ipcMain.handle(
+    'project:import:saveSlides',
+    (_event, id: string, pages: Array<{ png: Uint8Array }>, notes: string[]) =>
+      withHistory(id, () => saveSlides(id, pages, notes))
+  )
 }

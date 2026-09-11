@@ -21,6 +21,7 @@
     "@remotion/renderer": "^4.0.522",
     "clsx": "^2.1.1",
     "lucide-react": "^0.445.0",
+    "pdfjs-dist": "^4.10.38",
     "playwright": "^1.63.0",
     "react-resizable-panels": "^4.12.4",
     "remotion": "^4.0.522",

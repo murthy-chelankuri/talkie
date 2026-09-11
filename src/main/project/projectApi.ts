@@ -183,7 +183,7 @@ export function addTimelineItem(
   return newItem
 }
 
-const DEFAULT_IMAGE_DURATION_FRAMES = 90
+export const DEFAULT_IMAGE_DURATION_FRAMES = 90
 
 export function importImage(id: string, sourcePath: string, baseDir: string = homedir()): TimelineItem {
   const dir = findProjectDir(id, baseDir)

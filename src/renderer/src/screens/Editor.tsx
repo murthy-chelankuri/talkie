@@ -41,6 +41,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
+  // Speaker notes read from a .pptx that had to be re-exported as a PDF.
+  const pendingNotesRef = useRef<string[]>([])
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [narratingItemId, setNarratingItemId] = useState<string | null>(null)
@@ -48,6 +50,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
   const [voice, setVoice] = useState('')
+  const [importingDeck, setImportingDeck] = useState(false)
+  const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PlayerRef>(null)
@@ -235,6 +239,43 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     }
   }
 
+  async function handleImportDeck(): Promise<void> {
+    setImportError(null)
+    setImportingDeck(true)
+    setDeckProgress(null)
+    try {
+      const deck = await projectClient.chooseDeck(projectId)
+      if (deck.status === 'cancelled') return
+
+      if (deck.status === 'needs-pdf') {
+        // The notes were readable even though the slides were not; keep them for the PDF.
+        pendingNotesRef.current = deck.notes
+        setImportError(deck.reason)
+        return
+      }
+
+      setDeckProgress('Reading the deck…')
+      const { renderPdfPages } = await import('../lib/renderPdfPages')
+      const pages = await renderPdfPages(deck.pdf, (done, total) =>
+        setDeckProgress(`Rendering slide ${done} of ${total}…`)
+      )
+
+      // Notes carried over from a .pptx the app could not render itself.
+      const notes = deck.notes.length > 0 ? deck.notes : pendingNotesRef.current
+      pendingNotesRef.current = []
+
+      setDeckProgress('Adding slides to the timeline…')
+      await projectClient.saveSlides(projectId, pages, notes)
+      await refreshTimeline()
+      await refreshSegments()
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setImportingDeck(false)
+      setDeckProgress(null)
+    }
+  }
+
   async function handleDraft(item: TimelineItem): Promise<void> {
     setTranscriptError(null)
     setDraftingItemId(item.id)
@@ -378,6 +419,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               exportError={exportError}
               recordError={recordError}
               onImportImage={handleImportImage}
+          onImportDeck={handleImportDeck}
+          importingDeck={importingDeck}
+          deckProgress={deckProgress}
               onRecordSession={handleRecordSession}
               onExport={handleExport}
             />

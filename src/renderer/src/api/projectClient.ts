@@ -37,13 +37,17 @@ export const projectClient = {
   historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
-  importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id)
+  importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id),
+  chooseDeck: (id: string) => window.api.project.chooseDeck(id),
+  saveSlides: (id: string, pages: Array<{ png: Uint8Array }>, notes: string[]) =>
+    window.api.project.saveSlides(id, pages, notes)
 }
 
 export type { Settings } from '../../../main/settings/schema'
 export type { ProviderDescription } from '../../../main/agent/providerRegistry'
 export type { LocalServer } from '../../../main/agent/localProvider'
 export type { Voice } from '../../../main/tts/listVoices'
+export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { DraftResult } from '../../../main/agent/draftNarration'
 
 export const settingsClient = {
