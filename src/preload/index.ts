@@ -6,6 +6,7 @@ import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
+import type { Voice } from '../main/tts/listVoices'
 import type { DraftResult } from '../main/agent/draftNarration'
 
 const projectApi = {
@@ -24,7 +25,10 @@ const settingsApi = {
   read: (): Promise<Settings> => ipcRenderer.invoke('settings:read'),
   update: (patch: unknown): Promise<Settings> => ipcRenderer.invoke('settings:update', patch),
   providers: (): Promise<ProviderDescription[]> => ipcRenderer.invoke('settings:providers'),
-  localServer: (): Promise<LocalServer | null> => ipcRenderer.invoke('settings:localServer')
+  localServer: (): Promise<LocalServer | null> => ipcRenderer.invoke('settings:localServer'),
+  voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
+  previewVoice: (voice: string, text: string): Promise<void> =>
+    ipcRenderer.invoke('settings:previewVoice', voice, text)
 }
 
 const agentApi = {

@@ -43,13 +43,16 @@ export const projectClient = {
 export type { Settings } from '../../../main/settings/schema'
 export type { ProviderDescription } from '../../../main/agent/providerRegistry'
 export type { LocalServer } from '../../../main/agent/localProvider'
+export type { Voice } from '../../../main/tts/listVoices'
 export type { DraftResult } from '../../../main/agent/draftNarration'
 
 export const settingsClient = {
   read: () => window.api.settings.read(),
   update: (patch: unknown) => window.api.settings.update(patch),
   providers: () => window.api.settings.providers(),
-  localServer: () => window.api.settings.localServer()
+  localServer: () => window.api.settings.localServer(),
+  voices: () => window.api.settings.voices(),
+  previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text)
 }
 
 export const agentClient = {

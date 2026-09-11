@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { CircleAlert, CircleCheck, Laptop, Cloud, X } from 'lucide-react'
+import { CircleAlert, CircleCheck, Laptop, Cloud, Volume2, X } from 'lucide-react'
 import {
   settingsClient,
   type ProviderDescription,
   type Settings,
-  type LocalServer
+  type LocalServer,
+  type Voice
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -17,6 +18,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
   const [providers, setProviders] = useState<ProviderDescription[]>([])
   const [checking, setChecking] = useState(true)
   const [localServer, setLocalServer] = useState<LocalServer | null>(null)
+  const [voices, setVoices] = useState<Voice[]>([])
+  const [previewing, setPreviewing] = useState(false)
 
   useEffect(() => {
     settingsClient.read().then(setSettings)
@@ -25,6 +28,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
       .then(setProviders)
       .finally(() => setChecking(false))
     settingsClient.localServer().then(setLocalServer)
+    settingsClient.voices().then(setVoices)
   }, [])
 
   useEffect(() => {
@@ -34,6 +38,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose])
+
+  async function patchSpeech(voice: string): Promise<void> {
+    setSettings(await settingsClient.update({ speech: { voice } }))
+  }
 
   async function patch(next: Partial<Settings['narration']>): Promise<void> {
     const updated = await settingsClient.update({ narration: next })
@@ -137,6 +145,52 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
                 )}
               </section>
 
+              {voices.length > 0 && settings && (
+                <section className="flex flex-col gap-2">
+                  <h3 className="text-sm font-medium text-text">Voice</h3>
+                  <div className="flex items-end gap-2">
+                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-text-muted">
+                      Reads the narration aloud
+                      <select
+                        aria-label="Narration voice"
+                        value={settings.speech.voice}
+                        onChange={(event) => patchSpeech(event.target.value)}
+                        className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
+                      >
+                        {groupVoices(voices).map(([locale, group]) => (
+                          <optgroup key={locale} label={describeLocale(locale)}>
+                            {group.map((voice) => (
+                              <option key={voice.name} value={voice.name}>
+                                {voice.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </label>
+                    <Button
+                      variant="secondary"
+                      disabled={previewing}
+                      onClick={async () => {
+                        setPreviewing(true)
+                        try {
+                          const chosen = voices.find((voice) => voice.name === settings.speech.voice)
+                          await settingsClient.previewVoice(
+                            settings.speech.voice,
+                            chosen?.sample ?? 'This is how your narration will sound.'
+                          )
+                        } finally {
+                          setPreviewing(false)
+                        }
+                      }}
+                    >
+                      {previewing ? <Spinner size="sm" /> : <Volume2 size={15} />}
+                      Hear it
+                    </Button>
+                  </div>
+                </section>
+              )}
+
               {selected === 'local' && (
                 <section className="flex flex-col gap-2">
                   <h3 className="text-sm font-medium text-text">Local model</h3>
@@ -230,4 +284,42 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
       </div>
     </div>
   )
+}
+
+/** Voices for the language the app is running in come first; the rest follow alphabetically. */
+function groupVoices(voices: Voice[]): Array<[string, Voice[]]> {
+  const groups = new Map<string, Voice[]>()
+  for (const voice of voices) {
+    const existing = groups.get(voice.locale)
+    if (existing) existing.push(voice)
+    else groups.set(voice.locale, [voice])
+  }
+
+  const preferred = navigator.language.replace('-', '_')
+  const preferredLanguage = preferred.split('_')[0]
+
+  return [...groups.entries()]
+    .map(([locale, group]) => {
+      // Novelty voices stay available but never sit above a usable narrator.
+      group.sort((a, b) => Number(a.novelty) - Number(b.novelty) || a.name.localeCompare(b.name))
+      return [locale, group] as [string, Voice[]]
+    })
+    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+
+  function rank(locale: string): number {
+    if (locale === preferred) return 0
+    return locale.startsWith(preferredLanguage) ? 1 : 2
+  }
+}
+
+function describeLocale(locale: string): string {
+  try {
+    const [language, region] = locale.split('_')
+    const languageName = new Intl.DisplayNames([navigator.language], { type: 'language' }).of(language)
+    if (!region) return languageName ?? locale
+    const regionName = new Intl.DisplayNames([navigator.language], { type: 'region' }).of(region)
+    return `${languageName} (${regionName})`
+  } catch {
+    return locale
+  }
 }

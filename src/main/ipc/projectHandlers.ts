@@ -14,6 +14,7 @@ import { clearHistory, historyState, redo, undo, withHistory } from '../project/
 import { readSettings, updateSettings } from '../settings/settingsStore'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
+import { listVoices, previewVoice } from '../tts/listVoices'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
@@ -50,6 +51,8 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:update', (_event, patch: unknown) => updateSettings(patch as never))
   ipcMain.handle('settings:providers', () => describeProviders())
   ipcMain.handle('settings:localServer', () => findLocalServer())
+  ipcMain.handle('settings:voices', () => listVoices())
+  ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
 
   // Drafted narration is an ordinary edit as far as undo is concerned.
   ipcMain.handle('project:agent:draftItem', (_event, projectId: string, itemId: string, force: boolean) =>
