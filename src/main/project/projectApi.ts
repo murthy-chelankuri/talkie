@@ -1,6 +1,6 @@
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'fs'
 import { basename, join } from 'path'
 import {
   CURRENT_SCHEMA_VERSION,
@@ -207,17 +207,35 @@ export function readTranscript(id: string, baseDir: string = homedir()): Transcr
   }
 }
 
-export function readNarrationAudioPaths(id: string, baseDir: string = homedir()): Map<string, string> {
+export interface NarrationAudio {
+  path: string
+  // Re-narrating a segment rewrites the same filename, so the URL built from it would not
+  // change and the renderer would keep playing the audio it had already cached. Carrying the
+  // file's modification time lets the URL change whenever the audio does.
+  version: number
+}
+
+export function readNarrationAudioPaths(
+  id: string,
+  baseDir: string = homedir()
+): Map<string, NarrationAudio> {
   const dir = findProjectDir(id, baseDir)
   if (!dir) {
     throw new Error(`No project found with id ${id}`)
   }
 
   const transcript = readTranscript(id, baseDir)
-  const paths = new Map<string, string>()
+  const paths = new Map<string, NarrationAudio>()
   for (const segment of transcript) {
-    if (segment.status === 'narrated' && segment.audioFile) {
-      paths.set(segment.timelineItemId, join(dir, 'audio', segment.audioFile))
+    if (segment.status !== 'narrated' || !segment.audioFile) continue
+
+    const path = join(dir, 'audio', segment.audioFile)
+    try {
+      paths.set(segment.timelineItemId, { path, version: Math.round(statSync(path).mtimeMs) })
+    } catch {
+      // The transcript says this segment was narrated but the audio is gone; pointing the
+      // composition at a missing file would only produce a failed request.
+      console.error(`Narration audio missing for segment ${segment.id} in project ${id}`)
     }
   }
   return paths

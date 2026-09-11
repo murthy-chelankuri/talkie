@@ -634,10 +634,25 @@ describe('readNarrationAudioPaths', () => {
     const segment = addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
     updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
 
-    const paths = readNarrationAudioPaths(project.id, baseDir)
     const dir = findProjectDir(project.id, baseDir) as string
+    const audioPath = join(dir, 'audio', `${segment.id}.wav`)
+    writeFileSync(audioPath, 'pretend audio')
 
-    expect(paths.get(item.id)).toBe(join(dir, 'audio', `${segment.id}.wav`))
+    const paths = readNarrationAudioPaths(project.id, baseDir)
+
+    expect(paths.get(item.id)?.path).toBe(audioPath)
+    // Re-narrating rewrites the same filename, so the URL has to change some other way or the
+    // renderer keeps playing the audio it already cached.
+    expect(paths.get(item.id)?.version).toBeGreaterThan(0)
+  })
+
+  it('leaves out narration whose audio file has gone missing', () => {
+    const project = createProject('Narration Missing Audio', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Hello', timelineItemId: item.id }, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+
+    expect(readNarrationAudioPaths(project.id, baseDir).size).toBe(0)
   })
 
   it('throws when the project does not exist', () => {

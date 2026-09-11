@@ -121,13 +121,14 @@ describe('asset server', () => {
     const timeline = [
       { id: 'a', kind: 'image', start: 0, duration: 90, data: { src: '/root/sources/images/photo.png' } }
     ]
-    const narrationAudioPaths = new Map([['a', '/root/audio/seg-1.wav']])
+    const narrationAudioPaths = new Map([['a', { path: '/root/audio/seg-1.wav', version: 1700 }]])
 
     const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000', narrationAudioPaths)
 
+    // The version changes whenever the audio is re-recorded, so the renderer refetches it.
     expect(resolved[0].data).toEqual({
       src: 'http://127.0.0.1:5000/sources/images/photo.png',
-      audioUrl: 'http://127.0.0.1:5000/audio/seg-1.wav'
+      audioUrl: 'http://127.0.0.1:5000/audio/seg-1.wav?v=1700'
     })
   })
 
@@ -139,6 +140,19 @@ describe('asset server', () => {
     const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000', new Map())
 
     expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/images/photo.png' })
+  })
+
+  it('ignores a cache-busting query when finding the file', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    writeFileSync(join(rootDir, 'seg.wav'), 'audio-bytes')
+
+    const server = await getAssetServer(rootDir)
+    const response = await fetch(`${server.url}/seg.wav?v=1700`)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('audio-bytes')
+
+    rmSync(rootDir, { recursive: true, force: true })
   })
 
   it('advertises range support, without which Chromium reports media as unseekable', async () => {

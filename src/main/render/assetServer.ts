@@ -3,6 +3,7 @@ import { createReadStream, existsSync, statSync } from 'fs'
 import { extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
 import type { TimelineItem } from '../../remotion/types'
+import type { NarrationAudio } from '../project/projectApi'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -145,11 +146,13 @@ export function resolveTimelineAssetUrls(
   timeline: TimelineItem[],
   rootDir: string,
   serverUrl: string,
-  narrationAudioPaths: Map<string, string> = new Map()
+  narrationAudioPaths: Map<string, NarrationAudio> = new Map()
 ): TimelineItem[] {
   return timeline.map((item) => {
-    const audioPath = narrationAudioPaths.get(item.id)
-    const audioUrl = audioPath ? resolveAssetUrl(audioPath, rootDir, serverUrl) : undefined
+    const narration = narrationAudioPaths.get(item.id)
+    const audioUrl = narration
+      ? `${resolveAssetUrl(narration.path, rootDir, serverUrl)}?v=${narration.version}`
+      : undefined
 
     if (!SRC_MEDIA_KINDS.has(item.kind)) {
       return audioUrl ? { ...item, data: { ...(item.data as object), audioUrl } } : item
