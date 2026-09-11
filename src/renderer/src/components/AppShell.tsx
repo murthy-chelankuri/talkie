@@ -25,7 +25,7 @@ export function AppShell({
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
           </span>
-          <span className="font-serif text-[15px] leading-none text-text">Demo Editor</span>
+          <span className="font-serif text-[15px] leading-none text-text">Talkie</span>
           {breadcrumb && (
             <>
               <span aria-hidden="true" className="px-0.5 text-text-muted">

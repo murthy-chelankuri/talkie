@@ -4,6 +4,8 @@ import { registerProjectHandlers } from './ipc/projectHandlers'
 import { registerTimelineHandlers } from './ipc/timelineHandlers'
 import { registerCaptureHandlers } from './ipc/captureHandlers'
 import { registerTranscriptHandlers } from './ipc/transcriptHandlers'
+import { migrateStorageRoot } from './project/migrateStorageRoot'
+import { repairAssetPaths } from './project/repairAssetPaths'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -26,6 +28,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Before any handler can read a project, bring a previous installation's projects across
+  // and point their media at wherever the files now sit.
+  migrateStorageRoot()
+  repairAssetPaths()
+
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)
   registerCaptureHandlers(ipcMain, () => mainWindowRef)

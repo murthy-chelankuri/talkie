@@ -3,7 +3,7 @@ import { ProjectMetadataSchema, CURRENT_SCHEMA_VERSION, type ProjectMetadata } f
 export class UnsupportedSchemaVersionError extends Error {
   constructor(foundVersion: number) {
     super(
-      `This project was created by a newer version of Demo Editor (schema v${foundVersion}, this app supports up to v${CURRENT_SCHEMA_VERSION}). Update the app to open it.`
+      `This project was created by a newer version of Talkie (schema v${foundVersion}, this app supports up to v${CURRENT_SCHEMA_VERSION}). Update the app to open it.`
     )
     this.name = 'UnsupportedSchemaVersionError'
   }

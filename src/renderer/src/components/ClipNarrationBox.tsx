@@ -56,7 +56,7 @@ export function ClipNarrationBox({
           aria-hidden="true"
         />
         <span className="truncate text-[10px] text-text-muted">
-          {narrated ? 'Voiced' : 'Needs voice'}
+          {narrated ? 'Voiced' : 'Silent'}
         </span>
         <IconButton
           aria-label={narrating ? `Narrating ${label}` : `Narrate ${label}`}

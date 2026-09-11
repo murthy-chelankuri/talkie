@@ -15,8 +15,8 @@ describe('paths', () => {
     rmSync(baseDir, { recursive: true, force: true })
   })
 
-  it('builds the projects root under DemoStudio/Projects', () => {
-    expect(projectsRootDir(baseDir)).toBe(join(baseDir, 'DemoStudio', 'Projects'))
+  it('builds the projects root under Talkie/Projects', () => {
+    expect(projectsRootDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Projects'))
   })
 
   it('builds a project directory name from id and slug', () => {

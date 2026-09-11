@@ -2,6 +2,7 @@ import { CircleCheck, Clapperboard, Download, Film, ImagePlus, Mic } from 'lucid
 import type { ProjectMetadata, TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { segmentsForItem } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
+import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
 import { Spinner } from './ui/Spinner'
@@ -87,13 +88,13 @@ export function SourcesPanel({
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-4">
       <div>
         <h2 className="truncate text-base font-semibold text-text">{project.name}</h2>
-        <p className="text-xs text-text-muted">Demo project</p>
+        <p className="text-xs text-text-muted">Started {formatRelativeTime(project.createdAt)}</p>
       </div>
 
       <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2.5">
         <Stat label="Duration" value={formatTimecode(totalFrames / FPS)} />
         <Stat label="Clips" value={String(timeline.length)} />
-        <Stat label="Narrated" value={`${narrated} of ${timeline.length}`} />
+        <Stat label="Voiced" value={`${narrated} of ${timeline.length}`} />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -108,7 +109,7 @@ export function SourcesPanel({
         <Action
           icon={<ImagePlus size={16} />}
           label="Add an image"
-          hint="Add a still image"
+          hint="Drop in a slide or screenshot"
           onClick={onImportImage}
         />
         <Action
@@ -153,8 +154,8 @@ export function SourcesPanel({
       {timeline.length > 0 && narrated < timeline.length && (
         <p className="mt-auto flex items-start gap-2 text-xs text-text-muted">
           <Mic size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-          {timeline.length - narrated} clip{timeline.length - narrated === 1 ? '' : 's'} still need a
-          voice. Write under a clip, then narrate it.
+          {timeline.length - narrated} clip{timeline.length - narrated === 1 ? ' is' : 's are'} still
+          silent. Write under a clip, then narrate it.
         </p>
       )}
     </div>

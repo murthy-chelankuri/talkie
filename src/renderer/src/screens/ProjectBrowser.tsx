@@ -233,7 +233,7 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
         <div>
           <h1 className="font-serif text-3xl leading-tight text-text">Your demos</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Record a walkthrough, narrate it, export a finished video.
+            Record it silent. Give it a voice.
           </p>
         </div>
         {!showCreateForm && projects.length > 0 && (
