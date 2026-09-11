@@ -54,12 +54,12 @@ describe('ClipNarrationBox', () => {
 
   it('reports its narration state', () => {
     renderBox()
-    expect(screen.getByText('narrated')).toBeInTheDocument()
+    expect(screen.getByText('Voiced')).toBeInTheDocument()
   })
 
   it('flags a clip whose narration has not been voiced yet', () => {
     renderBox({ segments: [{ ...narratedSegment, status: 'edited' }] })
-    expect(screen.getByText('not narrated')).toBeInTheDocument()
+    expect(screen.getByText('Needs voice')).toBeInTheDocument()
   })
 
   it('narrates the clip on request', async () => {

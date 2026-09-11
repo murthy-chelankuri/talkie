@@ -11,7 +11,7 @@ import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Scissors, ZoomIn, ZoomOut } from 'lucide-react'
+import { Film, Image as ImageIcon, Scissors, ZoomIn, ZoomOut } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
@@ -156,7 +156,7 @@ function ClipBlock({
       className={cn(
         // p-0 and an explicit hover colour are needed because Preflight's shim in index.css
         // gives every bare <button> hardcoded padding and a light grey hover background.
-        'absolute top-0 h-full overflow-hidden rounded-md border bg-surface p-0 text-left text-sm text-text',
+        'absolute top-0 h-full overflow-hidden rounded border bg-surface p-0 text-left text-sm text-text',
         'cursor-grab active:cursor-grabbing',
         selected ? 'border-accent ring-2 ring-accent' : 'border-border'
       )}
@@ -164,7 +164,10 @@ function ClipBlock({
       <ClipThumbnail item={item} />
       {/* Deliberately not themed: this label sits on arbitrary footage, so it needs a fixed
           dark scrim to stay legible in either theme. */}
-      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-xs text-white">{item.kind}</span>
+      <span className="absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
+        {item.kind === 'video' ? <Film size={10} /> : <ImageIcon size={10} />}
+        {item.kind}
+      </span>
     </button>
   )
 }
@@ -299,11 +302,13 @@ export function Timeline({
   }
 
   return (
-    <div className="flex h-[22rem] flex-col border-t border-border bg-surface">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
-        <span className="text-xs font-medium text-text-muted">Timeline</span>
-        <span ref={timecodeRef} className="text-xs text-text-muted">
+    <div className="flex h-full flex-col border-t border-border bg-surface">
+      <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+        <span ref={timecodeRef} className="text-sm tabular-nums text-text">
           {formatTimecode(0)} / {formatTimecode(totalFrames / FPS)}
+        </span>
+        <span className="text-xs text-text-muted">
+          {timeline.length} clip{timeline.length === 1 ? '' : 's'}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <Button
@@ -363,7 +368,7 @@ export function Timeline({
                 <span
                   key={seconds}
                   style={{ left: seconds * pixelsPerSecond }}
-                  className="absolute top-0 h-full border-l border-border pl-1 text-[10px] leading-7 text-text-muted"
+                  className="absolute top-0 h-full border-l border-border pl-1 text-[10px] leading-7 tabular-nums text-text-muted"
                 >
                   {formatTimecode(seconds)}
                 </span>
@@ -371,7 +376,7 @@ export function Timeline({
             })}
           </div>
 
-          <div className="relative mx-0 mt-2 h-24">
+          <div className="relative mx-0 mt-2 h-20">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={timeline.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
                 {timeline.map((item) => (
@@ -416,7 +421,7 @@ export function Timeline({
               aria-hidden="true"
               className="pointer-events-none absolute top-0 bottom-0 left-0 z-10 w-px bg-danger"
             >
-              <div className="-ml-1.5 h-2 w-3 rounded-b bg-danger" />
+              <div className="-ml-[5px] h-2.5 w-2.5 rotate-45 rounded-[2px] bg-danger" />
             </div>
           )}
         </div>

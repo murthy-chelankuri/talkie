@@ -16,7 +16,10 @@ export default {
         'accent-hover': 'var(--color-accent-hover)',
         'accent-foreground': 'var(--color-accent-foreground)',
         danger: 'var(--color-danger)',
-        'danger-bg': 'var(--color-danger-bg)'
+        'danger-bg': 'var(--color-danger-bg)',
+        success: 'var(--color-success)',
+        paper: 'var(--color-paper)',
+        'paper-border': 'var(--color-paper-border)'
       }
     }
   },

@@ -2,33 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Two materials, one signal colour.
+ *
+ * The chrome is cool graphite so that recorded footage is the only saturated thing on screen.
+ * The narration row is a warmer "paper" surface, because writing a script is a different act
+ * from operating a timeline and should feel like one. Brass marks what can be acted on. Red is
+ * reserved for what is live right now — the record control and the playhead — so it never has
+ * to compete for attention.
+ */
 :root {
-  --color-bg: #ffffff;
-  --color-surface: #f8f9fb;
-  --color-surface-hover: #eef0f3;
-  --color-border: #e2e4e9;
-  --color-text: #14151a;
-  --color-text-muted: #6b7280;
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
+  --color-bg: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-hover: #eef1f5;
+  --color-border: #d9dee6;
+  --color-text: #171b22;
+  --color-text-muted: #5d6675;
+  --color-accent: #8a6314;
+  --color-accent-hover: #6f4e0e;
   --color-accent-foreground: #ffffff;
-  --color-danger: #dc2626;
-  --color-danger-bg: #fef2f2;
+  --color-paper: #fdfbf6;
+  --color-paper-border: #e4dccb;
+  --color-danger: #c0333f;
+  --color-danger-bg: #fdf1f2;
+  --color-success: #1f7a52;
   color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-  --color-bg: #0f1115;
-  --color-surface: #181b21;
-  --color-surface-hover: #21252c;
-  --color-border: #2a2e37;
-  --color-text: #f2f3f5;
-  --color-text-muted: #9aa0ac;
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-accent-foreground: #ffffff;
-  --color-danger: #f87171;
-  --color-danger-bg: #451a1a;
+  --color-bg: #14171d;
+  --color-surface: #1b1f27;
+  --color-surface-hover: #232833;
+  --color-border: #2c323d;
+  --color-text: #e8eaee;
+  --color-text-muted: #99a2b1;
+  --color-accent: #d3a24c;
+  --color-accent-hover: #e2b566;
+  --color-accent-foreground: #17120a;
+  --color-paper: #1e1b16;
+  --color-paper-border: #342f26;
+  --color-danger: #ef6470;
+  --color-danger-bg: #2a1518;
+  --color-success: #59b487;
   color-scheme: dark;
 }
 
@@ -38,17 +53,12 @@ body {
 }
 
 /*
- * Temporary shim: Tailwind's Preflight (@tailwind base) strips native
- * browser default styling from form elements globally, which visually
- * regresses the screens this plan does not restyle yet (ProjectBrowser,
- * Editor, TranscriptPanel). Restore plain, unstyled browser-default-like
- * affordances here using hardcoded colors only (no design tokens) so this
- * does not participate in the theme system. Remove this block once those
- * screens receive real styling in a later phase.
+ * Temporary shim: Tailwind's Preflight (@tailwind base) strips native browser default styling
+ * from form elements globally. The screens that have been designed set their own styles; this
+ * only catches anything not yet restyled, using hardcoded colours so it cannot be mistaken for
+ * part of the design system. Remove once nothing relies on it.
  */
 @layer base {
-  input,
-  textarea,
   select {
     border: 1px solid #767676;
     padding: 0.25rem 0.5rem;

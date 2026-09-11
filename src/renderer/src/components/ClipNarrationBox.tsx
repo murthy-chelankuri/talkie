@@ -38,20 +38,26 @@ export function ClipNarrationBox({
   return (
     <div
       className={cn(
-        'flex h-full flex-col overflow-hidden rounded-md border bg-surface',
-        active ? 'border-accent' : 'border-border'
+        // Warm paper against the cool chrome above: writing a script is a different act from
+        // operating the timeline, so the surface says so.
+        'flex h-full flex-col overflow-hidden rounded-md border bg-paper',
+        active ? 'border-accent' : 'border-paper-border'
       )}
     >
-      <div className="flex items-center gap-1 border-b border-border px-1 py-0.5">
+      <div className="flex items-center gap-1.5 border-b border-paper-border px-1.5 py-1">
         <span
-          className={cn('truncate text-[10px]', narrated ? 'text-text-muted' : 'text-danger')}
-          title={narrated ? 'narrated' : 'not narrated'}
-        >
-          {narrated ? 'narrated' : 'not narrated'}
+          className={cn(
+            'h-1.5 w-1.5 shrink-0 rounded-full',
+            narrated ? 'bg-success' : 'border border-text-muted'
+          )}
+          aria-hidden="true"
+        />
+        <span className="truncate text-[10px] text-text-muted">
+          {narrated ? 'Voiced' : 'Needs voice'}
         </span>
         <IconButton
           aria-label={narrating ? `Narrating ${label}` : `Narrate ${label}`}
-          className="ml-auto h-5 w-5 shrink-0"
+          className="ml-auto h-5 w-5 shrink-0 text-text-muted hover:text-accent"
           disabled={narrating || !draft.trim() || draft !== savedText}
           onClick={() => onNarrate(item)}
         >

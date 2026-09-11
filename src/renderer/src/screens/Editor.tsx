@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
-import { CircleCheck, Circle, Download, ImagePlus } from 'lucide-react'
 import {
   projectClient,
   timelineClient,
@@ -13,10 +12,8 @@ import {
   type TranscriptSegment
 } from '../api/projectClient'
 import { Timeline } from '../components/Timeline'
+import { SourcesPanel } from '../components/SourcesPanel'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
-import { Panel } from '../components/ui/Panel'
-import { Toolbar } from '../components/ui/Toolbar'
-import { IconButton } from '../components/ui/IconButton'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { DemoComposition } from '../../../remotion/DemoComposition'
@@ -34,7 +31,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [exportedPath, setExportedPath] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout-v2', storage: localStorage })
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-columns', storage: localStorage })
+  const stageLayout = useDefaultLayout({ id: 'editor-stage', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
@@ -246,52 +244,37 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const remotionTimeline = timeline as unknown as RemotionTimelineItem[]
 
   return (
-    <div className="flex h-full flex-col">
-      <Group
-        orientation="horizontal"
-        defaultLayout={defaultLayout}
-        onLayoutChanged={onLayoutChanged}
-        className="min-h-0 flex-1"
-      >
+    <Group
+      orientation="vertical"
+      defaultLayout={stageLayout.defaultLayout}
+      onLayoutChanged={stageLayout.onLayoutChanged}
+      className="h-full"
+    >
+      <ResizablePanel id="stage" defaultSize="54" minSize="25">
+        <Group
+          orientation="horizontal"
+          defaultLayout={defaultLayout}
+          onLayoutChanged={onLayoutChanged}
+          className="h-full"
+        >
         <ResizablePanel id="sources" collapsible defaultSize="20" minSize="12">
-          <Panel title="Sources & Agents" className="h-full">
-            <Toolbar className="border-0 bg-transparent p-0">
-              <IconButton aria-label="Import Image" onClick={handleImportImage}>
-                <ImagePlus size={16} />
-              </IconButton>
-              <IconButton
-                aria-label={exporting ? 'Exporting video' : 'Export video'}
-                onClick={handleExport}
-                disabled={exporting}
-              >
-                {exporting ? <Spinner size="sm" /> : <Download size={16} />}
-              </IconButton>
-              <IconButton
-                aria-label={recording ? 'Recording in progress' : 'Record session'}
-                onClick={handleRecordSession}
-                disabled={recording}
-              >
-                {recording ? <Spinner size="sm" /> : <Circle size={16} />}
-              </IconButton>
-            </Toolbar>
-            {recording && (
-              <span className="mt-2 flex items-center gap-1.5 text-xs text-danger">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden="true" />
-                Recording…
-              </span>
-            )}
-            {exportedPath && (
-              <span className="mt-2 flex items-center gap-1.5 rounded-md bg-surface-hover px-2 py-1 text-xs text-text-muted">
-                <CircleCheck size={14} className="text-accent" aria-hidden="true" />
-                Exported to {exportedPath}
-              </span>
-            )}
-            <div className="mt-2 flex flex-col gap-2">
-              {importError && <ErrorBanner message={importError} />}
-              {exportError && <ErrorBanner message={exportError} />}
-              {recordError && <ErrorBanner message={recordError} />}
-            </div>
-          </Panel>
+          <div className="h-full border-r border-border bg-bg">
+            <SourcesPanel
+              project={project}
+              timeline={timeline}
+              segments={segments}
+              totalFrames={computeTimelineDuration(remotionTimeline)}
+              recording={recording}
+              exporting={exporting}
+              exportedPath={exportedPath}
+              importError={importError}
+              exportError={exportError}
+              recordError={recordError}
+              onImportImage={handleImportImage}
+              onRecordSession={handleRecordSession}
+              onExport={handleExport}
+            />
+          </div>
         </ResizablePanel>
         <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
         <ResizablePanel id="preview" defaultSize="80" minSize="40">
@@ -313,8 +296,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </ResizablePanel>
-      </Group>
-      <div className="flex flex-col">
+        </Group>
+      </ResizablePanel>
+      <Separator className="h-1 bg-border transition-colors hover:bg-accent" />
+      <ResizablePanel id="timeline" defaultSize="46" minSize="20">
+        <div className="flex h-full flex-col">
         {(reorderError || transcriptError) && (
           <div className="flex flex-col gap-2 px-3 pt-2">
             {reorderError && <ErrorBanner message={reorderError} />}
@@ -339,7 +325,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onNarrate={handleNarrate}
           onNarrateAll={handleNarrateAll}
         />
-      </div>
-    </div>
+        </div>
+      </ResizablePanel>
+    </Group>
   )
 }
