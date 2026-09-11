@@ -21,7 +21,8 @@ import {
   deleteTranscriptSegment,
   listProjectOverviews,
   deleteTimelineItem,
-  sweepUnusedNarrationAudio
+  sweepUnusedNarrationAudio,
+  deleteProject
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -966,5 +967,41 @@ describe('sweepUnusedNarrationAudio', () => {
     sweepUnusedNarrationAudio(project.id, baseDir)
 
     expect(existsSync(join(dir, 'audio', 'some-take.wav'))).toBe(true)
+  })
+})
+
+describe('deleteProject', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('removes the project and everything in it', () => {
+    const project = createProject('Doomed', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+
+    deleteProject(project.id, baseDir)
+
+    expect(existsSync(dir)).toBe(false)
+  })
+
+  it('leaves the other projects alone', () => {
+    const doomed = createProject('Doomed', baseDir)
+    const kept = createProject('Kept', baseDir)
+
+    deleteProject(doomed.id, baseDir)
+
+    expect(listProjects(baseDir).map((p) => p.id)).toEqual([kept.id])
+  })
+
+  it('throws a clear error when the project does not exist', () => {
+    expect(() => deleteProject('does-not-exist', baseDir)).toThrow(
+      'No project found with id does-not-exist'
+    )
   })
 })

@@ -113,6 +113,16 @@ export function openProject(id: string, baseDir: string = homedir()): ProjectMet
   return migrateProjectMetadata(raw)
 }
 
+// Deleting a project takes its recordings, narration audio and renders with it, and no undo
+// reaches across projects — the caller is expected to have confirmed first.
+export function deleteProject(id: string, baseDir: string = homedir()): void {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+  rmSync(dir, { recursive: true, force: true })
+}
+
 export function readTimeline(id: string, baseDir: string = homedir()): TimelineItem[] {
   const dir = findProjectDir(id, baseDir)
   if (!dir || !existsSync(join(dir, 'timeline.json'))) {

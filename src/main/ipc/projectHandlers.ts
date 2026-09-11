@@ -5,11 +5,12 @@ import {
   listProjects,
   listProjectOverviews,
   openProject,
-  sweepUnusedNarrationAudio
+  sweepUnusedNarrationAudio,
+  deleteProject
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
-import { historyState, redo, undo } from '../project/history'
+import { clearHistory, historyState, redo, undo } from '../project/history'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:create', (_event, name: string) => createProject(name))
@@ -33,6 +34,12 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     const project = openProject(id)
     sweepUnusedNarrationAudio(id)
     return project
+  })
+
+  ipcMain.handle('project:delete', (_event, id: string) => {
+    deleteProject(id)
+    // Its undo stack points at files that no longer exist, and a recycled id must not inherit it.
+    clearHistory(id)
   })
 
   ipcMain.handle('project:history:state', (_event, id: string) => historyState(id))

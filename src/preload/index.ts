@@ -9,6 +9,7 @@ const projectApi = {
   list: (): Promise<ProjectSummary[]> => ipcRenderer.invoke('project:list'),
   overviews: (): Promise<ProjectOverview[]> => ipcRenderer.invoke('project:overviews'),
   open: (id: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:open', id),
+  remove: (id: string): Promise<void> => ipcRenderer.invoke('project:delete', id),
   historyState: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:state', id),
   undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Clapperboard, Film, Image as ImageIcon, Mic, Plus } from 'lucide-react'
-import { projectClient, type ProjectOverview } from '../api/projectClient'
+import { Clapperboard, Film, Image as ImageIcon, Mic, Plus, Trash2 } from 'lucide-react'
+import { projectClient, type ProjectOverview, type ProjectSummary } from '../api/projectClient'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
 import { Button } from '../components/ui/Button'
+import { IconButton } from '../components/ui/IconButton'
 import { Input } from '../components/ui/Input'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
@@ -55,52 +56,106 @@ function Poster({ project }: { project: ProjectOverview }): JSX.Element {
 
 function ProjectCard({
   project,
-  onOpen
+  onOpen,
+  onDelete
 }: {
   project: ProjectOverview
-  onOpen: (id: string) => void
+  onOpen: (project: ProjectSummary) => void
+  onDelete: (project: ProjectOverview) => Promise<void>
 }): JSX.Element {
   const fullyNarrated = project.clipCount > 0 && project.narratedCount === project.clipCount
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(project.id)}
-      className={cn(
-        'group flex flex-col overflow-hidden rounded-xl border border-border bg-surface p-0 text-left',
-        'transition-colors hover:border-accent hover:bg-surface-hover'
-      )}
-    >
-      <span className="relative block aspect-video w-full overflow-hidden bg-bg">
-        <Poster project={project} />
-        {project.clipCount > 0 && (
-          <span className="absolute bottom-2 right-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] tabular-nums text-white">
-            {formatTimecode(project.durationFrames / FPS)}
-          </span>
+    <div className="group relative">
+      <button
+        type="button"
+        // Without a label the card's name is its whole run of stats, which reads poorly and
+        // collides with the delete button beside it.
+        aria-label={`Open ${project.name}`}
+        onClick={() => onOpen(project)}
+        className={cn(
+          'flex w-full flex-col overflow-hidden rounded-xl border border-border bg-surface p-0 text-left',
+          'transition-colors hover:border-accent hover:bg-surface-hover'
         )}
-      </span>
-
-      <span className="flex flex-col gap-1 px-3.5 py-3">
-        <span className="truncate text-[15px] font-medium text-text">{project.name}</span>
-        <span className="flex items-center gap-3 text-xs text-text-muted">
-          <span className="flex items-center gap-1">
-            {project.posterKind === 'image' ? <ImageIcon size={12} /> : <Film size={12} />}
-            {project.clipCount} clip{project.clipCount === 1 ? '' : 's'}
-          </span>
+      >
+        <span className="relative block aspect-video w-full overflow-hidden bg-bg">
+          <Poster project={project} />
           {project.clipCount > 0 && (
-            <span className={cn('flex items-center gap-1', fullyNarrated && 'text-success')}>
-              <Mic size={12} />
-              {fullyNarrated ? 'Voiced' : `${project.narratedCount}/${project.clipCount}`}
+            <span className="absolute bottom-2 right-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] tabular-nums text-white">
+              {formatTimecode(project.durationFrames / FPS)}
             </span>
           )}
-          <span className="ml-auto">{formatRelativeTime(project.createdAt)}</span>
         </span>
-      </span>
-    </button>
+
+        <span className="flex flex-col gap-1 px-3.5 py-3">
+          <span className="truncate text-[15px] font-medium text-text">{project.name}</span>
+          <span className="flex items-center gap-3 text-xs text-text-muted">
+            <span className="flex items-center gap-1">
+              {project.posterKind === 'image' ? <ImageIcon size={12} /> : <Film size={12} />}
+              {project.clipCount} clip{project.clipCount === 1 ? '' : 's'}
+            </span>
+            {project.clipCount > 0 && (
+              <span className={cn('flex items-center gap-1', fullyNarrated && 'text-success')}>
+                <Mic size={12} />
+                {fullyNarrated ? 'Voiced' : `${project.narratedCount}/${project.clipCount}`}
+              </span>
+            )}
+            <span className="ml-auto">{formatRelativeTime(project.createdAt)}</span>
+          </span>
+        </span>
+      </button>
+
+      {/* The delete control sits beside the card rather than inside it: a button cannot nest. */}
+      <IconButton
+        aria-label={`Delete ${project.name}`}
+        onClick={() => setConfirming(true)}
+        className={cn(
+          'absolute right-2 top-2 bg-surface/90 text-text-muted backdrop-blur',
+          'opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100',
+          confirming && 'hidden'
+        )}
+      >
+        <Trash2 size={15} />
+      </IconButton>
+
+      {confirming && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border border-danger bg-surface/95 px-5 text-center backdrop-blur">
+          <p className="text-sm text-text">
+            Delete <span className="font-medium">{project.name}</span>?
+          </p>
+          <p className="text-xs text-text-muted">
+            Its recordings, narration and timeline go with it. This cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="bg-danger text-white hover:bg-danger"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true)
+                try {
+                  await onDelete(project)
+                } finally {
+                  setDeleting(false)
+                  setConfirming(false)
+                }
+              }}
+            >
+              {deleting ? <Spinner size="sm" /> : 'Delete'}
+            </Button>
+            <Button variant="ghost" size="sm" disabled={deleting} onClick={() => setConfirming(false)}>
+              Keep
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
-export function ProjectBrowser({ onOpen }: { onOpen: (id: string) => void }): JSX.Element {
+export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) => void }): JSX.Element {
   const [projects, setProjects] = useState<ProjectOverview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -124,11 +179,21 @@ export function ProjectBrowser({ onOpen }: { onOpen: (id: string) => void }): JS
       const created = await projectClient.create(newName.trim())
       setNewName('')
       setShowCreateForm(false)
-      onOpen(created.id)
+      onOpen(created)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleDelete(project: ProjectOverview): Promise<void> {
+    setError(null)
+    try {
+      await projectClient.remove(project.id)
+      setProjects((current) => current.filter((p) => p.id !== project.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -206,7 +271,12 @@ export function ProjectBrowser({ onOpen }: { onOpen: (id: string) => void }): JS
           {showCreateForm && createForm}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} onOpen={onOpen} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onOpen={onOpen}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         </div>

@@ -7,12 +7,14 @@ import { projectClient, type ProjectOverview } from '../api/projectClient'
 vi.mock('../api/projectClient', () => ({
   projectClient: {
     overviews: vi.fn(),
-    create: vi.fn()
+    create: vi.fn(),
+    remove: vi.fn()
   }
 }))
 
 const mockedOverviews = vi.mocked(projectClient.overviews)
 const mockedCreate = vi.mocked(projectClient.create)
+const mockedRemove = vi.mocked(projectClient.remove)
 
 function overview(partial: Partial<ProjectOverview> = {}): ProjectOverview {
   return {
@@ -30,6 +32,7 @@ describe('ProjectBrowser', () => {
   beforeEach(() => {
     mockedOverviews.mockReset()
     mockedCreate.mockReset()
+    mockedRemove.mockReset()
   })
 
   it('shows a spinner while loading', () => {
@@ -48,7 +51,7 @@ describe('ProjectBrowser', () => {
     mockedOverviews.mockResolvedValue([overview()])
     render(<ProjectBrowser onOpen={vi.fn()} />)
 
-    expect(await screen.findByRole('button', { name: /My Project/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Open My Project' })).toBeInTheDocument()
     expect(screen.getByText('0:10')).toBeInTheDocument()
     expect(screen.getByText('2 clips')).toBeInTheDocument()
     expect(screen.getByText('1/2')).toBeInTheDocument()
@@ -66,9 +69,9 @@ describe('ProjectBrowser', () => {
     mockedOverviews.mockResolvedValue([overview()])
     render(<ProjectBrowser onOpen={onOpen} />)
 
-    await user.click(await screen.findByRole('button', { name: /My Project/ }))
+    await user.click(await screen.findByRole('button', { name: 'Open My Project' }))
 
-    expect(onOpen).toHaveBeenCalledWith('p1')
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }))
   })
 
   it('shows an error banner when loading fails', async () => {
@@ -93,7 +96,7 @@ describe('ProjectBrowser', () => {
     await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Fresh')
     await user.click(screen.getByRole('button', { name: 'Create project' }))
 
-    await waitFor(() => expect(onOpen).toHaveBeenCalledWith('p2'))
+    await waitFor(() => expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'p2' })))
     expect(mockedCreate).toHaveBeenCalledWith('Fresh')
   })
 
@@ -105,6 +108,46 @@ describe('ProjectBrowser', () => {
     await user.click(await screen.findByRole('button', { name: 'New project' }))
 
     expect(screen.getByRole('button', { name: 'Create project' })).toBeDisabled()
+  })
+
+  it('asks before deleting a project, and keeps it if you decline', async () => {
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([overview()])
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Delete My Project' }))
+    expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Keep' }))
+
+    expect(mockedRemove).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Open My Project' })).toBeInTheDocument()
+  })
+
+  it('deletes a project once confirmed and drops it from the list', async () => {
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([overview()])
+    mockedRemove.mockResolvedValue(undefined)
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Delete My Project' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(mockedRemove).toHaveBeenCalledWith('p1'))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Open My Project' })).not.toBeInTheDocument())
+  })
+
+  it('reports a failed delete without removing the card', async () => {
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([overview()])
+    mockedRemove.mockRejectedValue(new Error('file in use'))
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Delete My Project' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('file in use')
+    expect(screen.getByRole('button', { name: 'Open My Project' })).toBeInTheDocument()
   })
 
   it('abandons the form on cancel', async () => {
