@@ -36,6 +36,7 @@ export const templateProvider: NarrationProvider = {
 function describeActions(actions: CleanAction[]): string[] {
   const sentences: string[] = []
   let openedSomething = false
+  let clicked = 0
 
   for (const action of actions) {
     switch (action.type) {
@@ -47,7 +48,10 @@ function describeActions(actions: CleanAction[]): string[] {
       }
       case 'click': {
         const what = action.label.replace(/^clicked /, '')
-        sentences.push(`Select ${what}.`)
+        // Reading out every click in turn is what makes generated narration sound like a
+        // manual. Only the first is worth a sentence of its own.
+        sentences.push(clicked === 0 ? `From here we open ${what}.` : `Then ${what}.`)
+        clicked += 1
         break
       }
       case 'input': {

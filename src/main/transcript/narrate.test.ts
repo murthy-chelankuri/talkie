@@ -6,6 +6,8 @@ import { createProject, addTimelineItem, addTranscriptSegment, readTranscript, r
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
 import { updateSettings } from '../settings/settingsStore'
+import { getWavDurationSeconds } from '../tts/wavDuration'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 
 describe('narrateSegment (real say + afconvert)', () => {
   it('synthesizes real audio and extends the linked timeline item to fit', async () => {
@@ -115,4 +117,44 @@ describe('voice', () => {
     expect(second.audioFile).not.toBe(first.audioFile)
     rmSync(baseDir, { recursive: true, force: true })
   }, 60_000)
+})
+
+describe('pauses between clips', () => {
+  it('makes the clip long enough to hold silence either side of the words', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-pause-test-'))
+    process.env.HOME = baseDir
+    const project = createProject('Pause Test', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'A line of narration to time.', timelineItemId: item.id }, baseDir)
+
+    const result = await narrateSegment(project.id, segment.id, baseDir)
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    const spokenFrames = Math.max(
+      1,
+      Math.round(getWavDurationSeconds(join(dir, 'audio', result.audioFile as string)) * FPS)
+    )
+    const duration = readTimeline(project.id, baseDir).find((i) => i.id === item.id)?.duration
+
+    // Without the extra frames the next clip would cut in on the last word.
+    expect(duration).toBe(spokenFrames + NARRATION_LEAD_IN_FRAMES + NARRATION_TAIL_FRAMES)
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
+
+  it('still never shortens a recording to fit the pause', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-pause-video-test-'))
+    process.env.HOME = baseDir
+    const project = createProject('Pause Video', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 600, data: { src: '/tmp/session/video.webm' } },
+      baseDir
+    )
+    const segment = addTranscriptSegment(project.id, { text: 'Short.', timelineItemId: item.id }, baseDir)
+
+    await narrateSegment(project.id, segment.id, baseDir)
+
+    expect(readTimeline(project.id, baseDir).find((i) => i.id === item.id)?.duration).toBe(600)
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
 })

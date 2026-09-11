@@ -8,6 +8,8 @@ export interface NarrationRequest {
   /** 1-based position of this clip in the demo, so narration can place itself. */
   clipIndex: number
   clipCount: number
+  /** What was said over the previous clip, so this one carries on rather than restarting. */
+  previousNarration?: string
 }
 
 export interface ProviderAvailability {
@@ -35,16 +37,27 @@ export function targetWordCount(durationSeconds: number): number {
 /**
  * The instructions every model-backed provider sends. Kept in one place so the three of them
  * produce comparable narration and can be judged against each other.
+ *
+ * The job is explaining a product to someone watching, which is not the same as describing a
+ * screen. Asking for a description gets a description — a flat list of clicks that reads like
+ * someone narrating to themselves — so the instructions name that failure and rule it out.
  */
 export function buildPrompt(request: NarrationRequest): string {
-  const { evidence, projectName, clipIndex, clipCount } = request
+  const { evidence, projectName, clipIndex, clipCount, previousNarration } = request
   const words = targetWordCount(evidence.durationSeconds)
 
   const lines = [
-    `You are writing voice-over narration for one clip of a product demo called "${projectName}".`,
-    `This is clip ${clipIndex} of ${clipCount}. It is on screen for ${evidence.durationSeconds.toFixed(1)} seconds.`,
+    `You are the presenter of a product demo called "${projectName}".`,
+    'Someone is watching this video to understand what the product does and why it is worth their',
+    'time. You are talking to them.',
+    '',
+    `This is clip ${clipIndex} of ${clipCount}, on screen for ${evidence.durationSeconds.toFixed(1)} seconds.`,
     ''
   ]
+
+  if (previousNarration?.trim()) {
+    lines.push('You have just said, over the previous clip:', `  "${previousNarration.trim()}"`, '')
+  }
 
   if (evidence.actions.length > 0) {
     lines.push('Recorded while this clip was on screen:')
@@ -62,19 +75,36 @@ export function buildPrompt(request: NarrationRequest): string {
   if (evidence.framePaths.length > 0) {
     lines.push(
       evidence.kind === 'image'
-        ? 'The still image for this clip is attached. Describe what it actually shows.'
+        ? 'The still image for this clip is attached. Talk to what it actually shows.'
         : `${evidence.framePaths.length} screenshots sampled across the clip are attached, in order.`,
       ''
     )
   }
 
   lines.push(
-    'Write the narration to be spoken aloud over this clip.',
-    `- About ${words} words. Going long means the voice runs past the clip.`,
-    '- Plain spoken English, present tense, second person or neutral.',
-    '- Describe what the viewer can see. Never invent a feature, product name, number or claim.',
-    '- No markdown, no headings, no bullet points, no stage directions, no quotation marks around the whole thing.',
-    '- Reply with the narration and nothing else.'
+    'Write what you say out loud over this clip.',
+    `- About ${words} words. Going long means your voice runs past the clip.`,
+    '- Talk to the viewer. Say what is happening and why it matters to them.',
+    '- Do not read out the clicks. "You click the menu. You click State News." is a list of',
+    '  instructions, not an explanation — say what is being looked for and what turns up.',
+    '- Sound like a person speaking, not a caption: contractions, varied sentence length, and no',
+    '  throat-clearing like "In this video" or "Here we can see".',
+    '- Never invent a feature, product name, number or claim. Where you cannot tell what',
+    '  something is, say plainly what is on screen instead of guessing.'
+  )
+
+  if (clipIndex === 1) {
+    lines.push('- This is the opening. Say what the viewer is about to see, then get on with it.')
+  } else {
+    lines.push('- Carry on from what you just said. Do not reintroduce the product or start again.')
+  }
+  if (clipIndex === clipCount && clipCount > 1) {
+    lines.push('- This is the last clip. Land it rather than trailing off.')
+  }
+
+  lines.push(
+    '- No markdown, headings, bullets, stage directions or speaker labels.',
+    '- Reply with the spoken words and nothing else.'
   )
 
   return lines.join('\n')

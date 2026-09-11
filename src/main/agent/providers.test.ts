@@ -48,7 +48,7 @@ describe('templateProvider', () => {
       })
     )
 
-    expect(text).toBe('We start on www.eenadu.net. Select "Politics".')
+    expect(text).toBe('We start on www.eenadu.net. From here we open "Politics".')
   })
 
   it('reads a search as a search rather than a url', async () => {
@@ -154,6 +154,28 @@ describe('buildPrompt', () => {
 
   it('forbids inventing things, which is the failure that would matter most', () => {
     expect(buildPrompt(request())).toContain('Never invent a feature, product name, number or claim')
+  })
+
+  it('asks for an explanation rather than a reading of the clicks', () => {
+    const prompt = buildPrompt(request())
+
+    expect(prompt).toContain('Talk to the viewer')
+    expect(prompt).toContain('Do not read out the clicks')
+  })
+
+  it('hands over what was just said, so a clip carries on rather than restarting', () => {
+    const prompt = buildPrompt(request({ previousNarration: 'We opened the news site.' }))
+
+    expect(prompt).toContain('We opened the news site.')
+    expect(prompt).toContain('Carry on from what you just said')
+  })
+
+  it('treats the first clip as the opening', () => {
+    expect(buildPrompt(request({ clipIndex: 1 }))).toContain('This is the opening')
+  })
+
+  it('asks the last clip to land rather than trail off', () => {
+    expect(buildPrompt(request({ clipIndex: 5, clipCount: 5 }))).toContain('This is the last clip')
   })
 
   it('tells the model how many screenshots it is getting', () => {

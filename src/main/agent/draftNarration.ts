@@ -57,11 +57,13 @@ export async function draftNarrationForItem(
   const evidence = await gatherClipEvidence(projectId, timelineItemId, baseDir)
   try {
     const timeline = readTimeline(projectId, baseDir)
+    const index = timeline.findIndex((item) => item.id === timelineItemId)
     const text = await provider.draft({
       evidence,
       projectName: projectName(projectId, baseDir),
-      clipIndex: timeline.findIndex((item) => item.id === timelineItemId) + 1,
-      clipCount: timeline.length
+      clipIndex: index + 1,
+      clipCount: timeline.length,
+      previousNarration: narrationOf(projectId, timeline[index - 1]?.id, baseDir)
     })
 
     if (!text.trim()) {
@@ -107,6 +109,12 @@ export async function draftNarrationForProject(
     results.push(await draftNarrationForItem(projectId, item.id, options, baseDir))
   }
   return results
+}
+
+/** What was said over the clip before this one, so a draft can pick up rather than restart. */
+function narrationOf(projectId: string, timelineItemId: string | undefined, baseDir: string): string | undefined {
+  if (!timelineItemId) return undefined
+  return readTranscript(projectId, baseDir).find((segment) => segment.timelineItemId === timelineItemId)?.text
 }
 
 function projectName(projectId: string, baseDir: string): string {

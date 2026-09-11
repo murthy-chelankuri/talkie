@@ -11,7 +11,7 @@ import { sayTtsProvider } from '../tts/sayTtsProvider'
 import { readSettings } from '../settings/settingsStore'
 import { DEFAULT_VOICE } from '../settings/schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 import type { TranscriptSegment } from './schema'
 
 export async function narrateSegment(
@@ -38,7 +38,10 @@ export async function narrateSegment(
   await sayTtsProvider.synthesize(segment.text, audioPath)
 
   const durationSeconds = getWavDurationSeconds(audioPath)
-  const durationFrames = Math.max(1, Math.round(durationSeconds * FPS))
+  // The clip has to hold the silence either side of the words as well as the words themselves,
+  // or the pause would simply be cut off by the next clip starting.
+  const durationFrames =
+    Math.max(1, Math.round(durationSeconds * FPS)) + NARRATION_LEAD_IN_FRAMES + NARRATION_TAIL_FRAMES
 
   // An image has no length of its own, so the narration defines it. A video does: shrinking it
   // to fit a shorter narration would silently cut the recording off, so only ever grow it.
