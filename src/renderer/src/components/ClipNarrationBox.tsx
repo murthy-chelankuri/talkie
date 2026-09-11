@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Mic } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { narrationTextForItem, segmentsForItem } from '../lib/clipNarration'
@@ -25,11 +25,14 @@ export function ClipNarrationBox({
 }): JSX.Element {
   const savedText = narrationTextForItem(segments, item.id)
   const [draft, setDraft] = useState(savedText)
+  const lastSavedRef = useRef(savedText)
 
-  // Take in changes made elsewhere (a narration finishing, a clip being split) without
-  // discarding whatever is being typed right now.
+  // Take in changes made elsewhere — a narration finishing, an undo — while never discarding
+  // what is being typed. Untouched means the draft still matches the text last seen as saved.
   useEffect(() => {
-    setDraft((current) => (current === savedText ? current : current.trim() === '' ? savedText : current))
+    if (savedText === lastSavedRef.current) return
+    setDraft((current) => (current === lastSavedRef.current ? savedText : current))
+    lastSavedRef.current = savedText
   }, [savedText])
 
   const narrated = segmentsForItem(segments, item.id)[0]?.status === 'narrated'

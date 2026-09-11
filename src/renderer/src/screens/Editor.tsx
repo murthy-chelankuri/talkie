@@ -43,6 +43,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [narratingItemId, setNarratingItemId] = useState<string | null>(null)
   const [narratingAll, setNarratingAll] = useState(false)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
+  const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PlayerRef>(null)
 
   useEffect(() => {
@@ -71,16 +72,52 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   async function refreshTimeline(): Promise<void> {
     setTimeline(await timelineClient.read(projectId))
+    setHistory(await projectClient.historyState(projectId))
   }
+
+  const refreshEverything = useCallback(async (): Promise<void> => {
+    const [items, transcript, state] = await Promise.all([
+      timelineClient.read(projectId),
+      transcriptClient.read(projectId),
+      projectClient.historyState(projectId)
+    ])
+    setTimeline(items)
+    setSegments(transcript)
+    setHistory(state)
+  }, [projectId])
+
+  const handleUndo = useCallback(async (): Promise<void> => {
+    await projectClient.undo(projectId)
+    await refreshEverything()
+  }, [projectId, refreshEverything])
+
+  const handleRedo = useCallback(async (): Promise<void> => {
+    await projectClient.redo(projectId)
+    await refreshEverything()
+  }, [projectId, refreshEverything])
 
   const refreshSegments = useCallback(async (): Promise<void> => {
     setSegments(await transcriptClient.read(projectId))
+    setHistory(await projectClient.historyState(projectId))
   }, [projectId])
 
   const needingNarration = timeline.filter((item) => {
     const segment = segmentsForItem(segments, item.id)[0]
     return segment && segment.status !== 'narrated'
   })
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return
+      const target = event.target as HTMLElement | null
+      // Inside a text field this belongs to the field's own undo, not the project's.
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) return
+      event.preventDefault()
+      void (event.shiftKey ? handleRedo() : handleUndo())
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleUndo, handleRedo])
 
   const handleSeek = useCallback((frame: number): void => {
     playerRef.current?.seekTo(frame)
@@ -357,6 +394,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onNarrate={handleNarrate}
           onNarrateAll={handleNarrateAll}
           onDelete={handleDeleteClip}
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
         />
         </div>
       </ResizablePanel>

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ProjectMetadata, ProjectSummary, ProjectOverview } from '../main/project/schema'
+import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import type { TranscriptSegment } from '../main/transcript/schema'
 
@@ -8,6 +9,9 @@ const projectApi = {
   list: (): Promise<ProjectSummary[]> => ipcRenderer.invoke('project:list'),
   overviews: (): Promise<ProjectOverview[]> => ipcRenderer.invoke('project:overviews'),
   open: (id: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:open', id),
+  historyState: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:state', id),
+  undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
+  redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),
   importImage: (id: string): Promise<TimelineItem | null> => ipcRenderer.invoke('project:import:image', id)
 }
 

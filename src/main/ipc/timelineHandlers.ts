@@ -11,6 +11,7 @@ import {
   deleteTimelineItem
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
+import { withHistory } from '../project/history'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -32,19 +33,19 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
   ipcMain.handle(
     'project:timeline:addItem',
     (_event, id: string, item: { kind: string; start: number; duration: number; data: unknown }) =>
-      addTimelineItem(id, item)
+      withHistory(id, () => addTimelineItem(id, item))
   )
 
   ipcMain.handle('project:timeline:reorder', (_event, id: string, orderedIds: string[]) =>
-    reorderTimelineItems(id, orderedIds)
+    withHistory(id, () => reorderTimelineItems(id, orderedIds))
   )
 
   ipcMain.handle('project:timeline:split', (_event, id: string, timelineItemId: string, atFrame: number) =>
-    splitTimelineItem(id, timelineItemId, atFrame)
+    withHistory(id, () => splitTimelineItem(id, timelineItemId, atFrame))
   )
 
   ipcMain.handle('project:timeline:delete', (_event, id: string, timelineItemId: string) =>
-    deleteTimelineItem(id, timelineItemId)
+    withHistory(id, () => deleteTimelineItem(id, timelineItemId))
   )
 
   ipcMain.handle('project:render:export', (_event, id: string) => renderProjectVideo(id))
@@ -65,6 +66,6 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
       return null
     }
 
-    return importImage(id, result.filePaths[0])
+    return withHistory(id, () => importImage(id, result.filePaths[0]))
   })
 }

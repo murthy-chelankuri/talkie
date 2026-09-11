@@ -6,6 +6,7 @@ import {
   deleteTranscriptSegment
 } from '../project/projectApi'
 import { narrateSegment } from '../transcript/narrate'
+import { withHistory } from '../project/history'
 
 export function registerTranscriptHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:transcript:read', (_event, projectId: string) => readTranscript(projectId))
@@ -13,18 +14,19 @@ export function registerTranscriptHandlers(ipcMain: IpcMain): void {
   ipcMain.handle(
     'project:transcript:addSegment',
     (_event, projectId: string, input: { text: string; timelineItemId: string }) =>
-      addTranscriptSegment(projectId, input)
+      withHistory(projectId, () => addTranscriptSegment(projectId, input))
   )
 
   ipcMain.handle('project:transcript:updateText', (_event, projectId: string, segmentId: string, text: string) =>
-    updateTranscriptSegmentText(projectId, segmentId, text)
+    withHistory(projectId, () => updateTranscriptSegmentText(projectId, segmentId, text))
   )
 
   ipcMain.handle('project:transcript:deleteSegment', (_event, projectId: string, segmentId: string) =>
-    deleteTranscriptSegment(projectId, segmentId)
+    withHistory(projectId, () => deleteTranscriptSegment(projectId, segmentId))
   )
 
+  // Undo restores the words and timings around a narration, not the recorded audio itself.
   ipcMain.handle('project:transcript:narrate', (_event, projectId: string, segmentId: string) =>
-    narrateSegment(projectId, segmentId)
+    withHistory(projectId, () => narrateSegment(projectId, segmentId))
   )
 }

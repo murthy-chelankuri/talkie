@@ -11,7 +11,7 @@ import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, Image as ImageIcon, Scissors, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Film, Image as ImageIcon, Redo2, Scissors, Trash2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
@@ -189,7 +189,11 @@ export function Timeline({
   onNarrationCommit,
   onNarrate,
   onNarrateAll,
-  onDelete
+  onDelete,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo
 }: {
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
@@ -208,6 +212,10 @@ export function Timeline({
   onNarrate: (item: TimelineItem) => void | Promise<void>
   onNarrateAll: () => void | Promise<void>
   onDelete: (item: TimelineItem) => void | Promise<void>
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void | Promise<void>
+  onRedo: () => void | Promise<void>
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
@@ -347,6 +355,12 @@ export function Timeline({
           >
             {narratingAll ? <Spinner size="sm" /> : `Narrate all (${needingNarration})`}
           </Button>
+          <IconButton aria-label="Undo" disabled={!canUndo} onClick={onUndo}>
+            <Undo2 size={16} />
+          </IconButton>
+          <IconButton aria-label="Redo" disabled={!canRedo} onClick={onRedo}>
+            <Redo2 size={16} />
+          </IconButton>
           <IconButton
             aria-label="Remove clip at playhead"
             disabled={!itemUnderPlayhead}

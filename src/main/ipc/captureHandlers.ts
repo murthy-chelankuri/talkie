@@ -2,6 +2,7 @@ import type { IpcMain, BrowserWindow } from 'electron'
 import { startRecordingSession, type RecordingSession } from '../capture/recordSession'
 import { openToolbarWindow } from '../capture/toolbarWindow'
 import { importRecordedSession } from '../capture/importRecordedSession'
+import { withHistory } from '../project/history'
 
 let activeSession: RecordingSession | null = null
 let starting = false
@@ -16,9 +17,11 @@ async function importAndNotify(
   getWindow: () => BrowserWindow | null
 ): Promise<void> {
   try {
-    await importRecordedSession(projectId, recording.videoPath, undefined, {
-      contentStartMs: recording.contentStartMs
-    })
+    await withHistory(projectId, () =>
+      importRecordedSession(projectId, recording.videoPath, undefined, {
+        contentStartMs: recording.contentStartMs
+      })
+    )
     getWindow()?.webContents.send('project:capture:sessionImported', projectId)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)

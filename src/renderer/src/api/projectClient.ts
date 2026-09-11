@@ -14,6 +14,11 @@ export interface ProjectMetadata extends ProjectSummary {
   schemaVersion: number
 }
 
+export interface HistoryState {
+  canUndo: boolean
+  canRedo: boolean
+}
+
 export interface ProjectOverview extends ProjectSummary {
   clipCount: number
   durationFrames: number
@@ -28,6 +33,9 @@ export const projectClient = {
   list: (): Promise<ProjectSummary[]> => window.api.project.list(),
   overviews: (): Promise<ProjectOverview[]> => window.api.project.overviews(),
   open: (id: string): Promise<ProjectMetadata> => window.api.project.open(id),
+  historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
+  undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
+  redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
   importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id)
 }
 
