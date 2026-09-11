@@ -26,6 +26,8 @@
   --color-danger: #c0333f;
   --color-danger-bg: #fdf1f2;
   --color-success: #1f7a52;
+  --color-media: #0f766e;
+  --color-slides: #6d28d9;
   color-scheme: light;
 }
 
@@ -44,6 +46,8 @@
   --color-danger: #ef6470;
   --color-danger-bg: #2a1518;
   --color-success: #59b487;
+  --color-media: #5eead4;
+  --color-slides: #c4b5fd;
   color-scheme: dark;
 }
 

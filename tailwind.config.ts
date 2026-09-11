@@ -22,6 +22,8 @@ export default {
         danger: 'var(--color-danger)',
         'danger-bg': 'var(--color-danger-bg)',
         success: 'var(--color-success)',
+        media: 'var(--color-media)',
+        slides: 'var(--color-slides)',
         paper: 'var(--color-paper)',
         'paper-border': 'var(--color-paper-border)'
       }

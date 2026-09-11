@@ -17,6 +17,7 @@ asarUnpack:
   - node_modules/playwright-core/**
 
 mac:
+  icon: build/icon.icns
   category: public.app-category.video
   target:
     - target: dmg

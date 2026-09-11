@@ -5,10 +5,10 @@ import { ProjectSwitcher } from './ProjectSwitcher'
 import { projectClient } from '../api/projectClient'
 
 vi.mock('../api/projectClient', () => ({
-  projectClient: { list: vi.fn() }
+  projectClient: { overviews: vi.fn() }
 }))
 
-const mockedList = vi.mocked(projectClient.list)
+const mockedList = vi.mocked(projectClient.overviews)
 
 function renderSwitcher(overrides: { onSwitch?: () => void; onExit?: () => void } = {}) {
   const onSwitch = vi.fn()
@@ -28,8 +28,22 @@ describe('ProjectSwitcher', () => {
   beforeEach(() => {
     mockedList.mockReset()
     mockedList.mockResolvedValue([
-      { id: 'p1', name: 'Checkout demo', createdAt: '2026-09-01T00:00:00.000Z' },
-      { id: 'p2', name: 'Onboarding tour', createdAt: '2026-09-02T00:00:00.000Z' }
+      {
+        id: 'p1',
+        name: 'Checkout demo',
+        createdAt: '2026-09-01T00:00:00.000Z',
+        clipCount: 4,
+        durationFrames: 300,
+        narratedCount: 4
+      },
+      {
+        id: 'p2',
+        name: 'Onboarding tour',
+        createdAt: '2026-09-02T00:00:00.000Z',
+        clipCount: 2,
+        durationFrames: 120,
+        narratedCount: 0
+      }
     ])
   })
 

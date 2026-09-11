@@ -36,7 +36,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [exportedPath, setExportedPath] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-columns', storage: localStorage })
   const stageLayout = useDefaultLayout({ id: 'editor-stage', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
@@ -53,6 +52,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [importingDeck, setImportingDeck] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
+  // Remembered, because the rail is a working preference rather than a per-session choice.
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(
+    () => localStorage.getItem('talkie.sourcesCollapsed') === 'true'
+  )
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
@@ -71,6 +74,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
+
+  useEffect(() => {
+    localStorage.setItem('talkie.sourcesCollapsed', String(sourcesCollapsed))
+  }, [sourcesCollapsed])
+
+  // A collapsed rail has no room for an error, and an error nobody can read is worse than the
+  // failure itself — so anything that went wrong opens the panel to say so.
+  useEffect(() => {
+    if (importError || exportError || recordError) setSourcesCollapsed(false)
+  }, [importError, exportError, recordError])
 
   useEffect(() => {
     return () => recorderRef.current?.cancel()
@@ -452,14 +465,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       className="h-full"
     >
       <ResizablePanel id="stage" defaultSize="54" minSize="25">
-        <Group
-          orientation="horizontal"
-          defaultLayout={defaultLayout}
-          onLayoutChanged={onLayoutChanged}
-          className="h-full"
-        >
-        <ResizablePanel id="sources" collapsible defaultSize="20" minSize="12">
-          <div className="h-full border-r border-border bg-bg">
+        <div className="flex h-full">
             <SourcesPanel
               project={project}
               timeline={timeline}
@@ -477,11 +483,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           deckProgress={deckProgress}
               onRecordSession={handleRecordSession}
               onExport={handleExport}
+              collapsed={sourcesCollapsed}
+              onToggleCollapsed={() => setSourcesCollapsed((open) => !open)}
             />
-          </div>
-        </ResizablePanel>
-        <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
-        <ResizablePanel id="preview" defaultSize="80" minSize="40">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-full flex-col bg-bg">
             {/* A dark mat in either theme: footage should be judged against neutral
                 surroundings, not against the app's own background. */}
@@ -517,8 +522,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               />
             )}
           </div>
-        </ResizablePanel>
-        </Group>
+        </div>
+        </div>
       </ResizablePanel>
       <Separator className="h-1 bg-border transition-colors hover:bg-accent" />
       <ResizablePanel id="timeline" defaultSize="46" minSize="20">

@@ -1,58 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Clapperboard, Film, Image as ImageIcon, Mic, Plus, Trash2 } from 'lucide-react'
 import { projectClient, type ProjectOverview, type ProjectSummary } from '../api/projectClient'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
+import { ProjectPoster } from '../components/ProjectPoster'
 import { Button } from '../components/ui/Button'
 import { IconButton } from '../components/ui/IconButton'
 import { Input } from '../components/ui/Input'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
-
-function Poster({ project }: { project: ProjectOverview }): JSX.Element {
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const startSeconds = (project.posterTrimBefore ?? 0) / FPS
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || startSeconds <= 0) return
-    const seek = (): void => {
-      video.currentTime = startSeconds
-    }
-    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-      seek()
-      return
-    }
-    video.addEventListener('loadedmetadata', seek, { once: true })
-    return () => video.removeEventListener('loadedmetadata', seek)
-  }, [startSeconds, project.posterPath])
-
-  if (!project.posterPath) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-hover text-text-muted">
-        <Film size={20} aria-hidden="true" />
-      </div>
-    )
-  }
-
-  if (project.posterKind === 'video') {
-    return (
-      <video
-        ref={videoRef}
-        src={project.posterPath}
-        muted
-        playsInline
-        preload="metadata"
-        crossOrigin="anonymous"
-        className="h-full w-full object-cover"
-      />
-    )
-  }
-
-  return <img src={project.posterPath} alt="" className="h-full w-full object-cover" />
-}
 
 function ProjectCard({
   project,
@@ -81,7 +39,7 @@ function ProjectCard({
         )}
       >
         <span className="relative block aspect-video w-full overflow-hidden bg-bg">
-          <Poster project={project} />
+          <ProjectPoster project={project} className="h-full w-full" />
           {project.clipCount > 0 && (
             <span className="absolute bottom-2 right-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] tabular-nums text-white">
               {formatTimecode(project.durationFrames / FPS)}
