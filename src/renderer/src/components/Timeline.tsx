@@ -31,44 +31,81 @@ const ZOOM_STEP = 1.5
 // blank capture settles on a frame instead of playing through to the end.
 const THUMBNAIL_SCAN_LIMIT_SECONDS = 8
 
-function VideoThumbnail({ src }: { src: string }): JSX.Element {
+function VideoThumbnail({ src, startSeconds }: { src: string; startSeconds: number }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
 
-  // Recordings open on the blank page from before the site painted, so play muted until a frame
-  // actually has content and hold it there.
-  function handleTimeUpdate(event: SyntheticEvent<HTMLVideoElement>): void {
-    const video = event.currentTarget
-    if (video.paused) return
-
-    if (video.currentTime >= THUMBNAIL_SCAN_LIMIT_SECONDS) {
-      video.pause()
-      return
-    }
-
+  function frameHasContent(video: HTMLVideoElement): boolean {
     const canvas = (canvasRef.current ??= document.createElement('canvas'))
     canvas.width = 32
     canvas.height = 18
     const context = canvas.getContext('2d')
-    if (!context) return
+    if (!context) return true
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
     try {
-      if (hasVisibleContent(context.getImageData(0, 0, canvas.width, canvas.height).data)) {
-        video.pause()
-      }
+      return hasVisibleContent(context.getImageData(0, 0, canvas.width, canvas.height).data)
     } catch {
+      // Pixels unreadable, so there is nothing to scan for — keep whatever frame is showing.
+      return true
+    }
+  }
+
+  // Show the first frame this clip actually plays. Two clips split from one recording share a
+  // file and differ only by where they start, so a thumbnail that ignored that would be the
+  // same picture on both halves.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const show = (): void => {
+      if (startSeconds > 0) {
+        video.currentTime = startSeconds
+        return
+      }
+      void video.play().catch(() => undefined)
+    }
+
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      show()
+      return
+    }
+    video.addEventListener('loadedmetadata', show, { once: true })
+    return () => video.removeEventListener('loadedmetadata', show)
+  }, [src, startSeconds])
+
+  // A recording opens on the blank page from before the site painted, and a clip can start in a
+  // similar gap, so when the frame we landed on has nothing in it, roll forward until one does.
+  function handleSeeked(event: SyntheticEvent<HTMLVideoElement>): void {
+    const video = event.currentTarget
+    if (!video.paused) return
+    if (!frameHasContent(video)) {
+      void video.play().catch(() => undefined)
+    }
+  }
+
+  function handleTimeUpdate(event: SyntheticEvent<HTMLVideoElement>): void {
+    const video = event.currentTarget
+    if (video.paused) return
+
+    if (video.currentTime >= startSeconds + THUMBNAIL_SCAN_LIMIT_SECONDS) {
+      video.pause()
+      return
+    }
+    if (frameHasContent(video)) {
       video.pause()
     }
   }
 
   return (
     <video
+      ref={videoRef}
       src={src}
       muted
       playsInline
-      autoPlay
       preload="auto"
       crossOrigin="anonymous"
+      onSeeked={handleSeeked}
       onTimeUpdate={handleTimeUpdate}
       className="pointer-events-none h-full w-full object-cover"
     />
@@ -76,11 +113,12 @@ function VideoThumbnail({ src }: { src: string }): JSX.Element {
 }
 
 function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
-  const src = (item.data as { src?: string } | null | undefined)?.src
+  const data = item.data as { src?: string; trimBefore?: number } | null | undefined
+  const src = data?.src
   if (!src) return null
 
   if (item.kind === 'video') {
-    return <VideoThumbnail src={src} />
+    return <VideoThumbnail src={src} startSeconds={(data.trimBefore ?? 0) / FPS} />
   }
 
   return <img src={src} alt="" className="pointer-events-none h-full w-full object-cover" />
