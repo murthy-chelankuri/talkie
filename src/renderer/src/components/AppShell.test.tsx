@@ -26,7 +26,7 @@ describe('AppShell', () => {
       </AppShell>
     )
     const before = document.documentElement.dataset.theme
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: /Switch to (light|dark) theme/ }))
     expect(document.documentElement.dataset.theme).not.toBe(before)
   })
 })

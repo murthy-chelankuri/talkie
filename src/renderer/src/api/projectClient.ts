@@ -40,6 +40,23 @@ export const projectClient = {
   importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id)
 }
 
+export type { Settings } from '../../../main/settings/schema'
+export type { ProviderDescription } from '../../../main/agent/providerRegistry'
+export type { DraftResult } from '../../../main/agent/draftNarration'
+
+export const settingsClient = {
+  read: () => window.api.settings.read(),
+  update: (patch: unknown) => window.api.settings.update(patch),
+  providers: () => window.api.settings.providers()
+}
+
+export const agentClient = {
+  draftItem: (projectId: string, itemId: string, force = false) =>
+    window.api.agent.draftItem(projectId, itemId, force),
+  draftAll: (projectId: string, force = false) => window.api.agent.draftAll(projectId, force),
+  onDrafted: (callback: (projectId: string) => void) => window.api.agent.onDrafted(callback)
+}
+
 export const timelineClient = {
   read: (id: string): Promise<TimelineItem[]> => window.api.timeline.read(id),
   addItem: (id: string, item: { kind: string; start: number; duration: number; data: unknown }): Promise<TimelineItem> =>

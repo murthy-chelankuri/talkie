@@ -3,6 +3,8 @@ import { startRecordingSession, type RecordingSession } from '../capture/recordS
 import { openToolbarWindow } from '../capture/toolbarWindow'
 import { importRecordedSession } from '../capture/importRecordedSession'
 import { withHistory } from '../project/history'
+import { readSettings } from '../settings/settingsStore'
+import { draftNarrationForItem } from '../agent/draftNarration'
 
 let activeSession: RecordingSession | null = null
 let starting = false
@@ -17,14 +19,41 @@ async function importAndNotify(
   getWindow: () => BrowserWindow | null
 ): Promise<void> {
   try {
-    await withHistory(projectId, () =>
+    const item = await withHistory(projectId, () =>
       importRecordedSession(projectId, recording.videoPath, undefined, {
         contentStartMs: recording.contentStartMs
       })
     )
     getWindow()?.webContents.send('project:capture:sessionImported', projectId)
+    void autoDraft(projectId, item.id, getWindow)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)
+  }
+}
+
+/**
+ * Draft the narration for a clip that has just landed, when the user has left auto-drafting on.
+ *
+ * This runs after the editor has already been told about the clip, so the recording appears at
+ * once and the words catch up. A provider that is missing or failing is logged and nothing
+ * more: the clip is on the timeline either way, and the user can still write their own.
+ */
+async function autoDraft(
+  projectId: string,
+  timelineItemId: string,
+  getWindow: () => BrowserWindow | null
+): Promise<void> {
+  if (!readSettings().narration.autoDraft) return
+
+  try {
+    const result = await withHistory(projectId, () => draftNarrationForItem(projectId, timelineItemId))
+    if (result.status === 'drafted') {
+      getWindow()?.webContents.send('project:agent:drafted', projectId)
+    } else if (result.status === 'failed') {
+      console.error(`Could not draft narration for the new clip: ${result.reason}`)
+    }
+  } catch (err) {
+    console.error('Could not draft narration for the new clip:', err)
   }
 }
 

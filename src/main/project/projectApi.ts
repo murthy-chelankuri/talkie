@@ -315,6 +315,40 @@ export function addTranscriptSegment(
   return newSegment
 }
 
+/**
+ * Write narration the agent produced, leaving it marked `draft`.
+ *
+ * The status is what separates words the agent guessed from words the user stands behind:
+ * everything the user types or narrates becomes `edited` or `narrated`, so a later auto-draft
+ * knows not to touch it.
+ */
+export function setDraftedNarration(
+  id: string,
+  timelineItemId: string,
+  text: string,
+  baseDir: string = homedir()
+): TranscriptSegment {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const transcript = readTranscript(id, baseDir)
+  const index = transcript.findIndex((segment) => segment.timelineItemId === timelineItemId)
+
+  const segment = TranscriptSegmentSchema.parse(
+    index === -1
+      ? { id: randomUUID(), text, timelineItemId, status: 'draft' }
+      : { ...transcript[index], text, status: 'draft' }
+  )
+
+  if (index === -1) transcript.push(segment)
+  else transcript[index] = segment
+
+  writeJsonAtomic(join(dir, 'transcript.json'), transcript)
+  return segment
+}
+
 export function updateTranscriptSegmentText(
   id: string,
   segmentId: string,

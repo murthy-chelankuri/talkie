@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { IconButton } from './ui/IconButton'
+import { SettingsDialog } from './SettingsDialog'
 
 export function AppShell({
   children,
@@ -12,6 +13,7 @@ export function AppShell({
   breadcrumb?: ReactNode
 }): JSX.Element {
   const { theme, toggleTheme } = useTheme()
+  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
@@ -35,14 +37,20 @@ export function AppShell({
             </>
           )}
         </span>
-        <IconButton
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          onClick={toggleTheme}
-        >
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-        </IconButton>
+        <span className="flex items-center gap-1">
+          <IconButton aria-label="Settings" onClick={() => setShowSettings(true)}>
+            <SettingsIcon size={16} />
+          </IconButton>
+          <IconButton
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </IconButton>
+        </span>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </div>
   )
 }

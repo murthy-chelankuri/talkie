@@ -19,8 +19,10 @@ function renderBox(props: Partial<Parameters<typeof ClipNarrationBox>[0]> = {}) 
       segments={[narratedSegment]}
       active={false}
       narrating={false}
+      drafting={false}
       onCommit={vi.fn()}
       onNarrate={vi.fn()}
+      onDraft={vi.fn()}
       {...props}
     />
   )

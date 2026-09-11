@@ -186,6 +186,10 @@ export function Timeline({
   narratingItemId,
   narratingAll,
   needingNarration,
+  draftingItemId,
+  draftingAll,
+  onDraft,
+  onDraftAll,
   onNarrationCommit,
   onNarrate,
   onNarrateAll,
@@ -208,6 +212,10 @@ export function Timeline({
   narratingItemId: string | null
   narratingAll: boolean
   needingNarration: number
+  draftingItemId: string | null
+  draftingAll: boolean
+  onDraft: (item: TimelineItem) => void | Promise<void>
+  onDraftAll: () => void | Promise<void>
   onNarrationCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
   onNarrateAll: () => void | Promise<void>
@@ -350,6 +358,14 @@ export function Timeline({
           <Button
             variant="secondary"
             size="sm"
+            onClick={onDraftAll}
+            disabled={draftingAll || timeline.length === 0}
+          >
+            {draftingAll ? <Spinner size="sm" /> : 'Draft all'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onNarrateAll}
             disabled={narratingAll || needingNarration === 0}
           >
@@ -458,6 +474,8 @@ export function Timeline({
                   segments={segments}
                   active={item.id === itemUnderPlayheadId}
                   narrating={narratingItemId === item.id}
+                  drafting={draftingAll || draftingItemId === item.id}
+                  onDraft={onDraft}
                   onCommit={onNarrationCommit}
                   onNarrate={onNarrate}
                 />

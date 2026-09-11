@@ -8,6 +8,7 @@ import {
   renderClient,
   captureClient,
   transcriptClient,
+  agentClient,
   type ProjectMetadata,
   type TimelineItem,
   type TranscriptSegment
@@ -42,6 +43,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [narratingItemId, setNarratingItemId] = useState<string | null>(null)
   const [narratingAll, setNarratingAll] = useState(false)
+  const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
+  const [draftingAll, setDraftingAll] = useState(false)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PlayerRef>(null)
@@ -58,6 +61,14 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         setSegments(transcript)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+  }, [projectId])
+
+  useEffect(() => {
+    return agentClient.onDrafted((draftedProjectId) => {
+      if (draftedProjectId !== projectId) return
+      void refreshSegments()
+      void refreshTimeline()
+    })
   }, [projectId])
 
   useEffect(() => {
@@ -208,6 +219,38 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     } finally {
       setNarratingItemId(null)
       setNarratingAll(false)
+    }
+  }
+
+  async function handleDraft(item: TimelineItem): Promise<void> {
+    setTranscriptError(null)
+    setDraftingItemId(item.id)
+    try {
+      // Asking for a draft on a clip you already wrote is an explicit request to replace it.
+      const result = await agentClient.draftItem(projectId, item.id, true)
+      if (result.status === 'failed') setTranscriptError(result.reason ?? 'Could not draft this narration.')
+      await refreshSegments()
+      await refreshTimeline()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDraftingItemId(null)
+    }
+  }
+
+  async function handleDraftAll(): Promise<void> {
+    setTranscriptError(null)
+    setDraftingAll(true)
+    try {
+      const results = await agentClient.draftAll(projectId)
+      const failure = results.find((result) => result.status === 'failed')
+      if (failure) setTranscriptError(failure.reason ?? 'Could not draft the narration.')
+      await refreshSegments()
+      await refreshTimeline()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDraftingAll(false)
     }
   }
 
@@ -389,6 +432,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onActiveItemChange={setActiveItemId}
           narratingItemId={narratingItemId}
           narratingAll={narratingAll}
+          draftingItemId={draftingItemId}
+          draftingAll={draftingAll}
+          onDraft={handleDraft}
+          onDraftAll={handleDraftAll}
           needingNarration={needingNarration.length}
           onNarrationCommit={handleNarrationCommit}
           onNarrate={handleNarrate}

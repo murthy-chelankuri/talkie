@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic } from 'lucide-react'
+import { Mic, Sparkles } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { narrationTextForItem, segmentsForItem } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
@@ -13,6 +13,8 @@ export function ClipNarrationBox({
   segments,
   active,
   narrating,
+  drafting,
+  onDraft,
   onCommit,
   onNarrate
 }: {
@@ -20,6 +22,8 @@ export function ClipNarrationBox({
   segments: TranscriptSegment[]
   active: boolean
   narrating: boolean
+  drafting: boolean
+  onDraft: (item: TimelineItem) => void | Promise<void>
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
 }): JSX.Element {
@@ -59,8 +63,16 @@ export function ClipNarrationBox({
           {narrated ? 'Voiced' : 'Silent'}
         </span>
         <IconButton
-          aria-label={narrating ? `Narrating ${label}` : `Narrate ${label}`}
+          aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
           className="ml-auto h-5 w-5 shrink-0 text-text-muted hover:text-accent"
+          disabled={drafting || narrating}
+          onClick={() => onDraft(item)}
+        >
+          {drafting ? <Spinner size="sm" /> : <Sparkles size={12} />}
+        </IconButton>
+        <IconButton
+          aria-label={narrating ? `Narrating ${label}` : `Narrate ${label}`}
+          className="h-5 w-5 shrink-0 text-text-muted hover:text-accent"
           disabled={narrating || !draft.trim() || draft !== savedText}
           onClick={() => onNarrate(item)}
         >
