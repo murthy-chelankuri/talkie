@@ -98,3 +98,46 @@ describe('settings survive a round trip', () => {
     expect(speech.clausePauseMs).toBeGreaterThan(200)
   })
 })
+
+describe('resetting the voice', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-reset-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  const defaults = SettingsSchema.parse({})
+
+  it('puts every speech setting back to what a fresh install has', async () => {
+    const { resetSpeechSettings } = await import('./settingsStore')
+    updateSettings(
+      { speech: { voice: 'Daniel', pace: 120, sentencePauseMs: 900, clausePauseMs: 50 } },
+      baseDir
+    )
+
+    const reset = resetSpeechSettings(baseDir)
+
+    expect(reset.speech).toEqual(defaults.speech)
+    expect(readSettings(baseDir).speech).toEqual(defaults.speech)
+  })
+
+  it('leaves settings that are nothing to do with the voice alone', async () => {
+    const { resetSpeechSettings } = await import('./settingsStore')
+    updateSettings({ narration: { provider: 'claude-cli', autoDraft: false } }, baseDir)
+
+    const reset = resetSpeechSettings(baseDir)
+
+    expect(reset.narration.provider).toBe('claude-cli')
+    expect(reset.narration.autoDraft).toBe(false)
+  })
+
+  it('is safe to reset something already at its defaults', async () => {
+    const { resetSpeechSettings } = await import('./settingsStore')
+
+    expect(resetSpeechSettings(baseDir).speech).toEqual(defaults.speech)
+  })
+})

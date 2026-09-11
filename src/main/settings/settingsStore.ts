@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { ROOT_NAME } from '../project/migrateStorageRoot'
 import { writeJsonAtomic } from '../project/atomicWrite'
-import { SettingsSchema, type Settings } from './schema'
+import { SettingsSchema, SpeechSettingsSchema, type Settings } from './schema'
 
 /**
  * Settings belong to the person, not to any one demo, so they sit beside the projects folder
@@ -46,6 +46,24 @@ export function updateSettings(patch: DeepPartial<Settings>, baseDir: string = h
   mkdirSync(dirname(path), { recursive: true })
   writeJsonAtomic(path, next)
 
+  return next
+}
+
+/**
+ * Put the voice back the way it came.
+ *
+ * The defaults live in the schema, so resetting cannot drift from what a fresh install gets —
+ * which is the only thing that makes "reset" mean anything.
+ */
+export function resetSpeechSettings(baseDir: string = homedir()): Settings {
+  const next = SettingsSchema.parse({
+    ...readSettings(baseDir),
+    speech: SpeechSettingsSchema.parse({})
+  })
+
+  const path = settingsPath(baseDir)
+  mkdirSync(dirname(path), { recursive: true })
+  writeJsonAtomic(path, next)
   return next
 }
 

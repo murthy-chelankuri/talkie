@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { CircleAlert, CircleCheck, Laptop, Cloud, Volume2, X } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Cloud, Laptop, RotateCcw, Sparkles, TriangleAlert, Volume2, Wrench, X } from 'lucide-react'
 import {
   settingsClient,
   type ProviderDescription,
@@ -15,23 +15,36 @@ import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 
+type SectionId = 'narration' | 'voice' | 'system'
+
+const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: string }> = [
+  { id: 'narration', label: 'Narration', icon: <Sparkles size={15} />, blurb: 'Who writes the words' },
+  { id: 'voice', label: 'Voice', icon: <Volume2 size={15} />, blurb: 'How they are spoken' },
+  { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' }
+]
+
+/**
+ * Settings are split by what the user came here to change, rather than stacked in one column.
+ *
+ * Status is deliberately quiet: a green tick against everything that works turns the screen into
+ * a report card and buries the one line that matters. A working provider says nothing, and a
+ * missing one says what it is for and what to do — with the only standing signal a dot on the
+ * section that needs attention.
+ */
 export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Element {
+  const [section, setSection] = useState<SectionId>('narration')
   const [settings, setSettings] = useState<Settings | null>(null)
   const [providers, setProviders] = useState<ProviderDescription[]>([])
-  const [checking, setChecking] = useState(true)
-  const [localServer, setLocalServer] = useState<LocalServer | null>(null)
   const [voices, setVoices] = useState<Voice[]>([])
+  const [localServer, setLocalServer] = useState<LocalServer | null>(null)
   const [readiness, setReadiness] = useState<ReadinessCheck[]>([])
   const [previewing, setPreviewing] = useState(false)
 
   useEffect(() => {
     settingsClient.read().then(setSettings)
-    settingsClient
-      .providers()
-      .then(setProviders)
-      .finally(() => setChecking(false))
-    settingsClient.localServer().then(setLocalServer)
+    settingsClient.providers().then(setProviders)
     settingsClient.voices().then(setVoices)
+    settingsClient.localServer().then(setLocalServer)
     settingsClient.readiness().then(setReadiness)
   }, [])
 
@@ -43,26 +56,24 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  async function patchSpeech(next: Partial<Settings['speech']>): Promise<void> {
-    setSettings(await settingsClient.update({ speech: next }))
+  async function apply(next: Promise<Settings>): Promise<void> {
+    setSettings(await next)
     notifySettingsChanged()
-  }
-
-  async function patch(next: Partial<Settings['narration']>): Promise<void> {
-    const updated = await settingsClient.update({ narration: next })
-    setSettings(updated)
     // Availability depends on the settings themselves — a key added, a model renamed.
     setProviders(await settingsClient.providers())
     setLocalServer(await settingsClient.localServer())
-    notifySettingsChanged()
   }
 
-  const selected = settings?.narration.provider
-  const selectedDescription = providers.find((provider) => provider.id === selected)
+  const patchNarration = (next: Partial<Settings['narration']>): Promise<void> =>
+    apply(settingsClient.update({ narration: next }))
+  const patchSpeech = (next: Partial<Settings['speech']>): Promise<void> =>
+    apply(settingsClient.update({ speech: next }))
+
+  const needsAttention = readiness.filter((check) => !check.ready && check.required).length
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6 backdrop-blur-[2px]"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -70,286 +81,453 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
       <div
         role="dialog"
         aria-label="Settings"
-        className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xl"
+        className="flex h-[34rem] max-h-full w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
       >
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="font-serif text-lg text-text">Settings</h2>
-          <IconButton aria-label="Close settings" onClick={onClose}>
-            <X size={16} />
-          </IconButton>
-        </header>
-
-        <div className="flex min-h-0 flex-col gap-5 overflow-y-auto p-4">
-          {!settings ? (
-            <div className="flex justify-center py-8">
-              <Spinner size="md" label="Loading settings" />
-            </div>
-          ) : (
-            <>
-              {readiness.length > 0 && (
-                <section className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium text-text">What this machine can do</h3>
-                  <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
-                    {readiness.map((check) => (
-                      <div key={check.id} className="flex items-start gap-2.5 p-3">
-                        {check.ready ? (
-                          <CircleCheck size={14} className="mt-0.5 shrink-0 text-success" aria-label="Ready" />
-                        ) : (
-                          <CircleAlert
-                            size={14}
-                            className={cn('mt-0.5 shrink-0', check.required ? 'text-danger' : 'text-text-muted')}
-                            aria-label={check.required ? 'Not ready' : 'Optional, not set up'}
-                          />
-                        )}
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span className="text-sm text-text">{check.label}</span>
-                          <span className="text-xs text-text-muted">
-                            {check.ready ? (check.detail ?? check.purpose) : check.purpose}
-                          </span>
-                          {!check.ready && check.fix && (
-                            <span className={cn('text-xs', check.required ? 'text-danger' : 'text-text-muted')}>
-                              {check.fix}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+        <nav className="flex w-52 shrink-0 flex-col gap-0.5 border-r border-border bg-bg p-2.5">
+          <p className="px-2.5 pb-2 pt-1 font-serif text-base text-text">Settings</p>
+          {SECTIONS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSection(item.id)}
+              aria-current={section === item.id}
+              className={cn(
+                'flex items-center gap-2.5 rounded-lg border-0 px-2.5 py-2 text-left transition-colors',
+                section === item.id
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'bg-transparent text-text-muted hover:text-text'
               )}
-
-              <section className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-text">Drafting narration</h3>
-                <label className="flex items-start gap-2.5 rounded-lg border border-border bg-bg p-3">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={settings.narration.autoDraft}
-                    onChange={(event) => patch({ autoDraft: event.target.checked })}
-                  />
-                  <span className="flex flex-col gap-0.5">
-                    <span className="text-sm text-text">Draft narration automatically</span>
-                    <span className="text-xs text-text-muted">
-                      When a recording or image lands on the timeline, write a first draft for it.
-                      Words you have written yourself are never replaced.
-                    </span>
-                  </span>
-                </label>
-              </section>
-
-              <section className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-text">Who writes the draft</h3>
-                {checking ? (
-                  <p className="flex items-center gap-2 text-xs text-text-muted">
-                    <Spinner size="sm" /> Checking what is available…
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {providers.map((provider) => (
-                      <label
-                        key={provider.id}
-                        className={cn(
-                          'flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors',
-                          selected === provider.id ? 'border-accent bg-bg' : 'border-border hover:bg-surface-hover'
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name="narration-provider"
-                          className="mt-0.5"
-                          checked={selected === provider.id}
-                          onChange={() => patch({ provider: provider.id })}
-                        />
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span className="flex items-center gap-1.5 text-sm text-text">
-                            {provider.label}
-                            {provider.available ? (
-                              <CircleCheck size={13} className="text-success" aria-label="Ready" />
-                            ) : (
-                              <CircleAlert size={13} className="text-danger" aria-label="Not ready" />
-                            )}
-                          </span>
-                          <span className="flex items-center gap-1 text-xs text-text-muted">
-                            {provider.sendsDataOffMachine ? <Cloud size={11} /> : <Laptop size={11} />}
-                            {provider.sendsDataOffMachine
-                              ? 'Screenshots and action logs leave this machine'
-                              : 'Stays on this machine'}
-                          </span>
-                          {provider.reason && <span className="text-xs text-danger">{provider.reason}</span>}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {voices.length > 0 && settings && (
-                <section className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium text-text">Voice</h3>
-                  <div className="flex items-end gap-2">
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-text-muted">
-                      Reads the narration aloud
-                      <select
-                        aria-label="Narration voice"
-                        value={settings.speech.voice}
-                        onChange={(event) => patchSpeech({ voice: event.target.value })}
-                        className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
-                      >
-                        {groupVoices(voices).map(([locale, group]) => (
-                          <optgroup key={locale} label={describeLocale(locale)}>
-                            {group.map((voice) => (
-                              <option key={voice.name} value={voice.name}>
-                                {voice.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </label>
-                    <Button
-                      variant="secondary"
-                      disabled={previewing}
-                      onClick={async () => {
-                        setPreviewing(true)
-                        try {
-                          const chosen = voices.find((voice) => voice.name === settings.speech.voice)
-                          await settingsClient.previewVoice(
-                            settings.speech.voice,
-                            chosen?.sample ?? 'This is how your narration will sound.'
-                          )
-                        } finally {
-                          setPreviewing(false)
-                        }
-                      }}
-                    >
-                      {previewing ? <Spinner size="sm" /> : <Volume2 size={15} />}
-                      Hear it
-                    </Button>
-                  </div>
-
-                  <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    Pace — {settings.speech.pace} words a minute
-                    <input
-                      type="range"
-                      aria-label="Speaking pace"
-                      min={110}
-                      max={230}
-                      step={5}
-                      value={settings.speech.pace}
-                      onChange={(event) => patchSpeech({ pace: Number(event.target.value) })}
-                    />
-                  </label>
-
-                  <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    Pause at a full stop — {(settings.speech.sentencePauseMs / 1000).toFixed(2)}s
-                    <input
-                      type="range"
-                      aria-label="Pause between sentences"
-                      min={0}
-                      max={1200}
-                      step={20}
-                      value={settings.speech.sentencePauseMs}
-                      onChange={(event) => patchSpeech({ sentencePauseMs: Number(event.target.value) })}
-                    />
-                  </label>
-
-                  <p className="text-xs text-text-muted">
-                    Narration already voiced keeps the pacing it was recorded with. Narrate it again
-                    to hear a change.
-                  </p>
-                </section>
+            >
+              <span className={cn('shrink-0', section === item.id ? 'text-accent' : 'text-text-muted')}>
+                {item.icon}
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="text-[13px] font-medium leading-tight">{item.label}</span>
+                <span className="truncate text-[11px] leading-tight text-text-muted">{item.blurb}</span>
+              </span>
+              {item.id === 'system' && needsAttention > 0 && (
+                <span
+                  aria-label={`${needsAttention} needing attention`}
+                  className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger"
+                />
               )}
+            </button>
+          ))}
+        </nav>
 
-              {selected === 'local' && (
-                <section className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium text-text">Local model</h3>
-                  {localServer ? (
-                    <>
-                      <p className="text-xs text-text-muted">
-                        Found {localServer.label} at {localServer.baseUrl}
-                      </p>
-                      <label className="flex flex-col gap-1 text-xs text-text-muted">
-                        Model
-                        <select
-                          aria-label="Local model"
-                          value={settings.narration.local.model || localServer.models[0] || ''}
-                          onChange={(event) =>
-                            patch({ local: { ...settings.narration.local, model: event.target.value } })
-                          }
-                          className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
-                        >
-                          {localServer.models.map((model) => (
-                            <option key={model} value={model}>
-                              {model}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <p className="text-xs text-text-muted">
-                        Pick a model that can read images. A text-only model will describe the action log
-                        but not what is on screen.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-xs text-text-muted">
-                      Looking for a server on the usual ports. LM Studio, Ollama, llama.cpp and Jan all
-                      work; set an address below to use something else.
-                    </p>
-                  )}
-                  <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    Server address (leave blank to detect)
-                    <Input
-                      aria-label="Local server address"
-                      placeholder="http://127.0.0.1:1234/v1"
-                      defaultValue={settings.narration.local.baseUrl}
-                      onBlur={(event) => patch({ local: { ...settings.narration.local, baseUrl: event.target.value } })}
-                    />
-                  </label>
-                </section>
-              )}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
+            <h2 className="text-sm font-medium text-text">
+              {SECTIONS.find((item) => item.id === section)?.label}
+            </h2>
+            <IconButton aria-label="Close settings" onClick={onClose}>
+              <X size={16} />
+            </IconButton>
+          </header>
 
-              {selected === 'anthropic' && (
-                <section className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium text-text">Anthropic</h3>
-                  <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    API key
-                    <Input
-                      type="password"
-                      aria-label="Anthropic API key"
-                      placeholder="sk-ant-…"
-                      defaultValue={settings.narration.anthropic.apiKey}
-                      onBlur={(event) =>
-                        patch({ anthropic: { ...settings.narration.anthropic, apiKey: event.target.value } })
-                      }
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    Model
-                    <Input
-                      aria-label="Anthropic model"
-                      defaultValue={settings.narration.anthropic.model}
-                      onBlur={(event) =>
-                        patch({ anthropic: { ...settings.narration.anthropic, model: event.target.value } })
-                      }
-                    />
-                  </label>
-                </section>
-              )}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {!settings ? (
+              <div className="flex h-full items-center justify-center">
+                <Spinner size="md" label="Loading settings" />
+              </div>
+            ) : section === 'narration' ? (
+              <NarrationSection
+                settings={settings}
+                providers={providers}
+                localServer={localServer}
+                onPatch={patchNarration}
+              />
+            ) : section === 'voice' ? (
+              <VoiceSection
+                settings={settings}
+                voices={voices}
+                previewing={previewing}
+                onPatch={patchSpeech}
+                onPreview={async () => {
+                  setPreviewing(true)
+                  try {
+                    const chosen = voices.find((voice) => voice.name === settings.speech.voice)
+                    await settingsClient.previewVoice(
+                      settings.speech.voice,
+                      chosen?.sample ?? 'This is how your narration will sound.'
+                    )
+                  } finally {
+                    setPreviewing(false)
+                  }
+                }}
+                onReset={() => apply(settingsClient.resetSpeech())}
+              />
+            ) : (
+              <SystemSection checks={readiness} />
+            )}
+          </div>
 
-              {selectedDescription?.sendsDataOffMachine && (
-                <p className="rounded-lg border border-border bg-bg p-3 text-xs text-text-muted">
-                  Drafting with {selectedDescription.label} sends screenshots of your recordings and the
-                  pages you visited to {selected === 'anthropic' ? 'Anthropic' : 'Claude'}. Choose the
-                  built-in or local provider to keep everything on this machine.
-                </p>
-              )}
-            </>
-          )}
+          <footer className="flex shrink-0 justify-end border-t border-border px-5 py-3">
+            <Button onClick={onClose}>Done</Button>
+          </footer>
         </div>
+      </div>
+    </div>
+  )
+}
 
-        <footer className="flex justify-end border-t border-border px-4 py-3">
-          <Button onClick={onClose}>Done</Button>
-        </footer>
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }): JSX.Element {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[13px] font-medium text-text">{label}</span>
+        {hint && <span className="text-xs leading-relaxed text-text-muted">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Switch({
+  checked,
+  onChange,
+  label
+}: {
+  checked: boolean
+  onChange: (next: boolean) => void
+  label: string
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative h-5 w-9 shrink-0 rounded-full border-0 p-0 transition-colors',
+        checked ? 'bg-accent' : 'bg-border'
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all',
+          checked ? 'left-[1.125rem]' : 'left-0.5'
+        )}
+      />
+    </button>
+  )
+}
+
+function NarrationSection({
+  settings,
+  providers,
+  localServer,
+  onPatch
+}: {
+  settings: Settings
+  providers: ProviderDescription[]
+  localServer: LocalServer | null
+  onPatch: (next: Partial<Settings['narration']>) => Promise<void>
+}): JSX.Element {
+  const selected = settings.narration.provider
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-start justify-between gap-6 rounded-lg border border-border bg-bg px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-medium text-text">Draft narration automatically</span>
+          <span className="text-xs leading-relaxed text-text-muted">
+            Write a first draft when a recording or slide lands on the timeline. Words you have
+            written yourself are never replaced.
+          </span>
+        </div>
+        <Switch
+          label="Draft narration automatically"
+          checked={settings.narration.autoDraft}
+          onChange={(next) => onPatch({ autoDraft: next })}
+        />
+      </div>
+
+      <Field label="Who writes the draft">
+        <div className="flex flex-col gap-1.5">
+          {providers.map((provider) => (
+            <label
+              key={provider.id}
+              className={cn(
+                'flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 transition-colors',
+                selected === provider.id
+                  ? 'border-accent bg-bg'
+                  : 'border-border hover:border-text-muted/40'
+              )}
+            >
+              <input
+                type="radio"
+                name="narration-provider"
+                className="mt-1 accent-accent"
+                checked={selected === provider.id}
+                onChange={() => onPatch({ provider: provider.id })}
+              />
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <span className="text-[13px] text-text">{provider.label}</span>
+                  <span
+                    className="flex items-center gap-1 text-[11px] text-text-muted"
+                    title={
+                      provider.sendsDataOffMachine
+                        ? 'Screenshots and action logs are sent to this service'
+                        : 'Nothing leaves this machine'
+                    }
+                  >
+                    {provider.sendsDataOffMachine ? <Cloud size={11} /> : <Laptop size={11} />}
+                    {provider.sendsDataOffMachine ? 'Sends data out' : 'Stays on this machine'}
+                  </span>
+                </span>
+                {/* A provider that works says nothing; only a problem is worth the user's eye. */}
+                {!provider.available && provider.reason && (
+                  <span className="flex items-start gap-1.5 text-[11px] leading-relaxed text-danger">
+                    <TriangleAlert size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    {provider.reason}
+                  </span>
+                )}
+              </span>
+            </label>
+          ))}
+        </div>
+      </Field>
+
+      {selected === 'local' && (
+        <Field
+          label="Local model"
+          hint={
+            localServer
+              ? `Found ${localServer.label} at ${localServer.baseUrl}. Pick a model that can read images — a text-only one will describe the action log but not what is on screen.`
+              : 'Looking on the usual ports. LM Studio, Ollama, llama.cpp and Jan all work; set an address to use something else.'
+          }
+        >
+          <div className="flex flex-col gap-2">
+            {localServer && (
+              <select
+                aria-label="Local model"
+                value={settings.narration.local.model || localServer.models[0] || ''}
+                onChange={(event) => onPatch({ local: { ...settings.narration.local, model: event.target.value } })}
+                className="rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+              >
+                {localServer.models.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            )}
+            <Input
+              aria-label="Local server address"
+              placeholder="Leave blank to detect — http://127.0.0.1:1234/v1"
+              defaultValue={settings.narration.local.baseUrl}
+              onBlur={(event) => onPatch({ local: { ...settings.narration.local, baseUrl: event.target.value } })}
+            />
+          </div>
+        </Field>
+      )}
+
+      {selected === 'anthropic' && (
+        <Field label="Anthropic" hint="The key is kept in your settings file and sent only to Anthropic.">
+          <div className="flex flex-col gap-2">
+            <Input
+              type="password"
+              aria-label="Anthropic API key"
+              placeholder="sk-ant-…"
+              defaultValue={settings.narration.anthropic.apiKey}
+              onBlur={(event) =>
+                onPatch({ anthropic: { ...settings.narration.anthropic, apiKey: event.target.value } })
+              }
+            />
+            <Input
+              aria-label="Anthropic model"
+              defaultValue={settings.narration.anthropic.model}
+              onBlur={(event) =>
+                onPatch({ anthropic: { ...settings.narration.anthropic, model: event.target.value } })
+              }
+            />
+          </div>
+        </Field>
+      )}
+    </div>
+  )
+}
+
+function VoiceSection({
+  settings,
+  voices,
+  previewing,
+  onPatch,
+  onPreview,
+  onReset
+}: {
+  settings: Settings
+  voices: Voice[]
+  previewing: boolean
+  onPatch: (next: Partial<Settings['speech']>) => Promise<void>
+  onPreview: () => void | Promise<void>
+  onReset: () => void | Promise<void>
+}): JSX.Element {
+  return (
+    <div className="flex flex-col gap-6">
+      <Field label="Narrator" hint="Reads the narration aloud.">
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Narration voice"
+            value={settings.speech.voice}
+            onChange={(event) => onPatch({ voice: event.target.value })}
+            className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+          >
+            {groupVoices(voices).map(([locale, group]) => (
+              <optgroup key={locale} label={describeLocale(locale)}>
+                {group.map((voice) => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <Button variant="secondary" disabled={previewing} onClick={onPreview}>
+            {previewing ? <Spinner size="sm" /> : <Volume2 size={15} />}
+            Hear it
+          </Button>
+        </div>
+      </Field>
+
+      <Field
+        label="Delivery"
+        hint="Explaining runs slower than reading, and a real stop at a full stop is what keeps it from sounding recited."
+      >
+        <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg px-4 py-3.5">
+          <Slider
+            label="Pace"
+            value={`${settings.speech.pace} words a minute`}
+            ariaLabel="Speaking pace"
+            min={110}
+            max={230}
+            step={5}
+            current={settings.speech.pace}
+            onChange={(pace) => onPatch({ pace })}
+          />
+          <Slider
+            label="Pause at a full stop"
+            value={`${(settings.speech.sentencePauseMs / 1000).toFixed(2)} seconds`}
+            ariaLabel="Pause between sentences"
+            min={0}
+            max={1200}
+            step={20}
+            current={settings.speech.sentencePauseMs}
+            onChange={(sentencePauseMs) => onPatch({ sentencePauseMs })}
+          />
+        </div>
+      </Field>
+
+      <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+        <p className="text-xs leading-relaxed text-text-muted">
+          Narration already voiced keeps the voice and pacing it was recorded with. Narrate a clip
+          again to hear a change.
+        </p>
+        <Button variant="ghost" onClick={onReset} className="shrink-0">
+          <RotateCcw size={14} />
+          Reset to defaults
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function Slider({
+  label,
+  value,
+  ariaLabel,
+  min,
+  max,
+  step,
+  current,
+  onChange
+}: {
+  label: string
+  value: string
+  ariaLabel: string
+  min: number
+  max: number
+  step: number
+  current: number
+  onChange: (next: number) => void
+}): JSX.Element {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px] text-text">{label}</span>
+        <span className="text-xs tabular-nums text-text-muted">{value}</span>
+      </span>
+      <input
+        type="range"
+        aria-label={ariaLabel}
+        min={min}
+        max={max}
+        step={step}
+        value={current}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="accent-accent"
+      />
+    </label>
+  )
+}
+
+function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
+  if (checks.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="md" label="Checking this machine" />
+      </div>
+    )
+  }
+
+  const unready = checks.filter((check) => !check.ready)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs leading-relaxed text-text-muted">
+        {unready.length === 0
+          ? 'Everything Talkie needs is available here.'
+          : 'Anything below without a setting is still optional unless it is marked in red.'}
+      </p>
+
+      <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+        {checks.map((check) => (
+          <div key={check.id} className="flex items-start gap-3 px-4 py-3">
+            <span
+              className={cn(
+                'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+                check.ready ? 'bg-success' : check.required ? 'bg-danger' : 'bg-text-muted/40'
+              )}
+              aria-label={check.ready ? 'Ready' : check.required ? 'Not ready' : 'Optional, not set up'}
+            />
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-[13px] text-text">{check.label}</span>
+                {check.ready && check.detail && (
+                  <span className="text-[11px] text-text-muted">{check.detail}</span>
+                )}
+              </span>
+              {!check.ready && (
+                <>
+                  <span className="text-xs text-text-muted">{check.purpose}</span>
+                  {check.fix && (
+                    <span
+                      className={cn(
+                        'text-xs leading-relaxed',
+                        check.required ? 'text-danger' : 'text-text-muted'
+                      )}
+                    >
+                      {check.fix}
+                    </span>
+                  )}
+                </>
+              )}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
