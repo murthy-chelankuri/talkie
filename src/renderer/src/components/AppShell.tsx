@@ -8,8 +8,18 @@ export function AppShell({ children }: { children: ReactNode }): JSX.Element {
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
-      <header className="flex items-center justify-between border-b border-border px-4 py-2">
-        <span className="text-sm font-semibold">Demo Editor</span>
+      <header className="flex shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-2">
+        <span className="flex items-center gap-2">
+          {/* An aperture-like mark: the app's one piece of identity, drawn rather than an icon
+              borrowed from the set used for controls. */}
+          <span
+            aria-hidden="true"
+            className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-accent text-accent-foreground"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          </span>
+          <span className="font-serif text-[15px] leading-none text-text">Demo Editor</span>
+        </span>
         <IconButton
           aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           onClick={toggleTheme}

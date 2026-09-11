@@ -14,9 +14,19 @@ export interface ProjectMetadata extends ProjectSummary {
   schemaVersion: number
 }
 
+export interface ProjectOverview extends ProjectSummary {
+  clipCount: number
+  durationFrames: number
+  narratedCount: number
+  posterPath?: string
+  posterKind?: string
+  posterTrimBefore?: number
+}
+
 export const projectClient = {
   create: (name: string): Promise<ProjectMetadata> => window.api.project.create(name),
   list: (): Promise<ProjectSummary[]> => window.api.project.list(),
+  overviews: (): Promise<ProjectOverview[]> => window.api.project.overviews(),
   open: (id: string): Promise<ProjectMetadata> => window.api.project.open(id),
   importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id)
 }

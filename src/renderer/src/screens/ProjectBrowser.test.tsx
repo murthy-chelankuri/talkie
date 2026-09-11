@@ -2,87 +2,119 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectBrowser } from './ProjectBrowser'
-import { projectClient } from '../api/projectClient'
+import { projectClient, type ProjectOverview } from '../api/projectClient'
 
 vi.mock('../api/projectClient', () => ({
   projectClient: {
-    list: vi.fn(),
+    overviews: vi.fn(),
     create: vi.fn()
   }
 }))
 
-const mockedList = vi.mocked(projectClient.list)
+const mockedOverviews = vi.mocked(projectClient.overviews)
 const mockedCreate = vi.mocked(projectClient.create)
+
+function overview(partial: Partial<ProjectOverview> = {}): ProjectOverview {
+  return {
+    id: 'p1',
+    name: 'My Project',
+    createdAt: new Date().toISOString(),
+    clipCount: 2,
+    durationFrames: 300,
+    narratedCount: 1,
+    ...partial
+  }
+}
 
 describe('ProjectBrowser', () => {
   beforeEach(() => {
-    mockedList.mockReset()
+    mockedOverviews.mockReset()
     mockedCreate.mockReset()
   })
 
   it('shows a spinner while loading', () => {
-    mockedList.mockReturnValue(new Promise(() => {}))
+    mockedOverviews.mockReturnValue(new Promise(() => {}))
     render(<ProjectBrowser onOpen={vi.fn()} />)
     expect(screen.getByRole('status', { name: 'Loading projects' })).toBeInTheDocument()
   })
 
-  it('shows an empty state when there are no projects', async () => {
-    mockedList.mockResolvedValue([])
+  it('invites you to start when there are no projects', async () => {
+    mockedOverviews.mockResolvedValue([])
     render(<ProjectBrowser onOpen={vi.fn()} />)
-    expect(await screen.findByText('No projects yet')).toBeInTheDocument()
+    expect(await screen.findByText('No demos yet')).toBeInTheDocument()
   })
 
-  it('shows a grid of project cards with relative creation time', async () => {
-    mockedList.mockResolvedValue([{ id: 'p1', name: 'My Project', createdAt: new Date().toISOString() }])
+  it('shows each project with its length, clips and narration progress', async () => {
+    mockedOverviews.mockResolvedValue([overview()])
     render(<ProjectBrowser onOpen={vi.fn()} />)
+
     expect(await screen.findByRole('button', { name: /My Project/ })).toBeInTheDocument()
-    expect(screen.getByText('just now')).toBeInTheDocument()
+    expect(screen.getByText('0:10')).toBeInTheDocument()
+    expect(screen.getByText('2 clips')).toBeInTheDocument()
+    expect(screen.getByText('1/2')).toBeInTheDocument()
+  })
+
+  it('marks a project whose clips are all voiced', async () => {
+    mockedOverviews.mockResolvedValue([overview({ narratedCount: 2 })])
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+    expect(await screen.findByText('Voiced')).toBeInTheDocument()
   })
 
   it('opens a project when its card is clicked', async () => {
     const user = userEvent.setup()
     const onOpen = vi.fn()
-    mockedList.mockResolvedValue([{ id: 'p1', name: 'My Project', createdAt: new Date().toISOString() }])
+    mockedOverviews.mockResolvedValue([overview()])
     render(<ProjectBrowser onOpen={onOpen} />)
+
     await user.click(await screen.findByRole('button', { name: /My Project/ }))
+
     expect(onOpen).toHaveBeenCalledWith('p1')
   })
 
   it('shows an error banner when loading fails', async () => {
-    mockedList.mockRejectedValue(new Error('disk on fire'))
+    mockedOverviews.mockRejectedValue(new Error('disk on fire'))
     render(<ProjectBrowser onOpen={vi.fn()} />)
     expect(await screen.findByRole('alert')).toHaveTextContent('disk on fire')
   })
 
-  it('expands an inline create form when New Project is clicked, then creates a project', async () => {
+  it('creates a project and opens it', async () => {
     const user = userEvent.setup()
     const onOpen = vi.fn()
-    mockedList.mockResolvedValue([])
-    mockedCreate.mockResolvedValue({ id: 'p2', name: 'Fresh', createdAt: new Date().toISOString(), schemaVersion: 1 })
+    mockedOverviews.mockResolvedValue([])
+    mockedCreate.mockResolvedValue({
+      id: 'p2',
+      name: 'Fresh',
+      createdAt: new Date().toISOString(),
+      schemaVersion: 1
+    })
     render(<ProjectBrowser onOpen={onOpen} />)
 
-    await user.click(await screen.findByRole('button', { name: 'New Project' }))
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
     await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Fresh')
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
 
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith('p2'))
     expect(mockedCreate).toHaveBeenCalledWith('Fresh')
   })
 
-  it('disables Create while the name is blank', async () => {
+  it('will not create a project without a name', async () => {
     const user = userEvent.setup()
-    mockedList.mockResolvedValue([])
+    mockedOverviews.mockResolvedValue([])
     render(<ProjectBrowser onOpen={vi.fn()} />)
-    await user.click(await screen.findByRole('button', { name: 'New Project' }))
-    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+
+    expect(screen.getByRole('button', { name: 'Create project' })).toBeDisabled()
   })
 
-  it('collapses the create form when Cancel is clicked', async () => {
+  it('abandons the form on cancel', async () => {
     const user = userEvent.setup()
-    mockedList.mockResolvedValue([])
+    mockedOverviews.mockResolvedValue([])
     render(<ProjectBrowser onOpen={vi.fn()} />)
-    await user.click(await screen.findByRole('button', { name: 'New Project' }))
+
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(screen.getByRole('button', { name: 'New Project' })).toBeInTheDocument()
+
+    expect(screen.getByRole('button', { name: 'New project' })).toBeInTheDocument()
   })
 })

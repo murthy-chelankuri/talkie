@@ -16,3 +16,15 @@ export interface ProjectSummary {
   name: string
   createdAt: string
 }
+
+// What the project browser needs to show a project without opening it.
+export interface ProjectOverview extends ProjectSummary {
+  clipCount: number
+  durationFrames: number
+  narratedCount: number
+  // Absolute path to the first clip's media, resolved to a served URL before it reaches the
+  // renderer. Absent for a project with no clips yet.
+  posterPath?: string
+  posterKind?: string
+  posterTrimBefore?: number
+}

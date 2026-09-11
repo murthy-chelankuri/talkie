@@ -18,7 +18,8 @@ import {
   reorderTimelineItems,
   readNarrationAudioPaths,
   splitTimelineItem,
-  deleteTranscriptSegment
+  deleteTranscriptSegment,
+  listProjectOverviews
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -787,5 +788,76 @@ describe('deleteTranscriptSegment', () => {
     expect(() => deleteTranscriptSegment(project.id, 'does-not-exist', baseDir)).toThrow(
       'No transcript segment found with id does-not-exist'
     )
+  })
+})
+
+describe('listProjectOverviews', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('summarises an empty project', () => {
+    const project = createProject('Empty', baseDir)
+
+    expect(listProjectOverviews(baseDir)).toEqual([
+      {
+        id: project.id,
+        name: 'Empty',
+        createdAt: project.createdAt,
+        clipCount: 0,
+        durationFrames: 0,
+        narratedCount: 0
+      }
+    ])
+  })
+
+  it('counts clips, total length and narrated clips', () => {
+    const project = createProject('Counted', baseDir)
+    const first = addTimelineItem(
+      project.id,
+      { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } },
+      baseDir
+    )
+    addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Words', timelineItemId: first.id }, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, `${segment.id}.wav`, baseDir)
+
+    const [overview] = listProjectOverviews(baseDir)
+
+    expect(overview.clipCount).toBe(2)
+    expect(overview.durationFrames).toBe(150)
+    expect(overview.narratedCount).toBe(1)
+  })
+
+  it('offers the first clip as the poster', () => {
+    const project = createProject('Poster', baseDir)
+    addTimelineItem(
+      project.id,
+      { kind: 'video', start: 0, duration: 300, data: { src: '/v.mp4', trimBefore: 45 } },
+      baseDir
+    )
+
+    const [overview] = listProjectOverviews(baseDir)
+
+    expect(overview.posterPath).toBe('/v.mp4')
+    expect(overview.posterKind).toBe('video')
+    expect(overview.posterTrimBefore).toBe(45)
+  })
+
+  it('still lists a project whose timeline cannot be read', () => {
+    const project = createProject('Broken', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    writeFileSync(join(dir, 'timeline.json'), 'not json at all', 'utf-8')
+
+    const [overview] = listProjectOverviews(baseDir)
+
+    expect(overview.name).toBe('Broken')
+    expect(overview.clipCount).toBe(0)
   })
 })

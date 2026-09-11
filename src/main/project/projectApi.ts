@@ -6,7 +6,8 @@ import {
   CURRENT_SCHEMA_VERSION,
   ProjectMetadataSchema,
   type ProjectMetadata,
-  type ProjectSummary
+  type ProjectSummary,
+  type ProjectOverview
 } from './schema'
 import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from './paths'
 import { slugify } from './slug'
@@ -61,6 +62,45 @@ export function listProjects(baseDir: string = homedir()): ProjectSummary[] {
     })
     .filter((summary): summary is ProjectSummary => summary !== undefined)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+// The browser shows projects without opening them, so a broken timeline or transcript must not
+// hide the project — it is summarised as empty instead.
+export function listProjectOverviews(baseDir: string = homedir()): ProjectOverview[] {
+  return listProjects(baseDir).map((summary) => {
+    let timeline: TimelineItem[] = []
+    let transcript: TranscriptSegment[] = []
+    try {
+      timeline = readTimelineLenient(summary.id, baseDir)
+    } catch (err) {
+      console.error(`Could not read the timeline of project ${summary.id}:`, err)
+    }
+    try {
+      transcript = readTranscript(summary.id, baseDir)
+    } catch (err) {
+      console.error(`Could not read the transcript of project ${summary.id}:`, err)
+    }
+
+    const narratedItemIds = new Set(
+      transcript.filter((segment) => segment.status === 'narrated').map((segment) => segment.timelineItemId)
+    )
+    const poster = timeline[0]
+    const posterData = poster?.data as { src?: string; trimBefore?: number } | undefined
+
+    return {
+      ...summary,
+      clipCount: timeline.length,
+      durationFrames: timeline.reduce((total, item) => total + item.duration, 0),
+      narratedCount: timeline.filter((item) => narratedItemIds.has(item.id)).length,
+      ...(posterData?.src
+        ? {
+            posterPath: posterData.src,
+            posterKind: poster.kind,
+            ...(posterData.trimBefore ? { posterTrimBefore: posterData.trimBefore } : {})
+          }
+        : {})
+    }
+  })
 }
 
 export function openProject(id: string, baseDir: string = homedir()): ProjectMetadata {

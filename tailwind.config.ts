@@ -5,6 +5,10 @@ export default {
   content: ['./src/renderer/index.html', './src/renderer/src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Geist Variable', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader Variable', 'Georgia', 'serif']
+      },
       colors: {
         bg: 'var(--color-bg)',
         surface: 'var(--color-surface)',
