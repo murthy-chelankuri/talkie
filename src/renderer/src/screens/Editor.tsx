@@ -174,6 +174,18 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     }
   }
 
+  async function handleDeleteClip(item: TimelineItem): Promise<void> {
+    setReorderError(null)
+    try {
+      await timelineClient.remove(projectId, item.id)
+      await refreshTimeline()
+      await refreshSegments()
+      setSelectedItemId((current) => (current === item.id ? null : current))
+    } catch (err) {
+      setReorderError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   async function handleSplit(item: TimelineItem, atFrame: number): Promise<void> {
     setReorderError(null)
     try {
@@ -344,6 +356,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onNarrationCommit={handleNarrationCommit}
           onNarrate={handleNarrate}
           onNarrateAll={handleNarrateAll}
+          onDelete={handleDeleteClip}
         />
         </div>
       </ResizablePanel>

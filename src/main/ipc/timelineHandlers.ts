@@ -7,7 +7,8 @@ import {
   importImage,
   reorderTimelineItems,
   readNarrationAudioPaths,
-  splitTimelineItem
+  splitTimelineItem,
+  deleteTimelineItem
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { renderProjectVideo } from '../render/renderProject'
@@ -40,6 +41,10 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
 
   ipcMain.handle('project:timeline:split', (_event, id: string, timelineItemId: string, atFrame: number) =>
     splitTimelineItem(id, timelineItemId, atFrame)
+  )
+
+  ipcMain.handle('project:timeline:delete', (_event, id: string, timelineItemId: string) =>
+    deleteTimelineItem(id, timelineItemId)
   )
 
   ipcMain.handle('project:render:export', (_event, id: string) => renderProjectVideo(id))

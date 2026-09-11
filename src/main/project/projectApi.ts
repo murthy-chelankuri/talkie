@@ -405,6 +405,36 @@ export function updateTimelineItemDuration(
   return resequenced[index]
 }
 
+export function deleteTimelineItem(
+  id: string,
+  timelineItemId: string,
+  baseDir: string = homedir()
+): TimelineItem[] {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const timeline = readTimeline(id, baseDir)
+  const remaining = timeline.filter((item) => item.id !== timelineItemId)
+  if (remaining.length === timeline.length) {
+    throw new Error(`No timeline item found with id ${timelineItemId}`)
+  }
+
+  const resequenced = withSequentialStarts(remaining)
+  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+
+  // Narration belongs to a clip, so it goes with it rather than lingering as a segment
+  // pointing at something no longer on the timeline.
+  const transcript = readTranscript(id, baseDir)
+  const keptSegments = transcript.filter((segment) => segment.timelineItemId !== timelineItemId)
+  if (keptSegments.length !== transcript.length) {
+    writeJsonAtomic(join(dir, 'transcript.json'), keptSegments)
+  }
+
+  return resequenced
+}
+
 export function splitTimelineItem(
   id: string,
   timelineItemId: string,

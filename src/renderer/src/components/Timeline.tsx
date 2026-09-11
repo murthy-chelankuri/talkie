@@ -11,7 +11,7 @@ import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, Image as ImageIcon, Scissors, ZoomIn, ZoomOut } from 'lucide-react'
+import { Film, Image as ImageIcon, Scissors, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
@@ -188,7 +188,8 @@ export function Timeline({
   needingNarration,
   onNarrationCommit,
   onNarrate,
-  onNarrateAll
+  onNarrateAll,
+  onDelete
 }: {
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
@@ -206,6 +207,7 @@ export function Timeline({
   onNarrationCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
   onNarrateAll: () => void | Promise<void>
+  onDelete: (item: TimelineItem) => void | Promise<void>
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
@@ -218,12 +220,18 @@ export function Timeline({
   // directly, because re-rendering the whole timeline 30 times a second starved the Player of
   // the main thread and desynced its audio.
   const [itemUnderPlayheadId, setItemUnderPlayheadId] = useState<string | null>(null)
+  // Removing a clip takes its narration with it and cannot be undone, so it asks first.
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const contentWidth = offsetAtFrame(totalFrames, pixelsPerSecond, FPS)
   const tickSeconds = chooseTickIntervalSeconds(pixelsPerSecond)
   const tickCount = Math.floor(totalFrames / FPS / tickSeconds) + 1
   const itemUnderPlayhead = timeline.find((item) => item.id === itemUnderPlayheadId)
+
+  useEffect(() => {
+    setConfirmingDelete(false)
+  }, [itemUnderPlayheadId])
   const splittable =
     itemUnderPlayhead && frameRef.current > itemUnderPlayhead.start ? itemUnderPlayhead : undefined
 
@@ -310,6 +318,26 @@ export function Timeline({
         <span className="text-xs text-text-muted">
           {timeline.length} clip{timeline.length === 1 ? '' : 's'}
         </span>
+        {confirmingDelete && itemUnderPlayhead ? (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-text-muted">
+              Remove this {itemUnderPlayhead.kind} clip and its narration?
+            </span>
+            <Button
+              size="sm"
+              className="bg-danger text-white hover:bg-danger"
+              onClick={() => {
+                setConfirmingDelete(false)
+                onDelete(itemUnderPlayhead)
+              }}
+            >
+              Remove
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmingDelete(false)}>
+              Keep
+            </Button>
+          </div>
+        ) : (
         <div className="ml-auto flex items-center gap-1">
           <Button
             variant="secondary"
@@ -319,6 +347,13 @@ export function Timeline({
           >
             {narratingAll ? <Spinner size="sm" /> : `Narrate all (${needingNarration})`}
           </Button>
+          <IconButton
+            aria-label="Remove clip at playhead"
+            disabled={!itemUnderPlayhead}
+            onClick={() => setConfirmingDelete(true)}
+          >
+            <Trash2 size={16} />
+          </IconButton>
           <IconButton
             aria-label="Split clip at playhead"
             disabled={!splittable}
@@ -341,6 +376,7 @@ export function Timeline({
             <ZoomIn size={16} />
           </IconButton>
         </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">

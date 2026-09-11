@@ -18,7 +18,9 @@ const timelineApi = {
   reorder: (id: string, orderedIds: string[]): Promise<TimelineItem[]> =>
     ipcRenderer.invoke('project:timeline:reorder', id, orderedIds),
   split: (id: string, timelineItemId: string, atFrame: number): Promise<TimelineItem[]> =>
-    ipcRenderer.invoke('project:timeline:split', id, timelineItemId, atFrame)
+    ipcRenderer.invoke('project:timeline:split', id, timelineItemId, atFrame),
+  remove: (id: string, timelineItemId: string): Promise<TimelineItem[]> =>
+    ipcRenderer.invoke('project:timeline:delete', id, timelineItemId)
 }
 
 const renderApi = {

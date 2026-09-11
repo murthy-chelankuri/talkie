@@ -37,7 +37,9 @@ export const timelineClient = {
     window.api.timeline.addItem(id, item),
   reorder: (id: string, orderedIds: string[]): Promise<TimelineItem[]> => window.api.timeline.reorder(id, orderedIds),
   split: (id: string, timelineItemId: string, atFrame: number): Promise<TimelineItem[]> =>
-    window.api.timeline.split(id, timelineItemId, atFrame)
+    window.api.timeline.split(id, timelineItemId, atFrame),
+  remove: (id: string, timelineItemId: string): Promise<TimelineItem[]> =>
+    window.api.timeline.remove(id, timelineItemId)
 }
 
 export const renderClient = {

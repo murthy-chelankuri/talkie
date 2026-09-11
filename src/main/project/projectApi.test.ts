@@ -19,7 +19,8 @@ import {
   readNarrationAudioPaths,
   splitTimelineItem,
   deleteTranscriptSegment,
-  listProjectOverviews
+  listProjectOverviews,
+  deleteTimelineItem
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -874,5 +875,56 @@ describe('listProjectOverviews', () => {
 
     expect(overview.name).toBe('Broken')
     expect(overview.clipCount).toBe(0)
+  })
+})
+
+describe('deleteTimelineItem', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('removes the clip and closes the gap it left', () => {
+    const project = createProject('Delete Clip', baseDir)
+    const first = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const second = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+    const third = addTimelineItem(project.id, { kind: 'image', start: 150, duration: 30, data: { src: '/c.png' } }, baseDir)
+
+    const remaining = deleteTimelineItem(project.id, second.id, baseDir)
+
+    expect(remaining.map((item) => item.id)).toEqual([first.id, third.id])
+    expect(remaining.map((item) => item.start)).toEqual([0, 90])
+  })
+
+  it('removes the narration that belonged to the clip', () => {
+    const project = createProject('Delete Clip Narration', baseDir)
+    const doomed = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const kept = addTimelineItem(project.id, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+    addTranscriptSegment(project.id, { text: 'About the first', timelineItemId: doomed.id }, baseDir)
+    const keptSegment = addTranscriptSegment(project.id, { text: 'About the second', timelineItemId: kept.id }, baseDir)
+
+    deleteTimelineItem(project.id, doomed.id, baseDir)
+
+    expect(readTranscript(project.id, baseDir).map((s) => s.id)).toEqual([keptSegment.id])
+  })
+
+  it('can empty the timeline completely', () => {
+    const project = createProject('Delete Last Clip', baseDir)
+    const only = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+
+    expect(deleteTimelineItem(project.id, only.id, baseDir)).toEqual([])
+  })
+
+  it('throws a clear error when the clip does not exist', () => {
+    const project = createProject('Delete Missing Clip', baseDir)
+
+    expect(() => deleteTimelineItem(project.id, 'does-not-exist', baseDir)).toThrow(
+      'No timeline item found with id does-not-exist'
+    )
   })
 })
