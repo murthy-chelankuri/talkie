@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
+import { Clapperboard } from 'lucide-react'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
 import {
   projectClient,
@@ -13,6 +14,7 @@ import {
 } from '../api/projectClient'
 import { Timeline } from '../components/Timeline'
 import { SourcesPanel } from '../components/SourcesPanel'
+import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
@@ -278,21 +280,39 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         </ResizablePanel>
         <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
         <ResizablePanel id="preview" defaultSize="80" minSize="40">
-          <div className="flex h-full items-center justify-center bg-bg p-4">
-            {timeline.length > 0 ? (
-              <Player
-                ref={playerRef}
-                component={DemoComposition}
-                inputProps={{ timeline: remotionTimeline }}
-                durationInFrames={computeTimelineDuration(remotionTimeline)}
-                fps={FPS}
-                compositionWidth={WIDTH}
-                compositionHeight={HEIGHT}
-                style={{ width: '100%', height: '100%' }}
-                controls
+          <div className="flex h-full flex-col bg-bg">
+            {/* A dark mat in either theme: footage should be judged against neutral
+                surroundings, not against the app's own background. */}
+            <div className="flex min-h-0 flex-1 items-center justify-center bg-[#0c0d11] p-4">
+              {timeline.length > 0 ? (
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg ring-1 ring-white/10">
+                  <Player
+                    ref={playerRef}
+                    component={DemoComposition}
+                    inputProps={{ timeline: remotionTimeline }}
+                    durationInFrames={computeTimelineDuration(remotionTimeline)}
+                    fps={FPS}
+                    compositionWidth={WIDTH}
+                    compositionHeight={HEIGHT}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Clapperboard size={26} className="text-white/30" aria-hidden="true" />
+                  <p className="text-sm text-white/50">
+                    Record a session or add an image to see it here.
+                  </p>
+                </div>
+              )}
+            </div>
+            {timeline.length > 0 && (
+              <TransportBar
+                playerRef={playerRef}
+                timeline={timeline}
+                totalFrames={computeTimelineDuration(remotionTimeline)}
+                onSeek={handleSeek}
               />
-            ) : (
-              <p className="text-sm text-text-muted">Preview — {project.name}</p>
             )}
           </div>
         </ResizablePanel>

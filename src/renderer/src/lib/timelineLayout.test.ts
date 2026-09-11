@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { chooseTickIntervalSeconds, formatTimecode, frameAtOffset, offsetAtFrame } from './timelineLayout'
+import {
+  chooseTickIntervalSeconds,
+  formatTimecode,
+  frameAtOffset,
+  nextClipStart,
+  offsetAtFrame,
+  previousClipStart
+} from './timelineLayout'
 
 describe('chooseTickIntervalSeconds', () => {
   it('ticks every second when a second is wide enough to label', () => {
@@ -45,5 +52,46 @@ describe('formatTimecode', () => {
     expect(formatTimecode(9)).toBe('0:09')
     expect(formatTimecode(75)).toBe('1:15')
     expect(formatTimecode(600)).toBe('10:00')
+  })
+})
+
+describe('previousClipStart', () => {
+  const clips = [
+    { start: 0, duration: 60 },
+    { start: 60, duration: 90 },
+    { start: 150, duration: 30 }
+  ]
+
+  it('rewinds to the start of the clip being played', () => {
+    expect(previousClipStart(clips, 100)).toBe(60)
+  })
+
+  it('steps to the clip before when already at a clip start', () => {
+    expect(previousClipStart(clips, 60)).toBe(0)
+  })
+
+  it('has nowhere to go from the very beginning', () => {
+    expect(previousClipStart(clips, 0)).toBeNull()
+  })
+
+  it('has nowhere to go with no clips', () => {
+    expect(previousClipStart([], 10)).toBeNull()
+  })
+})
+
+describe('nextClipStart', () => {
+  const clips = [
+    { start: 0, duration: 60 },
+    { start: 60, duration: 90 },
+    { start: 150, duration: 30 }
+  ]
+
+  it('skips to the next clip', () => {
+    expect(nextClipStart(clips, 10)).toBe(60)
+    expect(nextClipStart(clips, 60)).toBe(150)
+  })
+
+  it('has nowhere to go from the last clip', () => {
+    expect(nextClipStart(clips, 150)).toBeNull()
   })
 })

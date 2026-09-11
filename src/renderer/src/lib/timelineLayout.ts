@@ -30,3 +30,24 @@ export function formatTimecode(seconds: number): string {
   const minutes = Math.floor(whole / 60)
   return `${minutes}:${String(whole % 60).padStart(2, '0')}`
 }
+
+export interface ClipBounds {
+  start: number
+  duration: number
+}
+
+// Skipping back lands on the start of the clip you are inside, unless you are already there, in
+// which case it steps to the clip before — the behaviour a transport control is expected to have.
+export function previousClipStart(clips: ClipBounds[], frame: number): number | null {
+  const starts = clips.map((clip) => clip.start).sort((a, b) => a - b)
+  const current = [...starts].reverse().find((start) => start <= frame)
+  if (current === undefined) return null
+  if (frame > current) return current
+
+  const earlier = [...starts].reverse().find((start) => start < frame)
+  return earlier ?? null
+}
+
+export function nextClipStart(clips: ClipBounds[], frame: number): number | null {
+  return clips.map((clip) => clip.start).sort((a, b) => a - b).find((start) => start > frame) ?? null
+}
