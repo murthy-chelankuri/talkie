@@ -1,0 +1,38 @@
+appId: com.murthychelankuri.talkie
+productName: Talkie
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+
+# Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
+# ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver
+# is a node process it spawns. Both have to sit on the filesystem as real files.
+asarUnpack:
+  - node_modules/@remotion/compositor-**/**
+  - node_modules/playwright/**
+  - node_modules/playwright-core/**
+
+mac:
+  category: public.app-category.video
+  target:
+    - target: dmg
+      arch: [arm64]
+  # No Developer ID certificate exists yet, so the app is ad-hoc signed: it runs on the machine
+  # that built it, and elsewhere macOS quarantines it until the user clears it. See README.
+  identity: null
+  hardenedRuntime: false
+  extendInfo:
+    # Recording narration in your own voice asks for the microphone. Without this key macOS
+    # terminates the app at the moment it asks, rather than refusing politely.
+    NSMicrophoneUsageDescription: Talkie records narration in your own voice when you ask it to.
+    # Playwright drives a separate browser to capture a session.
+    NSAppleEventsUsageDescription: Talkie controls a browser to record the session you are demonstrating.
+
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+npmRebuild: false

@@ -8,6 +8,7 @@ import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
 import type { Voice } from '../main/tts/listVoices'
 import type { PreparedDeck } from '../main/slides/importSlides'
+import type { ReadinessCheck } from '../main/setup/readiness'
 import type { DraftResult } from '../main/agent/draftNarration'
 
 const projectApi = {
@@ -30,6 +31,7 @@ const settingsApi = {
   update: (patch: unknown): Promise<Settings> => ipcRenderer.invoke('settings:update', patch),
   providers: (): Promise<ProviderDescription[]> => ipcRenderer.invoke('settings:providers'),
   localServer: (): Promise<LocalServer | null> => ipcRenderer.invoke('settings:localServer'),
+  readiness: (): Promise<ReadinessCheck[]> => ipcRenderer.invoke('settings:readiness'),
   voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
   previewVoice: (voice: string, text: string): Promise<void> =>
     ipcRenderer.invoke('settings:previewVoice', voice, text)

@@ -6,6 +6,7 @@ import { homedir } from 'os'
 import { findProjectDir } from '../project/paths'
 import { appendActionLogEntry, type ActionLogEntry } from './actionLog'
 import { shouldRedactInputValue } from './redact'
+import { resolveBrowser, LAUNCH_ARGS, NO_BROWSER_MESSAGE } from './resolveBrowser'
 
 export interface RecordingResult {
   sessionId: string
@@ -75,7 +76,16 @@ export async function startRecordingSession(
 
   let browser: Browser | undefined
   try {
-    browser = await chromium.launch({ headless: false })
+    // A browser the user already has, falling back to Playwright's own download.
+    const choice = resolveBrowser()
+    if (!choice) {
+      throw new Error(NO_BROWSER_MESSAGE)
+    }
+    browser = await chromium.launch({
+      headless: false,
+      channel: choice.channel,
+      args: choice.channel ? LAUNCH_ARGS : []
+    })
     const context: BrowserContext = await browser.newContext({
       recordVideo: { dir: sessionDir, size: { width: 1280, height: 720 } }
     })

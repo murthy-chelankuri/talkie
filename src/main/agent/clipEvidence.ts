@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { RenderInternals } from '@remotion/renderer'
 import { readActionLog } from '../capture/actionLog'
+import { ffOptions } from '../render/binaries'
 import { cleanActionLog, type CleanAction } from './cleanActionLog'
 import { readTimeline } from '../project/projectApi'
 import { FPS } from '../../remotion/constants'
@@ -108,9 +109,7 @@ async function sampleFrames(
         bin: 'ffmpeg',
         // -ss before -i seeks without decoding everything up to that point.
         args: ['-ss', at.toFixed(3), '-i', videoPath, '-frames:v', '1', '-q:v', '4', '-y', outputPath],
-        indent: false,
-        logLevel: 'error',
-        binariesDirectory: null,
+        ...ffOptions(),
         cancelSignal: undefined
       })
       if (existsSync(outputPath)) paths.push(outputPath)

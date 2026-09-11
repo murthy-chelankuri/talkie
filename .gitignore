@@ -36,3 +36,6 @@ node_modules/
 out/
 dist/
 .vite/
+
+# Packaged builds
+release/

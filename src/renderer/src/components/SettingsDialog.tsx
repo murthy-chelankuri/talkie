@@ -5,7 +5,8 @@ import {
   type ProviderDescription,
   type Settings,
   type LocalServer,
-  type Voice
+  type Voice,
+  type ReadinessCheck
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -20,6 +21,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
   const [checking, setChecking] = useState(true)
   const [localServer, setLocalServer] = useState<LocalServer | null>(null)
   const [voices, setVoices] = useState<Voice[]>([])
+  const [readiness, setReadiness] = useState<ReadinessCheck[]>([])
   const [previewing, setPreviewing] = useState(false)
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
       .finally(() => setChecking(false))
     settingsClient.localServer().then(setLocalServer)
     settingsClient.voices().then(setVoices)
+    settingsClient.readiness().then(setReadiness)
   }, [])
 
   useEffect(() => {
@@ -83,6 +86,38 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
             </div>
           ) : (
             <>
+              {readiness.length > 0 && (
+                <section className="flex flex-col gap-2">
+                  <h3 className="text-sm font-medium text-text">What this machine can do</h3>
+                  <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+                    {readiness.map((check) => (
+                      <div key={check.id} className="flex items-start gap-2.5 p-3">
+                        {check.ready ? (
+                          <CircleCheck size={14} className="mt-0.5 shrink-0 text-success" aria-label="Ready" />
+                        ) : (
+                          <CircleAlert
+                            size={14}
+                            className={cn('mt-0.5 shrink-0', check.required ? 'text-danger' : 'text-text-muted')}
+                            aria-label={check.required ? 'Not ready' : 'Optional, not set up'}
+                          />
+                        )}
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-sm text-text">{check.label}</span>
+                          <span className="text-xs text-text-muted">
+                            {check.ready ? (check.detail ?? check.purpose) : check.purpose}
+                          </span>
+                          {!check.ready && check.fix && (
+                            <span className={cn('text-xs', check.required ? 'text-danger' : 'text-text-muted')}>
+                              {check.fix}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-medium text-text">Drafting narration</h3>
                 <label className="flex items-start gap-2.5 rounded-lg border border-border bg-bg p-3">

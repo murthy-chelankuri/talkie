@@ -1,4 +1,5 @@
 import { RenderInternals } from '@remotion/renderer'
+import { ffOptions } from '../render/binaries'
 
 // Playwright writes VP8 .webm with roughly one keyframe every five seconds and no seek index,
 // which Chromium can barely seek and cannot decode fast enough to hold 30fps. Converting to
@@ -30,9 +31,7 @@ export async function normalizeRecording(videoPath: string): Promise<string> {
         '-y',
         normalizedPath
       ],
-      indent: false,
-      logLevel: 'error',
-      binariesDirectory: null,
+      ...ffOptions(),
       cancelSignal: undefined
     })
     return normalizedPath

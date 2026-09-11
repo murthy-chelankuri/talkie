@@ -13,6 +13,7 @@ import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 import { RECORDED_VOICE } from './schema'
 import type { TranscriptSegment } from './schema'
+import { ffOptions } from '../render/binaries'
 
 /**
  * The browser captures at 48kHz; keeping that rather than dropping to the synthesiser's 22050
@@ -46,9 +47,8 @@ async function loudnessFilter(sourcePath: string): Promise<string> {
     const result = await RenderInternals.callFf({
       bin: 'ffmpeg',
       args: ['-i', sourcePath, '-af', `${base}:print_format=json`, '-f', 'null', '-'],
-      indent: false,
+      ...ffOptions(),
       logLevel: 'info',
-      binariesDirectory: null,
       cancelSignal: undefined
     })
 
@@ -123,9 +123,7 @@ export async function saveRecordedNarration(
         '-y',
         audioPath
       ],
-      indent: false,
-      logLevel: 'error',
-      binariesDirectory: null,
+      ...ffOptions(),
       cancelSignal: undefined
     })
   } catch (err) {

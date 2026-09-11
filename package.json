@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./out/main/index.js",
+  "main": "./out/main/index.cjs",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "package": "npm run build && electron-builder --mac",
+    "package:dir": "npm run build && electron-builder --mac --dir"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -23,6 +25,8 @@
     "lucide-react": "^0.445.0",
     "pdfjs-dist": "^4.10.38",
     "playwright": "^1.63.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-resizable-panels": "^4.12.4",
     "remotion": "^4.0.522",
     "tailwind-merge": "^2.6.1",
@@ -38,11 +42,10 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.5.5",
     "electron": "^32.0.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "jsdom": "^25.0.1",
     "postcss": "^8.5.28",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",

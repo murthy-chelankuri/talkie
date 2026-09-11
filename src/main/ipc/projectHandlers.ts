@@ -13,6 +13,7 @@ import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { clearHistory, historyState, redo, undo, withHistory } from '../project/history'
 import { readSettings, updateSettings } from '../settings/settingsStore'
 import { repairNarrationDurations } from '../transcript/repairNarrationDurations'
+import { checkReadiness } from '../setup/readiness'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
 import { listVoices, previewVoice } from '../tts/listVoices'
@@ -55,6 +56,7 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:update', (_event, patch: unknown) => updateSettings(patch as never))
   ipcMain.handle('settings:providers', () => describeProviders())
   ipcMain.handle('settings:localServer', () => findLocalServer())
+  ipcMain.handle('settings:readiness', () => checkReadiness())
   ipcMain.handle('settings:voices', () => listVoices())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
 
