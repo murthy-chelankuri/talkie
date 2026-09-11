@@ -1,6 +1,6 @@
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'fs'
 import { basename, join } from 'path'
 import {
   CURRENT_SCHEMA_VERSION,
@@ -239,6 +239,39 @@ export function readNarrationAudioPaths(
     }
   }
   return paths
+}
+
+// Each narration is written to its own file so an earlier take is never overwritten, which is
+// what lets undo restore the voice along with the words. Takes no longer referenced are swept
+// when a project is opened: history is empty at that point, so nothing can reach them.
+export function sweepUnusedNarrationAudio(id: string, baseDir: string = homedir()): void {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) return
+
+  let referenced: Set<string>
+  try {
+    referenced = new Set(
+      readTranscript(id, baseDir)
+        .map((segment) => segment.audioFile)
+        .filter((file): file is string => Boolean(file))
+    )
+  } catch (err) {
+    // Without a readable transcript there is no way to tell which takes are still in use.
+    console.error(`Not sweeping narration audio for project ${id}:`, err)
+    return
+  }
+
+  const audioDir = join(dir, 'audio')
+  if (!existsSync(audioDir)) return
+
+  for (const file of readdirSync(audioDir)) {
+    if (referenced.has(file)) continue
+    try {
+      rmSync(join(audioDir, file))
+    } catch (err) {
+      console.error(`Could not remove unused narration audio ${file}:`, err)
+    }
+  }
 }
 
 export function addTranscriptSegment(

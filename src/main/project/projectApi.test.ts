@@ -20,7 +20,8 @@ import {
   splitTimelineItem,
   deleteTranscriptSegment,
   listProjectOverviews,
-  deleteTimelineItem
+  deleteTimelineItem,
+  sweepUnusedNarrationAudio
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -926,5 +927,44 @@ describe('deleteTimelineItem', () => {
     expect(() => deleteTimelineItem(project.id, 'does-not-exist', baseDir)).toThrow(
       'No timeline item found with id does-not-exist'
     )
+  })
+})
+
+describe('sweepUnusedNarrationAudio', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('keeps audio the transcript still points at and deletes the rest', () => {
+    const project = createProject('Sweep', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Words', timelineItemId: item.id }, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, 'keep-me.wav', baseDir)
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    writeFileSync(join(dir, 'audio', 'keep-me.wav'), 'current take')
+    writeFileSync(join(dir, 'audio', 'older-take.wav'), 'superseded take')
+
+    sweepUnusedNarrationAudio(project.id, baseDir)
+
+    expect(existsSync(join(dir, 'audio', 'keep-me.wav'))).toBe(true)
+    expect(existsSync(join(dir, 'audio', 'older-take.wav'))).toBe(false)
+  })
+
+  it('leaves everything alone when the transcript cannot be read', () => {
+    const project = createProject('Sweep Broken', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    writeFileSync(join(dir, 'audio', 'some-take.wav'), 'audio')
+    writeFileSync(join(dir, 'transcript.json'), 'not json', 'utf-8')
+
+    sweepUnusedNarrationAudio(project.id, baseDir)
+
+    expect(existsSync(join(dir, 'audio', 'some-take.wav'))).toBe(true)
   })
 })

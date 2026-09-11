@@ -28,7 +28,9 @@ export async function narrateSegment(
     throw new Error(`No transcript segment found with id ${segmentId}`)
   }
 
-  const audioFileName = `${segmentId}.wav`
+  // A new file per take: overwriting one name would make undo restore the old words next to
+  // the new voice, and would let a cached URL keep playing the wrong audio.
+  const audioFileName = `${segmentId}-${Date.now()}.wav`
   const audioPath = join(dir, 'audio', audioFileName)
   await sayTtsProvider.synthesize(segment.text, audioPath)
 

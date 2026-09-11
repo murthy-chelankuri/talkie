@@ -2,14 +2,18 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { existsSync, statSync } from 'fs'
 import {
   createProject,
   addTimelineItem,
   readTimeline,
   readTranscript,
   addTranscriptSegment,
+  updateTranscriptSegmentText,
   deleteTimelineItem
 } from './projectApi'
+import { findProjectDir } from './paths'
+import { narrateSegment } from '../transcript/narrate'
 import { clearHistory, historyState, redo, undo, withHistory } from './history'
 
 describe('project history', () => {
@@ -131,6 +135,41 @@ describe('project history', () => {
     expect(undo(project.id, baseDir)).toEqual({ canUndo: false, canRedo: false })
     expect(readTimeline(project.id, baseDir)).toHaveLength(1)
   })
+
+  it('restores the earlier recording when a re-narration is undone', async () => {
+    const project = createProject('Undo Narration Audio', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'A short first take', timelineItemId: item.id }, baseDir)
+
+    const first = await withHistory(project.id, () => narrateSegment(project.id, segment.id, baseDir), baseDir)
+
+    await withHistory(
+      project.id,
+      async () => {
+        updateTranscriptSegmentText(
+          project.id,
+          segment.id,
+          'A considerably longer second take with a good many more words in it',
+          baseDir
+        )
+        return narrateSegment(project.id, segment.id, baseDir)
+      },
+      baseDir
+    )
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    const secondFile = readTranscript(project.id, baseDir)[0].audioFile as string
+    expect(secondFile).not.toBe(first.audioFile)
+
+    undo(project.id, baseDir)
+
+    const restored = readTranscript(project.id, baseDir)[0]
+    expect(restored.text).toBe('A short first take')
+    // The words come back with the voice that was recorded for them, still on disk.
+    expect(restored.audioFile).toBe(first.audioFile)
+    expect(existsSync(join(dir, 'audio', restored.audioFile as string))).toBe(true)
+    expect(statSync(join(dir, 'audio', restored.audioFile as string)).size).toBeGreaterThan(1000)
+  }, 60_000)
 
   it('keeps each project history to itself', () => {
     const a = createProject('Project A', baseDir)

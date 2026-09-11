@@ -20,7 +20,8 @@ describe('narrateSegment (real say + afconvert)', () => {
     const result = await narrateSegment(project.id, segment.id, baseDir)
 
     expect(result.status).toBe('narrated')
-    expect(result.audioFile).toBe(`${segment.id}.wav`)
+    // Each take gets its own file so an earlier one is never overwritten.
+    expect(result.audioFile).toMatch(new RegExp(`^${segment.id}-\\d+\\.wav$`))
 
     const dir = findProjectDir(project.id, baseDir) as string
     const audioPath = join(dir, 'audio', result.audioFile as string)

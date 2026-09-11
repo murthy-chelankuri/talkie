@@ -1,6 +1,12 @@
 import type { IpcMain } from 'electron'
 import { homedir } from 'os'
-import { createProject, listProjects, listProjectOverviews, openProject } from '../project/projectApi'
+import {
+  createProject,
+  listProjects,
+  listProjectOverviews,
+  openProject,
+  sweepUnusedNarrationAudio
+} from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { historyState, redo, undo } from '../project/history'
@@ -23,7 +29,11 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     )
   })
 
-  ipcMain.handle('project:open', (_event, id: string) => openProject(id))
+  ipcMain.handle('project:open', (_event, id: string) => {
+    const project = openProject(id)
+    sweepUnusedNarrationAudio(id)
+    return project
+  })
 
   ipcMain.handle('project:history:state', (_event, id: string) => historyState(id))
   ipcMain.handle('project:history:undo', (_event, id: string) => undo(id))
