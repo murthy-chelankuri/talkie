@@ -11,13 +11,16 @@ import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Mic, Scissors, ZoomIn, ZoomOut } from 'lucide-react'
+import { Scissors, ZoomIn, ZoomOut } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
 import { chooseTickIntervalSeconds, formatTimecode, frameAtOffset, offsetAtFrame } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { IconButton } from './ui/IconButton'
+import { Button } from './ui/Button'
+import { Spinner } from './ui/Spinner'
+import { ClipNarrationBox } from './ClipNarrationBox'
 
 const DEFAULT_PIXELS_PER_SECOND = 60
 const MIN_PIXELS_PER_SECOND = 10
@@ -128,65 +131,40 @@ function ClipBlock({
   )
 }
 
-function SegmentBlock({
-  segment,
-  left,
-  width,
-  selected,
-  active,
-  onSelect
-}: {
-  segment: TranscriptSegment
-  left: number
-  width: number
-  selected: boolean
-  active: boolean
-  onSelect: (segment: TranscriptSegment) => void
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      style={{ left, width }}
-      onClick={() => onSelect(segment)}
-      title={segment.text}
-      className={cn(
-        'absolute top-0 flex h-full items-center gap-1 overflow-hidden rounded-md border px-2 py-0 text-left text-xs',
-        active ? 'bg-accent text-accent-foreground' : 'bg-surface text-text hover:bg-surface-hover',
-        selected ? 'border-accent ring-2 ring-accent' : 'border-border'
-      )}
-    >
-      {segment.status === 'narrated' && <Mic size={11} aria-hidden="true" className="shrink-0" />}
-      <span className="truncate">{segment.text}</span>
-    </button>
-  )
-}
-
 export function Timeline({
   timeline,
   segments,
   totalFrames,
   playerRef,
   selectedItemId,
-  selectedSegmentId,
   onSeek,
   onSelectItem,
-  onSelectSegment,
   onReorder,
   onSplit,
-  onActiveItemChange
+  onActiveItemChange,
+  narratingItemId,
+  narratingAll,
+  needingNarration,
+  onNarrationCommit,
+  onNarrate,
+  onNarrateAll
 }: {
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
   totalFrames: number
   playerRef: RefObject<PlayerRef | null>
   selectedItemId: string | null
-  selectedSegmentId: string | null
   onSeek: (frame: number) => void
   onSelectItem: (item: TimelineItem) => void
-  onSelectSegment: (segment: TranscriptSegment) => void
   onReorder: (orderedIds: string[]) => void
   onSplit: (item: TimelineItem, atFrame: number) => void
   onActiveItemChange: (itemId: string | null) => void
+  narratingItemId: string | null
+  narratingAll: boolean
+  needingNarration: number
+  onNarrationCommit: (item: TimelineItem, text: string) => void | Promise<void>
+  onNarrate: (item: TimelineItem) => void | Promise<void>
+  onNarrateAll: () => void | Promise<void>
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
@@ -282,34 +260,22 @@ export function Timeline({
     onReorder(arrayMove(timeline, oldIndex, newIndex).map((item) => item.id))
   }
 
-  // Segments sharing a clip split its width between them, so blocks never sit on top of
-  // each other when one clip has been narrated more than once.
-  const segmentPlacements = segments.flatMap((segment) => {
-    const item = timeline.find((candidate) => candidate.id === segment.timelineItemId)
-    if (!item) return []
-    const siblings = segments.filter((candidate) => candidate.timelineItemId === segment.timelineItemId)
-    const indexInItem = siblings.findIndex((candidate) => candidate.id === segment.id)
-    const itemLeft = offsetAtFrame(item.start, pixelsPerSecond, FPS)
-    const itemWidth = offsetAtFrame(item.duration, pixelsPerSecond, FPS)
-    const width = itemWidth / siblings.length
-    return [
-      {
-        segment,
-        left: itemLeft + width * indexInItem,
-        width,
-        active: item.id === itemUnderPlayheadId
-      }
-    ]
-  })
-
   return (
-    <div className="flex h-56 flex-col border-t border-border bg-surface">
+    <div className="flex h-[22rem] flex-col border-t border-border bg-surface">
       <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
         <span className="text-xs font-medium text-text-muted">Timeline</span>
         <span ref={timecodeRef} className="text-xs text-text-muted">
           {formatTimecode(0)} / {formatTimecode(totalFrames / FPS)}
         </span>
         <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onNarrateAll}
+            disabled={narratingAll || needingNarration === 0}
+          >
+            {narratingAll ? <Spinner size="sm" /> : `Narrate all (${needingNarration})`}
+          </Button>
           <IconButton
             aria-label="Split clip at playhead"
             disabled={!splittable}
@@ -384,17 +350,25 @@ export function Timeline({
             </DndContext>
           </div>
 
-          <div className="relative mt-2 h-8">
-            {segmentPlacements.map(({ segment, left, width, active }) => (
-              <SegmentBlock
-                key={segment.id}
-                segment={segment}
-                left={left}
-                width={width}
-                active={active}
-                selected={segment.id === selectedSegmentId}
-                onSelect={onSelectSegment}
-              />
+          <div className="relative mt-2 h-36">
+            {timeline.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  left: offsetAtFrame(item.start, pixelsPerSecond, FPS),
+                  width: offsetAtFrame(item.duration, pixelsPerSecond, FPS)
+                }}
+                className="absolute top-0 h-full pr-1"
+              >
+                <ClipNarrationBox
+                  item={item}
+                  segments={segments}
+                  active={item.id === itemUnderPlayheadId}
+                  narrating={narratingItemId === item.id}
+                  onCommit={onNarrationCommit}
+                  onNarrate={onNarrate}
+                />
+              </div>
             ))}
           </div>
 

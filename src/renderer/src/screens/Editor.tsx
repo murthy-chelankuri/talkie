@@ -12,8 +12,8 @@ import {
   type TimelineItem,
   type TranscriptSegment
 } from '../api/projectClient'
-import { TranscriptPanel } from '../components/TranscriptPanel'
 import { Timeline } from '../components/Timeline'
+import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { Panel } from '../components/ui/Panel'
 import { Toolbar } from '../components/ui/Toolbar'
 import { IconButton } from '../components/ui/IconButton'
@@ -34,12 +34,15 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [exportedPath, setExportedPath] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout', storage: localStorage })
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'editor-layout-v2', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
+  const [narratingItemId, setNarratingItemId] = useState<string | null>(null)
+  const [narratingAll, setNarratingAll] = useState(false)
+  const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const playerRef = useRef<PlayerRef>(null)
 
   useEffect(() => {
@@ -74,6 +77,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     setSegments(await transcriptClient.read(projectId))
   }, [projectId])
 
+  const needingNarration = timeline.filter((item) => {
+    const segment = segmentsForItem(segments, item.id)[0]
+    return segment && segment.status !== 'narrated'
+  })
+
   const handleSeek = useCallback((frame: number): void => {
     playerRef.current?.seekTo(frame)
   }, [])
@@ -101,6 +109,68 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     } catch (err) {
       setReorderError(err instanceof Error ? err.message : String(err))
       await refreshTimeline()
+    }
+  }
+
+  async function handleNarrationCommit(item: TimelineItem, text: string): Promise<void> {
+    const plan = planNarrationCommit(segments, item.id, text)
+    if (plan.action === 'none') return
+
+    setTranscriptError(null)
+    try {
+      if (plan.action === 'create') {
+        await transcriptClient.addSegment(projectId, { text: plan.text, timelineItemId: item.id })
+      } else if (plan.action === 'update') {
+        await transcriptClient.updateText(projectId, plan.id, plan.text)
+        for (const id of plan.removeIds) {
+          await transcriptClient.deleteSegment(projectId, id)
+        }
+      } else {
+        for (const id of plan.removeIds) {
+          await transcriptClient.deleteSegment(projectId, id)
+        }
+      }
+      await refreshSegments()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function narrateItem(item: TimelineItem): Promise<void> {
+    const segment = segmentsForItem(segments, item.id)[0]
+    if (!segment) return
+    await transcriptClient.narrate(projectId, segment.id)
+  }
+
+  async function handleNarrate(item: TimelineItem): Promise<void> {
+    setTranscriptError(null)
+    setNarratingItemId(item.id)
+    try {
+      await narrateItem(item)
+      await refreshSegments()
+      await refreshTimeline()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setNarratingItemId(null)
+    }
+  }
+
+  async function handleNarrateAll(): Promise<void> {
+    setTranscriptError(null)
+    setNarratingAll(true)
+    try {
+      for (const item of needingNarration) {
+        setNarratingItemId(item.id)
+        await narrateItem(item)
+      }
+      await refreshSegments()
+      await refreshTimeline()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setNarratingItemId(null)
+      setNarratingAll(false)
     }
   }
 
@@ -224,7 +294,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           </Panel>
         </ResizablePanel>
         <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
-        <ResizablePanel id="preview" defaultSize="55" minSize="30">
+        <ResizablePanel id="preview" defaultSize="80" minSize="40">
           <div className="flex h-full items-center justify-center bg-bg p-4">
             {timeline.length > 0 ? (
               <Player
@@ -243,25 +313,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </ResizablePanel>
-        <Separator className="w-1 bg-border transition-colors hover:bg-accent" />
-        <ResizablePanel id="transcript" collapsible defaultSize="25" minSize="15">
-          <Panel title="Transcript" className="h-full">
-            <TranscriptPanel
-              projectId={projectId}
-              timeline={timeline}
-              segments={segments}
-              activeItemId={activeItemId}
-              onSegmentsChange={refreshSegments}
-              onTimelineChange={refreshTimeline}
-              onSeek={handleSeek}
-            />
-          </Panel>
-        </ResizablePanel>
       </Group>
       <div className="flex flex-col">
-        {reorderError && (
-          <div className="px-3 pt-2">
-            <ErrorBanner message={reorderError} />
+        {(reorderError || transcriptError) && (
+          <div className="flex flex-col gap-2 px-3 pt-2">
+            {reorderError && <ErrorBanner message={reorderError} />}
+            {transcriptError && <ErrorBanner message={transcriptError} />}
           </div>
         )}
         <Timeline
@@ -270,13 +327,17 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           totalFrames={computeTimelineDuration(remotionTimeline)}
           playerRef={playerRef}
           selectedItemId={selectedItemId}
-          selectedSegmentId={selectedSegmentId}
           onSeek={handleSeek}
           onSelectItem={handleSelectClip}
-          onSelectSegment={handleSelectSegment}
           onReorder={handleReorder}
           onSplit={handleSplit}
           onActiveItemChange={setActiveItemId}
+          narratingItemId={narratingItemId}
+          narratingAll={narratingAll}
+          needingNarration={needingNarration.length}
+          onNarrationCommit={handleNarrationCommit}
+          onNarrate={handleNarrate}
+          onNarrateAll={handleNarrateAll}
         />
       </div>
     </div>
