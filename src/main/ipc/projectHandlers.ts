@@ -13,6 +13,7 @@ import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { clearHistory, historyState, redo, undo, withHistory } from '../project/history'
 import { readSettings, updateSettings } from '../settings/settingsStore'
 import { describeProviders } from '../agent/providerRegistry'
+import { findLocalServer } from '../agent/localProvider'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
@@ -48,6 +49,7 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:read', () => readSettings())
   ipcMain.handle('settings:update', (_event, patch: unknown) => updateSettings(patch as never))
   ipcMain.handle('settings:providers', () => describeProviders())
+  ipcMain.handle('settings:localServer', () => findLocalServer())
 
   // Drafted narration is an ordinary edit as far as undo is concerned.
   ipcMain.handle('project:agent:draftItem', (_event, projectId: string, itemId: string, force: boolean) =>

@@ -27,9 +27,16 @@ describe('settings store', () => {
   })
 
   it('remembers a changed provider', () => {
-    updateSettings({ narration: { provider: 'ollama' } }, baseDir)
+    updateSettings({ narration: { provider: 'local' } }, baseDir)
 
-    expect(readSettings(baseDir).narration.provider).toBe('ollama')
+    expect(readSettings(baseDir).narration.provider).toBe('local')
+  })
+
+  it('carries an older install off the provider that was named after one vendor', () => {
+    mkdirSync(join(baseDir, 'Talkie'), { recursive: true })
+    writeFileSync(settingsPath(baseDir), JSON.stringify({ narration: { provider: 'ollama' } }))
+
+    expect(readSettings(baseDir).narration.provider).toBe('local')
   })
 
   it('leaves untouched settings at their defaults when one changes', () => {
@@ -37,15 +44,16 @@ describe('settings store', () => {
 
     const settings = readSettings(baseDir)
     expect(settings.narration.autoDraft).toBe(true)
-    expect(settings.narration.ollama.baseUrl).toBe('http://127.0.0.1:11434')
+    // Blank means "find whichever local server is running".
+    expect(settings.narration.local.baseUrl).toBe('')
   })
 
   it('merges into nested provider config without dropping its siblings', () => {
-    updateSettings({ narration: { ollama: { model: 'llama3.2-vision' } } }, baseDir)
+    updateSettings({ narration: { local: { baseUrl: 'http://127.0.0.1:1234/v1' } } }, baseDir)
 
-    const { ollama } = readSettings(baseDir).narration
-    expect(ollama.model).toBe('llama3.2-vision')
-    expect(ollama.baseUrl).toBe('http://127.0.0.1:11434')
+    const { local } = readSettings(baseDir).narration
+    expect(local.baseUrl).toBe('http://127.0.0.1:1234/v1')
+    expect(local.model).toBe('')
   })
 
   it('can turn auto-drafting off', () => {
@@ -76,7 +84,7 @@ describe('settings store', () => {
   })
 
   it('writes readable json a person can edit by hand', () => {
-    updateSettings({ narration: { provider: 'ollama' } }, baseDir)
+    updateSettings({ narration: { provider: 'local' } }, baseDir)
 
     expect(readFileSync(settingsPath(baseDir), 'utf-8')).toContain('\n  ')
   })

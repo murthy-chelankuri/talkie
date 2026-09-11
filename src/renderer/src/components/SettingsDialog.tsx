@@ -3,7 +3,8 @@ import { CircleAlert, CircleCheck, Laptop, Cloud, X } from 'lucide-react'
 import {
   settingsClient,
   type ProviderDescription,
-  type Settings
+  type Settings,
+  type LocalServer
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -15,6 +16,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
   const [settings, setSettings] = useState<Settings | null>(null)
   const [providers, setProviders] = useState<ProviderDescription[]>([])
   const [checking, setChecking] = useState(true)
+  const [localServer, setLocalServer] = useState<LocalServer | null>(null)
 
   useEffect(() => {
     settingsClient.read().then(setSettings)
@@ -22,6 +24,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
       .providers()
       .then(setProviders)
       .finally(() => setChecking(false))
+    settingsClient.localServer().then(setLocalServer)
   }, [])
 
   useEffect(() => {
@@ -37,6 +40,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     setSettings(updated)
     // Availability depends on the settings themselves — a key added, a model renamed.
     setProviders(await settingsClient.providers())
+    setLocalServer(await settingsClient.localServer())
   }
 
   const selected = settings?.narration.provider
@@ -133,23 +137,49 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
                 )}
               </section>
 
-              {selected === 'ollama' && (
+              {selected === 'local' && (
                 <section className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium text-text">Ollama</h3>
+                  <h3 className="text-sm font-medium text-text">Local model</h3>
+                  {localServer ? (
+                    <>
+                      <p className="text-xs text-text-muted">
+                        Found {localServer.label} at {localServer.baseUrl}
+                      </p>
+                      <label className="flex flex-col gap-1 text-xs text-text-muted">
+                        Model
+                        <select
+                          aria-label="Local model"
+                          value={settings.narration.local.model || localServer.models[0] || ''}
+                          onChange={(event) =>
+                            patch({ local: { ...settings.narration.local, model: event.target.value } })
+                          }
+                          className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
+                        >
+                          {localServer.models.map((model) => (
+                            <option key={model} value={model}>
+                              {model}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p className="text-xs text-text-muted">
+                        Pick a model that can read images. A text-only model will describe the action log
+                        but not what is on screen.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-text-muted">
+                      Looking for a server on the usual ports. LM Studio, Ollama, llama.cpp and Jan all
+                      work; set an address below to use something else.
+                    </p>
+                  )}
                   <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    Server address
+                    Server address (leave blank to detect)
                     <Input
-                      aria-label="Ollama server address"
-                      defaultValue={settings.narration.ollama.baseUrl}
-                      onBlur={(event) => patch({ ollama: { ...settings.narration.ollama, baseUrl: event.target.value } })}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs text-text-muted">
-                    Vision model
-                    <Input
-                      aria-label="Ollama model"
-                      defaultValue={settings.narration.ollama.model}
-                      onBlur={(event) => patch({ ollama: { ...settings.narration.ollama, model: event.target.value } })}
+                      aria-label="Local server address"
+                      placeholder="http://127.0.0.1:1234/v1"
+                      defaultValue={settings.narration.local.baseUrl}
+                      onBlur={(event) => patch({ local: { ...settings.narration.local, baseUrl: event.target.value } })}
                     />
                   </label>
                 </section>
@@ -187,7 +217,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
                 <p className="rounded-lg border border-border bg-bg p-3 text-xs text-text-muted">
                   Drafting with {selectedDescription.label} sends screenshots of your recordings and the
                   pages you visited to {selected === 'anthropic' ? 'Anthropic' : 'Claude'}. Choose the
-                  built-in or Ollama provider to keep everything on this machine.
+                  built-in or local provider to keep everything on this machine.
                 </p>
               )}
             </>

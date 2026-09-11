@@ -1,11 +1,16 @@
 import { z } from 'zod'
 
 /** Providers that can draft a clip's narration. `template` needs nothing installed. */
-export const NARRATION_PROVIDER_IDS = ['template', 'claude-cli', 'ollama', 'anthropic'] as const
+export const NARRATION_PROVIDER_IDS = ['template', 'claude-cli', 'local', 'anthropic'] as const
 
-export const OllamaSettingsSchema = z.object({
-  baseUrl: z.string().default('http://127.0.0.1:11434'),
-  model: z.string().default('llava')
+export const LocalModelSettingsSchema = z.object({
+  /**
+   * Address of an OpenAI-compatible server. Blank means "find one" — LM Studio, Ollama,
+   * llama.cpp and Jan all serve the same API on their own default ports.
+   */
+  baseUrl: z.string().default(''),
+  /** Blank means "use whatever the server has loaded". */
+  model: z.string().default('')
 })
 
 export const AnthropicSettingsSchema = z.object({
@@ -16,8 +21,11 @@ export const AnthropicSettingsSchema = z.object({
 export const NarrationSettingsSchema = z.object({
   /** Draft narration by itself when a clip lands on the timeline. */
   autoDraft: z.boolean().default(true),
-  provider: z.enum(NARRATION_PROVIDER_IDS).default('template'),
-  ollama: OllamaSettingsSchema.default({}),
+  provider: z
+    // An older build called the local provider "ollama", when it spoke only to Ollama.
+    .preprocess((value) => (value === 'ollama' ? 'local' : value), z.enum(NARRATION_PROVIDER_IDS))
+    .default('template'),
+  local: LocalModelSettingsSchema.default({}),
   anthropic: AnthropicSettingsSchema.default({})
 })
 

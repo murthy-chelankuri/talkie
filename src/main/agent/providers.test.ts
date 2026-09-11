@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { templateProvider } from './templateProvider'
 import { anthropicProvider } from './anthropicProvider'
-import { ollamaProvider } from './ollamaProvider'
+import { localProvider } from './localProvider'
 import { buildPrompt, cleanDraft, targetWordCount } from './narrationProvider'
 import { narrationProvider } from './providerRegistry'
 import type { NarrationRequest } from './narrationProvider'
@@ -188,7 +188,7 @@ describe('cleanDraft', () => {
 describe('provider registry', () => {
   it('finds each provider by the id stored in settings', () => {
     expect(narrationProvider('template').id).toBe('template')
-    expect(narrationProvider('ollama').id).toBe('ollama')
+    expect(narrationProvider('local').id).toBe('local')
     expect(narrationProvider('anthropic').id).toBe('anthropic')
     expect(narrationProvider('claude-cli').id).toBe('claude-cli')
   })
@@ -258,38 +258,76 @@ describe('networked providers', () => {
     })
   })
 
-  it('ollama says how to install it when nothing is listening', async () => {
+  it('local says what to start when no server is listening', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('connection refused')) as unknown as typeof fetch
 
-    const availability = await ollamaProvider.isAvailable()
+    const availability = await localProvider.isAvailable()
 
     expect(availability.available).toBe(false)
-    expect(availability.reason).toContain('ollama.com')
+    expect(availability.reason).toContain('LM Studio, Ollama')
   })
 
-  it('ollama names the pull command when the model is not there', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ models: [{ name: 'mistral:latest' }] }), { status: 200 })
+  it('local finds whichever known runner answers first', async () => {
+    globalThis.fetch = vi.fn(async (...args: unknown[]) =>
+      String(args[0]).includes('1234')
+        ? new Response(JSON.stringify({ data: [{ id: 'qwen/qwen3.6-27b' }] }), { status: 200 })
+        : Promise.reject(new Error('refused'))
     ) as unknown as typeof fetch
 
-    const availability = await ollamaProvider.isAvailable()
-
-    expect(availability.reason).toBe('Ollama has no model called "llava". Run `ollama pull llava`.')
+    expect(await localProvider.isAvailable()).toEqual({ available: true })
   })
 
-  it('ollama accepts a tag that carries a version suffix', async () => {
+  it('local never offers an embedding model, which cannot write anything', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ models: [{ name: 'llava:latest' }] }), { status: 200 })
+      new Response(
+        JSON.stringify({ data: [{ id: 'text-embedding-nomic-embed-text-v1.5' }] }),
+        { status: 200 }
+      )
     ) as unknown as typeof fetch
 
-    expect(await ollamaProvider.isAvailable()).toEqual({ available: true })
+    const availability = await localProvider.isAvailable()
+
+    expect(availability.available).toBe(false)
+    expect(availability.reason).toContain('no usable model')
   })
 
-  it('ollama returns the drafted narration', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: { content: 'A local draft.' } }), { status: 200 })
+  it('local sends frames as data uris in the openai shape', async () => {
+    const framePath = join(baseDir, 'frame.jpg')
+    writeFileSync(framePath, 'jpeg-bytes')
+
+    const fetchMock = vi.fn(async (...args: unknown[]) =>
+      String(args[0]).endsWith('/models')
+        ? new Response(JSON.stringify({ data: [{ id: 'vision-model' }] }), { status: 200 })
+        : new Response(
+            JSON.stringify({ choices: [{ message: { content: 'A local draft.' } }] }),
+            { status: 200 }
+          )
+    )
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+
+    const text = await localProvider.draft(
+      request({ evidence: { kind: 'video', durationSeconds: 10, actions: [], framePaths: [framePath] } })
+    )
+
+    expect(text).toBe('A local draft.')
+    const call = fetchMock.mock.calls.find((args) => String(args[0]).endsWith('/chat/completions'))
+    const body = JSON.parse((call?.[1] as { body: string }).body)
+    expect(body.messages[0].content[1]).toMatchObject({
+      type: 'image_url',
+      image_url: { url: expect.stringContaining('data:image/jpeg;base64,') }
+    })
+  })
+
+  it('local explains a reasoning model that never reached an answer', async () => {
+    globalThis.fetch = vi.fn(async (...args: unknown[]) =>
+      String(args[0]).endsWith('/models')
+        ? new Response(JSON.stringify({ data: [{ id: 'thinker' }] }), { status: 200 })
+        : new Response(
+            JSON.stringify({ choices: [{ message: { content: '', reasoning_content: 'thinking…' } }] }),
+            { status: 200 }
+          )
     ) as unknown as typeof fetch
 
-    expect(await ollamaProvider.draft(request())).toBe('A local draft.')
+    await expect(localProvider.draft(request())).rejects.toThrow(/spent its whole answer thinking/)
   })
 })

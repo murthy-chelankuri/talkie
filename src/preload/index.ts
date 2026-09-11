@@ -5,6 +5,7 @@ import type { TimelineItem } from '../main/project/timeline/schema'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
+import type { LocalServer } from '../main/agent/localProvider'
 import type { DraftResult } from '../main/agent/draftNarration'
 
 const projectApi = {
@@ -22,7 +23,8 @@ const projectApi = {
 const settingsApi = {
   read: (): Promise<Settings> => ipcRenderer.invoke('settings:read'),
   update: (patch: unknown): Promise<Settings> => ipcRenderer.invoke('settings:update', patch),
-  providers: (): Promise<ProviderDescription[]> => ipcRenderer.invoke('settings:providers')
+  providers: (): Promise<ProviderDescription[]> => ipcRenderer.invoke('settings:providers'),
+  localServer: (): Promise<LocalServer | null> => ipcRenderer.invoke('settings:localServer')
 }
 
 const agentApi = {

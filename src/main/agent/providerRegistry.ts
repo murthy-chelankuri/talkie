@@ -2,13 +2,13 @@ import type { NarrationProvider } from './narrationProvider'
 import type { NarrationProviderId } from '../settings/schema'
 import { templateProvider } from './templateProvider'
 import { claudeCliProvider } from './claudeCliProvider'
-import { ollamaProvider } from './ollamaProvider'
+import { localProvider } from './localProvider'
 import { anthropicProvider } from './anthropicProvider'
 
 export const NARRATION_PROVIDERS: Record<NarrationProviderId, NarrationProvider> = {
   template: templateProvider,
   'claude-cli': claudeCliProvider,
-  ollama: ollamaProvider,
+  local: localProvider,
   anthropic: anthropicProvider
 }
 
