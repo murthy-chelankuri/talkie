@@ -49,5 +49,7 @@ export const transcriptClient = {
   updateText: (projectId: string, segmentId: string, text: string): Promise<TranscriptSegment> =>
     window.api.transcript.updateText(projectId, segmentId, text),
   narrate: (projectId: string, segmentId: string): Promise<TranscriptSegment> =>
-    window.api.transcript.narrate(projectId, segmentId)
+    window.api.transcript.narrate(projectId, segmentId),
+  deleteSegment: (projectId: string, segmentId: string): Promise<TranscriptSegment[]> =>
+    window.api.transcript.deleteSegment(projectId, segmentId)
 }

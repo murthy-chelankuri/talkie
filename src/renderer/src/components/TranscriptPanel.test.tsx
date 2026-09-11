@@ -9,31 +9,35 @@ vi.mock('../api/projectClient', () => ({
     read: vi.fn(),
     addSegment: vi.fn(),
     updateText: vi.fn(),
-    narrate: vi.fn()
+    narrate: vi.fn(),
+    deleteSegment: vi.fn()
   }
 }))
 
-const mockedAddSegment = vi.mocked(transcriptClient.addSegment)
+const mockedAdd = vi.mocked(transcriptClient.addSegment)
+const mockedUpdate = vi.mocked(transcriptClient.updateText)
 const mockedNarrate = vi.mocked(transcriptClient.narrate)
+const mockedDelete = vi.mocked(transcriptClient.deleteSegment)
 
-const timeline: TimelineItem[] = [{ id: 'item-1', kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }]
-const segment: TranscriptSegment = {
-  id: 'seg-1',
-  text: 'Hello there',
-  timelineItemId: 'item-1',
-  status: 'edited'
-}
+const timeline: TimelineItem[] = [
+  { id: 'item-1', kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } },
+  { id: 'item-2', kind: 'video', start: 90, duration: 300, data: { src: '/v.mp4' } }
+]
+const segments: TranscriptSegment[] = [
+  { id: 'seg-1', text: 'First line', timelineItemId: 'item-1', status: 'narrated' },
+  { id: 'seg-2', text: 'Second line', timelineItemId: 'item-2', status: 'edited' }
+]
 
 function renderPanel(props: Partial<Parameters<typeof TranscriptPanel>[0]> = {}) {
   return render(
     <TranscriptPanel
       projectId="p1"
       timeline={timeline}
-      segments={[segment]}
-      selectedSegmentId={segment.id}
+      segments={segments}
+      activeItemId={null}
       onSegmentsChange={vi.fn()}
-      onSelectSegment={vi.fn()}
       onTimelineChange={vi.fn()}
+      onSeek={vi.fn()}
       {...props}
     />
   )
@@ -41,73 +45,103 @@ function renderPanel(props: Partial<Parameters<typeof TranscriptPanel>[0]> = {})
 
 describe('TranscriptPanel', () => {
   beforeEach(() => {
-    mockedAddSegment.mockReset()
+    mockedAdd.mockReset()
+    mockedUpdate.mockReset()
     mockedNarrate.mockReset()
+    mockedDelete.mockReset()
+    mockedUpdate.mockResolvedValue(segments[0])
+    mockedAdd.mockResolvedValue({ id: 'seg-3', text: 'Third', timelineItemId: 'item-2', status: 'edited' })
+    mockedDelete.mockResolvedValue([])
+    mockedNarrate.mockResolvedValue({ ...segments[1], status: 'narrated' })
   })
 
-  it('edits the selected segment rather than listing every segment', () => {
+  it('shows the whole transcript as one editable script', () => {
     renderPanel()
-    expect(screen.getByDisplayValue('Hello there')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Script' })).toHaveValue('First line\n\nSecond line')
   })
 
-  it('points at the timeline when no segment is selected', () => {
-    renderPanel({ selectedSegmentId: null })
-    expect(screen.getByText('No segment selected')).toBeInTheDocument()
-    expect(screen.queryByDisplayValue('Hello there')).not.toBeInTheDocument()
-  })
-
-  it('disables Add Segment while the form is blank', () => {
+  it('lists each segment with its start time', () => {
     renderPanel()
-    expect(screen.getByRole('button', { name: 'Add Segment' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /0:00.*First line/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /0:03.*Second line/ })).toBeInTheDocument()
   })
 
-  it('disables Add Segment while a submission is in flight', async () => {
+  it('seeks to a segment when its row is clicked', async () => {
     const user = userEvent.setup()
-    let resolveAdd: ((added: TranscriptSegment) => void) | undefined
-    mockedAddSegment.mockReturnValue(new Promise((resolve) => (resolveAdd = resolve)))
+    const onSeek = vi.fn()
+    renderPanel({ onSeek })
 
-    renderPanel()
+    await user.click(screen.getByRole('button', { name: /Second line/ }))
 
-    await user.selectOptions(screen.getByRole('combobox'), 'item-1')
-    await user.type(screen.getByPlaceholderText('New segment text'), 'Hi')
-    await user.click(screen.getByRole('button', { name: 'Add Segment' }))
-
-    expect(screen.getByRole('button', { name: 'Add Segment' })).toBeDisabled()
-
-    resolveAdd?.({ id: 'seg-2', text: 'Hi', timelineItemId: 'item-1', status: 'edited' })
-    await waitFor(() => expect(mockedAddSegment).toHaveBeenCalledTimes(1))
+    expect(onSeek).toHaveBeenCalledWith(90)
   })
 
-  it('disables Narrate while the selected segment is narrating', async () => {
+  it('cannot save until the script is edited', async () => {
     const user = userEvent.setup()
-    let resolveNarrate: ((updated: TranscriptSegment) => void) | undefined
-    mockedNarrate.mockReturnValue(new Promise((resolve) => (resolveNarrate = resolve)))
+    renderPanel()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
 
+    await user.type(screen.getByRole('textbox', { name: 'Script' }), ' more')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('saves an edited paragraph as an update to that segment', async () => {
+    const user = userEvent.setup()
     renderPanel()
 
-    await user.click(screen.getByRole('button', { name: 'Narrate' }))
-    expect(screen.getByRole('button', { name: 'Narrating' })).toBeDisabled()
+    const script = screen.getByRole('textbox', { name: 'Script' })
+    await user.clear(script)
+    await user.type(script, 'First line changed{Enter}{Enter}Second line')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    resolveNarrate?.({ ...segment, status: 'narrated', audioFile: '/a.wav' })
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith('p1', 'seg-1', 'First line changed'))
+    expect(mockedAdd).not.toHaveBeenCalled()
+    expect(mockedDelete).not.toHaveBeenCalled()
+  })
+
+  it('saves a new paragraph as a segment on the clip of the one before it', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    const script = screen.getByRole('textbox', { name: 'Script' })
+    await user.click(script)
+    await user.keyboard('{End}')
+    await user.type(script, '{Enter}{Enter}Third line')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(mockedAdd).toHaveBeenCalledWith('p1', { text: 'Third line', timelineItemId: 'item-2' })
+    )
+  })
+
+  it('saves a removed paragraph as a deletion', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    const script = screen.getByRole('textbox', { name: 'Script' })
+    await user.clear(script)
+    await user.type(script, 'First line')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(mockedDelete).toHaveBeenCalledWith('p1', 'seg-2'))
+  })
+
+  it('narrates only the segments that still need it', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await user.click(screen.getByRole('button', { name: 'Narrate all (1)' }))
+
     await waitFor(() => expect(mockedNarrate).toHaveBeenCalledTimes(1))
+    expect(mockedNarrate).toHaveBeenCalledWith('p1', 'seg-2')
   })
 
-  it('reports the new segment so the timeline can pick it up', async () => {
+  it('will not narrate while the script has unsaved edits', async () => {
     const user = userEvent.setup()
-    const onSegmentsChange = vi.fn()
-    mockedAddSegment.mockResolvedValue({
-      id: 'seg-2',
-      text: 'Hi',
-      timelineItemId: 'item-1',
-      status: 'edited'
-    })
+    renderPanel()
 
-    renderPanel({ onSegmentsChange })
+    await user.type(screen.getByRole('textbox', { name: 'Script' }), ' more')
 
-    await user.selectOptions(screen.getByRole('combobox'), 'item-1')
-    await user.type(screen.getByPlaceholderText('New segment text'), 'Hi')
-    await user.click(screen.getByRole('button', { name: 'Add Segment' }))
-
-    await waitFor(() => expect(onSegmentsChange).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'Narrate all (1)' })).toBeDisabled()
   })
 })

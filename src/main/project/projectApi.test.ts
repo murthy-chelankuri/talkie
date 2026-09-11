@@ -17,7 +17,8 @@ import {
   updateTimelineItemDuration,
   reorderTimelineItems,
   readNarrationAudioPaths,
-  splitTimelineItem
+  splitTimelineItem,
+  deleteTranscriptSegment
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -753,6 +754,38 @@ describe('splitTimelineItem', () => {
 
     expect(() => splitTimelineItem(project.id, 'does-not-exist', 10, baseDir)).toThrow(
       'No timeline item found with id does-not-exist'
+    )
+  })
+})
+
+describe('deleteTranscriptSegment', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('removes only the named segment', () => {
+    const project = createProject('Delete Segment', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const first = addTranscriptSegment(project.id, { text: 'One', timelineItemId: item.id }, baseDir)
+    const second = addTranscriptSegment(project.id, { text: 'Two', timelineItemId: item.id }, baseDir)
+
+    deleteTranscriptSegment(project.id, first.id, baseDir)
+
+    const remaining = readTranscript(project.id, baseDir)
+    expect(remaining.map((s) => s.id)).toEqual([second.id])
+  })
+
+  it('throws a clear error when the segment does not exist', () => {
+    const project = createProject('Delete Missing', baseDir)
+
+    expect(() => deleteTranscriptSegment(project.id, 'does-not-exist', baseDir)).toThrow(
+      'No transcript segment found with id does-not-exist'
     )
   })
 })

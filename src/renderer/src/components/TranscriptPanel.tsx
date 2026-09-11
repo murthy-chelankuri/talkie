@@ -1,75 +1,76 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Mic } from 'lucide-react'
 import { transcriptClient, type TranscriptSegment, type TimelineItem } from '../api/projectClient'
-import { Card } from './ui/Card'
-import { Textarea } from './ui/Textarea'
+import { diffScript, parseScript, segmentsToScript } from '../lib/scriptDocument'
+import { formatTimecode } from '../lib/timelineLayout'
+import { FPS } from '../../../remotion/constants'
+import { cn } from '../lib/cn'
 import { Button } from './ui/Button'
-import { IconButton } from './ui/IconButton'
+import { Textarea } from './ui/Textarea'
 import { Spinner } from './ui/Spinner'
-import { EmptyState } from './ui/EmptyState'
 import { ErrorBanner } from './ui/ErrorBanner'
 
 export function TranscriptPanel({
   projectId,
   timeline,
   segments,
-  selectedSegmentId,
+  activeItemId,
   onSegmentsChange,
-  onSelectSegment,
-  onTimelineChange
+  onTimelineChange,
+  onSeek
 }: {
   projectId: string
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
-  selectedSegmentId: string | null
+  activeItemId: string | null
   onSegmentsChange: () => void | Promise<void>
-  onSelectSegment: (segmentId: string) => void
   onTimelineChange: () => void | Promise<void>
+  onSeek: (frame: number) => void
 }): JSX.Element {
-  const [newText, setNewText] = useState('')
-  const [newItemId, setNewItemId] = useState('')
+  const savedScript = useMemo(() => segmentsToScript(segments), [segments])
+  const [script, setScript] = useState(savedScript)
+  const [saving, setSaving] = useState(false)
   const [narrating, setNarrating] = useState(false)
-  const [adding, setAdding] = useState(false)
-  const [draftText, setDraftText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const selected = segments.find((segment) => segment.id === selectedSegmentId) ?? null
+  // Adopt changes that came from elsewhere (a narration, a new recording) unless the writer has
+  // unsaved edits in front of them, which must not be pulled out from under them.
+  useEffect(() => {
+    setScript((current) => (current === savedScript ? current : current.trim() === '' ? savedScript : current))
+  }, [savedScript])
 
-  async function handleAdd(): Promise<void> {
-    if (!newText.trim() || !newItemId) return
+  const dirty = script !== savedScript
+  const pendingNarration = segments.filter((segment) => segment.status !== 'narrated')
+
+  async function handleSave(): Promise<void> {
     setError(null)
-    setAdding(true)
+    setSaving(true)
     try {
-      const added = await transcriptClient.addSegment(projectId, {
-        text: newText.trim(),
-        timelineItemId: newItemId
-      })
-      setNewText('')
+      const changes = diffScript(segments, parseScript(script), activeItemId ?? timeline[0]?.id ?? null)
+      for (const update of changes.updates) {
+        await transcriptClient.updateText(projectId, update.id, update.text)
+      }
+      for (const addition of changes.additions) {
+        await transcriptClient.addSegment(projectId, addition)
+      }
+      for (const id of changes.deletions) {
+        await transcriptClient.deleteSegment(projectId, id)
+      }
       await onSegmentsChange()
-      onSelectSegment(added.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
-      setAdding(false)
+      setSaving(false)
     }
   }
 
-  async function handleTextBlur(segmentId: string, text: string): Promise<void> {
+  async function handleNarrateAll(): Promise<void> {
     setError(null)
-    try {
-      await transcriptClient.updateText(projectId, segmentId, text)
-      setDraftText(null)
-      await onSegmentsChange()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    }
-  }
-
-  async function handleNarrate(segmentId: string): Promise<void> {
     setNarrating(true)
-    setError(null)
     try {
-      await transcriptClient.narrate(projectId, segmentId)
+      for (const segment of pendingNarration) {
+        await transcriptClient.narrate(projectId, segment.id)
+      }
       await onSegmentsChange()
       await onTimelineChange()
     } catch (err) {
@@ -80,58 +81,56 @@ export function TranscriptPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex h-full flex-col gap-3">
       {error && <ErrorBanner message={error} />}
 
-      {selected ? (
-        <Card className="flex flex-col gap-2">
-          <Textarea
-            value={draftText ?? selected.text}
-            onChange={(event) => setDraftText(event.target.value)}
-            onBlur={(event) => handleTextBlur(selected.id, event.target.value)}
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">{selected.status}</span>
-            <IconButton
-              aria-label={narrating ? 'Narrating' : 'Narrate'}
-              onClick={() => handleNarrate(selected.id)}
-              disabled={narrating}
-            >
-              {narrating ? <Spinner size="sm" /> : <Mic size={16} />}
-            </IconButton>
-          </div>
-        </Card>
-      ) : (
-        <EmptyState
-          title="No segment selected"
-          description="Pick a block on the transcript track to edit it, or add one below."
-        />
-      )}
+      <ol className="flex flex-col gap-1">
+        {segments.map((segment) => {
+          const item = timeline.find((candidate) => candidate.id === segment.timelineItemId)
+          const active = segment.timelineItemId === activeItemId
+          return (
+            <li key={segment.id}>
+              <button
+                type="button"
+                onClick={() => item && onSeek(item.start)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-md border px-2 py-1 text-left text-xs',
+                  active
+                    ? 'border-accent bg-accent text-accent-foreground'
+                    : 'border-border bg-surface text-text-muted hover:bg-surface-hover'
+                )}
+              >
+                <span className="shrink-0 tabular-nums">{formatTimecode((item?.start ?? 0) / FPS)}</span>
+                {segment.status === 'narrated' && <Mic size={11} aria-hidden="true" className="shrink-0" />}
+                <span className="truncate">{segment.text}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
 
-      <Card className="flex flex-col gap-2">
-        <select
-          value={newItemId}
-          onChange={(event) => setNewItemId(event.target.value)}
-          disabled={adding}
-          className="h-9 rounded-md border border-border bg-bg px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
-        >
-          <option value="">Select timeline item…</option>
-          {timeline.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.kind} ({item.id.slice(0, 8)})
-            </option>
-          ))}
-        </select>
-        <Textarea
-          value={newText}
-          onChange={(event) => setNewText(event.target.value)}
-          placeholder="New segment text"
-          disabled={adding}
-        />
-        <Button onClick={handleAdd} disabled={adding || !newText.trim() || !newItemId}>
-          Add Segment
+      <Textarea
+        value={script}
+        onChange={(event) => setScript(event.target.value)}
+        placeholder="Write the narration here. Leave a blank line to start a new segment."
+        aria-label="Script"
+        className="min-h-40 flex-1 resize-none font-normal leading-relaxed"
+      />
+
+      <p className="text-xs text-text-muted">Blank line starts a new segment.</p>
+
+      <div className="flex gap-2">
+        <Button onClick={handleSave} disabled={saving || !dirty}>
+          {saving ? <Spinner size="sm" /> : 'Save'}
         </Button>
-      </Card>
+        <Button
+          variant="secondary"
+          onClick={handleNarrateAll}
+          disabled={narrating || dirty || pendingNarration.length === 0}
+        >
+          {narrating ? <Spinner size="sm" /> : `Narrate all (${pendingNarration.length})`}
+        </Button>
+      </div>
     </div>
   )
 }

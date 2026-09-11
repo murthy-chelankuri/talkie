@@ -44,7 +44,9 @@ const transcriptApi = {
   updateText: (projectId: string, segmentId: string, text: string): Promise<TranscriptSegment> =>
     ipcRenderer.invoke('project:transcript:updateText', projectId, segmentId, text),
   narrate: (projectId: string, segmentId: string): Promise<TranscriptSegment> =>
-    ipcRenderer.invoke('project:transcript:narrate', projectId, segmentId)
+    ipcRenderer.invoke('project:transcript:narrate', projectId, segmentId),
+  deleteSegment: (projectId: string, segmentId: string): Promise<TranscriptSegment[]> =>
+    ipcRenderer.invoke('project:transcript:deleteSegment', projectId, segmentId)
 }
 
 contextBridge.exposeInMainWorld('api', {

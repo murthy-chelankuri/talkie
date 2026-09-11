@@ -172,7 +172,8 @@ export function Timeline({
   onSelectItem,
   onSelectSegment,
   onReorder,
-  onSplit
+  onSplit,
+  onActiveItemChange
 }: {
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
@@ -185,6 +186,7 @@ export function Timeline({
   onSelectSegment: (segment: TranscriptSegment) => void
   onReorder: (orderedIds: string[]) => void
   onSplit: (item: TimelineItem, atFrame: number) => void
+  onActiveItemChange: (itemId: string | null) => void
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
@@ -203,6 +205,8 @@ export function Timeline({
   const tickSeconds = chooseTickIntervalSeconds(pixelsPerSecond)
   const tickCount = Math.floor(totalFrames / FPS / tickSeconds) + 1
   const itemUnderPlayhead = timeline.find((item) => item.id === itemUnderPlayheadId)
+  const splittable =
+    itemUnderPlayhead && frameRef.current > itemUnderPlayhead.start ? itemUnderPlayhead : undefined
 
   const paintFrame = useCallback(
     (frame: number): void => {
@@ -216,12 +220,20 @@ export function Timeline({
       // Written here rather than rendered, for the same reason as the playhead: the slider has
       // to report the live position without re-rendering the timeline on every frame.
       rulerRef.current?.setAttribute('aria-valuenow', String(frame))
+      // A clip owns its first frame, so the playhead at 0 is already on the opening clip.
+      // Splitting is stricter — see splittableItem — because a cut at a clip's own edge would
+      // leave an empty half.
       const containing = timeline.find(
-        (item) => frame > item.start && frame < item.start + item.duration
+        (item) => frame >= item.start && frame < item.start + item.duration
       )
-      setItemUnderPlayheadId((previous) => (previous === (containing?.id ?? null) ? previous : containing?.id ?? null))
+      setItemUnderPlayheadId((previous) => {
+        const next = containing?.id ?? null
+        if (previous === next) return previous
+        onActiveItemChange(next)
+        return next
+      })
     },
-    [pixelsPerSecond, timeline, totalFrames]
+    [pixelsPerSecond, timeline, totalFrames, onActiveItemChange]
   )
 
   useEffect(() => {
@@ -300,8 +312,8 @@ export function Timeline({
         <div className="ml-auto flex items-center gap-1">
           <IconButton
             aria-label="Split clip at playhead"
-            disabled={!itemUnderPlayhead}
-            onClick={() => itemUnderPlayhead && onSplit(itemUnderPlayhead, frameRef.current)}
+            disabled={!splittable}
+            onClick={() => splittable && onSplit(splittable, frameRef.current)}
           >
             <Scissors size={16} />
           </IconButton>

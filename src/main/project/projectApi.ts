@@ -245,6 +245,26 @@ export function updateTranscriptSegmentText(
   return updated
 }
 
+export function deleteTranscriptSegment(
+  id: string,
+  segmentId: string,
+  baseDir: string = homedir()
+): TranscriptSegment[] {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const transcript = readTranscript(id, baseDir)
+  const remaining = transcript.filter((segment) => segment.id !== segmentId)
+  if (remaining.length === transcript.length) {
+    throw new Error(`No transcript segment found with id ${segmentId}`)
+  }
+
+  writeJsonAtomic(join(dir, 'transcript.json'), remaining)
+  return remaining
+}
+
 export function updateTranscriptSegmentAudio(
   id: string,
   segmentId: string,

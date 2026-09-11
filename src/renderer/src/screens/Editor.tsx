@@ -39,6 +39,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
+  const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const playerRef = useRef<PlayerRef>(null)
 
   useEffect(() => {
@@ -249,10 +250,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               projectId={projectId}
               timeline={timeline}
               segments={segments}
-              selectedSegmentId={selectedSegmentId}
+              activeItemId={activeItemId}
               onSegmentsChange={refreshSegments}
-              onSelectSegment={setSelectedSegmentId}
               onTimelineChange={refreshTimeline}
+              onSeek={handleSeek}
             />
           </Panel>
         </ResizablePanel>
@@ -275,6 +276,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onSelectSegment={handleSelectSegment}
           onReorder={handleReorder}
           onSplit={handleSplit}
+          onActiveItemChange={setActiveItemId}
         />
       </div>
     </div>
