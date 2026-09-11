@@ -14,8 +14,64 @@ import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remo
 import { RECORDED_VOICE } from './schema'
 import type { TranscriptSegment } from './schema'
 
-/** Matches what the speech synthesiser writes, so everything downstream sees one audio format. */
-const SAMPLE_RATE = '22050'
+/**
+ * The browser captures at 48kHz; keeping that rather than dropping to the synthesiser's 22050
+ * keeps the half of the voice's bandwidth that downsampling would throw away. Nothing
+ * downstream requires one rate — only one container and encoding.
+ */
+const SAMPLE_RATE = '48000'
+
+/**
+ * Loudness to normalise a take to, in LUFS.
+ *
+ * Measured from the synthesised narration in a real project, which sits between -17.5 and
+ * -18.0 LUFS: a recorded take has to land in the same place or the video jumps in volume every
+ * time it cuts between a spoken clip and a synthesised one.
+ */
+const TARGET_LUFS = -17.5
+const TARGET_TRUE_PEAK = -1.5
+const TARGET_RANGE = 11
+
+/**
+ * Build the loudness filter for this take, measuring it first.
+ *
+ * Measuring and then correcting by a known amount keeps a quiet passage quiet relative to a
+ * loud one; normalising in a single pass would chase the level as it goes and breathe audibly
+ * on speech. If the measurement cannot be read the filter still runs, just without it.
+ */
+async function loudnessFilter(sourcePath: string): Promise<string> {
+  const base = `loudnorm=I=${TARGET_LUFS}:TP=${TARGET_TRUE_PEAK}:LRA=${TARGET_RANGE}`
+
+  try {
+    const result = await RenderInternals.callFf({
+      bin: 'ffmpeg',
+      args: ['-i', sourcePath, '-af', `${base}:print_format=json`, '-f', 'null', '-'],
+      indent: false,
+      logLevel: 'info',
+      binariesDirectory: null,
+      cancelSignal: undefined
+    })
+
+    const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
+    const measured = JSON.parse(output.slice(output.lastIndexOf('{'), output.lastIndexOf('}') + 1)) as Record<
+      string,
+      string
+    >
+
+    return [
+      base,
+      `measured_I=${measured.input_i}`,
+      `measured_TP=${measured.input_tp}`,
+      `measured_LRA=${measured.input_lra}`,
+      `measured_thresh=${measured.input_thresh}`,
+      `offset=${measured.target_offset}`,
+      'linear=true'
+    ].join(':')
+  } catch (err) {
+    console.error('Could not measure the recording loudness, normalising in one pass:', err)
+    return base
+  }
+}
 
 /**
  * Save a take the user recorded in their own voice.
@@ -53,7 +109,20 @@ export async function saveRecordedNarration(
   try {
     await RenderInternals.callFf({
       bin: 'ffmpeg',
-      args: ['-i', sourcePath, '-ac', '1', '-ar', SAMPLE_RATE, '-c:a', 'pcm_s16le', '-y', audioPath],
+      args: [
+        '-i',
+        sourcePath,
+        '-af',
+        await loudnessFilter(sourcePath),
+        '-ac',
+        '1',
+        '-ar',
+        SAMPLE_RATE,
+        '-c:a',
+        'pcm_s16le',
+        '-y',
+        audioPath
+      ],
       indent: false,
       logLevel: 'error',
       binariesDirectory: null,

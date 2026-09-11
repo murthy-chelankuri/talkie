@@ -16,8 +16,16 @@ export async function startVoiceRecording(): Promise<VoiceRecording> {
   let stream: MediaStream
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      // A spoken take wants the voice, not the room.
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      // A spoken take wants the voice, not the room. These are the browser's own processing
+      // and are confirmed applied on this machine, not merely requested. voiceIsolation is
+      // newer and not everywhere, so it goes in `advanced`, where an unsupported constraint is
+      // ignored rather than failing the whole request.
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        advanced: [{ voiceIsolation: true } as MediaTrackConstraintSet]
+      }
     })
   } catch (err) {
     throw new Error(

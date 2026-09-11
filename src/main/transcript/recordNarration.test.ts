@@ -125,3 +125,86 @@ describe('saveRecordedNarration', () => {
     )
   }, 60_000)
 })
+
+describe('making a take sit alongside the synthesised clips', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-loudness-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  /** A take recorded far too quietly, as a real one from across the room would be. */
+  async function makeQuietRecording(seconds: number, gain: string): Promise<Uint8Array> {
+    const dir = mkdtempSync(join(tmpdir(), 'talkie-quiet-'))
+    const path = join(dir, 'take.webm')
+    await RenderInternals.callFf({
+      bin: 'ffmpeg',
+      args: [
+        '-f', 'lavfi',
+        '-i', `sine=frequency=180:duration=${seconds}`,
+        '-af', `volume=${gain}`,
+        '-c:a', 'libopus', '-b:a', '48k', '-y', path
+      ],
+      indent: false, logLevel: 'error', binariesDirectory: null, cancelSignal: undefined
+    })
+    const { readFileSync } = await import('fs')
+    const bytes = new Uint8Array(readFileSync(path))
+    rmSync(dir, { recursive: true, force: true })
+    return bytes
+  }
+
+  async function integratedLoudness(path: string): Promise<number> {
+    const result = await RenderInternals.callFf({
+      bin: 'ffmpeg',
+      args: ['-i', path, '-af', 'loudnorm=print_format=summary', '-f', 'null', '-'],
+      indent: false, logLevel: 'info', binariesDirectory: null, cancelSignal: undefined
+    })
+    const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
+    return Number(output.match(/Input Integrated:\s*(-?[\d.]+)/)?.[1])
+  }
+
+  it('lifts a take recorded too quietly up to the level of the rest of the video', async () => {
+    const project = createProject('Loud', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Script', timelineItemId: item.id }, baseDir)
+
+    const saved = await saveRecordedNarration(project.id, segment.id, await makeQuietRecording(4, '0.05'), baseDir)
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    const loudness = await integratedLoudness(join(dir, 'audio', saved.audioFile as string))
+    // The synthesised narration in a real project measures -17.5 to -18.0 LUFS.
+    expect(loudness).toBeGreaterThan(-19)
+    expect(loudness).toBeLessThan(-16)
+  }, 120_000)
+
+  it('brings a take recorded too loudly down to the same level', async () => {
+    const project = createProject('Loud2', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Script', timelineItemId: item.id }, baseDir)
+
+    const saved = await saveRecordedNarration(project.id, segment.id, await makeQuietRecording(4, '1.0'), baseDir)
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    const loudness = await integratedLoudness(join(dir, 'audio', saved.audioFile as string))
+    expect(loudness).toBeGreaterThan(-19)
+    expect(loudness).toBeLessThan(-16)
+  }, 120_000)
+
+  it('keeps the full bandwidth the microphone captured', async () => {
+    const project = createProject('Rate', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Script', timelineItemId: item.id }, baseDir)
+
+    const saved = await saveRecordedNarration(project.id, segment.id, await makeQuietRecording(2, '0.5'), baseDir)
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    const { readFileSync } = await import('fs')
+    const header = readFileSync(join(dir, 'audio', saved.audioFile as string))
+    // Downsampling to the synthesiser's 22050 would throw away half the voice's bandwidth.
+    expect(header.readUInt32LE(24)).toBe(48000)
+  }, 120_000)
+})
