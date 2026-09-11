@@ -12,6 +12,7 @@ import { projectsRootDir } from '../project/paths'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { clearHistory, historyState, redo, undo, withHistory } from '../project/history'
 import { readSettings, updateSettings } from '../settings/settingsStore'
+import { repairNarrationDurations } from '../transcript/repairNarrationDurations'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
 import { listVoices, previewVoice } from '../tts/listVoices'
@@ -38,6 +39,9 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:open', (_event, id: string) => {
     const project = openProject(id)
     sweepUnusedNarrationAudio(id)
+    // Narration recorded before clips held a pause is sized to its audio alone, which the
+    // lead-in would then push past the cut. Lengthen those clips rather than clip the voice.
+    repairNarrationDurations(id)
     return project
   })
 
