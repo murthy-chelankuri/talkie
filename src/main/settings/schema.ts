@@ -49,12 +49,34 @@ export const SpeechSettingsSchema = z.object({
   clausePauseMs: z.number().min(0).max(1000).default(300)
 })
 
+/**
+ * Letting an outside agent drive Talkie.
+ *
+ * Off until it is deliberately turned on, and gated on a token even then. The server runs as a
+ * local process rather than on a port, so this is not keeping anyone off a network — it is an
+ * off switch the user controls and a credential they can withdraw, so that finding the server on
+ * disk is not the same as being allowed to use it.
+ *
+ * The token is stored as a hash. Anyone who can write this file could grant themselves access
+ * anyway, so the hash is not a defence against a local attacker; it means the secret is not
+ * sitting in a file that gets copied into a backup, a sync folder or a bug report.
+ */
+export const McpSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** sha256 of the token. The token itself is shown once, when it is created. */
+  tokenHash: z.string().default(''),
+  /** ISO date the current token was created, so the settings screen can say how old it is. */
+  tokenCreatedAt: z.string().default('')
+})
+
 export const SettingsSchema = z.object({
   narration: NarrationSettingsSchema.default({}),
-  speech: SpeechSettingsSchema.default({})
+  speech: SpeechSettingsSchema.default({}),
+  mcp: McpSettingsSchema.default({})
 })
 
 export type NarrationProviderId = (typeof NARRATION_PROVIDER_IDS)[number]
+export type McpSettings = z.infer<typeof McpSettingsSchema>
 export type NarrationSettings = z.infer<typeof NarrationSettingsSchema>
 export type SpeechSettings = z.infer<typeof SpeechSettingsSchema>
 export type Settings = z.infer<typeof SettingsSchema>

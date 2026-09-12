@@ -37,6 +37,9 @@ const settingsApi = {
   resetSpeech: (): Promise<Settings> => ipcRenderer.invoke('settings:resetSpeech'),
   readiness: (): Promise<ReadinessCheck[]> => ipcRenderer.invoke('settings:readiness'),
   mcpConnection: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpConnection'),
+  mcpCreateToken: (): Promise<{ token: string; connection: McpConnection }> =>
+    ipcRenderer.invoke('settings:mcpCreateToken'),
+  mcpRevokeToken: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpRevokeToken'),
   voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
   previewVoice: (voice: string, text: string): Promise<void> =>
     ipcRenderer.invoke('settings:previewVoice', voice, text)

@@ -483,7 +483,8 @@ function Slider({
  */
 function McpSection(): JSX.Element | null {
   const [connection, setConnection] = useState<McpConnection | null>(null)
-  const [copied, setCopied] = useState<'config' | 'command' | null>(null)
+  const [freshToken, setFreshToken] = useState<string | null>(null)
+  const [copied, setCopied] = useState<'config' | 'command' | 'token' | null>(null)
 
   useEffect(() => {
     settingsClient.mcpConnection().then(setConnection).catch(() => undefined)
@@ -491,53 +492,141 @@ function McpSection(): JSX.Element | null {
 
   if (!connection) return null
 
-  function copy(what: 'config' | 'command', value: string): void {
+  function copy(what: 'config' | 'command' | 'token', value: string): void {
     void navigator.clipboard.writeText(value).then(() => {
       setCopied(what)
       setTimeout(() => setCopied(null), 1600)
     })
   }
 
+  async function setEnabled(enabled: boolean): Promise<void> {
+    await settingsClient.update({ mcp: { enabled } })
+    setConnection(await settingsClient.mcpConnection())
+    notifySettingsChanged()
+  }
+
+  async function createToken(): Promise<void> {
+    const { token, connection: next } = await settingsClient.mcpCreateToken()
+    setFreshToken(token)
+    setConnection(next)
+  }
+
+  async function revokeToken(): Promise<void> {
+    setFreshToken(null)
+    setConnection(await settingsClient.mcpRevokeToken())
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline gap-2">
-        <Plug size={13} className="shrink-0 translate-y-0.5 text-accent" aria-hidden="true" />
-        <span className="text-[13px] font-medium text-text">Connect an AI agent</span>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="flex items-center gap-2">
+            <Plug size={13} className="shrink-0 text-accent" aria-hidden="true" />
+            <span className="text-[13px] font-medium text-text">Let AI agents connect</span>
+          </span>
+          <span className="text-xs leading-relaxed text-text-muted">
+            Any MCP client — Claude Code, Copilot CLI, Cursor — can record sessions, write slides
+            and export video here. Off unless you turn it on, and it needs a token even then.
+          </span>
+        </span>
+        <Switch
+          label="Let AI agents connect"
+          checked={connection.enabled}
+          onChange={(next) => void setEnabled(next)}
+        />
       </div>
-      <p className="text-xs leading-relaxed text-text-muted">
-        {connection.serverPath
-          ? 'Any MCP client — Claude Code, Copilot CLI, Cursor — can record sessions, write slides and export video here. Add it with:'
-          : 'The MCP server is not built in this copy. Run `npm run build` to create it.'}
-      </p>
 
-      {connection.serverPath && (
+      {connection.enabled && !connection.serverPath && (
+        <p className="text-xs text-danger">
+          The MCP server is not built in this copy. Run <code>npm run build</code> to create it.
+        </p>
+      )}
+
+      {connection.enabled && connection.serverPath && (
         <>
-          <div className="flex items-start gap-2">
-            <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
-              {connection.addCommand}
-            </pre>
-            <IconButton
-              aria-label="Copy the command"
-              onClick={() => copy('command', connection.addCommand)}
-              className="mt-1 shrink-0"
-            >
-              {copied === 'command' ? <Check size={13} /> : <Copy size={13} />}
-            </IconButton>
-          </div>
+          {!connection.hasToken ? (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+              <span className="text-xs leading-relaxed text-text-muted">
+                No token yet. Nothing can connect until you make one.
+              </span>
+              <Button onClick={createToken}>Create a token</Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+              <span className="text-xs leading-relaxed text-text-muted">
+                {connection.tokenCreatedAt
+                  ? `Token created ${new Date(connection.tokenCreatedAt).toLocaleDateString()}.`
+                  : 'A token exists.'}{' '}
+                Replacing it stops anything still using the old one.
+              </span>
+              <span className="flex shrink-0 gap-2">
+                <Button variant="ghost" onClick={revokeToken}>
+                  Revoke
+                </Button>
+                <Button onClick={createToken}>Replace</Button>
+              </span>
+            </div>
+          )}
 
-          <p className="text-xs text-text-muted">Or paste this into any other client’s config:</p>
-          <div className="flex items-start gap-2">
-            <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
-              {connection.configJson}
-            </pre>
-            <IconButton
-              aria-label="Copy the configuration"
-              onClick={() => copy('config', connection.configJson)}
-              className="mt-1 shrink-0"
-            >
-              {copied === 'config' ? <Check size={13} /> : <Copy size={13} />}
-            </IconButton>
-          </div>
+          {freshToken && (
+            <div className="flex flex-col gap-2 rounded-lg border border-accent bg-accent/5 p-4">
+              <span className="text-[13px] font-medium text-text">
+                Copy this now — it is not shown again
+              </span>
+              <span className="text-xs leading-relaxed text-text-muted">
+                Only a hash is kept, so Talkie cannot show it to you later. If you lose it, make
+                another.
+              </span>
+              <div className="flex items-start gap-2">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+                  {freshToken}
+                </pre>
+                <IconButton
+                  aria-label="Copy the token"
+                  onClick={() => copy('token', freshToken)}
+                  className="mt-1 shrink-0"
+                >
+                  {copied === 'token' ? <Check size={13} /> : <Copy size={13} />}
+                </IconButton>
+              </div>
+            </div>
+          )}
+
+          {connection.hasToken && (
+            <>
+              <p className="text-xs text-text-muted">
+                {freshToken
+                  ? 'Add it to your agent with:'
+                  : 'Add it to your agent with this, putting your token in place of YOUR_TOKEN:'}
+              </p>
+              <div className="flex items-start gap-2">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+                  {connection.addCommand}
+                </pre>
+                <IconButton
+                  aria-label="Copy the command"
+                  onClick={() => copy('command', connection.addCommand)}
+                  className="mt-1 shrink-0"
+                >
+                  {copied === 'command' ? <Check size={13} /> : <Copy size={13} />}
+                </IconButton>
+              </div>
+
+              <p className="text-xs text-text-muted">Or paste this into any other client’s config:</p>
+              <div className="flex items-start gap-2">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+                  {connection.configJson}
+                </pre>
+                <IconButton
+                  aria-label="Copy the configuration"
+                  onClick={() => copy('config', connection.configJson)}
+                  className="mt-1 shrink-0"
+                >
+                  {copied === 'config' ? <Check size={13} /> : <Copy size={13} />}
+                </IconButton>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

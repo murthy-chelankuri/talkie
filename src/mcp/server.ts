@@ -17,6 +17,7 @@ import { renderProjectVideo } from '../main/render/renderProject'
 import { richTextToPlain } from '../main/project/timeline/richText'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
+import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
 import * as recording from './recordingSession'
 
 /** Where projects live. Overridable so the tests do not touch the real ones. */
@@ -40,12 +41,49 @@ function describeItem(item: TimelineItem, index: number): string {
   return `${index + 1}. ${item.kind} — ${name} (${seconds}s, id ${item.id})`
 }
 
-export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
+/** The token this server was started with, from its own configuration. */
+export function presentedToken(): string | undefined {
+  return process.env.TALKIE_MCP_TOKEN || undefined
+}
+
+export function createTalkieServer(
+  baseDir: string = talkieHome(),
+  token: string | undefined = presentedToken()
+): McpServer {
   const server = new McpServer({ name: 'talkie', version: '1.0.0' })
+
+  /**
+   * Checked before every tool, not once at startup.
+   *
+   * An agent holds its connection open for as long as it is running, so a check made only at
+   * startup would leave a withdrawn token working until the agent happened to restart. Settings
+   * are a small JSON file; reading it per call costs nothing worth saving.
+   */
+  function requireAccess(): void {
+    const { allowed, refusedBecause } = checkMcpAccess(token, baseDir)
+    if (!allowed && refusedBecause) throw new Error(explainRefusal(refusedBecause))
+  }
+
+  /**
+   * Register a tool that cannot be called without access.
+   *
+   * Every tool goes through here rather than each one remembering to check, so a tool added
+   * later is guarded by the act of existing — the failure this shape rules out is the one that
+   * matters, a new tool that quietly skips the gate.
+   */
+  const tool: typeof server.registerTool = (name, config, cb) =>
+    server.registerTool(
+      name,
+      config,
+      ((...args: Parameters<typeof cb>) => {
+        requireAccess()
+        return (cb as (...a: unknown[]) => unknown)(...args)
+      }) as typeof cb
+    )
 
   // ---------------------------------------------------------------- projects
 
-  server.registerTool(
+  tool(
     'talkie_list_projects',
     {
       title: 'List projects',
@@ -65,7 +103,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_create_project',
     {
       title: 'Create a project',
@@ -78,7 +116,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_timeline',
     {
       title: 'Read a timeline',
@@ -103,7 +141,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
 
   // --------------------------------------------------------------- recording
 
-  server.registerTool(
+  tool(
     'talkie_start_recording',
     {
       title: 'Start recording',
@@ -126,7 +164,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_navigate',
     {
       title: 'Go to a page',
@@ -137,7 +175,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     async ({ url }) => text(`Now at ${await recording.navigate(url)}`)
   )
 
-  server.registerTool(
+  tool(
     'talkie_click',
     {
       title: 'Click',
@@ -156,7 +194,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_type',
     {
       title: 'Type into a field',
@@ -175,7 +213,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_scroll',
     {
       title: 'Scroll',
@@ -189,7 +227,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_wait',
     {
       title: 'Wait',
@@ -208,7 +246,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_stop_recording',
     {
       title: 'Stop recording',
@@ -224,7 +262,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_discard_recording',
     {
       title: 'Discard the recording',
@@ -239,7 +277,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
 
   // ------------------------------------------------------------------ slides
 
-  server.registerTool(
+  tool(
     'talkie_add_scene',
     {
       title: 'Add a slide',
@@ -265,7 +303,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
 
   // --------------------------------------------------------------- narration
 
-  server.registerTool(
+  tool(
     'talkie_set_narration',
     {
       title: 'Write narration',
@@ -294,7 +332,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_draft_narration',
     {
       title: 'Draft narration',
@@ -332,7 +370,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
     }
   )
 
-  server.registerTool(
+  tool(
     'talkie_narrate',
     {
       title: 'Speak the narration',
@@ -364,7 +402,7 @@ export function createTalkieServer(baseDir: string = talkieHome()): McpServer {
 
   // ------------------------------------------------------------------ export
 
-  server.registerTool(
+  tool(
     'talkie_export',
     {
       title: 'Export the video',

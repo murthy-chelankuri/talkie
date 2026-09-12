@@ -6,6 +6,13 @@ import { writeJsonAtomic } from '../project/atomicWrite'
 import { SettingsSchema, SpeechSettingsSchema, type Settings } from './schema'
 
 /**
+ * Readable and writable by its owner and nobody else: this file carries an API key and the hash
+ * of the token that lets an agent drive the app, neither of which other accounts on the machine
+ * have any business reading.
+ */
+const SETTINGS_FILE_MODE = 0o600
+
+/**
  * Settings belong to the person, not to any one demo, so they sit beside the projects folder
  * rather than inside a project.
  */
@@ -44,7 +51,7 @@ export function updateSettings(patch: DeepPartial<Settings>, baseDir: string = h
 
   const path = settingsPath(baseDir)
   mkdirSync(dirname(path), { recursive: true })
-  writeJsonAtomic(path, next)
+  writeJsonAtomic(path, next, SETTINGS_FILE_MODE)
 
   return next
 }
@@ -63,7 +70,7 @@ export function resetSpeechSettings(baseDir: string = homedir()): Settings {
 
   const path = settingsPath(baseDir)
   mkdirSync(dirname(path), { recursive: true })
-  writeJsonAtomic(path, next)
+  writeJsonAtomic(path, next, SETTINGS_FILE_MODE)
   return next
 }
 

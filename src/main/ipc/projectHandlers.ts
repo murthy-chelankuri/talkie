@@ -15,6 +15,7 @@ import { readSettings, updateSettings, resetSpeechSettings } from '../settings/s
 import { repairNarrationDurations } from '../transcript/repairNarrationDurations'
 import { checkReadiness } from '../setup/readiness'
 import { mcpConnection } from '../setup/mcpConnection'
+import { createMcpToken, revokeMcpToken } from '../settings/mcpAccess'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
 import { listVoices, previewVoice } from '../tts/listVoices'
@@ -60,6 +61,18 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:resetSpeech', () => resetSpeechSettings())
   ipcMain.handle('settings:readiness', () => checkReadiness())
   ipcMain.handle('settings:mcpConnection', () => mcpConnection())
+
+  // The token is returned here and nowhere else: only its hash is kept, so this is the one
+  // moment it can be shown.
+  ipcMain.handle('settings:mcpCreateToken', () => {
+    const token = createMcpToken()
+    return { token, connection: mcpConnection(token) }
+  })
+
+  ipcMain.handle('settings:mcpRevokeToken', () => {
+    revokeMcpToken()
+    return mcpConnection()
+  })
   ipcMain.handle('settings:voices', () => listVoices())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
 

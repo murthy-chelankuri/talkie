@@ -56,10 +56,14 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 
 Talkie is an MCP server, so any agent that speaks MCP — Claude Code, GitHub Copilot CLI, Cursor
 — can drive a real browser, record what it does, write and speak the narration, and export the
-video. Settings → System shows the line to run, with the path already filled in:
+video.
+
+It is **off until you turn it on**, and needs a token even then. In Settings → System, switch on
+"Let AI agents connect" and create a token. The token is shown once — only a hash is kept — and
+the screen then hands you the line to run, with the path and token already in it:
 
 ```bash
-claude mcp add talkie -- node /path/to/out/mcp/talkie-mcp.mjs
+claude mcp add talkie --env TALKIE_MCP_TOKEN=<your token> -- node /path/to/out/mcp/talkie-mcp.mjs
 ```
 
 Any other client takes the same thing as config:
@@ -67,10 +71,20 @@ Any other client takes the same thing as config:
 ```json
 {
   "mcpServers": {
-    "talkie": { "command": "node", "args": ["/path/to/out/mcp/talkie-mcp.mjs"] }
+    "talkie": {
+      "command": "node",
+      "args": ["/path/to/out/mcp/talkie-mcp.mjs"],
+      "env": { "TALKIE_MCP_TOKEN": "<your token>" }
+    }
   }
 }
 ```
+
+Turning the switch off, or replacing the token, stops anything still holding the old one at its
+next call rather than whenever it happens to restart. The server is not on a network — an agent
+spawns it as a local process — so the token is not keeping anyone off a port; it is an off switch
+you control and a credential you can withdraw, so that finding the server on disk is not the same
+as being allowed to use it.
 
 The server is built by `npm run build` and works whether or not the Talkie window is open —
 projects are files on disk, and it reaches them through exactly the same code the app does. It

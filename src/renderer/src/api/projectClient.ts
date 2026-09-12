@@ -61,6 +61,8 @@ export const settingsClient = {
   resetSpeech: () => window.api.settings.resetSpeech(),
   readiness: () => window.api.settings.readiness(),
   mcpConnection: () => window.api.settings.mcpConnection(),
+  mcpCreateToken: () => window.api.settings.mcpCreateToken(),
+  mcpRevokeToken: () => window.api.settings.mcpRevokeToken(),
   voices: () => window.api.settings.voices(),
   previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text)
 }

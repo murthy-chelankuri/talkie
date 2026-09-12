@@ -6,6 +6,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { createTalkieServer } from './server'
 import { readTimeline, readTranscript } from '../main/project/projectApi'
+import { createMcpToken } from '../main/settings/mcpAccess'
+import { updateSettings } from '../main/settings/settingsStore'
 
 /**
  * Driven through a real MCP client rather than by calling the handlers directly, because the
@@ -14,9 +16,10 @@ import { readTimeline, readTranscript } from '../main/project/projectApi'
  */
 let baseDir: string
 let client: Client
+let token: string
 
-async function connect(): Promise<Client> {
-  const server = createTalkieServer(baseDir)
+async function connect(presented: string | undefined = token): Promise<Client> {
+  const server = createTalkieServer(baseDir, presented)
   const connected = new Client({ name: 'test', version: '1.0.0' })
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
 
@@ -39,6 +42,8 @@ async function newProject(name = 'Demo'): Promise<string> {
 describe('Talkie over MCP', () => {
   beforeEach(async () => {
     baseDir = mkdtempSync(join(tmpdir(), 'talkie-mcp-'))
+    updateSettings({ mcp: { enabled: true } }, baseDir)
+    token = createMcpToken(baseDir)
     client = await connect()
   })
 
@@ -181,5 +186,135 @@ describe('Talkie over MCP', () => {
     const projectId = await newProject()
 
     expect(await call('talkie_narrate', { projectId })).toContain('Nothing to voice')
+  })
+})
+
+/**
+ * The gate, tested through the same client an agent uses.
+ *
+ * Being able to list the tools is not the same as being able to call them, and the failure worth
+ * ruling out is a tool that quietly skips the check — so every registered tool is tried, rather
+ * than a chosen few.
+ */
+describe('agent access', () => {
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-mcp-gate-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  interface JsonSchema {
+    type?: string
+    const?: unknown
+    enum?: unknown[]
+    anyOf?: JsonSchema[]
+    oneOf?: JsonSchema[]
+  }
+
+  /** The least a property will accept. */
+  function valueFor(schema: JsonSchema | undefined): unknown {
+    if (!schema) return 'x'
+    if ('const' in schema) return schema.const
+    if (schema.enum?.length) return schema.enum[0]
+
+    // A union arrives as anyOf; any one branch satisfying it is enough.
+    const branches = schema.anyOf ?? schema.oneOf
+    if (branches?.length) return valueFor(branches[0])
+
+    switch (schema.type) {
+      case 'number':
+      case 'integer':
+        return 1
+      case 'boolean':
+        return false
+      case 'array':
+        return []
+      case 'object':
+        return {}
+      default:
+        return 'x'
+    }
+  }
+
+  /** The least an argument schema will accept, so a call is judged on access and nothing else. */
+  function satisfying(schema: unknown): Record<string, unknown> {
+    const { properties, required } = (schema ?? {}) as {
+      properties?: Record<string, JsonSchema>
+      required?: string[]
+    }
+    const args: Record<string, unknown> = {}
+
+    for (const name of required ?? []) args[name] = valueFor(properties?.[name])
+    return args
+  }
+
+  async function refusalFrom(presented: string | undefined): Promise<string> {
+    const gated = await connect(presented)
+    const result = await gated.callTool({ name: 'talkie_list_projects', arguments: {} })
+
+    expect(result.isError).toBe(true)
+    const said = JSON.stringify(result.content)
+    await gated.close()
+    return said
+  }
+
+  it('refuses everything until the user turns it on', async () => {
+    expect(await refusalFrom('any-token')).toContain('Settings')
+  })
+
+  it('refuses when it is on but no token has been made', async () => {
+    updateSettings({ mcp: { enabled: true } }, baseDir)
+
+    expect(await refusalFrom(undefined)).toContain('no access token')
+  })
+
+  it('refuses an agent that presents no token', async () => {
+    updateSettings({ mcp: { enabled: true } }, baseDir)
+    createMcpToken(baseDir)
+
+    expect(await refusalFrom(undefined)).toContain('TALKIE_MCP_TOKEN')
+  })
+
+  it('refuses the wrong token', async () => {
+    updateSettings({ mcp: { enabled: true } }, baseDir)
+    createMcpToken(baseDir)
+
+    expect(await refusalFrom('talkie_wrong')).toContain('not the current one')
+  })
+
+  it('gates every tool, not only the ones anyone thought to check', async () => {
+    updateSettings({ mcp: { enabled: true } }, baseDir)
+    createMcpToken(baseDir)
+    const gated = await connect('talkie_wrong')
+
+    for (const tool of (await gated.listTools()).tools) {
+      // Called with arguments its schema accepts, so the call reaches the gate rather than
+      // being turned back for the wrong reason — which would prove nothing about access.
+      const result = await gated.callTool({ name: tool.name, arguments: satisfying(tool.inputSchema) })
+
+      expect(result.isError, `${tool.name} answered without a valid token`).toBe(true)
+      expect(JSON.stringify(result.content), `${tool.name} failed for some other reason`).toContain(
+        'token'
+      )
+    }
+
+    await gated.close()
+  })
+
+  it('stops working the moment the switch goes off, without a reconnect', async () => {
+    updateSettings({ mcp: { enabled: true } }, baseDir)
+    const good = createMcpToken(baseDir)
+    const connected = await connect(good)
+
+    expect((await connected.callTool({ name: 'talkie_list_projects', arguments: {} })).isError)
+      .toBeFalsy()
+
+    updateSettings({ mcp: { enabled: false } }, baseDir)
+
+    const after = await connected.callTool({ name: 'talkie_list_projects', arguments: {} })
+    expect(after.isError).toBe(true)
+    await connected.close()
   })
 })
