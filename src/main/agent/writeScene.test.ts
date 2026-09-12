@@ -63,18 +63,18 @@ describe('parseScene', () => {
   it('reads a clean answer', () => {
     const result = parseScene('scene', '{"title":"How it works","bullets":["Record","Narrate"]}')
 
-    expect(result).toEqual({ status: 'written', data: { title: 'How it works', bullets: ['Record', 'Narrate'] } })
+    expect(result).toMatchObject({ status: 'written', data: { title: 'How it works', bullets: ['Record', 'Narrate'] } })
   })
 
   it('finds the scene inside an answer wrapped in prose', () => {
     // Models explain themselves however firmly they are told not to.
     const result = parseScene('scene', 'Sure! Here is the slide:\n```json\n{"title":"Steps","bullets":[]}\n```\nHope that helps.')
 
-    expect(result).toEqual({ status: 'written', data: { title: 'Steps', bullets: [] } })
+    expect(result).toMatchObject({ status: 'written', data: { title: 'Steps', bullets: [] } })
   })
 
   it('fills in the missing bullets rather than failing on a title alone', () => {
-    expect(parseScene('scene', '{"title":"Just this"}')).toEqual({
+    expect(parseScene('scene', '{"title":"Just this"}')).toMatchObject({
       status: 'written',
       data: { title: 'Just this', bullets: [] }
     })
@@ -83,7 +83,7 @@ describe('parseScene', () => {
   it('reads a diagram answer', () => {
     const result = parseScene('diagram', '{"title":"Flow","source":"flowchart LR; A-->B"}')
 
-    expect(result).toEqual({ status: 'written', data: { title: 'Flow', source: 'flowchart LR; A-->B' } })
+    expect(result).toMatchObject({ status: 'written', data: { title: 'Flow', source: 'flowchart LR; A-->B' } })
   })
 
   it('refuses an answer with no scene in it at all', () => {

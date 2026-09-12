@@ -9,6 +9,7 @@ import {
   useVideoConfig
 } from 'remotion'
 import type { DiagramSceneData } from '../../main/project/timeline/schema'
+import { resolveSceneTheme } from '../sceneTheme'
 
 /**
  * A diagram drawn from mermaid source.
@@ -18,7 +19,8 @@ import type { DiagramSceneData } from '../../main/project/timeline/schema'
  * with the preview. What is drawn is exactly the SVG the editor drew.
  */
 export function DiagramScene({ data }: { data: unknown }): JSX.Element {
-  const { src, title } = data as DiagramSceneData
+  const { src, title, style } = data as DiagramSceneData
+  const theme = resolveSceneTheme(style)
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const [markup, setMarkup] = useState<string | null>(null)
@@ -53,24 +55,24 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
   return (
     <AbsoluteFill
       style={{
-        background: 'linear-gradient(160deg, #232833 0%, #171b22 55%, #101318 100%)',
+        background: theme.background,
         padding: title ? '6% 8% 8%' : '8%',
-        fontFamily: 'Geist Variable, ui-sans-serif, system-ui, sans-serif'
+        fontFamily: theme.bodyFont
       }}
     >
       {title && (
         <h2
           style={{
             margin: '0 0 36px',
-            fontFamily: 'Newsreader Variable, ui-serif, Georgia, serif',
+            fontFamily: theme.headingFont,
             fontSize: 64,
             fontWeight: 500,
-            color: '#f4f6f9',
+            color: theme.heading,
             opacity: titleIn,
             transform: `translateY(${interpolate(titleIn, [0, 1], [20, 0])}px)`
           }}
         >
-          {title}
+          <span dangerouslySetInnerHTML={{ __html: title }} />
         </h2>
       )}
 

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LayoutTemplate, Share2, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { sceneClient, type TimelineItem } from '../api/projectClient'
+import { RichTextField } from './RichTextField'
+import { plainToRichText, richTextToPlain } from '../../../main/project/timeline/richText'
+import { resolveSceneTheme } from '../../../remotion/sceneTheme'
+import type { SceneStyle } from '../../../main/project/timeline/schema'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 import { Input } from './ui/Input'
@@ -14,18 +18,34 @@ export interface SceneDraft {
   title: string
   bullets: string[]
   source: string
+  style: SceneStyle
+}
+
+const DEFAULT_STYLE: SceneStyle = {
+  theme: 'graphite',
+  font: 'serif',
+  align: 'left',
+  size: 'regular',
+  accent: '#d3a24c'
 }
 
 const STARTER_DIAGRAM = 'flowchart LR\n  A[Record] --> B[Narrate]\n  B --> C[Export]'
 
 function draftFrom(item: TimelineItem | null): { kind: SceneKind; draft: SceneDraft } {
-  const data = (item?.data ?? {}) as { title?: string; bullets?: string[]; source?: string }
+  const data = (item?.data ?? {}) as {
+    title?: string
+    bullets?: string[]
+    source?: string
+    style?: SceneStyle
+  }
+
   return {
     kind: item?.kind === 'diagram' ? 'diagram' : 'scene',
     draft: {
       title: data.title ?? '',
       bullets: data.bullets ?? [],
-      source: data.source ?? STARTER_DIAGRAM
+      source: data.source ?? STARTER_DIAGRAM,
+      style: { ...DEFAULT_STYLE, ...(data.style ?? {}) }
     }
   }
 }
@@ -102,9 +122,10 @@ export function SceneEditor({
         kind,
         instruction: instruction.trim(),
         projectName,
+        // The model reads and writes plain words; the markup is the editor's business.
         current:
           kind === 'scene'
-            ? { title: draft.title, bullets: draft.bullets }
+            ? { title: richTextToPlain(draft.title), bullets: draft.bullets.map(richTextToPlain) }
             : { source: draft.source }
       })
 
@@ -115,8 +136,9 @@ export function SceneEditor({
 
       const written = result.data as { title?: string; bullets?: string[]; source?: string }
       setDraft((current) => ({
-        title: written.title ?? current.title,
-        bullets: written.bullets ?? current.bullets,
+        ...current,
+        title: written.title !== undefined ? plainToRichText(written.title) : current.title,
+        bullets: written.bullets ? written.bullets.map(plainToRichText) : current.bullets,
         source: written.source ?? current.source
       }))
       setInstruction('')
@@ -131,11 +153,15 @@ export function SceneEditor({
     try {
       let data: unknown
       if (kind === 'scene') {
-        if (!draft.title.trim()) {
+        if (!richTextToPlain(draft.title).trim()) {
           setError('A slide needs a title — it is the only thing guaranteed to be read.')
           return
         }
-        data = { title: draft.title.trim(), bullets: draft.bullets.filter((line) => line.trim()) }
+        data = {
+          title: draft.title.trim(),
+          bullets: draft.bullets.filter((line) => richTextToPlain(line).trim()),
+          style: draft.style
+        }
       } else {
         if (!svg) {
           setError(diagramError ?? 'The diagram has not been drawn yet.')
@@ -143,7 +169,12 @@ export function SceneEditor({
         }
         // The drawn SVG is stored so the export never has to run mermaid itself.
         const src = await sceneClient.saveSvg(projectId, svg)
-        data = { source: draft.source, src, ...(draft.title.trim() ? { title: draft.title.trim() } : {}) }
+        data = {
+          source: draft.source,
+          src,
+          style: draft.style,
+          ...(richTextToPlain(draft.title).trim() ? { title: draft.title.trim() } : {})
+        }
       }
 
       if (item) await sceneClient.update(projectId, item.id, data)
@@ -207,27 +238,58 @@ export function SceneEditor({
           <div className="flex w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto border-r border-border p-4">
             {kind === 'scene' ? (
               <>
-                <label className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5">
                   <span className="text-[13px] font-medium text-text">Title</span>
-                  <Input
-                    aria-label="Scene title"
+                  <RichTextField
+                    ariaLabel="Scene title"
                     value={draft.title}
                     placeholder="How it works"
-                    onChange={(event) => setDraft((d) => ({ ...d, title: event.target.value }))}
+                    onChange={(title) => setDraft((d) => ({ ...d, title }))}
+                    className="font-serif text-[15px]"
                   />
-                </label>
-                <label className="flex min-h-0 flex-1 flex-col gap-1.5">
-                  <span className="text-[13px] font-medium text-text">Lines</span>
-                  <Textarea
-                    aria-label="Scene lines"
-                    value={draft.bullets.join('\n')}
-                    placeholder={'One line per row\nKeep them short'}
-                    onChange={(event) =>
-                      setDraft((d) => ({ ...d, bullets: event.target.value.split('\n') }))
-                    }
-                    className="min-h-[8rem] flex-1 resize-none font-serif"
-                  />
-                </label>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-medium text-text">Lines</span>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, bullets: [...d.bullets, ''] }))}
+                      className="rounded border-0 bg-transparent px-1 py-0 text-[11px] text-accent hover:underline"
+                    >
+                      Add a line
+                    </button>
+                  </div>
+                  {draft.bullets.length === 0 && (
+                    <p className="text-[11px] text-text-muted">No lines yet — a title on its own is fine.</p>
+                  )}
+                  {draft.bullets.map((line, index) => (
+                    <div key={index} className="flex items-start gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <RichTextField
+                          ariaLabel={`Line ${index + 1}`}
+                          value={line}
+                          placeholder="Keep it short"
+                          onChange={(html) =>
+                            setDraft((d) => ({
+                              ...d,
+                              bullets: d.bullets.map((existing, i) => (i === index ? html : existing))
+                            }))
+                          }
+                        />
+                      </div>
+                      <IconButton
+                        aria-label={`Remove line ${index + 1}`}
+                        className="mt-9 h-6 w-6 shrink-0"
+                        onClick={() =>
+                          setDraft((d) => ({ ...d, bullets: d.bullets.filter((_, i) => i !== index) }))
+                        }
+                      >
+                        <X size={12} />
+                      </IconButton>
+                    </div>
+                  ))}
+                </div>
               </>
             ) : (
               <>
@@ -257,6 +319,12 @@ export function SceneEditor({
                 )}
               </>
             )}
+
+            <SceneStyleControls
+              style={draft.style}
+              onChange={(style) => setDraft((d) => ({ ...d, style: { ...d.style, ...style } }))}
+              showTypography={kind === 'scene'}
+            />
 
             <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-bg p-3">
               <span className="text-[13px] font-medium text-text">Ask for a change</span>
@@ -302,6 +370,140 @@ export function SceneEditor({
   )
 }
 
+const THEME_CHOICES: Array<{ id: SceneStyle['theme']; label: string; swatch: string }> = [
+  { id: 'graphite', label: 'Graphite', swatch: 'linear-gradient(135deg,#232833,#101318)' },
+  { id: 'ink', label: 'Ink', swatch: 'linear-gradient(135deg,#14171d,#0b0d11)' },
+  { id: 'paper', label: 'Paper', swatch: 'linear-gradient(135deg,#fdfbf6,#f2ede2)' },
+  { id: 'brass', label: 'Brass', swatch: 'linear-gradient(135deg,#3a2c10,#23190a)' }
+]
+
+/** How the scene looks, as a small set of decisions rather than a stylesheet. */
+function SceneStyleControls({
+  style,
+  onChange,
+  showTypography
+}: {
+  style: SceneStyle
+  onChange: (next: Partial<SceneStyle>) => void
+  showTypography: boolean
+}): JSX.Element {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-3">
+      <span className="text-[13px] font-medium text-text">Look</span>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] text-text-muted">Background</span>
+        <div className="flex gap-1.5">
+          {THEME_CHOICES.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              aria-label={choice.label}
+              aria-pressed={style.theme === choice.id}
+              title={choice.label}
+              onClick={() => onChange({ theme: choice.id })}
+              className={cn(
+                'h-7 flex-1 rounded-md border p-0 transition-colors',
+                style.theme === choice.id ? 'border-accent ring-1 ring-accent' : 'border-border'
+              )}
+              style={{ background: choice.swatch }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] text-text-muted">Accent</span>
+        <div className="flex items-center gap-1.5">
+          {['#d3a24c', '#5eead4', '#c4b5fd', '#f87171', '#ffffff'].map((colour) => (
+            <button
+              key={colour}
+              type="button"
+              aria-label={`Accent ${colour}`}
+              aria-pressed={style.accent === colour}
+              onClick={() => onChange({ accent: colour })}
+              className={cn(
+                'h-5 w-5 rounded-full border p-0',
+                style.accent === colour ? 'border-accent ring-1 ring-accent' : 'border-border'
+              )}
+              style={{ background: colour }}
+            />
+          ))}
+          <input
+            type="color"
+            aria-label="Pick an accent colour"
+            value={style.accent}
+            onChange={(event) => onChange({ accent: event.target.value })}
+            className="h-6 w-8 cursor-pointer rounded border border-border bg-transparent p-0"
+          />
+        </div>
+      </div>
+
+      {showTypography && (
+        <div className="grid grid-cols-3 gap-2">
+          <Choice
+            label="Font"
+            value={style.font}
+            options={[
+              { id: 'serif', label: 'Serif' },
+              { id: 'sans', label: 'Sans' }
+            ]}
+            onChange={(font) => onChange({ font: font as SceneStyle['font'] })}
+          />
+          <Choice
+            label="Align"
+            value={style.align}
+            options={[
+              { id: 'left', label: 'Left' },
+              { id: 'center', label: 'Centre' }
+            ]}
+            onChange={(align) => onChange({ align: align as SceneStyle['align'] })}
+          />
+          <Choice
+            label="Size"
+            value={style.size}
+            options={[
+              { id: 'regular', label: 'Regular' },
+              { id: 'large', label: 'Large' }
+            ]}
+            onChange={(size) => onChange({ size: size as SceneStyle['size'] })}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Choice({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  value: string
+  options: Array<{ id: string; label: string }>
+  onChange: (id: string) => void
+}): JSX.Element {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] text-text-muted">{label}</span>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="rounded-md border border-border bg-surface px-1.5 py-1 text-[12px] text-text"
+      >
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 /** The scene as it will appear, drawn the same way the composition draws it. */
 function ScenePreview({
   kind,
@@ -312,32 +514,56 @@ function ScenePreview({
   draft: SceneDraft
   svg: string | null
 }): JSX.Element {
+  // Drawn from the same theme the composition uses, so the preview is not a second opinion.
+  const theme = resolveSceneTheme(draft.style)
+  const centred = theme.align === 'center'
+
   return (
     <div
       className="aspect-video max-h-full w-full overflow-hidden rounded-lg shadow-lg ring-1 ring-border"
-      style={{ background: 'linear-gradient(160deg, #232833 0%, #171b22 55%, #101318 100%)' }}
+      style={{ background: theme.background }}
     >
       {kind === 'scene' ? (
-        <div className="flex h-full flex-col justify-center px-[9%]">
-          <h3 className="font-serif text-[clamp(18px,3.4vw,42px)] leading-tight text-[#f4f6f9]">
-            {draft.title || 'Your title'}
-          </h3>
-          <div className="mt-3 h-[3px] w-14 rounded bg-accent" />
+        <div
+          className="flex h-full flex-col justify-center px-[9%]"
+          style={{ textAlign: theme.align, alignItems: centred ? 'center' : 'stretch' }}
+        >
+          <h3
+            className="text-[clamp(18px,3.4vw,42px)] leading-tight"
+            style={{ fontFamily: theme.headingFont, color: theme.heading }}
+            dangerouslySetInnerHTML={{ __html: draft.title || 'Your title' }}
+          />
+          <div
+            className="mt-3 h-[3px] w-14 rounded"
+            style={{ background: theme.accent, marginLeft: centred ? 'auto' : undefined, marginRight: centred ? 'auto' : undefined }}
+          />
           <ul className="mt-5 flex flex-col gap-2">
             {draft.bullets
-              .filter((line) => line.trim())
+              .filter((line) => richTextToPlain(line).trim())
               .map((line, index) => (
-                <li key={index} className="flex items-baseline gap-2.5">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                  <span className="text-[clamp(10px,1.7vw,21px)] leading-snug text-[#c9cedb]">{line}</span>
+                <li
+                  key={index}
+                  className="flex items-baseline gap-2.5"
+                  style={{ justifyContent: centred ? 'center' : 'flex-start' }}
+                >
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: theme.accent }} />
+                  <span
+                    className="text-[clamp(10px,1.7vw,21px)] leading-snug"
+                    style={{ color: theme.body }}
+                    dangerouslySetInnerHTML={{ __html: line }}
+                  />
                 </li>
               ))}
           </ul>
         </div>
       ) : (
         <div className="flex h-full flex-col p-[5%]">
-          {draft.title.trim() && (
-            <h3 className="mb-3 font-serif text-[clamp(14px,2.4vw,30px)] text-[#f4f6f9]">{draft.title}</h3>
+          {richTextToPlain(draft.title).trim() && (
+            <h3
+              className="mb-3 text-[clamp(14px,2.4vw,30px)]"
+              style={{ fontFamily: theme.headingFont, color: theme.heading }}
+              dangerouslySetInnerHTML={{ __html: draft.title }}
+            />
           )}
           <div className="flex min-h-0 flex-1 items-center justify-center">
             {svg ? (

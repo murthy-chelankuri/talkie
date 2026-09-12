@@ -30,6 +30,7 @@ import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
 import { chooseTickIntervalSeconds, formatTimecode, frameAtOffset, offsetAtFrame } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
+import { richTextToPlain } from '../../../main/project/timeline/richText'
 import { IconButton } from './ui/IconButton'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
@@ -125,7 +126,7 @@ function VideoThumbnail({ src, startSeconds }: { src: string; startSeconds: numb
   )
 }
 
-function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
+export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
   const data = item.data as
     | { src?: string; trimBefore?: number; title?: string; bullets?: string[] }
     | null
@@ -138,11 +139,15 @@ function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
         className="pointer-events-none flex h-full flex-col justify-center gap-1 overflow-hidden px-2.5"
         style={{ background: 'linear-gradient(150deg, #232833 0%, #171b22 100%)' }}
       >
+        {/* Strictly the words: a slide's text carries markup, and a label this small has no
+            room to honour it — but every reason not to show the tags. */}
         <span className="truncate font-serif text-[13px] leading-tight text-[#f4f6f9]">
-          {data?.title ?? 'Untitled slide'}
+          {richTextToPlain(data?.title ?? '') || 'Untitled slide'}
         </span>
         {(data?.bullets ?? []).length > 0 && (
-          <span className="truncate text-[10px] text-[#9aa3b4]">{(data?.bullets ?? []).join(' · ')}</span>
+          <span className="truncate text-[10px] text-[#9aa3b4]">
+            {(data?.bullets ?? []).map(richTextToPlain).join(' · ')}
+          </span>
         )}
       </div>
     )

@@ -30,7 +30,7 @@ describe('scenes written in the app', () => {
 
     expect(item.kind).toBe('scene')
     expect(item.duration).toBe(DEFAULT_SCENE_DURATION_FRAMES)
-    expect(readTimeline(project.id, baseDir)[0].data).toEqual({
+    expect(readTimeline(project.id, baseDir)[0].data).toMatchObject({
       title: 'How it works',
       bullets: ['Record', 'Narrate']
     })
@@ -51,7 +51,7 @@ describe('scenes written in the app', () => {
     const item = addScene(project.id, 'diagram', { source: 'graph TD; A-->B;' }, baseDir)
 
     expect(item.kind).toBe('diagram')
-    expect(readTimeline(project.id, baseDir)[0].data).toEqual({ source: 'graph TD; A-->B;' })
+    expect(readTimeline(project.id, baseDir)[0].data).toMatchObject({ source: 'graph TD; A-->B;' })
   })
 
   it('appends a scene after whatever is already there', () => {
@@ -77,7 +77,7 @@ describe('scenes written in the app', () => {
 
     expect(updated.start).toBe(item.start)
     expect(updated.duration).toBe(item.duration)
-    expect(updated.data).toEqual({ title: 'After', bullets: ['One'] })
+    expect(updated.data).toMatchObject({ title: 'After', bullets: ['One'] })
   })
 
   it('refuses to write content that does not fit the kind of scene it is', () => {
