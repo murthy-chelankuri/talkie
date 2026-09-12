@@ -137,6 +137,7 @@ export function SourcesPanel({
   timeline,
   segments,
   totalFrames,
+  needingNarration,
   recording,
   exporting,
   exportedPath,
@@ -157,6 +158,8 @@ export function SourcesPanel({
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
   totalFrames: number
+  /** Clips still waiting on a voice, counted once in the editor and shared from there. */
+  needingNarration: number
   recording: boolean
   exporting: boolean
   exportedPath: string | null
@@ -173,9 +176,7 @@ export function SourcesPanel({
   collapsed: boolean
   onToggleCollapsed: () => void
 }): JSX.Element {
-  const narrated = timeline.filter(
-    (item) => segmentsForItem(segments, item.id)[0]?.status === 'narrated'
-  ).length
+  const narrated = timeline.length - needingNarration
 
   return (
     <div
@@ -284,8 +285,10 @@ export function SourcesPanel({
       {!collapsed && timeline.length > 0 && narrated < timeline.length && (
         <p className="mt-auto flex items-start gap-2 pt-4 text-[11px] text-text-muted">
           <Mic size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
-          {timeline.length - narrated} clip{timeline.length - narrated === 1 ? ' is' : 's are'} still
-          silent. Write under a clip, then narrate it.
+          {/* "Silent" is not always right: a clip voiced before the voice changed has audio,
+              just not the current voice. Both want the same thing done to them. */}
+          {needingNarration} clip{needingNarration === 1 ? '' : 's'} still need
+          {needingNarration === 1 ? 's' : ''} a voice. Write under a clip, then speak it.
         </p>
       )}
 

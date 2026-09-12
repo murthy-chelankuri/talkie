@@ -471,6 +471,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               timeline={timeline}
               segments={segments}
               totalFrames={computeTimelineDuration(remotionTimeline)}
+              needingNarration={needingNarration.length}
               recording={recording}
               exporting={exporting}
               exportedPath={exportedPath}

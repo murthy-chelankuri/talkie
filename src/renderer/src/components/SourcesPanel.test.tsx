@@ -19,6 +19,7 @@ function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
       timeline={[]}
       segments={[]}
       totalFrames={0}
+      needingNarration={0}
       recording={false}
       exporting={false}
       exportedPath={null}
@@ -78,7 +79,7 @@ describe('SourcesPanel', () => {
         { id: 'a', kind: 'image', start: 0, duration: 90, data: {} },
         { id: 'b', kind: 'image', start: 90, duration: 90, data: {} }
       ] as never,
-      segments: [{ id: 's', text: 'x', timelineItemId: 'a', status: 'narrated' }] as never
+      needingNarration: 1
     })
 
     expect(screen.getByText('1 of 2 clips voiced')).toBeInTheDocument()
@@ -87,10 +88,27 @@ describe('SourcesPanel', () => {
   it('says so plainly once every clip has a voice', () => {
     renderPanel({
       timeline: [{ id: 'a', kind: 'image', start: 0, duration: 90, data: {} }] as never,
-      segments: [{ id: 's', text: 'x', timelineItemId: 'a', status: 'narrated' }] as never
+      needingNarration: 0
     })
 
     expect(screen.getByText('Every clip has a voice')).toBeInTheDocument()
+  })
+
+  it('counts a clip whose voice is out of date as still needing one', () => {
+    // The timeline offers to speak these, so the panel must not call them done.
+    renderPanel({
+      timeline: [
+        { id: 'a', kind: 'image', start: 0, duration: 90, data: {} },
+        { id: 'b', kind: 'image', start: 90, duration: 90, data: {} }
+      ] as never,
+      segments: [
+        { id: 's1', text: 'x', timelineItemId: 'a', status: 'narrated' },
+        { id: 's2', text: 'y', timelineItemId: 'b', status: 'narrated' }
+      ] as never,
+      needingNarration: 2
+    })
+
+    expect(screen.getByText('0 of 2 clips voiced')).toBeInTheDocument()
   })
 
   it('does not claim progress on an empty timeline', () => {

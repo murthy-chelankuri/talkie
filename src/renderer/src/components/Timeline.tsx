@@ -11,7 +11,7 @@ import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, Image as ImageIcon, Redo2, Scissors, Trash2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Film, Image as ImageIcon, Mic, Redo2, Scissors, Sparkles, Trash2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
@@ -363,21 +363,33 @@ export function Timeline({
           </div>
         ) : (
         <div className="ml-auto flex items-center gap-1">
+          {/* The two steps, named for what they produce rather than for the verb behind them,
+              and carrying the same icons as the buttons on each clip. */}
           <Button
             variant="secondary"
             size="sm"
             onClick={onDraftAll}
             disabled={draftingAll || timeline.length === 0}
+            title="Write narration for every clip that has none. Words you wrote are left alone."
           >
-            {draftingAll ? <Spinner size="sm" /> : 'Draft all'}
+            {draftingAll ? <Spinner size="sm" /> : <Sparkles size={14} className="text-accent" />}
+            Write the words
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={onNarrateAll}
             disabled={narratingAll || needingNarration === 0}
+            title={
+              needingNarration === 0
+                ? 'Every clip already has a voice'
+                : 'Speak the narration on every clip that is still silent'
+            }
           >
-            {narratingAll ? <Spinner size="sm" /> : `Narrate all (${needingNarration})`}
+            {narratingAll ? <Spinner size="sm" /> : <Mic size={14} className="text-accent" />}
+            {needingNarration === 0
+              ? 'All voiced'
+              : `Speak ${needingNarration} clip${needingNarration === 1 ? '' : 's'}`}
           </Button>
           <IconButton aria-label="Undo" disabled={!canUndo} onClick={onUndo}>
             <Undo2 size={16} />
