@@ -302,13 +302,17 @@ export function SceneEditor({
                     onChange={(event) => setDraft((d) => ({ ...d, title: event.target.value }))}
                   />
                 </label>
-                <label className="flex min-h-0 flex-1 flex-col gap-1.5">
+                {/* Not flex-1: as a growing item in a column that scrolls, this collapsed to
+                    nothing as soon as the cards below it filled the panel — which left no way to
+                    type a diagram at all. A solid height, and the panel scrolls instead. */}
+                <label className="flex shrink-0 flex-col gap-1.5">
                   <span className="text-[13px] font-medium text-text">Mermaid</span>
                   <Textarea
                     aria-label="Diagram source"
                     value={draft.source}
+                    placeholder={'flowchart LR\n  A[Record] --> B[Narrate] --> C[Export]'}
                     onChange={(event) => setDraft((d) => ({ ...d, source: event.target.value }))}
-                    className="min-h-[10rem] flex-1 resize-none font-mono text-[12px]"
+                    className="min-h-[11rem] resize-y font-mono text-[12px] leading-relaxed"
                   />
                 </label>
                 {diagramError && (
