@@ -113,6 +113,9 @@ export function ClipNarrationBox({
           value={draft}
           aria-label={label}
           placeholder="Narration…"
+          // How long this clip runs, for "fit the clip" in the right-click menu. The field is
+          // the only thing that knows which clip it belongs to.
+          data-clip-seconds={(item.duration / FPS).toFixed(2)}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => onCommit(item, draft)}
           className="min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent"

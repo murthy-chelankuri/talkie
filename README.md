@@ -52,16 +52,28 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 `APPLE_TEAM_ID`, remove `identity: null` from `electron-builder.yml`, and turn
 `hardenedRuntime` on.
 
-## Rewriting narration with the system's own tools
+## Rewriting narration
 
-Right-clicking selected text anywhere you can type — the narration box, a slide's title — opens
-an edit menu with Writing Tools on it, where Apple Intelligence is turned on: Rewrite, Proofread,
-Make Concise and the rest, applied straight back into the field. Spelling corrections, the usual
-editing commands and the Services menu are on it too.
+Select some narration, right-click, and **Rewrite** offers four things:
 
-Talkie implements none of that and stores none of it; it simply stops being in the way. This
-needs a Chromium that has adopted Apple's Writing Tools API, which is why the app runs on
-Electron 36 or newer — Electron 32 shipped Chromium 128, older than the feature itself.
+| | |
+| --- | --- |
+| Rephrase | the same thing said another way |
+| Proofread | spelling, grammar and punctuation, and nothing else |
+| Make concise | fewer words, every fact kept |
+| Fit the clip | rewritten to the length it has to be spoken in |
+
+The last one is why this is worth having rather than reaching for the system's own tools: Talkie
+knows how long the clip runs, and speech runs at roughly 2.5 words a second, so "fit the clip"
+has a real target. Going over means the voice runs past the picture.
+
+It uses whichever provider is set in Settings → Narration, and needs one with a model behind it —
+the built-in provider writes from a template and has nothing to ask. The rewrite replaces the
+selection, so ⌘Z puts the original back.
+
+Apple's Writing Tools is not available here, and cannot be: AppKit attaches it to text views it
+draws itself, and this is a web view whose menu is built by the app. A newer Chromium does not
+change that.
 
 ## Which voice a demo speaks in
 

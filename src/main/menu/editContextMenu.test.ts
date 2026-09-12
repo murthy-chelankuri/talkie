@@ -96,3 +96,52 @@ describe('the menu on a right-click', () => {
     expect(buildEditContextMenu(params({ isEditable: false }), 'darwin')).toEqual([])
   })
 })
+
+describe('rewriting from the menu', () => {
+  function labels(template: ReturnType<typeof buildEditContextMenu>): string[] {
+    const rewrite = template.find((item) => item.label === 'Rewrite')
+    return ((rewrite?.submenu ?? []) as { label?: string }[]).map((item) => item.label ?? '')
+  }
+
+  it('offers the rewrites over a selection, which is why the menu was opened', () => {
+    const template = buildEditContextMenu(
+      params({ selectionText: 'Some narration.' }),
+      'darwin',
+      vi.fn()
+    )
+
+    expect(labels(template)).toEqual(['Rephrase', 'Proofread', 'Make concise', 'Fit the clip'])
+  })
+
+  it('leads with it, above the ordinary editing commands', () => {
+    const template = buildEditContextMenu(params({ selectionText: 'x' }), 'darwin', vi.fn())
+
+    expect(template[0].label).toBe('Rewrite')
+  })
+
+  it('offers nothing to rewrite when nothing is selected', () => {
+    const template = buildEditContextMenu(params(), 'darwin', vi.fn())
+
+    expect(template.find((item) => item.label === 'Rewrite')).toBeUndefined()
+  })
+
+  it('does not offer to rewrite text that cannot be changed', () => {
+    const template = buildEditContextMenu(
+      params({ isEditable: false, selectionText: 'Read only.' }),
+      'darwin',
+      vi.fn()
+    )
+
+    expect(template.find((item) => item.label === 'Rewrite')).toBeUndefined()
+  })
+
+  it('says which rewrite was asked for', () => {
+    const onRewrite = vi.fn()
+    const template = buildEditContextMenu(params({ selectionText: 'x' }), 'darwin', onRewrite)
+    const submenu = template[0].submenu as { label: string; click: () => void }[]
+
+    submenu[3].click()
+
+    expect(onRewrite).toHaveBeenCalledWith('fit')
+  })
+})
