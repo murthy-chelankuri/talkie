@@ -52,6 +52,21 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 `APPLE_TEAM_ID`, remove `identity: null` from `electron-builder.yml`, and turn
 `hardenedRuntime` on.
 
+## What a recording shows
+
+A screen recording shows the result of a click but not the click: a value changes somewhere and
+the viewer has to work backwards to what was pressed. Talkie draws the control as it is used — a
+ring and a ripple on a button as it is pressed, a ring held on a field for as long as it is being
+typed into — so the recording can be followed without being talked through.
+
+It is on by default and lives in Settings → Recording, along with the colour. The highlight is
+drawn into the video and cannot be taken out afterwards, which is why it is a choice made before
+recording rather than after.
+
+It is drawn inside the recorded page, so it is kept out of the page's way: nothing it adds can
+ever be clicked or reach the action log, and it uses no stylesheet, so a site with a strict
+content policy still gets its highlights.
+
 ## Letting an AI agent make the demo
 
 Talkie is an MCP server, so any agent that speaks MCP — Claude Code, GitHub Copilot CLI, Cursor

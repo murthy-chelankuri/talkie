@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Sparkles,
   TriangleAlert,
+  Video,
   Volume2,
   Wrench,
   X
@@ -30,11 +31,12 @@ import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 
-type SectionId = 'narration' | 'voice' | 'system'
+type SectionId = 'narration' | 'voice' | 'recording' | 'system'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: string }> = [
   { id: 'narration', label: 'Narration', icon: <Sparkles size={15} />, blurb: 'Who writes the words' },
   { id: 'voice', label: 'Voice', icon: <Volume2 size={15} />, blurb: 'How they are spoken' },
+  { id: 'recording', label: 'Recording', icon: <Video size={15} />, blurb: 'What a capture shows' },
   { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' }
 ]
 
@@ -83,6 +85,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     apply(settingsClient.update({ narration: next }))
   const patchSpeech = (next: Partial<Settings['speech']>): Promise<void> =>
     apply(settingsClient.update({ speech: next }))
+  const patchRecording = (next: Partial<Settings['recording']>): Promise<void> =>
+    apply(settingsClient.update({ recording: next }))
 
   const needsAttention = readiness.filter((check) => !check.ready && check.required).length
 
@@ -172,6 +176,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
                 }}
                 onReset={() => apply(settingsClient.resetSpeech())}
               />
+            ) : section === 'recording' ? (
+              <RecordingSection settings={settings} onPatch={patchRecording} />
             ) : (
               <SystemSection checks={readiness} />
             )}
@@ -642,6 +648,73 @@ function McpSection(): JSX.Element | null {
             </>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+/** A few colours that read clearly over a page, plus whatever the user picks. */
+const HIGHLIGHT_COLOURS = ['#d3a24c', '#f87171', '#4ade80', '#38bdf8', '#c084fc', '#f59e0b']
+
+/**
+ * What a recording shows besides the page.
+ *
+ * The setting exists because the highlight is burned into the video: there is no turning it off
+ * afterwards, so the choice has to be made before recording rather than regretted after.
+ */
+function RecordingSection({
+  settings,
+  onPatch
+}: {
+  settings: Settings
+  onPatch: (next: Partial<Settings['recording']>) => void
+}): JSX.Element {
+  const { highlight, highlightColour } = settings.recording
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="text-[13px] font-medium text-text">Show what is being used</span>
+          <span className="text-xs leading-relaxed text-text-muted">
+            Rings the button as it is pressed and the field as it is typed into. Someone watching
+            the finished video did not drive it, and a click they cannot see is a step they have
+            to be told about.
+          </span>
+        </span>
+        <Switch
+          label="Show what is being used"
+          checked={highlight}
+          onChange={(next) => onPatch({ highlight: next })}
+        />
+      </div>
+
+      {highlight && (
+        <Field label="Highlight colour" hint="Pick one that stands out against what you are recording.">
+          <div className="flex flex-wrap items-center gap-2">
+            {HIGHLIGHT_COLOURS.map((colour) => (
+              <button
+                key={colour}
+                type="button"
+                aria-label={`Highlight ${colour}`}
+                title={colour}
+                onClick={() => onPatch({ highlightColour: colour })}
+                className={cn(
+                  'h-7 w-7 rounded-full border-2 p-0 transition-transform',
+                  highlightColour.toLowerCase() === colour ? 'border-text scale-110' : 'border-border'
+                )}
+                style={{ background: colour }}
+              />
+            ))}
+            <input
+              type="color"
+              aria-label="Pick a highlight colour"
+              value={highlightColour}
+              onChange={(event) => onPatch({ highlightColour: event.target.value })}
+              className="h-7 w-9 cursor-pointer rounded border border-border bg-transparent p-0"
+            />
+          </div>
+        </Field>
       )}
     </div>
   )

@@ -7,6 +7,8 @@ import { findProjectDir } from '../project/paths'
 import { appendActionLogEntry, type ActionLogEntry } from './actionLog'
 import { shouldRedactInputValue } from './redact'
 import { resolveBrowser, LAUNCH_ARGS, NO_BROWSER_MESSAGE } from './resolveBrowser'
+import { highlightScript } from './highlightScript'
+import { readSettings } from '../settings/settingsStore'
 
 export interface RecordingResult {
   sessionId: string
@@ -103,6 +105,14 @@ export async function startRecordingSession(
     })
 
     await context.addInitScript(INJECTED_LISTENER_SCRIPT)
+
+    // Added as an init script too, so it is in place before the page's own code runs and comes
+    // back after every navigation — a highlight that only worked on the first page would be
+    // worse than none.
+    const { recording } = readSettings(baseDir)
+    if (recording.highlight) {
+      await context.addInitScript(highlightScript({ accent: recording.highlightColour }))
+    }
 
     const page: Page = await context.newPage()
     // Frame 0 of the recording is written here, when the page is created — not at

@@ -69,14 +69,29 @@ export const McpSettingsSchema = z.object({
   tokenCreatedAt: z.string().default('')
 })
 
+/**
+ * What a recording shows beyond the page itself.
+ *
+ * On by default: a demo is watched by someone who was not driving, and a click they cannot see
+ * is a step they have to be told about. It is a setting because it is baked into the video —
+ * there is no taking it out afterwards.
+ */
+export const RecordingSettingsSchema = z.object({
+  highlight: z.boolean().default(true),
+  /** The ring colour, so a recording can match the product being demonstrated. */
+  highlightColour: z.string().default('#d3a24c')
+})
+
 export const SettingsSchema = z.object({
   narration: NarrationSettingsSchema.default({}),
   speech: SpeechSettingsSchema.default({}),
+  recording: RecordingSettingsSchema.default({}),
   mcp: McpSettingsSchema.default({})
 })
 
 export type NarrationProviderId = (typeof NARRATION_PROVIDER_IDS)[number]
 export type McpSettings = z.infer<typeof McpSettingsSchema>
+export type RecordingSettings = z.infer<typeof RecordingSettingsSchema>
 export type NarrationSettings = z.infer<typeof NarrationSettingsSchema>
 export type SpeechSettings = z.infer<typeof SpeechSettingsSchema>
 export type Settings = z.infer<typeof SettingsSchema>
