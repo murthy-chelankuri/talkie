@@ -2,12 +2,14 @@ import type { NarrationProvider } from './narrationProvider'
 import type { NarrationProviderId } from '../settings/schema'
 import { templateProvider } from './templateProvider'
 import { claudeCliProvider } from './claudeCliProvider'
+import { copilotCliProvider } from './copilotCliProvider'
 import { localProvider } from './localProvider'
 import { anthropicProvider } from './anthropicProvider'
 
 export const NARRATION_PROVIDERS: Record<NarrationProviderId, NarrationProvider> = {
   template: templateProvider,
   'claude-cli': claudeCliProvider,
+  'copilot-cli': copilotCliProvider,
   local: localProvider,
   anthropic: anthropicProvider
 }

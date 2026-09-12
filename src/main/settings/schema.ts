@@ -4,7 +4,13 @@ import { z } from 'zod'
 export const DEFAULT_VOICE = 'Samantha'
 
 /** Providers that can draft a clip's narration. `template` needs nothing installed. */
-export const NARRATION_PROVIDER_IDS = ['template', 'claude-cli', 'local', 'anthropic'] as const
+export const NARRATION_PROVIDER_IDS = [
+  'template',
+  'claude-cli',
+  'copilot-cli',
+  'local',
+  'anthropic'
+] as const
 
 export const LocalModelSettingsSchema = z.object({
   /**

@@ -1,5 +1,6 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { findCli } from './findCli'
 import {
   buildPrompt,
   cleanDraft,
@@ -26,14 +27,21 @@ export const claudeCliProvider: NarrationProvider = {
   sendsDataOffMachine: true,
 
   async isAvailable(): Promise<ProviderAvailability> {
-    try {
-      await execFileAsync('claude', ['--version'], { timeout: 15_000 })
-      return { available: true }
-    } catch {
+    // Looked up rather than left to PATH: an app opened from Finder barely has one. See findCli.
+    const binary = await findCli('claude')
+    if (!binary) {
       return {
         available: false,
         reason: 'The `claude` command was not found. Install Claude Code and sign in, then try again.'
       }
+    }
+
+    try {
+      await execFileAsync(binary, ['--version'], { timeout: 15_000 })
+      return { available: true }
+    } catch {
+      // It is installed; whether it is signed in shows up when a draft is asked for.
+      return { available: true }
     }
   },
 
@@ -49,9 +57,12 @@ export const claudeCliProvider: NarrationProvider = {
 }
 
 async function runClaude(prompt: string): Promise<string> {
+  const binary = await findCli('claude')
+  if (!binary) throw new Error('The `claude` command was not found.')
+
   try {
     const { stdout } = await execFileAsync(
-      'claude',
+      binary,
       ['-p', prompt, '--output-format', 'json', '--allowedTools', 'Read'],
       { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }
     )
