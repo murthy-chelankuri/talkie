@@ -25,7 +25,13 @@ export function AppShell({
             aria-hidden="true"
             className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-accent text-accent-foreground"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {/* The app icon's own mark, so the thing in the dock and the thing in the corner are
+                recognisably the same. A dot was left over from the icon before it. */}
+            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor">
+              <rect x="5.4" y="7" width="2.4" height="6" rx="1.2" />
+              <rect x="9.1" y="4.5" width="2.4" height="11" rx="1.2" />
+              <rect x="12.8" y="6" width="2.4" height="8" rx="1.2" />
+            </svg>
           </span>
           <span className="font-serif text-[15px] leading-none text-text">Talkie</span>
           {breadcrumb && (

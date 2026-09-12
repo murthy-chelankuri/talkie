@@ -1,35 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Record it silent. Give it a voice.
+
+    The mark is that sentence: a flat line — a silent capture, nothing being said — breaking into
+    speech. Read left to right it is the whole product in one gesture, and it is the app's own
+    visual language, because the voice layer on the timeline draws narration as exactly these
+    bars.
+
+    Built to survive a dock at 32px, which is where the icon it replaces fell apart: that one put
+    a ring off to the left with three arcs trailing away, the last two so faint they read as dirt
+    rather than as sound. Nothing here fades, nothing is thinner than 30px at full size, and the
+    whole mark is optically centred rather than drifting left.
+  -->
   <defs>
-    <!-- The app's own graphite, lifted slightly at the top so the tile has depth on a dock. -->
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2b313c"/>
       <stop offset="55%" stop-color="#1b1f27"/>
       <stop offset="100%" stop-color="#12151b"/>
     </linearGradient>
-    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#e8be74"/>
-      <stop offset="55%" stop-color="#d3a24c"/>
-      <stop offset="100%" stop-color="#a87c2c"/>
+
+    <!-- Brass, lit from the top left so the bars read as objects rather than as flat shapes. -->
+    <linearGradient id="brass" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#f0cd8d"/>
+      <stop offset="45%" stop-color="#d3a24c"/>
+      <stop offset="100%" stop-color="#b07f2d"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#d3a24c" stop-opacity="0.30"/>
-      <stop offset="100%" stop-color="#d3a24c" stop-opacity="0"/>
-    </radialGradient>
+
+    <!-- The light a dock icon catches along its top edge. -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
   <rect x="72" y="72" width="880" height="880" rx="198" fill="url(#tile)"/>
-  <rect x="72" y="72" width="880" height="880" rx="198" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="3"/>
+  <rect x="72" y="72" width="880" height="880" rx="198" fill="url(#sheen)"/>
+  <rect x="72" y="72" width="880" height="880" rx="198" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="3"/>
 
-  <circle cx="404" cy="512" r="300" fill="url(#glow)"/>
+  <!--
+    Four bars, not six. Six looked better at 1024 and merged into a lump at 32, because the gaps
+    between them fell below a pixel. These are the widest bars and the widest gaps that still
+    read as speech, which is the size that decides an icon.
+  -->
+  <g fill="url(#brass)">
+    <!-- Silence: one line, held. Same weight as the bars, so it is the same voice. -->
+    <rect x="206" y="486" width="232" height="52" rx="26"/>
 
-  <!-- The aperture from the wordmark: a frame, and the voice inside it. -->
-  <circle cx="404" cy="512" r="150" fill="none" stroke="url(#brass)" stroke-width="34"/>
-  <circle cx="404" cy="512" r="52" fill="url(#brass)"/>
-
-  <!-- Sound leaving the frame — silent picture, now a talkie. -->
-  <g fill="none" stroke="url(#brass)" stroke-width="34" stroke-linecap="round">
-    <path d="M602 404 a 150 150 0 0 1 0 216" opacity="0.95"/>
-    <path d="M690 342 a 250 250 0 0 1 0 340" opacity="0.62"/>
-    <path d="M778 280 a 350 350 0 0 1 0 464" opacity="0.32"/>
+    <!-- Then the voice. Uneven on purpose — speech is not a ramp. -->
+    <rect x="478" y="437" width="52" height="150" rx="26"/>
+    <rect x="570" y="332" width="52" height="360" rx="26"/>
+    <rect x="662" y="407" width="52" height="210" rx="26"/>
+    <rect x="754" y="367" width="52" height="290" rx="26"/>
   </g>
 </svg>

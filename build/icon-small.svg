@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    The same idea at the size where detail cannot survive.
+
+    At 16px the held line and four bars collapse into a smudge — the gaps fall well under a pixel
+    and the mark stops meaning anything. An icns carries a separate image for each size for
+    exactly this, so the smallest one drops the silence and keeps three fat bars: enough to read
+    as a voice, which is the part worth keeping when only a few pixels are left.
+  -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2b313c"/>
+      <stop offset="55%" stop-color="#1b1f27"/>
+      <stop offset="100%" stop-color="#12151b"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#f0cd8d"/>
+      <stop offset="45%" stop-color="#d3a24c"/>
+      <stop offset="100%" stop-color="#b07f2d"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="72" y="72" width="880" height="880" rx="198" fill="url(#tile)"/>
+
+  <!--
+    The gap matters more than the bar. At 16px a 20-unit gap is a third of a pixel and the three
+    bars merge into one blob; these gaps are nearly as wide as the bars, which is what keeps them
+    three things.
+  -->
+  <g fill="url(#brass)">
+    <rect x="236" y="402" width="120" height="220" rx="60"/>
+    <rect x="452" y="282" width="120" height="460" rx="60"/>
+    <rect x="668" y="352" width="120" height="320" rx="60"/>
+  </g>
+</svg>
