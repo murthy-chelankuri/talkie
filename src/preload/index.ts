@@ -10,6 +10,7 @@ import type { Voice } from '../main/tts/listVoices'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
 import type { McpConnection } from '../main/setup/mcpConnection'
+import type { SpeechEngineDescription } from '../main/tts/engineRegistry'
 import type { ProjectContext } from '../main/project/projectContext'
 import type { ExportedFile } from '../main/render/revealExport'
 import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
@@ -47,6 +48,7 @@ const settingsApi = {
     ipcRenderer.invoke('settings:mcpCreateToken'),
   mcpRevokeToken: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpRevokeToken'),
   voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
+  speechEngines: (): Promise<SpeechEngineDescription[]> => ipcRenderer.invoke('settings:speechEngines'),
   previewVoice: (voice: string, text: string): Promise<void> =>
     ipcRenderer.invoke('settings:previewVoice', voice, text)
 }

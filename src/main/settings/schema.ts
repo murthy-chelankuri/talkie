@@ -38,9 +38,23 @@ export const NarrationSettingsSchema = z.object({
   anthropic: AnthropicSettingsSchema.default({})
 })
 
-/** The macOS voice that reads the narration. Named explicitly — see sayTtsProvider. */
+export const OpenAiSpeechSchema = z.object({
+  apiKey: z.string().default(''),
+  model: z.string().default('gpt-4o-mini-tts')
+})
+
+/** Engines that can read narration aloud. `system` needs nothing installed. */
+export const SPEECH_ENGINE_IDS = ['system', 'openai'] as const
+
+/** The voice that reads the narration, and the engine it comes from. */
 export const SpeechSettingsSchema = z.object({
+  /**
+   * Which engine speaks. The built-in voices are enough to hear whether the words work; a
+   * published video usually wants better, which is what the other one is for.
+   */
+  engine: z.enum(SPEECH_ENGINE_IDS).default('system'),
   voice: z.string().default(DEFAULT_VOICE),
+  openai: OpenAiSpeechSchema.default({}),
   /** Words per minute. Lower sounds like explaining; higher like reading out. */
   pace: z.number().min(90).max(300).default(170),
   /** Silence at a full stop, in milliseconds. */
@@ -93,5 +107,6 @@ export type NarrationProviderId = (typeof NARRATION_PROVIDER_IDS)[number]
 export type McpSettings = z.infer<typeof McpSettingsSchema>
 export type RecordingSettings = z.infer<typeof RecordingSettingsSchema>
 export type NarrationSettings = z.infer<typeof NarrationSettingsSchema>
+export type SpeechEngineId = (typeof SPEECH_ENGINE_IDS)[number]
 export type SpeechSettings = z.infer<typeof SpeechSettingsSchema>
 export type Settings = z.infer<typeof SettingsSchema>

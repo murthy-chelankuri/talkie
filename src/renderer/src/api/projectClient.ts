@@ -59,6 +59,7 @@ export type { LocalServer } from '../../../main/agent/localProvider'
 export type { Voice } from '../../../main/tts/listVoices'
 export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { ProjectContext }
+export type { SpeechEngineDescription } from '../../../main/tts/engineRegistry'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
 export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'
@@ -75,6 +76,7 @@ export const settingsClient = {
   mcpCreateToken: () => window.api.settings.mcpCreateToken(),
   mcpRevokeToken: () => window.api.settings.mcpRevokeToken(),
   voices: () => window.api.settings.voices(),
+  speechEngines: () => window.api.settings.speechEngines(),
   previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text)
 }
 

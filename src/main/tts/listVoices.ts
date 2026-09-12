@@ -3,6 +3,9 @@ import { promisify } from 'util'
 
 import { readSettings } from '../settings/settingsStore'
 import { toSpokenMarkup } from './prosody'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { unlinkSync } from 'fs'
 
 const execFileAsync = promisify(execFile)
 
@@ -80,12 +83,38 @@ export async function listVoices(): Promise<Voice[]> {
  * Speak a short line so the user can hear a voice before choosing it — with the same pacing and
  * pauses the narration will use, otherwise the preview is not what they will get.
  */
+/**
+ * Hear a voice before committing a project to it.
+ *
+ * A cloud engine has no way to play audio of its own, so its preview is synthesised to a scratch
+ * file and played by the system — the same words through the same engine that will read the
+ * narration, which is the only preview worth having.
+ */
 export async function previewVoice(name: string, text: string): Promise<void> {
   const speech = readSettings().speech
-  const spoken = toSpokenMarkup(text, {
+  const options = {
+    voice: name,
     pace: speech.pace,
     sentencePauseMs: speech.sentencePauseMs,
     clausePauseMs: speech.clausePauseMs
-  })
-  await execFileAsync('say', ['-v', name, spoken || text], { timeout: 30_000 })
+  }
+
+  if (speech.engine === 'system') {
+    const spoken = toSpokenMarkup(text, options)
+    await execFileAsync('say', ['-v', name, spoken || text], { timeout: 30_000 })
+    return
+  }
+
+  const { speechEngine } = await import('./engineRegistry')
+  const scratch = join(tmpdir(), `talkie-preview-${Date.now()}.wav`)
+  try {
+    await speechEngine(speech.engine).synthesize(text, scratch, options)
+    await execFileAsync('afplay', [scratch], { timeout: 60_000 })
+  } finally {
+    try {
+      unlinkSync(scratch)
+    } catch {
+      // Already gone, or never written because the engine failed first.
+    }
+  }
 }

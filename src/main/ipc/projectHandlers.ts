@@ -21,7 +21,8 @@ import { mcpConnection } from '../setup/mcpConnection'
 import { createMcpToken, revokeMcpToken } from '../settings/mcpAccess'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
-import { listVoices, previewVoice } from '../tts/listVoices'
+import { previewVoice } from '../tts/listVoices'
+import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
@@ -86,7 +87,9 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     revokeMcpToken()
     return mcpConnection()
   })
-  ipcMain.handle('settings:voices', () => listVoices())
+  // Whichever engine is chosen — a list of macOS voices is no use to someone using OpenAI.
+  ipcMain.handle('settings:voices', () => speechEngine(readSettings().speech.engine).voices())
+  ipcMain.handle('settings:speechEngines', () => describeSpeechEngines())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
 
   // Drafted narration is an ordinary edit as far as undo is concerned.

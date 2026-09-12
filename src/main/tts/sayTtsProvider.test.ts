@@ -5,6 +5,11 @@ import { join } from 'path'
 import { sayTtsProvider } from './sayTtsProvider'
 import { updateSettings } from '../settings/settingsStore'
 
+/** What the caller now hands the engine, in place of it reading settings itself. */
+function speechOptions(overrides = {}) {
+  return { voice: 'Samantha', pace: 170, sentencePauseMs: 420, clausePauseMs: 300, ...overrides }
+}
+
 describe('sayTtsProvider (real say + afconvert)', () => {
   let dir: string
 
@@ -16,7 +21,7 @@ describe('sayTtsProvider (real say + afconvert)', () => {
     dir = mkdtempSync(join(tmpdir(), 'demo-editor-tts-test-'))
     const outputPath = join(dir, 'segment.wav')
 
-    await sayTtsProvider.synthesize('This is a test narration.', outputPath)
+    await sayTtsProvider.synthesize('This is a test narration.', outputPath, speechOptions())
 
     expect(statSync(outputPath).size).toBeGreaterThan(1000)
   }, 30_000)
@@ -40,7 +45,7 @@ describe('voice selection', () => {
     updateSettings({ speech: { voice: 'Daniel' } }, baseDir)
     const outputPath = join(baseDir, 'daniel.wav')
 
-    await sayTtsProvider.synthesize('Testing a chosen voice.', outputPath)
+    await sayTtsProvider.synthesize('Testing a chosen voice.', outputPath, speechOptions())
 
     expect(existsSync(outputPath)).toBe(true)
     expect(statSync(outputPath).size).toBeGreaterThan(1000)
@@ -52,7 +57,7 @@ describe('voice selection', () => {
     updateSettings({ speech: { voice: '   ' } }, baseDir)
     const outputPath = join(baseDir, 'fallback.wav')
 
-    await sayTtsProvider.synthesize('Testing the fallback voice.', outputPath)
+    await sayTtsProvider.synthesize('Testing the fallback voice.', outputPath, speechOptions())
 
     expect(statSync(outputPath).size).toBeGreaterThan(1000)
   }, 30_000)

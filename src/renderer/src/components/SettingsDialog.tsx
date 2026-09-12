@@ -22,7 +22,8 @@ import {
   type LocalServer,
   type Voice,
   type ReadinessCheck,
-  type McpConnection
+  type McpConnection,
+  type SpeechEngineDescription
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -54,6 +55,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
   const [settings, setSettings] = useState<Settings | null>(null)
   const [providers, setProviders] = useState<ProviderDescription[]>([])
   const [voices, setVoices] = useState<Voice[]>([])
+  const [engines, setEngines] = useState<SpeechEngineDescription[]>([])
   const [localServer, setLocalServer] = useState<LocalServer | null>(null)
   const [readiness, setReadiness] = useState<ReadinessCheck[]>([])
   const [previewing, setPreviewing] = useState(false)
@@ -62,6 +64,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     settingsClient.read().then(setSettings)
     settingsClient.providers().then(setProviders)
     settingsClient.voices().then(setVoices)
+    settingsClient.speechEngines().then(setEngines)
     settingsClient.localServer().then(setLocalServer)
     settingsClient.readiness().then(setReadiness)
   }, [])
@@ -163,6 +166,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
               <VoiceSection
                 settings={settings}
                 voices={voices}
+                engines={engines}
                 previewing={previewing}
                 onPatch={patchSpeech}
                 onPreview={async () => {
@@ -382,6 +386,7 @@ function NarrationSection({
 function VoiceSection({
   settings,
   voices,
+  engines,
   previewing,
   onPatch,
   onPreview,
@@ -389,6 +394,7 @@ function VoiceSection({
 }: {
   settings: Settings
   voices: Voice[]
+  engines: SpeechEngineDescription[]
   previewing: boolean
   onPatch: (next: Partial<Settings['speech']>) => Promise<void>
   onPreview: () => void | Promise<void>
@@ -396,6 +402,68 @@ function VoiceSection({
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
+      <Field label="Which voice reads it" hint="">
+        <div className="flex flex-col gap-1.5">
+          {engines.map((engine) => (
+            <div
+              key={engine.id}
+              className={cn(
+                'rounded-lg border transition-colors',
+                settings.speech.engine === engine.id
+                  ? 'border-accent bg-bg'
+                  : 'border-border hover:border-text-muted/40'
+              )}
+            >
+              <label className="flex cursor-pointer items-start gap-3 px-3.5 py-3">
+                <input
+                  type="radio"
+                  name="speech-engine"
+                  className="mt-1 accent-accent"
+                  checked={settings.speech.engine === engine.id}
+                  onChange={() => void onPatch({ engine: engine.id })}
+                />
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <span className="text-[13px] text-text">{engine.label}</span>
+                    <span className="flex items-center gap-1 text-[11px] text-text-muted">
+                      {engine.id === 'system' ? <Laptop size={11} /> : <Cloud size={11} />}
+                      {engine.id === 'system' ? 'Stays on this machine' : 'Sends the words out'}
+                    </span>
+                  </span>
+                  {!engine.available && engine.reason && (
+                    <span className="flex items-start gap-1.5 text-[11px] leading-relaxed text-danger">
+                      <TriangleAlert size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
+                      {engine.reason}
+                    </span>
+                  )}
+                </span>
+              </label>
+
+              {settings.speech.engine === engine.id && engine.id === 'openai' && (
+                <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
+                  <Input
+                    type="password"
+                    aria-label="OpenAI API key"
+                    placeholder="sk-…"
+                    defaultValue={settings.speech.openai.apiKey}
+                    onBlur={(event) =>
+                      void onPatch({ openai: { ...settings.speech.openai, apiKey: event.target.value } })
+                    }
+                  />
+                  <Input
+                    aria-label="OpenAI speech model"
+                    defaultValue={settings.speech.openai.model}
+                    onBlur={(event) =>
+                      void onPatch({ openai: { ...settings.speech.openai, model: event.target.value } })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Field>
+
       {/* A default rather than the answer: a project that has chosen a voice keeps it, which is
           what stops changing this from making finished work look unfinished. */}
       <Field

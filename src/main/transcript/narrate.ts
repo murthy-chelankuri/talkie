@@ -8,7 +8,7 @@ import {
   updateTranscriptSegmentAudio,
   updateTimelineItemDuration
 } from '../project/projectApi'
-import { sayTtsProvider } from '../tts/sayTtsProvider'
+import { speechEngine } from '../tts/engineRegistry'
 import { readSettings } from '../settings/settingsStore'
 import { DEFAULT_VOICE } from '../settings/schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
@@ -36,11 +36,17 @@ export async function narrateSegment(
   const audioFileName = `${segmentId}-${Date.now()}.wav`
   const audioPath = join(dir, 'audio', audioFileName)
   // The project's own voice wins over the app's, so a project keeps sounding like itself.
-  const voice =
-    openProject(projectId, baseDir).voice?.trim() ||
-    readSettings(baseDir).speech.voice.trim() ||
-    DEFAULT_VOICE
-  await sayTtsProvider.synthesize(segment.text, audioPath)
+  const speech = readSettings(baseDir).speech
+  const voice = openProject(projectId, baseDir).voice?.trim() || speech.voice.trim() || DEFAULT_VOICE
+
+  // Handed the voice rather than letting the engine look one up: an engine reading settings for
+  // itself spoke in the app's voice while the take was labelled with the project's.
+  await speechEngine(speech.engine).synthesize(segment.text, audioPath, {
+    voice,
+    pace: speech.pace,
+    sentencePauseMs: speech.sentencePauseMs,
+    clausePauseMs: speech.clausePauseMs
+  })
 
   const durationSeconds = getWavDurationSeconds(audioPath)
   // The clip has to hold the silence either side of the words as well as the words themselves,

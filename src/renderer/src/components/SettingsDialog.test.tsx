@@ -10,6 +10,7 @@ vi.mock('../api/projectClient', () => ({
     update: vi.fn(),
     providers: vi.fn(),
     voices: vi.fn(),
+    speechEngines: vi.fn(),
     localServer: vi.fn(),
     readiness: vi.fn(),
     resetSpeech: vi.fn(),
@@ -27,7 +28,14 @@ const defaults = {
     local: { baseUrl: '', model: '' },
     anthropic: { apiKey: '', model: 'claude-sonnet-5' }
   },
-  speech: { voice: 'Samantha', pace: 170, sentencePauseMs: 420, clausePauseMs: 300 }
+  speech: {
+    engine: 'system' as const,
+    voice: 'Samantha',
+    openai: { apiKey: '', model: 'gpt-4o-mini-tts' },
+    pace: 170,
+    sentencePauseMs: 420,
+    clausePauseMs: 300
+  }
 }
 
 function provider(overrides = {}) {
@@ -43,6 +51,10 @@ beforeEach(() => {
   vi.mocked(settingsClient.update).mockResolvedValue(defaults as never)
   vi.mocked(settingsClient.resetSpeech).mockResolvedValue(defaults as never)
   vi.mocked(settingsClient.providers).mockResolvedValue([provider()] as never)
+  vi.mocked(settingsClient.speechEngines).mockResolvedValue([
+    { id: 'system', label: "macOS's built-in voices", available: true },
+    { id: 'openai', label: 'OpenAI voices', available: false, reason: 'Add an OpenAI API key.' }
+  ] as never)
   vi.mocked(settingsClient.voices).mockResolvedValue([
     { name: 'Samantha', locale: 'en_US', sample: 'Hello.', novelty: false }
   ] as never)
