@@ -6,6 +6,7 @@ import type { TimelineItem } from '../../remotion/types'
 import type { NarrationAudio } from '../project/projectApi'
 import { readActionLog } from '../capture/actionLog'
 import { mergeFocuses, type ClickFocus } from '../../remotion/clickZoom'
+import type { Caption as CaptionCue } from '../transcript/captions'
 import { FPS } from '../../remotion/constants'
 
 const MIME_TYPES: Record<string, string> = {
@@ -177,16 +178,28 @@ export function resolveTimelineAssetUrls(
   timeline: TimelineItem[],
   rootDir: string,
   serverUrl: string,
-  narrationAudioPaths: Map<string, NarrationAudio> = new Map()
+  narrationAudioPaths: Map<string, NarrationAudio> = new Map(),
+  /** Cues to paint into the picture, when the user has asked for them. Empty otherwise. */
+  captionsByItem: Record<string, CaptionCue[]> = {}
 ): TimelineItem[] {
   return timeline.map((item) => {
     const narration = narrationAudioPaths.get(item.id)
+    const captions = captionsByItem[item.id]
     const audioUrl = narration
       ? `${resolveAssetUrl(narration.path, rootDir, serverUrl)}?v=${narration.version}`
       : undefined
 
     if (!SRC_MEDIA_KINDS.has(item.kind)) {
-      return audioUrl ? { ...item, data: { ...(item.data as object), audioUrl } } : item
+      return audioUrl || captions
+        ? {
+            ...item,
+            data: {
+              ...(item.data as object),
+              ...(audioUrl ? { audioUrl } : {}),
+              ...(captions ? { captions } : {})
+            }
+          }
+        : item
     }
 
     const data = item.data as { src: string; trimBefore?: number }
@@ -196,6 +209,7 @@ export function resolveTimelineAssetUrls(
         ...data,
         src: resolveAssetUrl(data.src, rootDir, serverUrl),
         ...(audioUrl ? { audioUrl } : {}),
+        ...(captions ? { captions } : {}),
         // Where the clicks in this clip landed, so the picture can lean towards them.
         ...(item.kind === 'video' ? { focus: focusesFor(data.src, item, data.trimBefore ?? 0) } : {})
       }

@@ -167,3 +167,30 @@ function srtTime(seconds: number): string {
     String(millis).padStart(3, '0')
   )
 }
+
+/**
+ * The same cues, grouped by the clip they belong to and counted from that clip's own start.
+ *
+ * That is the shape a composition wants: each clip is already a Sequence with its own frame
+ * count, so a cue drawn inside it needs no knowledge of where the clip sits on the timeline.
+ */
+export function captionsByItem(
+  timeline: TimelineItem[],
+  segments: TranscriptSegment[],
+  secondsOf: (segment: TranscriptSegment) => number | undefined
+): Record<string, Caption[]> {
+  const grouped: Record<string, Caption[]> = {}
+
+  for (const item of timeline) {
+    const cues = buildCaptions([item], segments, secondsOf)
+    if (cues.length === 0) continue
+
+    grouped[item.id] = cues.map((cue) => ({
+      ...cue,
+      startFrame: cue.startFrame - item.start,
+      endFrame: cue.endFrame - item.start
+    }))
+  }
+
+  return grouped
+}

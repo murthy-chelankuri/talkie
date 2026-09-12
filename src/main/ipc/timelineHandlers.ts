@@ -18,6 +18,7 @@ import { addScene, updateSceneData, writeDiagramSvg } from '../project/projectAp
 import { writeScene, type SceneRequest } from '../agent/writeScene'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
+import { burnedCaptionsFor } from '../transcript/burnedCaptions'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 
 export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null): void {
@@ -31,7 +32,13 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     const rootDir = projectsRootDir(homedir())
     const assetServer = await getAssetServer(rootDir)
     const narrationAudioPaths = readNarrationAudioPaths(id)
-    return resolveTimelineAssetUrls(timeline, rootDir, assetServer.url, narrationAudioPaths)
+    return resolveTimelineAssetUrls(
+      timeline,
+      rootDir,
+      assetServer.url,
+      narrationAudioPaths,
+      burnedCaptionsFor(id)
+    )
   })
 
   ipcMain.handle(

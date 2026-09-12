@@ -96,16 +96,29 @@ export const RecordingSettingsSchema = z.object({
   highlightColour: z.string().default('#d3a24c')
 })
 
+/**
+ * What the finished file carries beyond the picture and the voice.
+ *
+ * Off by default: a subtitle file sits beside every export already, and words painted into the
+ * picture cannot be corrected or translated afterwards. It is worth having when the video will
+ * play muted — which is most of the web — and worth avoiding otherwise.
+ */
+export const ExportSettingsSchema = z.object({
+  burnCaptions: z.boolean().default(false)
+})
+
 export const SettingsSchema = z.object({
   narration: NarrationSettingsSchema.default({}),
   speech: SpeechSettingsSchema.default({}),
   recording: RecordingSettingsSchema.default({}),
+  export: ExportSettingsSchema.default({}),
   mcp: McpSettingsSchema.default({})
 })
 
 export type NarrationProviderId = (typeof NARRATION_PROVIDER_IDS)[number]
 export type McpSettings = z.infer<typeof McpSettingsSchema>
 export type RecordingSettings = z.infer<typeof RecordingSettingsSchema>
+export type ExportSettings = z.infer<typeof ExportSettingsSchema>
 export type NarrationSettings = z.infer<typeof NarrationSettingsSchema>
 export type SpeechEngineId = (typeof SPEECH_ENGINE_IDS)[number]
 export type SpeechSettings = z.infer<typeof SpeechSettingsSchema>

@@ -28,6 +28,7 @@ const defaults = {
     local: { baseUrl: '', model: '' },
     anthropic: { apiKey: '', model: 'claude-sonnet-5' }
   },
+  export: { burnCaptions: false },
   speech: {
     engine: 'system' as const,
     voice: 'Samantha',

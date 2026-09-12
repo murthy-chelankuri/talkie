@@ -8,7 +8,9 @@ import {
   Laptop,
   Plug,
   RotateCcw,
+  Download,
   Sparkles,
+  Subtitles,
   TriangleAlert,
   Video,
   Volume2,
@@ -33,12 +35,13 @@ import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import { VoicePicker } from './VoicePicker'
 
-type SectionId = 'narration' | 'voice' | 'recording' | 'system'
+type SectionId = 'narration' | 'voice' | 'recording' | 'export' | 'system'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: string }> = [
   { id: 'narration', label: 'Narration', icon: <Sparkles size={15} />, blurb: 'Who writes the words' },
   { id: 'voice', label: 'Voice', icon: <Volume2 size={15} />, blurb: 'How they are spoken' },
   { id: 'recording', label: 'Recording', icon: <Video size={15} />, blurb: 'What a capture shows' },
+  { id: 'export', label: 'Export', icon: <Download size={15} />, blurb: 'What the file carries' },
   { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' }
 ]
 
@@ -91,6 +94,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     apply(settingsClient.update({ speech: next }))
   const patchRecording = (next: Partial<Settings['recording']>): Promise<void> =>
     apply(settingsClient.update({ recording: next }))
+  const patchExport = (next: Partial<Settings['export']>): Promise<void> =>
+    apply(settingsClient.update({ export: next }))
 
   const needsAttention = readiness.filter((check) => !check.ready && check.required).length
 
@@ -185,6 +190,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
               />
             ) : section === 'recording' ? (
               <RecordingSection settings={settings} onPatch={patchRecording} />
+            ) : section === 'export' ? (
+              <ExportSection settings={settings} onPatch={patchExport} />
             ) : (
               <SystemSection checks={readiness} />
             )}
@@ -715,6 +722,46 @@ function McpSection(): JSX.Element | null {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * What the finished file carries.
+ *
+ * A subtitle file is written beside every export whatever this says; this decides whether the
+ * words are also painted into the picture, which is a different trade — readable with the sound
+ * off, and impossible to correct or translate afterwards.
+ */
+function ExportSection({
+  settings,
+  onPatch
+}: {
+  settings: Settings
+  onPatch: (next: Partial<Settings['export']>) => void
+}): JSX.Element {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="text-[13px] font-medium text-text">Burn captions into the video</span>
+          <span className="text-xs leading-relaxed text-text-muted">
+            For video that plays with the sound off, which is most of the web. Painted into the
+            picture, so they cannot be corrected or translated later — which is why a subtitle
+            file is written beside every export either way.
+          </span>
+        </span>
+        <Switch
+          label="Burn captions into the video"
+          checked={settings.export.burnCaptions}
+          onChange={(next) => onPatch({ burnCaptions: next })}
+        />
+      </div>
+
+      <p className="flex items-start gap-2 text-[11px] leading-relaxed text-text-muted">
+        <Subtitles size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+        Every export already leaves a .srt file next to the video, timed from the narration.
+      </p>
     </div>
   )
 }

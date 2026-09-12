@@ -12,6 +12,7 @@ import {
 import { slugify } from '../project/slug'
 import { findProjectDir, projectsRootDir } from '../project/paths'
 import { buildCaptions, toSrt } from '../transcript/captions'
+import { burnedCaptionsFor } from '../transcript/burnedCaptions'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -45,7 +46,13 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   const rawTimeline = readTimelineLenient(id, baseDir) as unknown as RemotionTimelineItem[]
   const assetServer = await getAssetServer(rootDir)
   const narrationAudioPaths = readNarrationAudioPaths(id, baseDir)
-  const timeline = resolveTimelineAssetUrls(rawTimeline, rootDir, assetServer.url, narrationAudioPaths)
+  const timeline = resolveTimelineAssetUrls(
+    rawTimeline,
+    rootDir,
+    assetServer.url,
+    narrationAudioPaths,
+    burnedCaptionsFor(id, baseDir)
+  )
 
   const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
   const composition = await selectComposition({
