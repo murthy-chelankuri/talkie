@@ -215,3 +215,65 @@ describe('what the System panel puts in front of you', () => {
     expect(await screen.findByText(/Everything required is available/)).toBeInTheDocument()
   })
 })
+
+/**
+ * What a provider needs to be told belongs to that provider.
+ *
+ * These fields used to sit at the foot of the whole list, a scroll below the option they
+ * configure and with nothing to say which one they were for.
+ */
+describe('where a provider’s own settings live', () => {
+  const localProvider = provider({ id: 'local', label: 'Local model', sendsDataOffMachine: false })
+
+  function card(name: string): HTMLElement {
+    const option = screen.getByRole('radio', { name: new RegExp(name) })
+    return option.closest('div[class*="rounded-lg"]') as HTMLElement
+  }
+
+  it('keeps them inside the card of the provider they belong to', async () => {
+    vi.mocked(settingsClient.read).mockResolvedValue({
+      ...defaults,
+      narration: { ...defaults.narration, provider: 'local' }
+    } as never)
+    vi.mocked(settingsClient.providers).mockResolvedValue([provider(), localProvider] as never)
+    vi.mocked(settingsClient.localServer).mockResolvedValue({
+      label: 'LM Studio',
+      baseUrl: 'http://127.0.0.1:1234/v1',
+      models: ['a-model']
+    } as never)
+
+    render(<SettingsDialog onClose={vi.fn()} />)
+    const address = await screen.findByRole('textbox', { name: 'Local server address' })
+
+    expect(card('Local model')).toContainElement(address)
+  })
+
+  it('shows them only for the provider that is chosen', async () => {
+    vi.mocked(settingsClient.read).mockResolvedValue({
+      ...defaults,
+      narration: { ...defaults.narration, provider: 'template' }
+    } as never)
+    vi.mocked(settingsClient.providers).mockResolvedValue([provider(), localProvider] as never)
+
+    render(<SettingsDialog onClose={vi.fn()} />)
+    await screen.findByText('Local model')
+
+    expect(screen.queryByRole('textbox', { name: 'Local server address' })).not.toBeInTheDocument()
+  })
+
+  it('does the same for a provider that needs a key', async () => {
+    vi.mocked(settingsClient.read).mockResolvedValue({
+      ...defaults,
+      narration: { ...defaults.narration, provider: 'anthropic' }
+    } as never)
+    vi.mocked(settingsClient.providers).mockResolvedValue([
+      provider(),
+      provider({ id: 'anthropic', label: 'Anthropic API' })
+    ] as never)
+
+    render(<SettingsDialog onClose={vi.fn()} />)
+    const key = await screen.findByLabelText('Anthropic API key')
+
+    expect(card('Anthropic API')).toContainElement(key)
+  })
+})

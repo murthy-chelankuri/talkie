@@ -101,7 +101,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
       <div
         role="dialog"
         aria-label="Settings"
-        className="flex h-[34rem] max-h-full w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
+        // Sized to the window rather than to a fixed 34rem: settings are lists of settings, and
+        // a box that stops short of the space it has makes every one of them a scroll.
+        className="flex h-[min(44rem,100%)] w-full max-w-4xl overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
       >
         <nav className="flex w-52 shrink-0 flex-col gap-0.5 border-r border-border bg-bg p-2.5">
           <p className="px-2.5 pb-2 pt-1 font-serif text-base text-text">Settings</p>
@@ -269,15 +271,18 @@ function NarrationSection({
       <Field label="Who writes the draft">
         <div className="flex flex-col gap-1.5">
           {providers.map((provider) => (
-            <label
+            <div
               key={provider.id}
               className={cn(
-                'flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 transition-colors',
+                'rounded-lg border transition-colors',
                 selected === provider.id
                   ? 'border-accent bg-bg'
                   : 'border-border hover:border-text-muted/40'
               )}
             >
+            {/* The label covers only the choice. What a provider needs to be told sits beside it
+                rather than inside it, or clicking a field would re-pick the provider. */}
+            <label className="flex cursor-pointer items-start gap-3 px-3.5 py-3">
               <input
                 type="radio"
                 name="narration-provider"
@@ -309,20 +314,17 @@ function NarrationSection({
                 )}
               </span>
             </label>
-          ))}
-        </div>
-      </Field>
 
-      {selected === 'local' && (
-        <Field
-          label="Local model"
-          hint={
-            localServer
-              ? `Found ${localServer.label} at ${localServer.baseUrl}. Pick a model that can read images — a text-only one will describe the action log but not what is on screen.`
-              : 'Looking on the usual ports. LM Studio, Ollama, llama.cpp and Jan all work; set an address to use something else.'
-          }
-        >
-          <div className="flex flex-col gap-2">
+            {/* Underneath the provider it belongs to, and only while that one is chosen. Shown at
+                the foot of the whole list, these settings sat a scroll away from the thing they
+                configure, with nothing to say which one they were for. */}
+            {selected === provider.id && provider.id === 'local' && (
+              <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
+                <p className="text-[11px] leading-relaxed text-text-muted">
+                  {localServer
+                    ? `Found ${localServer.label} at ${localServer.baseUrl}. Pick a model that can read images — a text-only one will describe the action log but not what is on screen.`
+                    : 'Looking on the usual ports. LM Studio, Ollama, llama.cpp and Jan all work; set an address to use something else.'}
+                </p>
             {localServer && (
               <select
                 aria-label="Local model"
@@ -343,32 +345,36 @@ function NarrationSection({
               defaultValue={settings.narration.local.baseUrl}
               onBlur={(event) => onPatch({ local: { ...settings.narration.local, baseUrl: event.target.value } })}
             />
-          </div>
-        </Field>
-      )}
+              </div>
+            )}
 
-      {selected === 'anthropic' && (
-        <Field label="Anthropic" hint="The key is kept in your settings file and sent only to Anthropic.">
-          <div className="flex flex-col gap-2">
-            <Input
-              type="password"
-              aria-label="Anthropic API key"
-              placeholder="sk-ant-…"
-              defaultValue={settings.narration.anthropic.apiKey}
-              onBlur={(event) =>
-                onPatch({ anthropic: { ...settings.narration.anthropic, apiKey: event.target.value } })
-              }
-            />
-            <Input
-              aria-label="Anthropic model"
-              defaultValue={settings.narration.anthropic.model}
-              onBlur={(event) =>
-                onPatch({ anthropic: { ...settings.narration.anthropic, model: event.target.value } })
-              }
-            />
-          </div>
-        </Field>
-      )}
+            {selected === provider.id && provider.id === 'anthropic' && (
+              <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
+                <p className="text-[11px] leading-relaxed text-text-muted">
+                  The key is kept in your settings file and sent only to Anthropic.
+                </p>
+                <Input
+                  type="password"
+                  aria-label="Anthropic API key"
+                  placeholder="sk-ant-…"
+                  defaultValue={settings.narration.anthropic.apiKey}
+                  onBlur={(event) =>
+                    onPatch({ anthropic: { ...settings.narration.anthropic, apiKey: event.target.value } })
+                  }
+                />
+                <Input
+                  aria-label="Anthropic model"
+                  defaultValue={settings.narration.anthropic.model}
+                  onBlur={(event) =>
+                    onPatch({ anthropic: { ...settings.narration.anthropic, model: event.target.value } })
+                  }
+                />
+              </div>
+            )}
+            </div>
+          ))}
+        </div>
+      </Field>
     </div>
   )
 }
