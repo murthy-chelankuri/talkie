@@ -1,0 +1,101 @@
+import { useEffect, useMemo, useState } from 'react'
+import {
+  AbsoluteFill,
+  continueRender,
+  delayRender,
+  interpolate,
+  spring,
+  useCurrentFrame,
+  useVideoConfig
+} from 'remotion'
+import type { DiagramSceneData } from '../../main/project/timeline/schema'
+
+/**
+ * A diagram drawn from mermaid source.
+ *
+ * The SVG is fetched rather than generated here: mermaid is a large browser library, and making
+ * the export renderer run it would be both slow and a way for the exported video to disagree
+ * with the preview. What is drawn is exactly the SVG the editor drew.
+ */
+export function DiagramScene({ data }: { data: unknown }): JSX.Element {
+  const { src, title } = data as DiagramSceneData
+  const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
+  const [markup, setMarkup] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!src) return
+    // The frame is held until the diagram is in hand, or the export would capture an empty one.
+    const handle = delayRender(`Fetching diagram ${src}`)
+    let cancelled = false
+
+    fetch(src)
+      .then((response) => response.text())
+      .then((text) => {
+        if (!cancelled) setMarkup(text)
+      })
+      .catch(() => {
+        if (!cancelled) setMarkup('')
+      })
+      .finally(() => continueRender(handle))
+
+    return () => {
+      cancelled = true
+    }
+  }, [src])
+
+  const titleIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 16 })
+  const drawIn = spring({ frame: frame - 8, fps, config: { damping: 200 }, durationInFrames: 26 })
+
+  // The SVG was normalised when it was drawn, so it already scales to whatever it is given.
+  const sized = useMemo(() => markup || null, [markup])
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: 'linear-gradient(160deg, #232833 0%, #171b22 55%, #101318 100%)',
+        padding: title ? '6% 8% 8%' : '8%',
+        fontFamily: 'Geist Variable, ui-sans-serif, system-ui, sans-serif'
+      }}
+    >
+      {title && (
+        <h2
+          style={{
+            margin: '0 0 36px',
+            fontFamily: 'Newsreader Variable, ui-serif, Georgia, serif',
+            fontSize: 64,
+            fontWeight: 500,
+            color: '#f4f6f9',
+            opacity: titleIn,
+            transform: `translateY(${interpolate(titleIn, [0, 1], [20, 0])}px)`
+          }}
+        >
+          {title}
+        </h2>
+      )}
+
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 0,
+          opacity: drawIn,
+          transform: `scale(${interpolate(drawIn, [0, 1], [0.965, 1])})`
+        }}
+      >
+        {sized ? (
+          <div
+            style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            dangerouslySetInnerHTML={{ __html: sized }}
+          />
+        ) : (
+          <span style={{ fontSize: 34, color: '#6b7280' }}>
+            {src ? '' : 'This diagram has not been drawn yet.'}
+          </span>
+        )}
+      </div>
+    </AbsoluteFill>
+  )
+}

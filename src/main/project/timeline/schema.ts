@@ -11,10 +11,36 @@ export const VideoItemDataSchema = z.object({
   trimBefore: z.number().int().min(0).optional()
 })
 
+/**
+ * A slide written in Talkie rather than imported: a heading and some lines under it. Kept as
+ * text rather than a picture so it stays editable, searchable and re-styleable later.
+ */
+export const TextSceneDataSchema = z.object({
+  title: z.string(),
+  bullets: z.array(z.string()).default([])
+})
+
+/**
+ * A diagram written as mermaid source. The rendered SVG is kept beside it as a file, because
+ * mermaid is a large browser library and the export renderer should not have to run it — and
+ * because a diagram that renders differently on export than in the preview is worse than none.
+ */
+export const DiagramSceneDataSchema = z.object({
+  source: z.string(),
+  /** Path to the rendered SVG. Absent until it has been drawn once. */
+  src: z.string().optional(),
+  title: z.string().optional()
+})
+
 export const TIMELINE_ITEM_DATA_SCHEMAS: Record<string, z.ZodSchema> = {
   image: ImageItemDataSchema,
-  video: VideoItemDataSchema
+  video: VideoItemDataSchema,
+  scene: TextSceneDataSchema,
+  diagram: DiagramSceneDataSchema
 }
+
+export type TextSceneData = z.infer<typeof TextSceneDataSchema>
+export type DiagramSceneData = z.infer<typeof DiagramSceneDataSchema>
 
 export const TimelineItemSchema = z
   .object({

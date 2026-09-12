@@ -37,22 +37,27 @@ export const claudeCliProvider: NarrationProvider = {
     }
   },
 
+  async complete(prompt: string): Promise<string> {
+    return cleanDraft(await runClaude(prompt))
+  },
+
   async draft(request: NarrationRequest): Promise<string> {
     const prompt = withFrameInstructions(request)
 
-    let stdout: string
-    try {
-      const result = await execFileAsync(
-        'claude',
-        ['-p', prompt, '--output-format', 'json', '--allowedTools', 'Read'],
-        { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }
-      )
-      stdout = result.stdout
-    } catch (err) {
-      throw new Error(`The claude CLI could not draft this narration: ${messageOf(err)}`)
-    }
+    return cleanDraft(await runClaude(prompt))
+  }
+}
 
-    return cleanDraft(extractResult(stdout))
+async function runClaude(prompt: string): Promise<string> {
+  try {
+    const { stdout } = await execFileAsync(
+      'claude',
+      ['-p', prompt, '--output-format', 'json', '--allowedTools', 'Read'],
+      { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }
+    )
+    return extractResult(stdout)
+  } catch (err) {
+    throw new Error(`The claude CLI could not answer: ${messageOf(err)}`)
   }
 }
 

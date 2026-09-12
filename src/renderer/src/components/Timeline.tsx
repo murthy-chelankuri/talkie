@@ -11,7 +11,20 @@ import type { PlayerRef } from '@remotion/player'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, Image as ImageIcon, Mic, Redo2, Scissors, Sparkles, Trash2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import {
+  Film,
+  Image as ImageIcon,
+  LayoutTemplate,
+  Mic,
+  Redo2,
+  Scissors,
+  Share2,
+  Sparkles,
+  Trash2,
+  Undo2,
+  ZoomIn,
+  ZoomOut
+} from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
@@ -113,7 +126,28 @@ function VideoThumbnail({ src, startSeconds }: { src: string; startSeconds: numb
 }
 
 function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
-  const data = item.data as { src?: string; trimBefore?: number } | null | undefined
+  const data = item.data as
+    | { src?: string; trimBefore?: number; title?: string; bullets?: string[] }
+    | null
+    | undefined
+
+  // A slide has no picture to show, so it shows what it says.
+  if (item.kind === 'scene') {
+    return (
+      <div
+        className="pointer-events-none flex h-full flex-col justify-center gap-1 overflow-hidden px-2.5"
+        style={{ background: 'linear-gradient(150deg, #232833 0%, #171b22 100%)' }}
+      >
+        <span className="truncate font-serif text-[13px] leading-tight text-[#f4f6f9]">
+          {data?.title ?? 'Untitled slide'}
+        </span>
+        {(data?.bullets ?? []).length > 0 && (
+          <span className="truncate text-[10px] text-[#9aa3b4]">{(data?.bullets ?? []).join(' · ')}</span>
+        )}
+      </div>
+    )
+  }
+
   const src = data?.src
   if (!src) return null
 
@@ -121,7 +155,24 @@ function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
     return <VideoThumbnail src={src} startSeconds={(data.trimBefore ?? 0) / FPS} />
   }
 
-  return <img src={src} alt="" className="pointer-events-none h-full w-full object-cover" />
+  // A diagram's SVG and an image are both just pictures here.
+  return (
+    <img
+      src={src}
+      alt=""
+      className={cn(
+        'pointer-events-none h-full w-full',
+        item.kind === 'diagram' ? 'bg-[#171b22] object-contain p-1' : 'object-cover'
+      )}
+    />
+  )
+}
+
+const CLIP_ICONS: Record<string, JSX.Element> = {
+  video: <Film size={10} />,
+  image: <ImageIcon size={10} />,
+  scene: <LayoutTemplate size={10} />,
+  diagram: <Share2 size={10} />
 }
 
 function ClipBlock({
@@ -129,14 +180,17 @@ function ClipBlock({
   left,
   width,
   selected,
-  onSelect
+  onSelect,
+  onEditScene
 }: {
   item: TimelineItem
   left: number
   width: number
   selected: boolean
   onSelect: (item: TimelineItem) => void
+  onEditScene: (item: TimelineItem) => void
 }): JSX.Element {
+  const isScene = item.kind === 'scene' || item.kind === 'diagram'
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
 
   return (
@@ -153,6 +207,8 @@ function ClipBlock({
       {...attributes}
       {...listeners}
       onClick={() => onSelect(item)}
+      onDoubleClick={() => isScene && onEditScene(item)}
+      title={isScene ? 'Double-click to edit this scene' : undefined}
       className={cn(
         // p-0 and an explicit hover colour are needed because Preflight's shim in index.css
         // gives every bare <button> hardcoded padding and a light grey hover background.
@@ -165,8 +221,8 @@ function ClipBlock({
       {/* Deliberately not themed: this label sits on arbitrary footage, so it needs a fixed
           dark scrim to stay legible in either theme. */}
       <span className="absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
-        {item.kind === 'video' ? <Film size={10} /> : <ImageIcon size={10} />}
-        {item.kind}
+        {CLIP_ICONS[item.kind] ?? <ImageIcon size={10} />}
+        {item.kind === 'scene' ? 'slide' : item.kind}
       </span>
     </button>
   )
@@ -187,6 +243,7 @@ export function Timeline({
   narratingAll,
   needingNarration,
   currentVoice,
+  onEditScene,
   recordingItemId,
   onRecord,
   onStopRecording,
@@ -217,6 +274,8 @@ export function Timeline({
   narratingAll: boolean
   needingNarration: number
   currentVoice: string
+  /** Scenes are written in the app, so a click on one opens it rather than only selecting it. */
+  onEditScene: (item: TimelineItem) => void
   recordingItemId: string | null
   onRecord: (item: TimelineItem) => void | Promise<void>
   onStopRecording: () => void | Promise<void>
@@ -471,6 +530,7 @@ export function Timeline({
                     item={item}
                     left={offsetAtFrame(item.start, pixelsPerSecond, FPS)}
                     width={offsetAtFrame(item.duration, pixelsPerSecond, FPS)}
+                    onEditScene={onEditScene}
                     selected={item.id === selectedItemId}
                     onSelect={onSelectItem}
                   />

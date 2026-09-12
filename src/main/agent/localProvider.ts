@@ -30,6 +30,9 @@ const DRAFT_TIMEOUT_MS = 600_000
  */
 const REASONING_HEADROOM_TOKENS = 2_000
 
+/** Room for an answer and for a reasoning model's thinking ahead of it. */
+const MAX_ANSWER_TOKENS = 1_200 + REASONING_HEADROOM_TOKENS
+
 export interface LocalServer {
   baseUrl: string
   label: string
@@ -108,55 +111,56 @@ export const localProvider: NarrationProvider = {
     return { available: true }
   },
 
+  async complete(prompt: string): Promise<string> {
+    return askLocal([{ role: 'user', content: prompt }])
+  },
+
   async draft(request: NarrationRequest): Promise<string> {
-    const server = await findLocalServer()
-    if (!server) {
-      throw new Error('No local model server is reachable.')
-    }
-
-    const configured = readSettings().narration.local.model.trim()
-    const model = configured || server.models[0]
-    if (!model) {
-      throw new Error(`${server.label} has no model loaded to draft with.`)
-    }
-
     const images = request.evidence.framePaths.map((path) => ({
       type: 'image_url' as const,
       image_url: { url: `data:${mediaTypeFor(path)};base64,${readFileSync(path).toString('base64')}` }
     }))
 
-    const response = await fetch(`${server.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
-      body: JSON.stringify({
-        model,
-        max_tokens: targetWordCount(request.evidence.durationSeconds) * 4 + REASONING_HEADROOM_TOKENS,
-        messages: [{ role: 'user', content: [{ type: 'text', text: buildPrompt(request) }, ...images] }]
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`${server.label} refused the request (${response.status}): ${await shortBody(response)}`)
-    }
-
-    const body = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string; reasoning_content?: string }; finish_reason?: string }>
-    }
-    const choice = body.choices?.[0]
-    const content = choice?.message?.content?.trim()
-
-    if (!content) {
-      // A reasoning model that ran out of room answers with thinking and no conclusion.
-      throw new Error(
-        choice?.message?.reasoning_content
-          ? `"${model}" spent its whole answer thinking. Give it a larger context in ${server.label}, or pick a smaller model.`
-          : `"${model}" returned no narration.`
-      )
-    }
-
-    return cleanDraft(content)
+    return askLocal([{ role: 'user', content: [{ type: 'text', text: buildPrompt(request) }, ...images] }])
   }
+}
+
+/** One request to the local server, shared by drafting narration and answering a plain prompt. */
+async function askLocal(messages: unknown[]): Promise<string> {
+  const server = await findLocalServer()
+  if (!server) throw new Error('No local model server is reachable.')
+
+  const configured = readSettings().narration.local.model.trim()
+  const model = configured || server.models[0]
+  if (!model) throw new Error(`${server.label} has no model loaded to answer with.`)
+
+  const response = await fetch(`${server.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
+    body: JSON.stringify({ model, max_tokens: MAX_ANSWER_TOKENS, messages })
+  })
+
+  if (!response.ok) {
+    throw new Error(`${server.label} refused the request (${response.status}): ${await shortBody(response)}`)
+  }
+
+  const body = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string; reasoning_content?: string } }>
+  }
+  const choice = body.choices?.[0]
+  const content = choice?.message?.content?.trim()
+
+  if (!content) {
+    // A reasoning model that ran out of room answers with thinking and no conclusion.
+    throw new Error(
+      choice?.message?.reasoning_content
+        ? `"${model}" spent its whole answer thinking. Give it a larger context in ${server.label}, or pick a smaller model.`
+        : `"${model}" returned nothing.`
+    )
+  }
+
+  return cleanDraft(content)
 }
 
 async function shortBody(response: Response): Promise<string> {

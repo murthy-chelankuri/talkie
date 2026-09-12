@@ -25,6 +25,11 @@ export interface NarrationProvider {
   readonly sendsDataOffMachine: boolean
   isAvailable(): Promise<ProviderAvailability>
   draft(request: NarrationRequest): Promise<string>
+  /**
+   * Answer a prompt that has nothing to do with narration — writing a slide, or redrawing a
+   * diagram from an instruction. Absent on the provider that has no model behind it.
+   */
+  complete?(prompt: string): Promise<string>
 }
 
 /** Speech runs at roughly this rate, so it sets how much text a clip can hold. */

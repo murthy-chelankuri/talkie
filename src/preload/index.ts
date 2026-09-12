@@ -10,6 +10,7 @@ import type { Voice } from '../main/tts/listVoices'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
 import type { ExportedFile } from '../main/render/revealExport'
+import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
 
 const projectApi = {
@@ -50,6 +51,15 @@ const agentApi = {
     ipcRenderer.on('project:agent:drafted', listener)
     return () => ipcRenderer.removeListener('project:agent:drafted', listener)
   }
+}
+
+const sceneApi = {
+  add: (id: string, kind: 'scene' | 'diagram', data: unknown): Promise<TimelineItem> =>
+    ipcRenderer.invoke('project:scene:add', id, kind, data),
+  update: (id: string, itemId: string, data: unknown): Promise<TimelineItem> =>
+    ipcRenderer.invoke('project:scene:update', id, itemId, data),
+  saveSvg: (id: string, svg: string): Promise<string> => ipcRenderer.invoke('project:scene:saveSvg', id, svg),
+  write: (request: SceneRequest): Promise<SceneResult> => ipcRenderer.invoke('project:scene:write', request)
 }
 
 const timelineApi = {
@@ -104,6 +114,7 @@ contextBridge.exposeInMainWorld('api', {
   settings: settingsApi,
   agent: agentApi,
   project: projectApi,
+  scene: sceneApi,
   timeline: timelineApi,
   render: renderApi,
   capture: captureApi,
@@ -112,6 +123,7 @@ contextBridge.exposeInMainWorld('api', {
 
 export type SettingsApi = typeof settingsApi
 export type AgentApi = typeof agentApi
+export type SceneApi = typeof sceneApi
 export type ProjectApi = typeof projectApi
 export type TimelineApi = typeof timelineApi
 export type RenderApi = typeof renderApi

@@ -32,12 +32,11 @@ export const anthropicProvider: NarrationProvider = {
       : { available: false, reason: 'Add an Anthropic API key in settings to use this provider.' }
   },
 
-  async draft(request: NarrationRequest): Promise<string> {
-    const { apiKey, model } = readSettings().narration.anthropic
-    if (!apiKey.trim()) {
-      throw new Error('No Anthropic API key is set.')
-    }
+  async complete(prompt: string): Promise<string> {
+    return askAnthropic([{ type: 'text', text: prompt }], 1500)
+  },
 
+  async draft(request: NarrationRequest): Promise<string> {
     const images = request.evidence.framePaths.map((path) => ({
       type: 'image' as const,
       source: {
@@ -47,38 +46,38 @@ export const anthropicProvider: NarrationProvider = {
       }
     }))
 
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': API_VERSION
-      },
-      signal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
-      body: JSON.stringify({
-        model,
-        // Narration is short; a tight ceiling keeps a runaway answer from costing real money.
-        max_tokens: Math.max(256, targetWordCount(request.evidence.durationSeconds) * 4),
-        messages: [
-          {
-            role: 'user',
-            content: [...images, { type: 'text', text: buildPrompt(request) }]
-          }
-        ]
-      })
-    })
-
-    if (!response.ok) {
-      // The key must never be echoed back into an error the UI will display.
-      throw new Error(`The Anthropic API refused the request (${response.status}). Check the key and model in settings.`)
-    }
-
-    const body = (await response.json()) as { content?: Array<{ type?: string; text?: string }> }
-    const text = body.content?.find((block) => block.type === 'text')?.text
-    if (!text?.trim()) {
-      throw new Error('The Anthropic API returned no narration.')
-    }
-
-    return cleanDraft(text)
+    // Narration is short; a tight ceiling keeps a runaway answer from costing real money.
+    return askAnthropic(
+      [...images, { type: 'text', text: buildPrompt(request) }],
+      Math.max(256, targetWordCount(request.evidence.durationSeconds) * 4)
+    )
   }
+}
+
+/** One request to the Messages API, shared by narration and by anything else asked of it. */
+async function askAnthropic(content: unknown[], maxTokens: number): Promise<string> {
+  const { apiKey, model } = readSettings().narration.anthropic
+  if (!apiKey.trim()) throw new Error('No Anthropic API key is set.')
+
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': API_VERSION
+    },
+    signal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] })
+  })
+
+  if (!response.ok) {
+    // The key must never be echoed back into an error the UI will display.
+    throw new Error(`The Anthropic API refused the request (${response.status}). Check the key and model in settings.`)
+  }
+
+  const body = (await response.json()) as { content?: Array<{ type?: string; text?: string }> }
+  const text = body.content?.find((block) => block.type === 'text')?.text
+  if (!text?.trim()) throw new Error('The Anthropic API returned nothing.')
+
+  return cleanDraft(text)
 }

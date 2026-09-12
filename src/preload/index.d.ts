@@ -5,7 +5,8 @@ import type {
   CaptureApi,
   TranscriptApi,
   SettingsApi,
-  AgentApi
+  AgentApi,
+  SceneApi
 } from './index'
 
 declare global {
@@ -14,6 +15,7 @@ declare global {
       settings: SettingsApi
       agent: AgentApi
       project: ProjectApi
+      scene: SceneApi
       timeline: TimelineApi
       render: RenderApi
       capture: CaptureApi

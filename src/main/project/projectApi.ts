@@ -1,6 +1,6 @@
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { basename, join } from 'path'
 import {
   CURRENT_SCHEMA_VERSION,
@@ -13,7 +13,7 @@ import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from
 import { slugify } from './slug'
 import { writeJsonAtomic } from './atomicWrite'
 import { migrateProjectMetadata } from './migrate'
-import { TimelineItemSchema, type TimelineItem } from './timeline/schema'
+import { TimelineItemSchema, TIMELINE_ITEM_DATA_SCHEMAS, type TimelineItem } from './timeline/schema'
 import { TranscriptSegmentSchema, type TranscriptSegment } from '../transcript/schema'
 import { z } from 'zod'
 
@@ -198,6 +198,86 @@ export function importImage(id: string, sourcePath: string, baseDir: string = ho
   const start = timeline.length === 0 ? 0 : Math.max(...timeline.map((item) => item.start + item.duration))
 
   return addTimelineItem(id, { kind: 'image', start, duration: DEFAULT_IMAGE_DURATION_FRAMES, data: { src: destPath } }, baseDir)
+}
+
+/** How long a new scene lasts before narration decides otherwise. */
+export const DEFAULT_SCENE_DURATION_FRAMES = 5 * 30
+
+/**
+ * Add a slide or a diagram written in the app.
+ *
+ * Both are appended at the end, like every other clip. A diagram is stored as its source plus
+ * the SVG that was drawn from it, so it stays editable and the export never has to draw it
+ * again.
+ */
+export function addScene(
+  id: string,
+  kind: 'scene' | 'diagram',
+  data: unknown,
+  baseDir: string = homedir()
+): TimelineItem {
+  const timeline = readTimeline(id, baseDir)
+  const start = timeline.length === 0 ? 0 : Math.max(...timeline.map((item) => item.start + item.duration))
+
+  return addTimelineItem(
+    id,
+    { kind, start, duration: DEFAULT_SCENE_DURATION_FRAMES, data: normaliseScene(kind, data) },
+    baseDir
+  )
+}
+
+/**
+ * Store scene content as the schema defines it rather than as it arrived, so a slide written
+ * without any lines holds an empty list instead of nothing at all — the difference between a
+ * component rendering and a component throwing.
+ */
+function normaliseScene(kind: string, data: unknown): unknown {
+  const schema = TIMELINE_ITEM_DATA_SCHEMAS[kind]
+  return schema ? schema.parse(data) : data
+}
+
+/** Replace a scene's content, leaving its place and length on the timeline alone. */
+export function updateSceneData(
+  id: string,
+  timelineItemId: string,
+  data: unknown,
+  baseDir: string = homedir()
+): TimelineItem {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const timeline = readTimeline(id, baseDir)
+  const index = timeline.findIndex((item) => item.id === timelineItemId)
+  if (index === -1) {
+    throw new Error(`No timeline item found with id ${timelineItemId}`)
+  }
+
+  const updated = TimelineItemSchema.parse({ ...timeline[index], data: normaliseScene(timeline[index].kind, data) })
+  timeline[index] = updated
+  writeJsonAtomic(join(dir, 'timeline.json'), timeline)
+  return updated
+}
+
+/**
+ * Save the SVG a diagram was drawn into, beside the project's other sources.
+ *
+ * A new file per drawing rather than one overwritten in place: the composition caches by URL,
+ * and undo has to be able to reach the diagram as it was before an edit.
+ */
+export function writeDiagramSvg(id: string, svg: string, baseDir: string = homedir()): string {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const scenesDir = join(dir, 'sources', 'scenes')
+  mkdirSync(scenesDir, { recursive: true })
+
+  const path = join(scenesDir, `${randomUUID()}.svg`)
+  writeFileSync(path, svg, 'utf-8')
+  return path
 }
 
 export function readTranscript(id: string, baseDir: string = homedir()): TranscriptSegment[] {

@@ -14,6 +14,8 @@ import { projectsRootDir } from '../project/paths'
 import { withHistory } from '../project/history'
 import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
 import { describeExport, openExport, showExportInFinder } from '../render/revealExport'
+import { addScene, updateSceneData, writeDiagramSvg } from '../project/projectApi'
+import { writeScene, type SceneRequest } from '../agent/writeScene'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -70,6 +72,16 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
 
     return withHistory(id, () => importImage(id, result.filePaths[0]))
   })
+
+  ipcMain.handle('project:scene:add', (_event, id: string, kind: 'scene' | 'diagram', data: unknown) =>
+    withHistory(id, () => addScene(id, kind, data))
+  )
+  ipcMain.handle('project:scene:update', (_event, id: string, itemId: string, data: unknown) =>
+    withHistory(id, () => updateSceneData(id, itemId, data))
+  )
+  // The SVG is drawn in the renderer, where mermaid lives, and stored here beside the project.
+  ipcMain.handle('project:scene:saveSvg', (_event, id: string, svg: string) => writeDiagramSvg(id, svg))
+  ipcMain.handle('project:scene:write', (_event, request: SceneRequest) => writeScene(request))
 
   ipcMain.handle('project:render:describe', (_event, path: string) => describeExport(path))
   ipcMain.handle('project:render:open', (_event, path: string) => openExport(path))

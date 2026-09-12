@@ -11,13 +11,14 @@ const MIME_TYPES: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
   '.wav': 'audio/wav',
   '.webm': 'video/webm',
   '.mp4': 'video/mp4'
 }
 
 // Timeline item kinds whose `data.src` is a local media path needing URL resolution.
-const SRC_MEDIA_KINDS = new Set(['image', 'video'])
+const SRC_MEDIA_KINDS = new Set(['image', 'video', 'diagram'])
 
 function parseByteRange(
   header: string | undefined,

@@ -15,6 +15,7 @@ import {
 } from '../api/projectClient'
 import { Timeline } from '../components/Timeline'
 import { SourcesPanel } from '../components/SourcesPanel'
+import { SceneEditor } from '../components/SceneEditor'
 import { TransportBar } from '../components/TransportBar'
 import { hasStaleVoice, planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { onSettingsChanged } from '../lib/settingsChanged'
@@ -52,6 +53,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [importingDeck, setImportingDeck] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
+  /** The scene being written or edited: an item to edit, 'new' to start one, null for neither. */
+  const [sceneEditing, setSceneEditing] = useState<TimelineItem | 'new' | null>(null)
   // Remembered, because the rail is a working preference rather than a per-session choice.
   const [sourcesCollapsed, setSourcesCollapsed] = useState(
     () => localStorage.getItem('talkie.sourcesCollapsed') === 'true'
@@ -472,6 +475,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               segments={segments}
               totalFrames={computeTimelineDuration(remotionTimeline)}
               needingNarration={needingNarration.length}
+              onAddScene={() => setSceneEditing('new')}
               recording={recording}
               exporting={exporting}
               exportedPath={exportedPath}
@@ -556,6 +560,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           narratingAll={narratingAll}
           currentVoice={voice}
           recordingItemId={recordingItemId}
+          onEditScene={(item) => setSceneEditing(item)}
           onRecord={handleRecord}
           onStopRecording={handleStopRecording}
           draftingItemId={draftingItemId}
@@ -574,6 +579,18 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         />
         </div>
       </ResizablePanel>
+      {sceneEditing && project && (
+        <SceneEditor
+          projectId={projectId}
+          projectName={project.name}
+          item={sceneEditing === 'new' ? null : sceneEditing}
+          onClose={() => setSceneEditing(null)}
+          onSaved={async () => {
+            await refreshTimeline()
+            await refreshSegments()
+          }}
+        />
+      )}
     </Group>
   )
 }

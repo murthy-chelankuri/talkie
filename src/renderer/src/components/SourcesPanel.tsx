@@ -3,6 +3,7 @@ import {
   Download,
   Film,
   ImagePlus,
+  LayoutTemplate,
   Menu,
   Mic,
   Presentation
@@ -23,12 +24,13 @@ import { ExportedCard } from './ExportedCard'
  * for words. Red belongs to recording, which is where it already means something everywhere
  * else in the app; brass belongs to export, being the app's own colour and the last step.
  */
-type Tone = 'record' | 'media' | 'slides' | 'export'
+type Tone = 'record' | 'media' | 'slides' | 'scene' | 'export'
 
 const TONE_TEXT: Record<Tone, string> = {
   record: 'text-danger',
   media: 'text-media',
   slides: 'text-slides',
+  scene: 'text-success',
   export: 'text-accent'
 }
 
@@ -36,6 +38,7 @@ const TONE_CHIP: Record<Tone, string> = {
   record: 'bg-danger/10',
   media: 'bg-media/10',
   slides: 'bg-slides/10',
+  scene: 'bg-success/10',
   export: 'bg-accent/10'
 }
 
@@ -146,6 +149,7 @@ export function SourcesPanel({
   recordError,
   onImportImage,
   onImportDeck,
+  onAddScene,
   importingDeck,
   deckProgress,
   onRecordSession,
@@ -168,6 +172,7 @@ export function SourcesPanel({
   recordError: string | null
   onImportImage: () => void
   onImportDeck: () => void
+  onAddScene: () => void
   importingDeck: boolean
   deckProgress: string | null
   onRecordSession: () => void
@@ -234,6 +239,14 @@ export function SourcesPanel({
           tone="media"
           collapsed={collapsed}
           onClick={onImportImage}
+        />
+        <Action
+          icon={<LayoutTemplate size={15} />}
+          label="Add a scene"
+          hint="Write a slide or a diagram"
+          tone="scene"
+          collapsed={collapsed}
+          onClick={onAddScene}
         />
         <Action
           icon={<Presentation size={15} />}

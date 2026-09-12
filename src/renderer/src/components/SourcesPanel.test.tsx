@@ -28,6 +28,7 @@ function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
       recordError={null}
       onImportImage={vi.fn()}
       onImportDeck={vi.fn()}
+      onAddScene={vi.fn()}
       importingDeck={false}
       deckProgress={null}
       onRecordSession={vi.fn()}

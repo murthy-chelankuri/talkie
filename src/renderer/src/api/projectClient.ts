@@ -81,6 +81,15 @@ export const timelineClient = {
     window.api.timeline.remove(id, timelineItemId)
 }
 
+export type { SceneRequest, SceneResult } from '../../../main/agent/writeScene'
+
+export const sceneClient = {
+  add: (id: string, kind: 'scene' | 'diagram', data: unknown) => window.api.scene.add(id, kind, data),
+  update: (id: string, itemId: string, data: unknown) => window.api.scene.update(id, itemId, data),
+  saveSvg: (id: string, svg: string) => window.api.scene.saveSvg(id, svg),
+  write: (request: Parameters<typeof window.api.scene.write>[0]) => window.api.scene.write(request)
+}
+
 export const renderClient = {
   exportVideo: (id: string): Promise<string> => window.api.render.exportVideo(id),
   describe: (path: string) => window.api.render.describe(path),
