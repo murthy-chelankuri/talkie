@@ -2,6 +2,12 @@
   "name": "talkie",
   "productName": "Talkie",
   "version": "0.1.0",
+  "description": "Record it silent. Give it a voice.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/murthy-chelankuri/talkie.git"
+  },
   "private": true,
   "type": "module",
   "main": "./out/main/index.cjs",

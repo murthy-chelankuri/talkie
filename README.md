@@ -5,6 +5,10 @@ Record it silent. Give it a voice.
 Talkie records a browser session or imports a slide deck, writes the narration for each clip,
 speaks it, and exports an MP4.
 
+Talkie's own code is Apache-2.0. It renders video with **Remotion, which is not open source** —
+using this repository at all requires your own eligibility under Remotion's licence. Read
+[Licence](#licence) before you build on this.
+
 ## Running from the source
 
 ```bash
@@ -217,3 +221,43 @@ Narration drafting is deliberately optional. The built-in drafter writes from th
 action log alone: no install, no key, no network, and nothing leaves the machine. The other
 providers write better narration; two of them send screenshots off the machine, and Settings
 says which.
+
+## Licence
+
+Talkie's own source is [Apache-2.0](LICENSE). That covers the code in this repository and
+nothing else — it cannot grant rights to the things Talkie depends on. Two of those need your
+attention before you use this. The full picture is in [NOTICE](NOTICE), and every dependency's
+licence is listed in the app under Settings → Licences.
+
+### Remotion is not open source
+
+Video is rendered with [Remotion](https://remotion.dev), which is source-available under the
+Remotion License. Cloning this repository does not give you a Remotion licence. You need your
+own, and it is free only if you are:
+
+- an individual,
+- a non-profit or not-for-profit organisation, or
+- a for-profit company with **up to 3 employees**.
+
+Larger for-profit organisations need a [paid company licence](https://www.remotion.pro/license).
+Remotion has said the terms change in Remotion 5.0.
+
+### The bundled ffmpeg is GPL
+
+Remotion's compositor package ships an ffmpeg built with `--enable-gpl`, `--enable-libx264` and
+`--enable-libx265`. Those binaries are GPL-2.0-or-later. They are **not in this repository** —
+`npm install` downloads them.
+
+The distinction that matters:
+
+| What you do | What it costs you |
+| --- | --- |
+| Clone, build and run it yourself | Nothing. No GPL code is in this repo. |
+| Publish this source | Nothing. Still no GPL code in this repo. |
+| **Hand someone a built app** (a `.dmg`, a release asset, a store submission) | You are distributing GPL binaries and must comply with the GPL — including offering ffmpeg's corresponding source to every recipient. |
+
+That last row is why this repository ships no prebuilt binaries. It is also why the Mac App
+Store is not a route for this app: the GPL's no-further-restrictions clause has historically
+been held incompatible with app store terms, and separately, App Sandbox blocks most of what
+Talkie does — spawning `say` and `afconvert`, driving a browser, and running the MCP server.
+Direct distribution under a Developer ID is the workable path.
