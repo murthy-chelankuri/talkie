@@ -7,8 +7,22 @@ import { findProjectDir } from '../project/paths'
 import { appendActionLogEntry, type ActionLogEntry } from './actionLog'
 import { shouldRedactInputValue } from './redact'
 import { resolveBrowser, LAUNCH_ARGS, NO_BROWSER_MESSAGE } from './resolveBrowser'
+import { HEIGHT, WIDTH } from '../../remotion/constants'
 import { highlightScript } from './highlightScript'
 import { readSettings } from '../settings/settingsStore'
+
+/**
+ * The page is laid out at this size and drawn at whatever density makes the export native.
+ *
+ * Recording at 1280x720 and exporting at 1920x1080 upscaled every captured clip by half again,
+ * which is why text in a recording looked soft next to a slide written in the app. Raising the
+ * layout to 1920 instead would have fixed the sharpness and shrunk everything on screen — a
+ * desktop browser laid out at 1920 puts small text in a 1080p frame. So the layout stays the
+ * size of an ordinary browser window and the pixels are drawn at 1.5x, which is what the export
+ * wants and what the screen can still fit.
+ */
+const CAPTURE_CSS_WIDTH = 1280
+const CAPTURE_CSS_HEIGHT = 720
 
 export interface RecordingResult {
   sessionId: string
@@ -89,7 +103,10 @@ export async function startRecordingSession(
       args: choice.channel ? LAUNCH_ARGS : []
     })
     const context: BrowserContext = await browser.newContext({
-      recordVideo: { dir: sessionDir, size: { width: 1280, height: 720 } }
+      // A layout the size of an ordinary desktop browser, drawn at the density the export needs.
+      viewport: { width: CAPTURE_CSS_WIDTH, height: CAPTURE_CSS_HEIGHT },
+      deviceScaleFactor: WIDTH / CAPTURE_CSS_WIDTH,
+      recordVideo: { dir: sessionDir, size: { width: WIDTH, height: HEIGHT } }
     })
 
     await context.exposeFunction('__demoEditorRecordAction', (data: Record<string, unknown>) => {

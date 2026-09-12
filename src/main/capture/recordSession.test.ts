@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync, existsSync, statSync } from 'fs'
+import { mkdtempSync, rmSync, existsSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { createProject } from '../project/projectApi'
+import { getVideoMetadata } from '@remotion/renderer'
+import { WIDTH, HEIGHT } from '../../remotion/constants'
 import { startRecordingSession } from './recordSession'
 import { readActionLog } from './actionLog'
 
@@ -44,6 +46,25 @@ describe('startRecordingSession (real Playwright)', () => {
 
     const annotation = entries.find((e) => e.type === 'annotation')
     expect(annotation?.annotation).toBe('important')
+
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 60_000)
+})
+
+describe('what a recording is worth looking at', () => {
+  it('captures at the size the export renders, so nothing is upscaled', async () => {
+    // Recording at 1280x720 into a 1920x1080 export enlarged every clip by half again, which is
+    // why text in a capture looked soft beside a slide written in the app.
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-capture-size-'))
+    const project = createProject('Capture Size', baseDir)
+    writeFileSync(join(baseDir, 'page.html'), '<!doctype html><h1>Sized</h1>')
+
+    const session = await startRecordingSession(project.id, `file://${join(baseDir, 'page.html')}`, baseDir)
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+    const { videoPath } = await session.stop()
+
+    const { width, height } = await getVideoMetadata(videoPath)
+    expect({ width, height }).toEqual({ width: WIDTH, height: HEIGHT })
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 60_000)
