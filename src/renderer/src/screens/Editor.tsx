@@ -464,7 +464,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       onLayoutChanged={stageLayout.onLayoutChanged}
       className="h-full"
     >
-      <ResizablePanel id="stage" defaultSize="54" minSize="25">
+      <ResizablePanel id="stage" defaultSize="62" minSize="25">
         <div className="flex h-full">
             <SourcesPanel
               project={project}
@@ -490,11 +490,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-full flex-col bg-bg">
-            {/* A dark mat in either theme: footage should be judged against neutral
-                surroundings, not against the app's own background. */}
-            <div className="flex min-h-0 flex-1 items-center justify-center bg-[#0c0d11] p-4">
+            {/* The mat stops at the video. Filling the pane with near-black left a slab of it
+                either side of a 16:9 frame in a wide, short pane, which reads as waste rather
+                than as matting; the area around the frame is the app's own surface instead. */}
+            <div className="relative flex min-h-0 flex-1 items-center justify-center bg-bg p-2">
               {timeline.length > 0 ? (
-                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg ring-1 ring-white/10">
+                /* Sized to the video rather than to the pane: filling the pane and letting the
+                   player letterbox inside it framed a slab of black with the demo in the middle
+                   of it. Absolute inset with auto margins is what fits a fixed ratio into a box
+                   of any shape and centres it. */
+                <div className="absolute inset-2 m-auto aspect-video max-h-full max-w-full overflow-hidden rounded-lg bg-[#0c0d11] shadow-lg ring-1 ring-border">
                   <Player
                     ref={playerRef}
                     component={DemoComposition}
@@ -508,8 +513,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <Clapperboard size={26} className="text-white/30" aria-hidden="true" />
-                  <p className="text-sm text-white/50">
+                  <Clapperboard size={26} className="text-text-muted" aria-hidden="true" />
+                  <p className="text-sm text-text-muted">
                     Record a session or add an image to see it here.
                   </p>
                 </div>
