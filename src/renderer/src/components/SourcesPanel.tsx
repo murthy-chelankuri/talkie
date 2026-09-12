@@ -1,11 +1,10 @@
 import {
-  ChevronsLeft,
-  ChevronsRight,
   CircleCheck,
   Clapperboard,
   Download,
   Film,
   ImagePlus,
+  Menu,
   Mic,
   Presentation
 } from 'lucide-react'
@@ -15,6 +14,7 @@ import { formatTimecode } from '../lib/timelineLayout'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
+import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
 import { ErrorBanner } from './ui/ErrorBanner'
 
@@ -143,12 +143,26 @@ export function SourcesPanel({
         collapsed ? 'w-[3.75rem] items-center px-2 py-3' : 'w-60 p-3.5'
       )}
     >
-      {!collapsed && (
-        <div className="mb-4">
-          <h2 className="truncate text-[15px] font-semibold text-text">{project.name}</h2>
-          <p className="text-[11px] text-text-muted">Started {formatRelativeTime(project.createdAt)}</p>
-        </div>
-      )}
+      <div className={cn('mb-4 flex items-center gap-2', collapsed && 'justify-center')}>
+        {/* The same icon button the app header uses, so it reads as a control rather than
+            decoration — the earlier borderless version was missed entirely. */}
+        <IconButton
+          aria-label={collapsed ? 'Show the sources panel' : 'Collapse the sources panel'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Show the panel' : 'Collapse the panel'}
+          onClick={onToggleCollapsed}
+        >
+          <Menu size={16} />
+        </IconButton>
+        {!collapsed && (
+          <div className="min-w-0">
+            <h2 className="truncate text-[15px] font-semibold leading-tight text-text">{project.name}</h2>
+            <p className="truncate text-[11px] text-text-muted">
+              Started {formatRelativeTime(project.createdAt)}
+            </p>
+          </div>
+        )}
+      </div>
 
       {!collapsed && (
         <div className="mb-4 flex flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2.5">
@@ -243,20 +257,6 @@ export function SourcesPanel({
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={onToggleCollapsed}
-        aria-label={collapsed ? 'Show the sources panel' : 'Collapse the sources panel'}
-        title={collapsed ? 'Show labels' : 'Collapse'}
-        className={cn(
-          'mt-auto flex items-center gap-2 rounded-lg border-0 bg-transparent px-2 py-2 text-text-muted',
-          'transition-colors hover:bg-surface-hover hover:text-text',
-          collapsed ? 'justify-center' : 'w-full'
-        )}
-      >
-        {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
-        {!collapsed && <span className="text-[11px]">Collapse</span>}
-      </button>
     </div>
   )
 }
