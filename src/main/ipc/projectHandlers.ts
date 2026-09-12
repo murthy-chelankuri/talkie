@@ -14,6 +14,7 @@ import { clearHistory, historyState, redo, undo, withHistory } from '../project/
 import { readSettings, updateSettings, resetSpeechSettings } from '../settings/settingsStore'
 import { repairNarrationDurations } from '../transcript/repairNarrationDurations'
 import { checkReadiness } from '../setup/readiness'
+import { mcpConnection } from '../setup/mcpConnection'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
 import { listVoices, previewVoice } from '../tts/listVoices'
@@ -58,6 +59,7 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:localServer', () => findLocalServer())
   ipcMain.handle('settings:resetSpeech', () => resetSpeechSettings())
   ipcMain.handle('settings:readiness', () => checkReadiness())
+  ipcMain.handle('settings:mcpConnection', () => mcpConnection())
   ipcMain.handle('settings:voices', () => listVoices())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
 

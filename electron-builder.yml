@@ -12,6 +12,9 @@ files:
 # ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver
 # is a node process it spawns. Both have to sit on the filesystem as real files.
 asarUnpack:
+  # The MCP server is spawned by an outside agent as a plain node process, which cannot read a
+  # file inside an asar archive. It has to be a real file on disk for `node <path>` to work.
+  - out/mcp/**
   - node_modules/@remotion/compositor-**/**
   - node_modules/playwright/**
   - node_modules/playwright-core/**

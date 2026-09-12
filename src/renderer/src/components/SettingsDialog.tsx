@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Cloud, Laptop, RotateCcw, Sparkles, TriangleAlert, Volume2, Wrench, X } from 'lucide-react'
+import { Check, Cloud, Copy, Laptop, Plug, RotateCcw, Sparkles, TriangleAlert, Volume2, Wrench, X } from 'lucide-react'
 import {
   settingsClient,
   type ProviderDescription,
   type Settings,
   type LocalServer,
   type Voice,
-  type ReadinessCheck
+  type ReadinessCheck,
+  type McpConnection
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -474,6 +475,75 @@ function Slider({
   )
 }
 
+/**
+ * How to point an agent at this copy of Talkie.
+ *
+ * The path is the only part a user cannot work out for themselves — it differs between a
+ * checkout and an installed app — so it is filled in for them, ready to copy.
+ */
+function McpSection(): JSX.Element | null {
+  const [connection, setConnection] = useState<McpConnection | null>(null)
+  const [copied, setCopied] = useState<'config' | 'command' | null>(null)
+
+  useEffect(() => {
+    settingsClient.mcpConnection().then(setConnection).catch(() => undefined)
+  }, [])
+
+  if (!connection) return null
+
+  function copy(what: 'config' | 'command', value: string): void {
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopied(what)
+      setTimeout(() => setCopied(null), 1600)
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline gap-2">
+        <Plug size={13} className="shrink-0 translate-y-0.5 text-accent" aria-hidden="true" />
+        <span className="text-[13px] font-medium text-text">Connect an AI agent</span>
+      </div>
+      <p className="text-xs leading-relaxed text-text-muted">
+        {connection.serverPath
+          ? 'Any MCP client — Claude Code, Copilot CLI, Cursor — can record sessions, write slides and export video here. Add it with:'
+          : 'The MCP server is not built in this copy. Run `npm run build` to create it.'}
+      </p>
+
+      {connection.serverPath && (
+        <>
+          <div className="flex items-start gap-2">
+            <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+              {connection.addCommand}
+            </pre>
+            <IconButton
+              aria-label="Copy the command"
+              onClick={() => copy('command', connection.addCommand)}
+              className="mt-1 shrink-0"
+            >
+              {copied === 'command' ? <Check size={13} /> : <Copy size={13} />}
+            </IconButton>
+          </div>
+
+          <p className="text-xs text-text-muted">Or paste this into any other client’s config:</p>
+          <div className="flex items-start gap-2">
+            <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+              {connection.configJson}
+            </pre>
+            <IconButton
+              aria-label="Copy the configuration"
+              onClick={() => copy('config', connection.configJson)}
+              className="mt-1 shrink-0"
+            >
+              {copied === 'config' ? <Check size={13} /> : <Copy size={13} />}
+            </IconButton>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
   if (checks.length === 0) {
     return (
@@ -529,6 +599,8 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
           </div>
         ))}
       </div>
+
+      <McpSection />
     </div>
   )
 }

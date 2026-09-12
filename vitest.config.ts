@@ -5,7 +5,12 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    include: ['src/main/**/*.test.ts', 'src/remotion/**/*.test.ts', 'src/renderer/**/*.test.{ts,tsx}'],
+    include: [
+      'src/main/**/*.test.ts',
+      'src/mcp/**/*.test.ts',
+      'src/remotion/**/*.test.ts',
+      'src/renderer/**/*.test.{ts,tsx}'
+    ],
     environmentMatchGlobs: [['src/renderer/**/*.test.{ts,tsx}', 'jsdom']],
     setupFiles: ['src/renderer/src/test/setup.ts']
   }

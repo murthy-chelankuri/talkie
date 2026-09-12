@@ -9,6 +9,7 @@ import type { LocalServer } from '../main/agent/localProvider'
 import type { Voice } from '../main/tts/listVoices'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
+import type { McpConnection } from '../main/setup/mcpConnection'
 import type { ExportedFile } from '../main/render/revealExport'
 import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
@@ -35,6 +36,7 @@ const settingsApi = {
   localServer: (): Promise<LocalServer | null> => ipcRenderer.invoke('settings:localServer'),
   resetSpeech: (): Promise<Settings> => ipcRenderer.invoke('settings:resetSpeech'),
   readiness: (): Promise<ReadinessCheck[]> => ipcRenderer.invoke('settings:readiness'),
+  mcpConnection: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpConnection'),
   voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
   previewVoice: (voice: string, text: string): Promise<void> =>
     ipcRenderer.invoke('settings:previewVoice', voice, text)

@@ -49,6 +49,7 @@ export type { LocalServer } from '../../../main/agent/localProvider'
 export type { Voice } from '../../../main/tts/listVoices'
 export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
+export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'
 export type { DraftResult } from '../../../main/agent/draftNarration'
 
@@ -59,6 +60,7 @@ export const settingsClient = {
   localServer: () => window.api.settings.localServer(),
   resetSpeech: () => window.api.settings.resetSpeech(),
   readiness: () => window.api.settings.readiness(),
+  mcpConnection: () => window.api.settings.mcpConnection(),
   voices: () => window.api.settings.voices(),
   previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text)
 }

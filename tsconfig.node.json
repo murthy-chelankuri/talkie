@@ -11,5 +11,5 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "vitest.config.ts"]
+  "include": ["src/main/**/*", "src/preload/**/*", "src/mcp/**/*", "vitest.config.ts"]
 }

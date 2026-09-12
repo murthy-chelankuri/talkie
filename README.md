@@ -52,6 +52,48 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 `APPLE_TEAM_ID`, remove `identity: null` from `electron-builder.yml`, and turn
 `hardenedRuntime` on.
 
+## Letting an AI agent make the demo
+
+Talkie is an MCP server, so any agent that speaks MCP — Claude Code, GitHub Copilot CLI, Cursor
+— can drive a real browser, record what it does, write and speak the narration, and export the
+video. Settings → System shows the line to run, with the path already filled in:
+
+```bash
+claude mcp add talkie -- node /path/to/out/mcp/talkie-mcp.mjs
+```
+
+Any other client takes the same thing as config:
+
+```json
+{
+  "mcpServers": {
+    "talkie": { "command": "node", "args": ["/path/to/out/mcp/talkie-mcp.mjs"] }
+  }
+}
+```
+
+The server is built by `npm run build` and works whether or not the Talkie window is open —
+projects are files on disk, and it reaches them through exactly the same code the app does. It
+needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your home directory.
+
+| Tool | What it does |
+| --- | --- |
+| `talkie_list_projects`, `talkie_create_project`, `talkie_timeline` | Find or start a demo, and read what is in it |
+| `talkie_start_recording` | Open a real browser and start capturing it |
+| `talkie_navigate`, `talkie_click`, `talkie_type`, `talkie_scroll`, `talkie_wait` | Drive that browser |
+| `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |
+| `talkie_add_scene` | Add a title slide, with a theme and accent colour |
+| `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate` | Write the words, have a model write them, speak them |
+| `talkie_export` | Render the MP4 |
+
+Two things worth knowing. The agent's browser actions are paced rather than immediate, because a
+recording of instant clicks is unwatchable — the page never settles and a viewer cannot see what
+happened. And everything an agent does goes through the app's own undo history, so a change you
+did not want can be undone in the window like any other.
+
+If the app is open while an agent works, it will not show the new clips until the project is
+reopened.
+
 ## What Talkie needs on the machine it runs on
 
 Settings opens with what this machine can and cannot do, so a missing piece shows up before
