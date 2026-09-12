@@ -12,10 +12,10 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type D
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
+  AudioLines,
   Film,
   Image as ImageIcon,
   LayoutTemplate,
-  Mic,
   Redo2,
   Scissors,
   Share2,
@@ -503,7 +503,7 @@ export function Timeline({
                 : 'Speak the narration on every clip that is still silent'
             }
           >
-            {narratingAll ? <Spinner size="sm" /> : <Mic size={14} className="text-accent" />}
+            {narratingAll ? <Spinner size="sm" /> : <AudioLines size={14} className="text-accent" />}
             {needingNarration === 0
               ? 'All voiced'
               : `Speak ${needingNarration} clip${needingNarration === 1 ? '' : 's'}`}

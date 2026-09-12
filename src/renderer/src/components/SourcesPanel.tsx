@@ -1,11 +1,11 @@
 import {
+  AudioLines,
   Clapperboard,
   Download,
   Film,
   ImagePlus,
   LayoutTemplate,
   Menu,
-  Mic,
   Presentation
 } from 'lucide-react'
 import type { ProjectMetadata, TimelineItem, TranscriptSegment } from '../api/projectClient'
@@ -318,7 +318,7 @@ export function SourcesPanel({
 
       {!collapsed && timeline.length > 0 && narrated < timeline.length && (
         <p className="mt-auto flex items-start gap-2 pt-4 text-[11px] text-text-muted">
-          <Mic size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <AudioLines size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
           {/* "Silent" is not always right: a clip voiced before the voice changed has audio,
               just not the current voice. Both want the same thing done to them. */}
           {needingNarration} clip{needingNarration === 1 ? '' : 's'} still need

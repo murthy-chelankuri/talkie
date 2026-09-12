@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clapperboard, Film, Image as ImageIcon, Mic, Plus, Trash2 } from 'lucide-react'
+import { AudioLines, Clapperboard, Film, Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
 import { projectClient, type ProjectOverview, type ProjectSummary } from '../api/projectClient'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { formatTimecode } from '../lib/timelineLayout'
@@ -56,7 +56,7 @@ function ProjectCard({
             </span>
             {project.clipCount > 0 && (
               <span className={cn('flex items-center gap-1', fullyNarrated && 'text-success')}>
-                <Mic size={12} />
+                <AudioLines size={12} />
                 {fullyNarrated ? 'Voiced' : `${project.narratedCount}/${project.clipCount}`}
               </span>
             )}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronsUpDown, LayoutGrid, Mic } from 'lucide-react'
+import { AudioLines, Check, ChevronsUpDown, LayoutGrid } from 'lucide-react'
 import { projectClient, type ProjectOverview } from '../api/projectClient'
 import { ProjectPoster } from './ProjectPoster'
 import { formatTimecode } from '../lib/timelineLayout'
@@ -108,7 +108,7 @@ export function ProjectSwitcher({
                     </span>
                     {project.clipCount > 0 && (
                       <span className={cn('flex items-center gap-0.5', fullyVoiced && 'text-success')}>
-                        <Mic size={10} />
+                        <AudioLines size={10} />
                         {fullyVoiced ? 'Voiced' : `${project.narratedCount}/${project.clipCount}`}
                       </span>
                     )}

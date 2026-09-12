@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Circle, Mic, Sparkles, Square } from 'lucide-react'
+import { AudioLines, Mic, Sparkles, Square } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { hasStaleVoice, narrationTextForItem, segmentsForItem, voiceOf, RECORDED_VOICE } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
@@ -98,7 +98,8 @@ export function ClipNarrationBox({
           disabled={narrating || drafting || !draft.trim()}
           onClick={() => (recording ? onStopRecording() : onRecord(item))}
         >
-          {recording ? <Square size={11} fill="currentColor" /> : <Circle size={11} fill="currentColor" />}
+          {/* A microphone, for the one action on this row that uses one. */}
+          {recording ? <Square size={11} fill="currentColor" /> : <Mic size={12} />}
         </IconButton>
         <IconButton
           aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
@@ -114,7 +115,8 @@ export function ClipNarrationBox({
           disabled={narrating || recording || !draft.trim() || draft !== savedText}
           onClick={() => onNarrate(item)}
         >
-          {narrating ? <Spinner size="sm" /> : <Mic size={12} />}
+          {/* A voice coming out, not going in — this speaks the words with the chosen voice. */}
+          {narrating ? <Spinner size="sm" /> : <AudioLines size={12} />}
         </IconButton>
       </div>
       {/* A box narrower than a word breaks text one letter to a line, which is unreadable and
