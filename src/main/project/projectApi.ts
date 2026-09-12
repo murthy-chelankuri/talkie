@@ -13,12 +13,22 @@ import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from
 import { slugify } from './slug'
 import { writeJsonAtomic } from './atomicWrite'
 import { migrateProjectMetadata } from './migrate'
-import { ProjectContextSchema, type ProjectContext } from './projectContext'
+import { ProjectContextSchema, hasProjectContext, type ProjectContext } from './projectContext'
 import { TimelineItemSchema, TIMELINE_ITEM_DATA_SCHEMAS, type TimelineItem } from './timeline/schema'
 import { TranscriptSegmentSchema, type TranscriptSegment } from '../transcript/schema'
 import { z } from 'zod'
 
-export function createProject(name: string, baseDir: string = homedir()): ProjectMetadata {
+export function createProject(
+  name: string,
+  baseDir: string = homedir(),
+  /**
+   * What the project is about, when it was said at the moment of creating it.
+   *
+   * Written with the project rather than saved afterwards, so a project never exists in a state
+   * where the person described it and the description was lost.
+   */
+  context?: ProjectContext
+): ProjectMetadata {
   const id = randomUUID()
   const slug = slugify(name)
   const dir = join(projectsRootDir(baseDir), projectDirName(id, slug))
@@ -28,11 +38,14 @@ export function createProject(name: string, baseDir: string = homedir()): Projec
     mkdirSync(join(dir, subdir), { recursive: true })
   }
 
+  const described = context && hasProjectContext(context)
+
   const metadata: ProjectMetadata = ProjectMetadataSchema.parse({
     id,
     name,
     createdAt: new Date().toISOString(),
-    schemaVersion: CURRENT_SCHEMA_VERSION
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    ...(described ? { context: ProjectContextSchema.parse(context) } : {})
   })
 
   writeJsonAtomic(join(dir, 'project.json'), metadata)

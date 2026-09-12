@@ -25,7 +25,9 @@ import { listVoices, previewVoice } from '../tts/listVoices'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
-  ipcMain.handle('project:create', (_event, name: string) => createProject(name))
+  ipcMain.handle('project:create', (_event, name: string, context?: unknown) =>
+    createProject(name, undefined, context ? ProjectContextSchema.parse(context) : undefined)
+  )
   ipcMain.handle('project:list', () => listProjects())
 
   ipcMain.handle('project:overviews', async () => {

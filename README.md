@@ -59,7 +59,9 @@ enough to know what moved on screen and nothing about what it was. So it writes 
 menu" where a presenter would say "you open the campaign builder" — not from vagueness, but
 because nobody said what the product is called.
 
-**About this project**, in the editor panel, is where that is said once for the whole project:
+It is asked when a project is created — the moment you are already thinking about what you are
+making — and can be changed any time from **About this project** in the editor panel. Only the
+name is required; everything else can stay empty.
 
 | | |
 | --- | --- |

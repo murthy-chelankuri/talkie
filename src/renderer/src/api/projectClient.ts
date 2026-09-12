@@ -34,7 +34,8 @@ export interface ProjectOverview extends ProjectSummary {
 }
 
 export const projectClient = {
-  create: (name: string): Promise<ProjectMetadata> => window.api.project.create(name),
+  create: (name: string, context?: ProjectContext): Promise<ProjectMetadata> =>
+    window.api.project.create(name, context),
   list: (): Promise<ProjectSummary[]> => window.api.project.list(),
   overviews: (): Promise<ProjectOverview[]> => window.api.project.overviews(),
   open: (id: string): Promise<ProjectMetadata> => window.api.project.open(id),

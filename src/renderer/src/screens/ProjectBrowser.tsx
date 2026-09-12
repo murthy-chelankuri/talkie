@@ -1,14 +1,29 @@
 import { useEffect, useState } from 'react'
 import { AudioLines, Clapperboard, Film, Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
-import { projectClient, type ProjectOverview, type ProjectSummary } from '../api/projectClient'
+import {
+  projectClient,
+  type ProjectContext,
+  type ProjectOverview,
+  type ProjectSummary
+} from '../api/projectClient'
+import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
 import { ProjectPoster } from '../components/ProjectPoster'
+
+/** "pricing, roadmap" as two rules. Written once, used when the project is made. */
+function splitRules(value: string): string[] {
+  return value
+    .split(',')
+    .map((rule) => rule.trim())
+    .filter(Boolean)
+}
 import { Button } from '../components/ui/Button'
 import { IconButton } from '../components/ui/IconButton'
 import { Input } from '../components/ui/Input'
+import { Textarea } from '../components/ui/Textarea'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 
@@ -119,6 +134,12 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
   const [error, setError] = useState<string | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newContext, setNewContext] = useState<ProjectContext>(EMPTY_CONTEXT)
+  const [showMore, setShowMore] = useState(false)
+  // Held as typed, not as parsed: deriving the field's value from the parsed list deleted the
+  // comma on the keystroke that made it, so "pricing, roadmap" became one rule called
+  // "pricingroadmap".
+  const [neverSayText, setNeverSayText] = useState('')
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -134,8 +155,15 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
     setError(null)
     setCreating(true)
     try {
-      const created = await projectClient.create(newName.trim())
+      const context = { ...newContext, neverSay: splitRules(neverSayText) }
+      const created = await projectClient.create(
+        newName.trim(),
+        hasProjectContext(context) ? context : undefined
+      )
       setNewName('')
+      setNewContext(EMPTY_CONTEXT)
+      setNeverSayText('')
+      setShowMore(false)
       setShowCreateForm(false)
       onOpen(created)
     } catch (err) {
@@ -158,22 +186,101 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
   function handleCancelCreate(): void {
     setShowCreateForm(false)
     setNewName('')
+    setNewContext(EMPTY_CONTEXT)
+    setNeverSayText('')
+    setShowMore(false)
   }
 
+  /**
+   * Asked while the answer is in mind.
+   *
+   * This is the one moment someone is actively thinking about what they are about to make, and
+   * the only field that has ever been asked for is the name. But a form in the way of starting
+   * is worse than a panel found later, so only the question that does the most work is shown —
+   * the other three are a click away, and every one of them can be left empty.
+   */
   const createForm = (
-    <div className="flex w-full max-w-md flex-col gap-2 rounded-xl border border-accent bg-surface p-4">
-      <Input
-        autoFocus
-        aria-label="Project name"
-        value={newName}
-        onChange={(event) => setNewName(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') handleCreate()
-          if (event.key === 'Escape') handleCancelCreate()
-        }}
-        placeholder="What are you showing?"
-        disabled={creating}
-      />
+    <div className="flex w-full max-w-xl flex-col gap-3 rounded-xl border border-accent bg-surface p-4">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium text-text">Name</span>
+        <Input
+          autoFocus
+          aria-label="Project name"
+          value={newName}
+          onChange={(event) => setNewName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) handleCreate()
+            if (event.key === 'Escape') handleCancelCreate()
+          }}
+          placeholder="What are you showing?"
+          disabled={creating}
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium text-text">What it is about</span>
+        <span className="text-[11px] leading-relaxed text-text-muted">
+          The narration is written from this. Without it, the words can only describe what moved
+          on screen. You can change it later.
+        </span>
+        <Textarea
+          aria-label="What this project is about"
+          value={newContext.background}
+          onChange={(event) => setNewContext((c) => ({ ...c, background: event.target.value }))}
+          placeholder={
+            'Acme Ads is a self-serve advertising tool for small shops.\nA saved group of customers is an "audience". Budgets are always daily.'
+          }
+          disabled={creating}
+          className="min-h-[5rem] resize-y leading-relaxed"
+        />
+      </label>
+
+      {showMore && (
+        <>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-text">Who is watching</span>
+            <Input
+              aria-label="Who is watching"
+              value={newContext.audience}
+              onChange={(event) => setNewContext((c) => ({ ...c, audience: event.target.value }))}
+              placeholder="Shop owners who have never bought advertising before"
+              disabled={creating}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-text">How it should sound</span>
+            <Input
+              aria-label="How it should sound"
+              value={newContext.tone}
+              onChange={(event) => setNewContext((c) => ({ ...c, tone: event.target.value }))}
+              placeholder="Plain and reassuring. No jargon."
+              disabled={creating}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-text">Never say</span>
+            <Input
+              aria-label="Never say"
+              value={neverSayText}
+              onChange={(event) => setNeverSayText(event.target.value)}
+              placeholder="pricing, roadmap"
+              disabled={creating}
+            />
+          </label>
+        </>
+      )}
+
+      {!showMore && (
+        <button
+          type="button"
+          onClick={() => setShowMore(true)}
+          className="flex items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
+        >
+          <Plus size={11} />
+          Audience, tone and rules
+        </button>
+      )}
+
       <div className="flex gap-2">
         <Button onClick={handleCreate} disabled={creating || !newName.trim()}>
           {creating ? <Spinner size="sm" /> : 'Create project'}

@@ -97,7 +97,77 @@ describe('ProjectBrowser', () => {
     await user.click(screen.getByRole('button', { name: 'Create project' }))
 
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'p2' })))
-    expect(mockedCreate).toHaveBeenCalledWith('Fresh')
+    // Nothing described, so nothing is stored — a project is not given an empty description.
+    expect(mockedCreate).toHaveBeenCalledWith('Fresh', undefined)
+  })
+
+  it('keeps what you said the project is about, asked while you are thinking about it', async () => {
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([])
+    mockedCreate.mockResolvedValue({
+      id: 'p3',
+      name: 'Acme',
+      createdAt: new Date().toISOString(),
+      schemaVersion: 1
+    })
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+    await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Acme')
+    await user.type(
+      screen.getByRole('textbox', { name: 'What this project is about' }),
+      'Acme Ads is a self-serve advertising tool.'
+    )
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
+
+    await waitFor(() =>
+      expect(mockedCreate).toHaveBeenCalledWith(
+        'Acme',
+        expect.objectContaining({ background: 'Acme Ads is a self-serve advertising tool.' })
+      )
+    )
+  })
+
+  it('asks only what it must, with the rest a click away', async () => {
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([])
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+
+    // A form in the way of starting is worse than a panel found later.
+    expect(screen.queryByRole('textbox', { name: 'Who is watching' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Audience, tone and rules/ }))
+
+    expect(screen.getByRole('textbox', { name: 'Who is watching' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'How it should sound' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Never say' })).toBeInTheDocument()
+  })
+
+  it('reads a comma-separated list of rules as separate rules', async () => {
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([])
+    mockedCreate.mockResolvedValue({
+      id: 'p4',
+      name: 'Rules',
+      createdAt: new Date().toISOString(),
+      schemaVersion: 1
+    })
+    render(<ProjectBrowser onOpen={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+    await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Rules')
+    await user.click(screen.getByRole('button', { name: /Audience, tone and rules/ }))
+    await user.type(screen.getByRole('textbox', { name: 'Never say' }), 'pricing, roadmap')
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
+
+    await waitFor(() =>
+      expect(mockedCreate).toHaveBeenCalledWith(
+        'Rules',
+        expect.objectContaining({ neverSay: ['pricing', 'roadmap'] })
+      )
+    )
   })
 
   it('will not create a project without a name', async () => {

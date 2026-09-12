@@ -16,7 +16,8 @@ import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
 
 const projectApi = {
-  create: (name: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:create', name),
+  create: (name: string, context?: ProjectContext): Promise<ProjectMetadata> =>
+    ipcRenderer.invoke('project:create', name, context),
   list: (): Promise<ProjectSummary[]> => ipcRenderer.invoke('project:list'),
   overviews: (): Promise<ProjectOverview[]> => ipcRenderer.invoke('project:overviews'),
   open: (id: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:open', id),
