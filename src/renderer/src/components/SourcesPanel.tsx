@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import type { ProjectMetadata, TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { segmentsForItem } from '../lib/clipNarration'
+import { voiceProgressHint, type VoiceProgress } from '../lib/voiceProgress'
 import { formatTimecode } from '../lib/timelineLayout'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { FPS } from '../../../remotion/constants'
@@ -160,7 +161,8 @@ export function SourcesPanel({
   timeline,
   segments,
   totalFrames,
-  needingNarration,
+  progress,
+  currentVoice,
   recording,
   exporting,
   exportedPath,
@@ -183,7 +185,8 @@ export function SourcesPanel({
   segments: TranscriptSegment[]
   totalFrames: number
   /** Clips still waiting on a voice, counted once in the editor and shared from there. */
-  needingNarration: number
+  progress: VoiceProgress
+  currentVoice: string
   recording: boolean
   exporting: boolean
   exportedPath: string | null
@@ -201,7 +204,9 @@ export function SourcesPanel({
   collapsed: boolean
   onToggleCollapsed: () => void
 }): JSX.Element {
-  const narrated = timeline.length - needingNarration
+  // Voiced means it has audio. Which voice read it is a separate question, asked below.
+  const narrated = progress.voiced
+  const hint = voiceProgressHint(progress, currentVoice)
 
   return (
     <div
@@ -233,6 +238,15 @@ export function SourcesPanel({
 
       {!collapsed && (
         <ProjectSummary totalFrames={totalFrames} clipCount={timeline.length} narrated={narrated} />
+      )}
+
+      {/* Directly under the summary, because it qualifies it — pinned to the bottom of a panel
+          that scrolls, it was never read. */}
+      {!collapsed && timeline.length > 0 && hint && (
+        <p className="mt-2 flex items-start gap-2 text-[11px] leading-relaxed text-text-muted">
+          <AudioLines size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+          {hint}
+        </p>
       )}
 
       {!collapsed && exportedPath && (
@@ -316,15 +330,6 @@ export function SourcesPanel({
         </p>
       )}
 
-      {!collapsed && timeline.length > 0 && narrated < timeline.length && (
-        <p className="mt-auto flex items-start gap-2 pt-4 text-[11px] text-text-muted">
-          <AudioLines size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
-          {/* "Silent" is not always right: a clip voiced before the voice changed has audio,
-              just not the current voice. Both want the same thing done to them. */}
-          {needingNarration} clip{needingNarration === 1 ? '' : 's'} still need
-          {needingNarration === 1 ? 's' : ''} a voice. Write under a clip, then speak it.
-        </p>
-      )}
 
     </div>
   )

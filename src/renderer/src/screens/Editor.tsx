@@ -17,7 +17,8 @@ import { Timeline } from '../components/Timeline'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
 import { TransportBar } from '../components/TransportBar'
-import { hasStaleVoice, planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
+import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
+import { voiceProgress } from '../lib/voiceProgress'
 import { onSettingsChanged } from '../lib/settingsChanged'
 import { settingsClient } from '../api/projectClient'
 import { Spinner } from '../components/ui/Spinner'
@@ -178,11 +179,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     return onSettingsChanged(load)
   }, [])
 
-  const needingNarration = timeline.filter((item) => {
-    const segment = segmentsForItem(segments, item.id)[0]
-    if (!segment) return false
-    return segment.status !== 'narrated' || hasStaleVoice(segments, item.id, voice)
-  })
+  // Having no voice and having a different voice are different situations — see voiceProgress.
+  const progress = voiceProgress(timeline, segments, voice)
+  const needingNarration = progress.needing
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -502,7 +501,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               timeline={timeline}
               segments={segments}
               totalFrames={computeTimelineDuration(remotionTimeline)}
-              needingNarration={needingNarration.length}
+              progress={progress}
+              currentVoice={voice}
               onAddScene={() => setSceneEditing('new')}
               recording={recording}
               exporting={exporting}
@@ -596,7 +596,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           draftingAll={draftingAll}
           onDraft={handleDraft}
           onDraftAll={handleDraftAll}
-          needingNarration={needingNarration.length}
+          progress={progress}
           onNarrationCommit={handleNarrationCommit}
           onNarrate={handleNarrate}
           onNarrateAll={handleNarrateAll}

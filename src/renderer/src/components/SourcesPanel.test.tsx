@@ -11,6 +11,19 @@ const project: ProjectMetadata = {
   schemaVersion: 1
 }
 
+/** A project with nothing on it, which every test then varies from. */
+const noProgress = { silent: [], unwritten: [], otherVoice: [], voiced: 0, needing: [] }
+
+function clips(ids: string[]) {
+  return ids.map((id, index) => ({
+    id,
+    kind: 'image',
+    start: index * 90,
+    duration: 90,
+    data: {}
+  })) as never
+}
+
 function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
   const onToggleCollapsed = vi.fn()
   render(
@@ -19,7 +32,8 @@ function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
       timeline={[]}
       segments={[]}
       totalFrames={0}
-      needingNarration={0}
+      progress={noProgress}
+      currentVoice="Samantha"
       recording={false}
       exporting={false}
       exportedPath={null}
@@ -75,12 +89,10 @@ describe('SourcesPanel', () => {
   })
 
   it('says how much of the demo still has no voice', () => {
+    const timeline = clips(['a', 'b'])
     renderPanel({
-      timeline: [
-        { id: 'a', kind: 'image', start: 0, duration: 90, data: {} },
-        { id: 'b', kind: 'image', start: 90, duration: 90, data: {} }
-      ] as never,
-      needingNarration: 1
+      timeline,
+      progress: { ...noProgress, silent: [timeline[1]], voiced: 1, needing: [timeline[1]] }
     })
 
     expect(screen.getByText('1 of 2 clips voiced')).toBeInTheDocument()
@@ -88,28 +100,56 @@ describe('SourcesPanel', () => {
 
   it('says so plainly once every clip has a voice', () => {
     renderPanel({
-      timeline: [{ id: 'a', kind: 'image', start: 0, duration: 90, data: {} }] as never,
-      needingNarration: 0
+      timeline: clips(['a']),
+      progress: { ...noProgress, voiced: 1 }
     })
 
     expect(screen.getByText('Every clip has a voice')).toBeInTheDocument()
   })
 
-  it('counts a clip whose voice is out of date as still needing one', () => {
-    // The timeline offers to speak these, so the panel must not call them done.
+  it('counts a clip read by another voice as voiced, because it is', () => {
+    // It has audio and it plays. Calling it unvoiced told someone with a finished project that
+    // every clip was silent, and sent them off to write words they had already written.
+    const timeline = clips(['a', 'b'])
     renderPanel({
-      timeline: [
-        { id: 'a', kind: 'image', start: 0, duration: 90, data: {} },
-        { id: 'b', kind: 'image', start: 90, duration: 90, data: {} }
-      ] as never,
-      segments: [
-        { id: 's1', text: 'x', timelineItemId: 'a', status: 'narrated' },
-        { id: 's2', text: 'y', timelineItemId: 'b', status: 'narrated' }
-      ] as never,
-      needingNarration: 2
+      timeline,
+      progress: {
+        ...noProgress,
+        otherVoice: timeline,
+        voiced: 2,
+        needing: timeline,
+        previousVoice: 'Rishi'
+      }
     })
 
-    expect(screen.getByText('0 of 2 clips voiced')).toBeInTheDocument()
+    // Every clip speaks, so the summary says so — the voice they speak in is the next line's job.
+    expect(screen.getByText('Every clip has a voice')).toBeInTheDocument()
+  })
+
+  it('offers the switch to the chosen voice without calling it a problem', () => {
+    const timeline = clips(['a', 'b'])
+    renderPanel({
+      timeline,
+      progress: {
+        ...noProgress,
+        otherVoice: timeline,
+        voiced: 2,
+        needing: timeline,
+        previousVoice: 'Rishi'
+      }
+    })
+
+    expect(screen.getByText(/read by Rishi, not Samantha/)).toBeInTheDocument()
+  })
+
+  it('only tells you to write when something is actually unwritten', () => {
+    const timeline = clips(['a', 'b'])
+    renderPanel({
+      timeline,
+      progress: { ...noProgress, silent: timeline, voiced: 0, needing: timeline }
+    })
+
+    expect(screen.getByText(/written but not spoken/)).toBeInTheDocument()
   })
 
   it('does not claim progress on an empty timeline', () => {

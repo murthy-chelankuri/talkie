@@ -34,6 +34,7 @@ import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../remotion/constants'
 import { richTextToPlain } from '../../../main/project/timeline/richText'
 import { RECORDED_VOICE, hasStaleVoice, segmentsForItem, voiceOf } from '../lib/clipNarration'
 import { WAVEFORM_BUCKETS, useWaveform } from '../lib/waveform'
+import { speakAllLabel, type VoiceProgress } from '../lib/voiceProgress'
 import { IconButton } from './ui/IconButton'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
@@ -363,7 +364,7 @@ export function Timeline({
   onActiveItemChange,
   narratingItemId,
   narratingAll,
-  needingNarration,
+  progress,
   currentVoice,
   onEditScene,
   recordingItemId,
@@ -394,7 +395,7 @@ export function Timeline({
   onActiveItemChange: (itemId: string | null) => void
   narratingItemId: string | null
   narratingAll: boolean
-  needingNarration: number
+  progress: VoiceProgress
   currentVoice: string
   /** Scenes are written in the app, so a click on one opens it rather than only selecting it. */
   onEditScene: (item: TimelineItem) => void
@@ -608,17 +609,17 @@ export function Timeline({
             variant="secondary"
             size="sm"
             onClick={onNarrateAll}
-            disabled={narratingAll || needingNarration === 0}
+            disabled={narratingAll || progress.needing.length === 0}
             title={
-              needingNarration === 0
-                ? 'Every clip already has a voice'
-                : 'Speak the narration on every clip that is still silent'
+              progress.needing.length === 0
+                ? `Every clip already speaks in ${currentVoice}`
+                : progress.silent.length > 0
+                  ? 'Speak the narration on every clip that has none'
+                  : `Read these again in ${currentVoice}, replacing the takes already there`
             }
           >
             {narratingAll ? <Spinner size="sm" /> : <AudioLines size={14} className="text-accent" />}
-            {needingNarration === 0
-              ? 'All voiced'
-              : `Speak ${needingNarration} clip${needingNarration === 1 ? '' : 's'}`}
+            {speakAllLabel(progress, currentVoice)}
           </Button>
           <IconButton aria-label="Undo" disabled={!canUndo} onClick={onUndo}>
             <Undo2 size={16} />
