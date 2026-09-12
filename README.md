@@ -111,6 +111,19 @@ The picker's first option puts a project back to following the default, so the c
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.
 
+## What the export carries
+
+A finished MP4 comes with a **SubRip file beside it**, built from the narration already on the
+timeline — a clip knows where it starts, narration is held back a fixed beat, and each take's own
+length says when its words stop. Beside rather than burned in, because captions are the first
+thing anyone needs to correct.
+
+Recorded clips **lean towards what was clicked**. The recorder writes down where every click
+landed as a share of the picture, so the export can move the viewer's eye there without anyone
+keyframing it — a small move, closer to leaning towards a screen than to a punch-in.
+
+Both come out of what was already being captured. Neither asks a model or a service.
+
 ## What a recording shows
 
 A screen recording shows the result of a click but not the click: a value changes somewhere and
