@@ -31,6 +31,12 @@ in the main process, and ffmpeg has to be located explicitly because it is copie
 archive at build time. Each of those failed silently — the app started, reported itself ready,
 and never opened a window.
 
+### Running from source shows "Electron" in the menu bar
+
+macOS takes the bold menu-bar title from the bundle it is running, and under `npm run dev` that
+bundle is Electron's own. Nothing in the app can change it. The packaged build carries its own
+bundle and reads Talkie, which is what anyone receiving it sees.
+
 ### The app is not signed
 
 There is no Apple Developer certificate, so the build is ad-hoc signed. It runs on the machine
