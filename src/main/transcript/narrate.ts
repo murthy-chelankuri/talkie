@@ -35,7 +35,7 @@ export async function narrateSegment(
   // the new voice, and would let a cached URL keep playing the wrong audio.
   const audioFileName = `${segmentId}-${Date.now()}.wav`
   const audioPath = join(dir, 'audio', audioFileName)
-  // The project's own voice wins over the app's, so a demo keeps sounding like itself.
+  // The project's own voice wins over the app's, so a project keeps sounding like itself.
   const voice =
     openProject(projectId, baseDir).voice?.trim() ||
     readSettings(baseDir).speech.voice.trim() ||

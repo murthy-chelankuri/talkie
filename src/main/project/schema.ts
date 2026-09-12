@@ -9,15 +9,15 @@ export const ProjectMetadataSchema = z.object({
   createdAt: z.string(),
   schemaVersion: z.number().int(),
   /**
-   * The voice this demo speaks in.
+   * The voice this project speaks in.
    *
-   * A demo's voice belongs to the demo, not to the app: changing the voice you prefer for new
+   * A project's voice belongs to the project, not to the app: changing the voice you prefer for new
    * work should not turn every clip of a finished project into something that needs redoing.
    * Absent means the project follows whatever voice is set in Settings, which is how a new
    * project starts and how every project made before this behaved.
    */
   voice: z.string().optional(),
-  /** What the demo is about, for everything that writes words for it. See projectContext.ts. */
+  /** What the project is about, for everything that writes words for it. See projectContext.ts. */
   context: ProjectContextSchema.optional()
 })
 

@@ -18,7 +18,7 @@
  * - It draws only, and never reads or sends anything.
  */
 export interface HighlightOptions {
-  /** The colour of the ring, so a recording can match the demo it belongs to. */
+  /** The colour of the ring, so a recording can match the project it belongs to. */
   accent?: string
 }
 

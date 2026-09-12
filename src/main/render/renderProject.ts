@@ -46,7 +46,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     inputProps: { timeline }
   })
 
-  // Named for the demo and the day it was made, because this is the file the user hands to
+  // Named for the project and the day it was made, because this is the file the user hands to
   // somebody: `export-1789179493000.mp4` tells its owner nothing about what it is.
   const outputPath = join(dir, 'renders', `${exportFileName(openProject(id, baseDir).name)}.mp4`)
 

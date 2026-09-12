@@ -44,7 +44,7 @@ describe('ProjectBrowser', () => {
   it('invites you to start when there are no projects', async () => {
     mockedOverviews.mockResolvedValue([])
     render(<ProjectBrowser onOpen={vi.fn()} />)
-    expect(await screen.findByText('No demos yet')).toBeInTheDocument()
+    expect(await screen.findByText('No projects yet')).toBeInTheDocument()
   })
 
   it('shows each project with its length, clips and narration progress', async () => {

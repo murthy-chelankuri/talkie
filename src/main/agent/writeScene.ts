@@ -13,7 +13,7 @@ export interface SceneRequest {
   /** What the user asked for, in their words. */
   instruction: string
   projectName: string
-  /** What this demo is about — see projectContext.ts. */
+  /** What this project is about — see projectContext.ts. */
   context?: ProjectContext
 }
 

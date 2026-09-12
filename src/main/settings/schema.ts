@@ -72,7 +72,7 @@ export const McpSettingsSchema = z.object({
 /**
  * What a recording shows beyond the page itself.
  *
- * On by default: a demo is watched by someone who was not driving, and a click they cannot see
+ * On by default: a project is watched by someone who was not driving, and a click they cannot see
  * is a step they have to be told about. It is a setting because it is baked into the video —
  * there is no taking it out afterwards.
  */

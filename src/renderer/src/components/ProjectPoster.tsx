@@ -7,7 +7,7 @@ import { cn } from '../lib/cn'
 /**
  * The first frame of a project, wherever a project is shown.
  *
- * Shared by the launcher and the switcher so a demo looks the same in both: recognising a
+ * Shared by the launcher and the switcher so a project looks the same in both: recognising a
  * project by its picture is the whole point, and two versions of this would drift apart.
  */
 export function ProjectPoster({

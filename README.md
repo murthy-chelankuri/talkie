@@ -52,18 +52,18 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 `APPLE_TEAM_ID`, remove `identity: null` from `electron-builder.yml`, and turn
 `hardenedRuntime` on.
 
-## Telling the model what the demo is about
+## Telling the model what the project is about
 
 Narration is drafted a clip at a time from an action log and a few sampled frames, which is
 enough to know what moved on screen and nothing about what it was. So it writes "you click the
 menu" where a presenter would say "you open the campaign builder" — not from vagueness, but
 because nobody said what the product is called.
 
-**About this demo**, in the editor panel, is where that is said once for the whole project:
+**About this project**, in the editor panel, is where that is said once for the whole project:
 
 | | |
 | --- | --- |
-| What this demo is about | the product, and the words it uses for its own parts |
+| What this project is about | the product, and the words it uses for its own parts |
 | Who is watching | decides what is assumed and what is explained |
 | How it should sound | a sentence is enough |
 | Never say | rules, not preferences |
@@ -99,13 +99,13 @@ Apple's Writing Tools is not available here, and cannot be: AppKit attaches it t
 draws itself, and this is a web view whose menu is built by the app. A newer Chromium does not
 change that.
 
-## Which voice a demo speaks in
+## Which voice a project speaks in
 
-Every demo can hold a voice of its own, chosen in the editor beside the project summary. Settings
-holds the **default for new demos**; a demo that has chosen a voice keeps it, so changing the
+Every project can hold a voice of its own, chosen in the editor beside the project summary. Settings
+holds the **default for new projects**; a project that has chosen a voice keeps it, so changing the
 default never turns finished work into work that looks unfinished.
 
-The picker's first option puts a demo back to following the default, so the choice is reversible
+The picker's first option puts a project back to following the default, so the choice is reversible
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.
 
@@ -124,7 +124,7 @@ It is drawn inside the recorded page, so it is kept out of the page's way: nothi
 ever be clicked or reach the action log, and it uses no stylesheet, so a site with a strict
 content policy still gets its highlights.
 
-## Letting an AI agent make the demo
+## Letting an AI agent make the video
 
 Talkie is an MCP server, so any agent that speaks MCP — Claude Code, GitHub Copilot CLI, Cursor
 — can drive a real browser, record what it does, write and speak the narration, and export the
@@ -164,7 +164,7 @@ needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your 
 
 | Tool | What it does |
 | --- | --- |
-| `talkie_list_projects`, `talkie_create_project`, `talkie_timeline` | Find or start a demo, and read what is in it |
+| `talkie_list_projects`, `talkie_create_project`, `talkie_timeline` | Find or start a project, and read what is in it |
 | `talkie_start_recording` | Open a real browser and start capturing it |
 | `talkie_navigate`, `talkie_click`, `talkie_type`, `talkie_scroll`, `talkie_wait` | Drive that browser |
 | `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |

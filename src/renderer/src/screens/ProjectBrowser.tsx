@@ -171,7 +171,7 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
           if (event.key === 'Enter') handleCreate()
           if (event.key === 'Escape') handleCancelCreate()
         }}
-        placeholder="What are you demoing?"
+        placeholder="What are you showing?"
         disabled={creating}
       />
       <div className="flex gap-2">
@@ -189,7 +189,7 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-8 px-8 py-10">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl leading-tight text-text">Your demos</h1>
+          <h1 className="font-serif text-3xl leading-tight text-text">Your projects</h1>
           <p className="mt-1 text-sm text-text-muted">
             Record it silent. Give it a voice.
           </p>
@@ -214,7 +214,7 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
             <Clapperboard size={28} aria-hidden="true" />
           </span>
           <div>
-            <p className="font-serif text-xl text-text">No demos yet</p>
+            <p className="font-serif text-xl text-text">No projects yet</p>
             <p className="mt-1 text-sm text-text-muted">
               Start a project, then record the browser session you want to walk through.
             </p>

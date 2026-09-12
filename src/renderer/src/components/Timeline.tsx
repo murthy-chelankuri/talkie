@@ -436,7 +436,7 @@ export function Timeline({
   /**
    * Fit the project to the width it has.
    *
-   * At a fixed scale a short demo sat in the left third of the timeline with the rest empty,
+   * At a fixed scale a short project sat in the left third of the timeline with the rest empty,
    * while a long one ran off the edge — in both cases the clips were the wrong size to work
    * with. Fitting means the timeline always shows the whole project, which is what it is for.
    * Touching the zoom hands control over and this stops.

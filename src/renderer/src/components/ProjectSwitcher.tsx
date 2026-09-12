@@ -28,7 +28,7 @@ export function ProjectSwitcher({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    // Overviews rather than names: a demo is recognised by its picture, not its title.
+    // Overviews rather than names: a project is recognised by its picture, not its title.
     projectClient.overviews().then((listed) => {
       if (!cancelled) setProjects(listed)
     })

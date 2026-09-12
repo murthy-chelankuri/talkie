@@ -209,20 +209,20 @@ describe('the voice this demo speaks in', () => {
   it('is offered whether or not anything is wrong', () => {
     renderPanel({ voices })
 
-    expect(screen.getByRole('combobox', { name: 'Voice for this demo' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Voice for this project' })).toBeInTheDocument()
   })
 
   it('follows the app until a voice is chosen, and says which that is', () => {
     renderPanel({ voices, projectVoice: null, appVoice: 'Samantha' })
 
     expect(screen.getByRole('option', { name: 'App default (Samantha)' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Voice for this demo' })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'Voice for this project' })).toHaveValue('')
   })
 
   it('shows the voice the demo has been pinned to', () => {
     renderPanel({ voices, projectVoice: 'Rishi', appVoice: 'Samantha' })
 
-    expect(screen.getByRole('combobox', { name: 'Voice for this demo' })).toHaveValue('Rishi')
+    expect(screen.getByRole('combobox', { name: 'Voice for this project' })).toHaveValue('Rishi')
   })
 
   it('can pin a demo to a voice', async () => {
@@ -230,7 +230,7 @@ describe('the voice this demo speaks in', () => {
     const onProjectVoiceChange = vi.fn()
     renderPanel({ voices, projectVoice: null, onProjectVoiceChange })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Voice for this demo' }), 'Rishi')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Voice for this project' }), 'Rishi')
 
     expect(onProjectVoiceChange).toHaveBeenCalledWith('Rishi')
   })
@@ -240,7 +240,7 @@ describe('the voice this demo speaks in', () => {
     const onProjectVoiceChange = vi.fn()
     renderPanel({ voices, projectVoice: 'Rishi', appVoice: 'Samantha', onProjectVoiceChange })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Voice for this demo' }), '')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Voice for this project' }), '')
 
     // Null, not an empty string: the project keeps no voice of its own.
     expect(onProjectVoiceChange).toHaveBeenCalledWith(null)

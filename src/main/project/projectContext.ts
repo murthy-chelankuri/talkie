@@ -1,15 +1,15 @@
 import { z } from 'zod'
 
 /**
- * What the model is missing when it writes about a demo.
+ * What the model is missing when it writes about a project.
  *
  * Narration is drafted a clip at a time from an action log and a few frames, which is enough to
  * say what moved and nothing about what it was. So it writes "you click the menu" where a
  * presenter would say "you open the campaign builder" — not because it chose to be vague, but
  * because nobody told it what the product is called or what it does.
  *
- * These four answers are the ones that change the writing, and they are asked once per demo
- * rather than per clip: a demo has one subject, one audience and one voice, and fifty-three
+ * These four answers are the ones that change the writing, and they are asked once per project
+ * rather than per clip: a project has one subject, one audience and one voice, and fifty-three
  * clips that should sound like they came from the same person.
  */
 export const ProjectContextSchema = z.object({
@@ -38,7 +38,7 @@ export function hasProjectContext(context: ProjectContext | undefined): boolean 
 }
 
 /**
- * The context as the model reads it, for every prompt that writes something for this demo.
+ * The context as the model reads it, for every prompt that writes something for this project.
  *
  * Shared by narration, slides and rewriting rather than written out three times, because the
  * point is that they agree with each other — a slide that calls it a workspace and narration
@@ -51,7 +51,7 @@ export function describeProjectContext(context: ProjectContext | undefined): str
   if (!hasProjectContext(context)) return []
   const { background, audience, tone, neverSay } = context as ProjectContext
 
-  const lines = ['About this demo, from the person making it:']
+  const lines = ['About this project, from the person making it:']
 
   if (background.trim()) lines.push('', background.trim())
   if (audience.trim()) lines.push('', `Who is watching: ${audience.trim()}`)

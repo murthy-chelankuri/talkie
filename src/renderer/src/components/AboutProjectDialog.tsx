@@ -7,14 +7,14 @@ import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
 
 /**
- * What the model knows about this demo before it writes a word of it.
+ * What the model knows about this project before it writes a word of it.
  *
  * Four questions, not a form: each one changes the writing in a way the user can predict, and
  * the placeholders are written as answers rather than as hints, because the hardest part of a
  * box like this is knowing what belongs in it. Someone who fills in only the first has already
  * got most of the benefit — which is why it is first and why the rest can stay empty.
  */
-export function AboutDemoDialog({
+export function AboutProjectDialog({
   projectName,
   context,
   onSave,
@@ -49,11 +49,11 @@ export function AboutDemoDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div
         role="dialog"
-        aria-label="About this demo"
+        aria-label="About this project"
         className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-bg shadow-xl"
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
-          <h2 className="font-serif text-lg text-text">About this demo</h2>
+          <h2 className="font-serif text-lg text-text">About this project</h2>
           <span className="truncate text-[11px] text-text-muted">{projectName}</span>
           <IconButton aria-label="Close" onClick={onClose} className="ml-auto">
             <X size={16} />
@@ -67,15 +67,15 @@ export function AboutDemoDialog({
           </p>
 
           <Field
-            label="What this demo is about"
+            label="What this project is about"
             hint="The product, what it does, and the words it uses for its own parts. This one does the most work."
           >
             <Textarea
-              aria-label="What this demo is about"
+              aria-label="What this project is about"
               value={draft.background}
               onChange={(event) => setDraft((d) => ({ ...d, background: event.target.value }))}
               placeholder={
-                'Talkie records a browser session with no sound, then writes and speaks the narration over it.\nThe strip at the bottom is the timeline; each piece on it is a clip.\nCall it a demo, not a video.'
+                'Talkie records a browser session with no sound, then writes and speaks the narration over it.\nThe strip at the bottom is the timeline; each piece on it is a clip.\nCall it a walkthrough, not a video.'
               }
               className="min-h-[7rem] resize-y leading-relaxed"
             />

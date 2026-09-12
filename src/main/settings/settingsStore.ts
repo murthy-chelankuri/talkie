@@ -13,7 +13,7 @@ import { SettingsSchema, SpeechSettingsSchema, type Settings } from './schema'
 const SETTINGS_FILE_MODE = 0o600
 
 /**
- * Settings belong to the person, not to any one demo, so they sit beside the projects folder
+ * Settings belong to the person, not to any one project, so they sit beside the projects folder
  * rather than inside a project.
  */
 export function settingsPath(baseDir: string = homedir()): string {

@@ -82,7 +82,7 @@ async function checkExport(): Promise<ReadinessCheck> {
   return {
     id: 'export',
     label: 'Video export',
-    purpose: 'Render the finished demo to MP4',
+    purpose: 'Render the finished project to MP4',
     ready,
     detail: ready ? 'Built in' : undefined,
     fix: ready ? undefined : 'The bundled video tools could not be run. Reinstalling the app should restore them.',

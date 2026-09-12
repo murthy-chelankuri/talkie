@@ -6,12 +6,12 @@ import { describeProjectContext, type ProjectContext } from '../project/projectC
 export interface NarrationRequest {
   evidence: ClipEvidence
   projectName: string
-  /** 1-based position of this clip in the demo, so narration can place itself. */
+  /** 1-based position of this clip in the project, so narration can place itself. */
   clipIndex: number
   clipCount: number
   /** What was said over the previous clip, so this one carries on rather than restarting. */
   previousNarration?: string
-  /** What this demo is about — see projectContext.ts. */
+  /** What this project is about — see projectContext.ts. */
   context?: ProjectContext
 }
 

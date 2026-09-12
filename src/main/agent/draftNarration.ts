@@ -21,7 +21,7 @@ export interface DraftResult {
   text?: string
   reason?: string
   /**
-   * Words the demo said never to use that turned up anyway. The draft is still saved — it may
+   * Words the project said never to use that turned up anyway. The draft is still saved — it may
    * be most of the way there — but the user is told rather than left to find it themselves.
    */
   forbidden?: string[]

@@ -16,7 +16,7 @@ import {
 import { Timeline } from '../components/Timeline'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
-import { AboutDemoDialog } from '../components/AboutDemoDialog'
+import { AboutProjectDialog } from '../components/AboutProjectDialog'
 import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
@@ -31,7 +31,7 @@ import { computeTimelineDuration } from '../../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/types'
 
 /**
- * A draft broke one of this demo's rules.
+ * A draft broke one of this project's rules.
  *
  * Said as what happened rather than as an error, because the words are saved and readable: the
  * user decides whether to fix them, and the point is that they know without proofreading fifty
@@ -39,7 +39,7 @@ import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/typ
  */
 function forbiddenWarning(terms: string[]): string {
   const list = terms.map((term) => `"${term}"`).join(', ')
-  return `This draft says ${list}, which this demo never says. Edit the words, or change the rule in About this demo.`
+  return `This draft says ${list}, which this project never says. Edit the words, or change the rule in About this project.`
 }
 
 /** Far enough in for a scene's entrance to have finished — see the seek on open below. */
@@ -192,7 +192,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       void settingsClient.read().then((settings) => setAppVoice(settings.speech.voice))
     }
     load()
-    // The list of voices this machine has, for the demo's own voice picker.
+    // The list of voices this machine has, for the project's own voice picker.
     void settingsClient.voices().then(setVoices)
     return onSettingsChanged(load)
   }, [])
@@ -216,7 +216,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }
 
   /**
-   * Change the voice this demo speaks in, at any point, to anything — including back to
+   * Change the voice this project speaks in, at any point, to anything — including back to
    * following the app's. Nothing already recorded is touched: the mismatch card then offers to
    * re-speak, which is the only place work gets redone.
    */
@@ -448,7 +448,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         setTranscriptError(
           `${clips} draft${clips === 1 ? '' : 's'} said ${broken
             .map((term) => `"${term}"`)
-            .join(', ')}, which this demo never says. Look for the clips in question before voicing them.`
+            .join(', ')}, which this project never says. Look for the clips in question before voicing them.`
         )
       }
       await refreshSegments()
@@ -612,7 +612,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                   {/* What this region is, not what to do: the panel beside it and the timeline
                       below both say that already, and a screen that gives the same instruction
                       three times is not being clearer. */}
-                  <p className="text-sm text-text-muted">Your demo will play here</p>
+                  <p className="text-sm text-text-muted">Your project will play here</p>
                 </div>
               )}
             </div>
@@ -672,7 +672,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         </div>
       </ResizablePanel>
       {editingContext && project && (
-        <AboutDemoDialog
+        <AboutProjectDialog
           projectName={project.name}
           context={project.context ?? EMPTY_CONTEXT}
           onClose={() => setEditingContext(false)}

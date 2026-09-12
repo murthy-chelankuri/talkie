@@ -139,7 +139,7 @@ export function setProjectVoice(
   return next
 }
 
-/** What this demo is about, which every prompt written for it is given. */
+/** What this project is about, which every prompt written for it is given. */
 export function setProjectContext(
   id: string,
   context: ProjectContext,

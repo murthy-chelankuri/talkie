@@ -13,7 +13,7 @@ export interface RewriteRequest {
   style: RewriteStyle
   /** How long the clip runs, for the one rewrite that has a length to hit. */
   seconds?: number
-  /** What this demo is about, so a rewrite keeps its terms and its tone. */
+  /** What this project is about, so a rewrite keeps its terms and its tone. */
   context?: ProjectContext
   /** Which project this line belongs to, when the context should be looked up. */
   projectId?: string

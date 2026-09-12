@@ -200,10 +200,10 @@ export function SourcesPanel({
   currentVoice: string
   /** Adopt the voice the narration was read in, instead of re-speaking it. */
   onKeepProjectVoice?: () => void
-  /** Whether this demo has been described to the model yet. */
+  /** Whether this project has been described to the model yet. */
   hasContext: boolean
   onEditContext: () => void
-  /** The voice pinned to this demo, or null when it follows the app's. */
+  /** The voice pinned to this project, or null when it follows the app's. */
   projectVoice: string | null
   appVoice: string
   voices: Voice[]
@@ -261,7 +261,7 @@ export function SourcesPanel({
         <ProjectSummary totalFrames={totalFrames} clipCount={timeline.length} narrated={narrated} />
       )}
 
-      {/* Set once per demo and rarely revisited, so a line that opens a dialog rather than
+      {/* Set once per project and rarely revisited, so a line that opens a dialog rather than
           permanent space in a panel that is already full. */}
       {!collapsed && (
         <button
@@ -271,7 +271,7 @@ export function SourcesPanel({
         >
           <BookOpen size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] font-medium text-text">About this demo</span>
+            <span className="text-[11px] font-medium text-text">About this project</span>
             <span className="text-[11px] leading-relaxed text-text-muted">
               {hasContext
                 ? 'What the model knows before it writes.'
@@ -281,7 +281,7 @@ export function SourcesPanel({
         </button>
       )}
 
-      {/* The voice this demo speaks in, always here rather than only when something is wrong.
+      {/* The voice this project speaks in, always here rather than only when something is wrong.
           It was reachable only from a card that appeared on a mismatch, which meant a voice
           could be chosen once and never changed again. */}
       {!collapsed && (
@@ -293,7 +293,7 @@ export function SourcesPanel({
             )}
           </span>
           <VoicePicker
-            ariaLabel="Voice for this demo"
+            ariaLabel="Voice for this project"
             value={projectVoice ?? FOLLOWS_DEFAULT}
             voices={voices}
             onChange={(next) => onProjectVoiceChange(next === FOLLOWS_DEFAULT ? null : next)}
@@ -324,7 +324,7 @@ export function SourcesPanel({
               has to be as easy as changing it. */}
           {onKeepProjectVoice && progress.previousVoice && progress.silent.length === 0 && (
             <Button variant="ghost" size="sm" className="self-start" onClick={onKeepProjectVoice}>
-              Keep {progress.previousVoice} for this demo
+              Keep {progress.previousVoice} for this project
             </Button>
           )}
         </div>

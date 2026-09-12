@@ -390,11 +390,11 @@ function VoiceSection({
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
-      {/* A default rather than the answer: a demo that has chosen a voice keeps it, which is
+      {/* A default rather than the answer: a project that has chosen a voice keeps it, which is
           what stops changing this from making finished work look unfinished. */}
       <Field
-        label="Default voice for new demos"
-        hint="Each demo can use a voice of its own — set that while editing it."
+        label="Default voice for new projects"
+        hint="Each project can use a voice of its own — set that while editing it."
       >
         <VoicePicker
           ariaLabel="Narration voice"
