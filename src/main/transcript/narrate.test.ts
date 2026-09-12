@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, statSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, addTimelineItem, addTranscriptSegment, readTranscript, readTimeline } from '../project/projectApi'
+import {
+  createProject,
+  addTimelineItem,
+  addTranscriptSegment,
+  readTranscript,
+  readTimeline,
+  setProjectVoice
+} from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
 import { updateSettings } from '../settings/settingsStore'
@@ -95,6 +102,37 @@ describe('voice', () => {
     const result = await narrateSegment(project.id, segment.id, baseDir)
 
     expect(result.voice).toBe('Daniel')
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
+
+  it("uses the project's own voice ahead of the app's", async () => {
+    // The point of pinning a voice to a project: new takes have to match the ones already in it,
+    // or the mismatch this was meant to settle comes straight back.
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-project-voice-test-'))
+    updateSettings({ speech: { voice: 'Samantha' } }, baseDir)
+
+    const project = createProject('Own Voice', baseDir)
+    setProjectVoice(project.id, 'Daniel', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: 'x.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'In the project voice.', timelineItemId: item.id }, baseDir)
+
+    const result = await narrateSegment(project.id, segment.id, baseDir)
+
+    expect(result.voice).toBe('Daniel')
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 30_000)
+
+  it('goes back to the app voice when the project keeps none', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-unpinned-voice-test-'))
+    updateSettings({ speech: { voice: 'Samantha' } }, baseDir)
+
+    const project = createProject('Unpinned', baseDir)
+    setProjectVoice(project.id, 'Daniel', baseDir)
+    setProjectVoice(project.id, null, baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: 'x.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Back to the default.', timelineItemId: item.id }, baseDir)
+
+    expect((await narrateSegment(project.id, segment.id, baseDir)).voice).toBe('Samantha')
     rmSync(baseDir, { recursive: true, force: true })
   }, 30_000)
 

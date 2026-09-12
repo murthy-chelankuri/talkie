@@ -4,6 +4,7 @@ import { findProjectDir } from '../project/paths'
 import {
   readTranscript,
   readTimeline,
+  openProject,
   updateTranscriptSegmentAudio,
   updateTimelineItemDuration
 } from '../project/projectApi'
@@ -34,7 +35,11 @@ export async function narrateSegment(
   // the new voice, and would let a cached URL keep playing the wrong audio.
   const audioFileName = `${segmentId}-${Date.now()}.wav`
   const audioPath = join(dir, 'audio', audioFileName)
-  const voice = readSettings(baseDir).speech.voice.trim() || DEFAULT_VOICE
+  // The project's own voice wins over the app's, so a demo keeps sounding like itself.
+  const voice =
+    openProject(projectId, baseDir).voice?.trim() ||
+    readSettings(baseDir).speech.voice.trim() ||
+    DEFAULT_VOICE
   await sayTtsProvider.synthesize(segment.text, audioPath)
 
   const durationSeconds = getWavDurationSeconds(audioPath)

@@ -12,6 +12,8 @@ export interface ProjectSummary {
 
 export interface ProjectMetadata extends ProjectSummary {
   schemaVersion: number
+  /** The voice this project speaks in. Absent means it follows the one set in Settings. */
+  voice?: string
 }
 
 export interface HistoryState {
@@ -34,6 +36,8 @@ export const projectClient = {
   overviews: (): Promise<ProjectOverview[]> => window.api.project.overviews(),
   open: (id: string): Promise<ProjectMetadata> => window.api.project.open(id),
   remove: (id: string): Promise<void> => window.api.project.remove(id),
+  setVoice: (id: string, voice: string | null): Promise<ProjectMetadata> =>
+    window.api.project.setVoice(id, voice),
   historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),

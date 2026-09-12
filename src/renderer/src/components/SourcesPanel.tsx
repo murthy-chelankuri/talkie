@@ -15,6 +15,7 @@ import { formatTimecode } from '../lib/timelineLayout'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
+import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
 import { ErrorBanner } from './ui/ErrorBanner'
@@ -163,6 +164,7 @@ export function SourcesPanel({
   totalFrames,
   progress,
   currentVoice,
+  onKeepProjectVoice,
   recording,
   exporting,
   exportedPath,
@@ -187,6 +189,8 @@ export function SourcesPanel({
   /** Clips still waiting on a voice, counted once in the editor and shared from there. */
   progress: VoiceProgress
   currentVoice: string
+  /** Adopt the voice the narration was read in, instead of re-speaking it. */
+  onKeepProjectVoice?: () => void
   recording: boolean
   exporting: boolean
   exportedPath: string | null
@@ -240,13 +244,31 @@ export function SourcesPanel({
         <ProjectSummary totalFrames={totalFrames} clipCount={timeline.length} narrated={narrated} />
       )}
 
-      {/* Directly under the summary, because it qualifies it — pinned to the bottom of a panel
-          that scrolls, it was never read. */}
+      {/* Under the summary, because it qualifies it. A loose line of text here read as something
+          left unstyled; what it actually needs is a card, because two of these states are a
+          decision rather than a notice. */}
       {!collapsed && timeline.length > 0 && hint && (
-        <p className="mt-2 flex items-start gap-2 text-[11px] leading-relaxed text-text-muted">
-          <AudioLines size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
-          {hint}
-        </p>
+        <div
+          className={cn(
+            'mt-2 flex flex-col gap-2 rounded-lg border p-3',
+            progress.otherVoice.length > 0 && progress.silent.length === 0
+              ? 'border-accent/40 bg-accent/[0.06]'
+              : 'border-border bg-surface'
+          )}
+        >
+          <p className="flex items-start gap-2 text-[11px] leading-relaxed text-text-muted">
+            <AudioLines size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+            {hint}
+          </p>
+
+          {/* Only for the mismatch: the project already sounds finished, so keeping it as it is
+              has to be as easy as changing it. */}
+          {onKeepProjectVoice && progress.previousVoice && progress.silent.length === 0 && (
+            <Button variant="ghost" size="sm" className="self-start" onClick={onKeepProjectVoice}>
+              Keep {progress.previousVoice} for this demo
+            </Button>
+          )}
+        </div>
       )}
 
       {!collapsed && exportedPath && (

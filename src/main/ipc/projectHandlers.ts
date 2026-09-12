@@ -6,7 +6,8 @@ import {
   listProjectOverviews,
   openProject,
   sweepUnusedNarrationAudio,
-  deleteProject
+  deleteProject,
+  setProjectVoice
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
@@ -47,6 +48,10 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     repairNarrationDurations(id)
     return project
   })
+
+  ipcMain.handle('project:setVoice', (_event, projectId: string, voice: string | null) =>
+    setProjectVoice(projectId, voice)
+  )
 
   ipcMain.handle('project:delete', (_event, id: string) => {
     deleteProject(id)

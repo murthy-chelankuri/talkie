@@ -113,6 +113,31 @@ export function openProject(id: string, baseDir: string = homedir()): ProjectMet
   return migrateProjectMetadata(raw)
 }
 
+/**
+ * Pin this project to a voice, or let it follow the app's again.
+ *
+ * Nothing is re-narrated: the takes already on disk are what they are. This decides which voice
+ * the project counts as its own, and therefore which takes are out of date and which are simply
+ * what the project sounds like.
+ */
+export function setProjectVoice(
+  id: string,
+  voice: string | null,
+  baseDir: string = homedir()
+): ProjectMetadata {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) throw new Error(`No project found with id ${id}`)
+
+  const current = openProject(id, baseDir)
+  const next = ProjectMetadataSchema.parse({
+    ...current,
+    ...(voice?.trim() ? { voice: voice.trim() } : { voice: undefined })
+  })
+
+  writeJsonAtomic(join(dir, 'project.json'), next)
+  return next
+}
+
 // Deleting a project takes its recordings, narration audio and renders with it, and no undo
 // reaches across projects — the caller is expected to have confirmed first.
 export function deleteProject(id: string, baseDir: string = homedir()): void {

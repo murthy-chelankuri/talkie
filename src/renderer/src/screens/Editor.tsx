@@ -53,7 +53,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [narratingAll, setNarratingAll] = useState(false)
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
-  const [voice, setVoice] = useState('')
+  const [appVoice, setAppVoice] = useState('')
   const [importingDeck, setImportingDeck] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
@@ -173,14 +173,29 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // Re-read the voice whenever settings change: narration recorded in the old one is stale.
   useEffect(() => {
     const load = (): void => {
-      void settingsClient.read().then((settings) => setVoice(settings.speech.voice))
+      void settingsClient.read().then((settings) => setAppVoice(settings.speech.voice))
     }
     load()
     return onSettingsChanged(load)
   }, [])
 
+  /**
+   * The voice this project speaks in.
+   *
+   * A project's own voice wins over the one set in Settings, so changing the voice you prefer
+   * for new work leaves finished projects sounding as they did — and reading as finished.
+   */
+  const voice = project?.voice || appVoice
+
   // Having no voice and having a different voice are different situations — see voiceProgress.
   const progress = voiceProgress(timeline, segments, voice)
+
+  /** Adopt the voice this project's narration was already read in, changing nothing on disk. */
+  async function handleKeepProjectVoice(): Promise<void> {
+    const keeping = progress.previousVoice
+    if (!keeping) return
+    setProject(await projectClient.setVoice(projectId, keeping))
+  }
   const needingNarration = progress.needing
 
   useEffect(() => {
@@ -503,6 +518,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               totalFrames={computeTimelineDuration(remotionTimeline)}
               progress={progress}
               currentVoice={voice}
+              onKeepProjectVoice={handleKeepProjectVoice}
               onAddScene={() => setSceneEditing('new')}
               recording={recording}
               exporting={exporting}

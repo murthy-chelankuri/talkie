@@ -22,7 +22,8 @@ import {
   listProjectOverviews,
   deleteTimelineItem,
   sweepUnusedNarrationAudio,
-  deleteProject
+  deleteProject,
+  setProjectVoice
 } from './projectApi'
 import { projectsRootDir, findProjectDir, PROJECT_SUBDIRS } from './paths'
 
@@ -1003,5 +1004,61 @@ describe('deleteProject', () => {
     expect(() => deleteProject('does-not-exist', baseDir)).toThrow(
       'No project found with id does-not-exist'
     )
+  })
+})
+
+describe('a project that speaks in its own voice', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-project-voice-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('starts with none, so it follows the one set in the app', () => {
+    expect(createProject('Fresh', baseDir).voice).toBeUndefined()
+  })
+
+  it('keeps the voice it is given', () => {
+    const project = createProject('Pinned', baseDir)
+
+    setProjectVoice(project.id, 'Rishi', baseDir)
+
+    expect(openProject(project.id, baseDir).voice).toBe('Rishi')
+  })
+
+  it('lets a project go back to following the app', () => {
+    const project = createProject('Released', baseDir)
+    setProjectVoice(project.id, 'Rishi', baseDir)
+
+    setProjectVoice(project.id, null, baseDir)
+
+    expect(openProject(project.id, baseDir).voice).toBeUndefined()
+  })
+
+  it('treats blank as following the app, not as a voice called nothing', () => {
+    const project = createProject('Blank', baseDir)
+
+    setProjectVoice(project.id, '   ', baseDir)
+
+    expect(openProject(project.id, baseDir).voice).toBeUndefined()
+  })
+
+  it('leaves the rest of the project alone', () => {
+    const project = createProject('Intact', baseDir)
+
+    setProjectVoice(project.id, 'Daniel', baseDir)
+
+    const after = openProject(project.id, baseDir)
+    expect(after.name).toBe('Intact')
+    expect(after.id).toBe(project.id)
+    expect(after.createdAt).toBe(project.createdAt)
+  })
+
+  it('refuses a project that is not there', () => {
+    expect(() => setProjectVoice('no-such-project', 'Rishi', baseDir)).toThrow('no-such-project')
   })
 })
