@@ -20,11 +20,14 @@ export function ClipNarrationBox({
   onStopRecording,
   onDraft,
   onCommit,
-  onNarrate
+  onNarrate,
+  compact = false
 }: {
   item: TimelineItem
   segments: TranscriptSegment[]
   active: boolean
+  /** Too narrow to read words in. See the textarea below. */
+  compact?: boolean
   narrating: boolean
   currentVoice: string
   drafting: boolean
@@ -114,14 +117,19 @@ export function ClipNarrationBox({
           {narrating ? <Spinner size="sm" /> : <Mic size={12} />}
         </IconButton>
       </div>
-      <textarea
-        value={draft}
-        aria-label={label}
-        placeholder="Narration…"
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => onCommit(item, draft)}
-        className="min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent"
-      />
+      {/* A box narrower than a word breaks text one letter to a line, which is unreadable and
+          looks broken. Below that width the status and the controls are the useful part; the
+          words are read by zooming in, or in the clip that is under the playhead. */}
+      {!compact && (
+        <textarea
+          value={draft}
+          aria-label={label}
+          placeholder="Narration…"
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => onCommit(item, draft)}
+          className="min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent"
+        />
+      )}
     </div>
   )
 }

@@ -27,6 +27,9 @@ import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
 import { computeTimelineDuration } from '../../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/types'
 
+/** Far enough in for a scene's entrance to have finished — see the seek on open below. */
+const SETTLED_FRAME = 20
+
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
@@ -63,6 +66,31 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PlayerRef>(null)
+  const openedAtFrame = useRef(false)
+
+  /**
+   * Open on a frame that shows something.
+   *
+   * Scenes animate in, so frame 0 of a project that starts with one is a legitimately empty
+   * picture — and parking there means the largest thing on screen is blank every time a project
+   * is opened, with nothing to say whether the project has content at all. Landing just past the
+   * entrance shows the work instead. Scrubbing back to zero still shows the fade, which is real.
+   */
+  useEffect(() => {
+    if (openedAtFrame.current || timeline.length === 0) return
+
+    const first = timeline[0]
+    const settled = Math.min(SETTLED_FRAME, Math.max(0, Math.floor(first.duration / 2)))
+    if (settled > 0) {
+      // A frame late enough for the entrance to have played, and the player has to exist first.
+      requestAnimationFrame(() => playerRef.current?.seekTo(first.start + settled))
+    }
+    openedAtFrame.current = true
+  }, [timeline])
+
+  useEffect(() => {
+    openedAtFrame.current = false
+  }, [projectId])
 
   useEffect(() => {
     Promise.all([
@@ -518,9 +546,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               ) : (
                 <div className="flex flex-col items-center gap-2 text-center">
                   <Clapperboard size={26} className="text-text-muted" aria-hidden="true" />
-                  <p className="text-sm text-text-muted">
-                    Record a session or add an image to see it here.
-                  </p>
+                  {/* What this region is, not what to do: the panel beside it and the timeline
+                      below both say that already, and a screen that gives the same instruction
+                      three times is not being clearer. */}
+                  <p className="text-sm text-text-muted">Your demo will play here</p>
                 </div>
               )}
             </div>

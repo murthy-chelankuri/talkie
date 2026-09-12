@@ -50,10 +50,29 @@ interface ActionProps {
   collapsed: boolean
   disabled?: boolean
   busy?: boolean
+  /** The one thing this panel is really for. Exactly one action should carry it. */
+  primary?: boolean
   onClick: () => void
 }
 
-function Action({ icon, label, hint, tone, collapsed, disabled, busy, onClick }: ActionProps): JSX.Element {
+/**
+ * One of the ways to put something on the timeline.
+ *
+ * Five of these at identical weight made recording — the thing the app is for — look like one
+ * option among five, so the first among them is drawn as the one to reach for and the rest read
+ * as the alternatives they are.
+ */
+function Action({
+  icon,
+  label,
+  hint,
+  tone,
+  collapsed,
+  disabled,
+  busy,
+  primary,
+  onClick
+}: ActionProps): JSX.Element {
   return (
     <button
       type="button"
@@ -62,8 +81,9 @@ function Action({ icon, label, hint, tone, collapsed, disabled, busy, onClick }:
       aria-label={label}
       title={collapsed ? `${label} — ${hint}` : undefined}
       className={cn(
-        'flex items-center rounded-lg border border-border bg-surface text-left transition-colors',
+        'flex items-center rounded-lg border text-left transition-colors',
         'hover:border-accent hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50',
+        primary ? 'border-accent/45 bg-accent/[0.07] shadow-sm' : 'border-border bg-surface',
         collapsed ? 'justify-center p-2' : 'w-full gap-2.5 px-2.5 py-2.5'
       )}
     >
@@ -226,6 +246,7 @@ export function SourcesPanel({
           icon={<Clapperboard size={15} />}
           label="Record a session"
           hint="Capture a walkthrough"
+          primary
           tone="record"
           collapsed={collapsed}
           busy={recording}

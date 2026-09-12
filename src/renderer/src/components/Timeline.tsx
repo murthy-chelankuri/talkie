@@ -41,6 +41,10 @@ const MIN_PIXELS_PER_SECOND = 10
 const MAX_PIXELS_PER_SECOND = 400
 const ZOOM_STEP = 1.5
 
+// Narrower than this and a line of narration breaks one letter to a line, so the words are left
+// out rather than shown unreadable.
+const NARRATION_TEXT_MIN_WIDTH = 120
+
 // Give up scanning for a non-blank frame after this much of the recording, so a genuinely
 // blank capture settles on a frame instead of playing through to the end.
 const THUMBNAIL_SCAN_LIMIT_SECONDS = 8
@@ -136,7 +140,8 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
   if (item.kind === 'scene') {
     return (
       <div
-        className="pointer-events-none flex h-full flex-col justify-center gap-1 overflow-hidden px-2.5"
+        // Bottom padding keeps the slide's own words clear of the kind chip in the corner.
+        className="pointer-events-none flex h-full flex-col justify-center gap-1 overflow-hidden px-2.5 pb-5"
         style={{ background: 'linear-gradient(150deg, #232833 0%, #171b22 100%)' }}
       >
         {/* Strictly the words: a slide's text carries markup, and a label this small has no
@@ -298,9 +303,12 @@ export function Timeline({
   onRedo: () => void | Promise<void>
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
+  // Whether the user has taken the zoom into their own hands. Until they do, the timeline fits
+  // itself to the window.
+  const zoomChosen = useRef(false)
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
   const playheadRef = useRef<HTMLDivElement | null>(null)
-  const timecodeRef = useRef<HTMLSpanElement | null>(null)
   const rulerRef = useRef<HTMLDivElement | null>(null)
   const frameRef = useRef(0)
   // Which clip the playhead is inside. This only changes at clip boundaries, so it is the one
@@ -311,6 +319,36 @@ export function Timeline({
   // Removing a clip takes its narration with it and cannot be undone, so it asks first.
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  /**
+   * Fit the project to the width it has.
+   *
+   * At a fixed scale a short demo sat in the left third of the timeline with the rest empty,
+   * while a long one ran off the edge — in both cases the clips were the wrong size to work
+   * with. Fitting means the timeline always shows the whole project, which is what it is for.
+   * Touching the zoom hands control over and this stops.
+   */
+  useEffect(() => {
+    const area = scrollAreaRef.current
+    if (!area || zoomChosen.current || totalFrames === 0) return
+
+    const fit = (): void => {
+      if (zoomChosen.current) return
+      const seconds = totalFrames / FPS
+      // A little room at the end, so the last clip is not flush against the edge.
+      const usable = area.clientWidth - 24
+      if (seconds <= 0 || usable <= 0) return
+
+      setPixelsPerSecond(
+        Math.min(MAX_PIXELS_PER_SECOND, Math.max(MIN_PIXELS_PER_SECOND, usable / seconds))
+      )
+    }
+
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(area)
+    return () => observer.disconnect()
+  }, [totalFrames])
 
   const contentWidth = offsetAtFrame(totalFrames, pixelsPerSecond, FPS)
   const tickSeconds = chooseTickIntervalSeconds(pixelsPerSecond)
@@ -328,9 +366,6 @@ export function Timeline({
       frameRef.current = frame
       if (playheadRef.current) {
         playheadRef.current.style.transform = `translateX(${offsetAtFrame(frame, pixelsPerSecond, FPS)}px)`
-      }
-      if (timecodeRef.current) {
-        timecodeRef.current.textContent = `${formatTimecode(frame / FPS)} / ${formatTimecode(totalFrames / FPS)}`
       }
       // Written here rather than rendered, for the same reason as the playhead: the slider has
       // to report the live position without re-rendering the timeline on every frame.
@@ -397,15 +432,33 @@ export function Timeline({
     onReorder(arrayMove(timeline, oldIndex, newIndex).map((item) => item.id))
   }
 
+  /**
+   * A timeline with nothing on it.
+   *
+   * It was a blank field taking up half the window, under a toolbar of controls that were all
+   * disabled because there was nothing to use them on — the emptiest possible answer to someone
+   * opening their first project. Saying what the space is for costs nothing and is the one
+   * moment it can be explained.
+   */
+  if (timeline.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 border-t border-border bg-surface text-center">
+        <LayoutTemplate size={22} className="text-text-muted/60" aria-hidden="true" />
+        <p className="text-sm text-text">Your clips will line up here</p>
+        <p className="max-w-sm text-xs leading-relaxed text-text-muted">
+          Record a session, drop in an image or write a slide, and it lands on this strip. Drag to
+          reorder, and give each clip its words underneath.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full flex-col border-t border-border bg-surface">
+      {/* No timecode and no clip count here: the transport bar shows the first a few pixels
+          above, and the project summary shows the second. Saying either again only crowds the
+          actions, which are what this row is for. */}
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
-        <span ref={timecodeRef} className="text-sm tabular-nums text-text">
-          {formatTimecode(0)} / {formatTimecode(totalFrames / FPS)}
-        </span>
-        <span className="text-xs text-text-muted">
-          {timeline.length} clip{timeline.length === 1 ? '' : 's'}
-        </span>
         {confirmingDelete && itemUnderPlayhead ? (
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-text-muted">
@@ -478,14 +531,20 @@ export function Timeline({
           <IconButton
             aria-label="Zoom out"
             disabled={pixelsPerSecond <= MIN_PIXELS_PER_SECOND}
-            onClick={() => setPixelsPerSecond((pps) => Math.max(MIN_PIXELS_PER_SECOND, pps / ZOOM_STEP))}
+            onClick={() => {
+              zoomChosen.current = true
+              setPixelsPerSecond((pps) => Math.max(MIN_PIXELS_PER_SECOND, pps / ZOOM_STEP))
+            }}
           >
             <ZoomOut size={16} />
           </IconButton>
           <IconButton
             aria-label="Zoom in"
             disabled={pixelsPerSecond >= MAX_PIXELS_PER_SECOND}
-            onClick={() => setPixelsPerSecond((pps) => Math.min(MAX_PIXELS_PER_SECOND, pps * ZOOM_STEP))}
+            onClick={() => {
+              zoomChosen.current = true
+              setPixelsPerSecond((pps) => Math.min(MAX_PIXELS_PER_SECOND, pps * ZOOM_STEP))
+            }}
           >
             <ZoomIn size={16} />
           </IconButton>
@@ -493,7 +552,7 @@ export function Timeline({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+      <div ref={scrollAreaRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
         <div ref={trackAreaRef} className="relative h-full" style={{ width: Math.max(contentWidth, 1) }}>
           <div
             ref={rulerRef}
@@ -557,6 +616,7 @@ export function Timeline({
                 <ClipNarrationBox
                   item={item}
                   segments={segments}
+                  compact={offsetAtFrame(item.duration, pixelsPerSecond, FPS) < NARRATION_TEXT_MIN_WIDTH}
                   active={item.id === itemUnderPlayheadId}
                   narrating={narratingItemId === item.id}
                   currentVoice={currentVoice}

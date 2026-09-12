@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+// The callbacks handed to page.evaluate run inside the browser, not in this process, so this
+// file needs the DOM types that main-process code deliberately does without.
 import { describe, expect, it, beforeAll, afterAll } from 'vitest'
 import { chromium, type Browser, type Page } from 'playwright'
 import { writeFileSync, mkdtempSync, rmSync } from 'fs'
