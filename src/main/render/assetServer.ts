@@ -1,4 +1,5 @@
 import { createServer, type Server } from 'http'
+import { randomBytes } from 'crypto'
 import { createReadStream, existsSync, statSync } from 'fs'
 import { dirname, extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
@@ -53,17 +54,49 @@ let cachedServerPromise: Promise<AssetServer> | null = null
 let cachedRootDir: string | null = null
 
 function startAssetServer(rootDir: string): Promise<AssetServer> {
+  /**
+   * A secret every URL carries, because loopback is not a boundary.
+   *
+   * Any page in any browser on this machine can reach 127.0.0.1 and walk the few thousand
+   * ephemeral ports until it finds this one. What it cannot do is guess this, so knowing a URL
+   * is what stands in for an origin the server has no other way to check — the renderer is
+   * `file://`, whose origin is `null`, so the frames it draws to canvas need permissive CORS and
+   * CORS therefore cannot be the control.
+   */
+  const secret = randomBytes(16).toString('hex')
+
   return new Promise((resolve, reject) => {
     const server: Server = createServer((req, res) => {
+      const refuse = (): void => {
+        // The same answer as a missing file, so probing cannot tell a wrong guess from a wrong
+        // path and map out what is here.
+        res.writeHead(404)
+        res.end()
+      }
+
+      // A request whose Host is anything but the loopback address this server answers on is one
+      // that arrived through a name resolved to 127.0.0.1 — the shape of a DNS rebinding, which
+      // exists precisely to give a remote page a same-origin path to a local service.
+      const port = (server.address() as AddressInfo | null)?.port
+      const host = req.headers.host
+      if (!host || (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`)) {
+        refuse()
+        return
+      }
+
       const requestedPath = decodeURIComponent((req.url ?? '/').split('?')[0])
-      const filePath = normalize(join(rootDir, requestedPath))
+      if (!requestedPath.startsWith(`/${secret}/`)) {
+        refuse()
+        return
+      }
+
+      const filePath = normalize(join(rootDir, requestedPath.slice(secret.length + 2)))
       // A bare `startsWith(rootDir)` is a directory-boundary bug: rootDir '/tmp/foo' would
       // wrongly accept '/tmp/foobar/secret' since it's a string prefix but not a real subpath.
       const isInsideRoot = filePath === rootDir || filePath.startsWith(rootDir + sep)
 
       if (!isInsideRoot || !existsSync(filePath) || !statSync(filePath).isFile()) {
-        res.writeHead(404)
-        res.end()
+        refuse()
         return
       }
 
@@ -72,8 +105,9 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
       const commonHeaders = {
         'Content-Type': contentType,
         // The renderer draws video frames onto a canvas to pick a timeline thumbnail, which
-        // needs the pixels to be readable rather than origin-tainted. This server is bound to
-        // 127.0.0.1 and only ever serves the user's own project directory.
+        // needs the pixels to be readable rather than origin-tainted. It loads from `file://`,
+        // whose origin is `null`, so no narrower value would work. What keeps this from being an
+        // open door is the secret in the path, not this header.
         'Access-Control-Allow-Origin': '*',
         // Without range support Chromium reports a media file's seekable range as empty and
         // refuses to seek it at all, which strands recordings on their first frame.
@@ -105,7 +139,9 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
     server.listen(0, '127.0.0.1', () => {
       const { port } = server.address() as AddressInfo
       resolve({
-        url: `http://127.0.0.1:${port}`,
+        // The secret rides in the base URL, so everything built on it is scoped without
+        // any caller needing to know the scheme exists.
+        url: `http://127.0.0.1:${port}/${secret}`,
         close: () => new Promise((res) => server.close(() => res()))
       })
     })

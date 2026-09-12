@@ -92,3 +92,48 @@ describe('colours chosen in the editor', () => {
     )
   })
 })
+
+/**
+ * Payloads that have to stay dead.
+ *
+ * The separator case is here because it was live: HTML lets `/` stand where a space normally
+ * separates a tag name from its attributes, the sanitiser's tag pattern required the space, and
+ * so the whole string passed through unrebuilt and became an event handler.
+ */
+describe('markup that must not survive', () => {
+  const PAYLOADS = [
+    '<b/onmouseover=alert(1)>x',
+    '<span/onload=alert(1)>x',
+    '<b/ onmouseover=alert(1)>x',
+    '<img src=x onerror=alert(1)>',
+    '<script>alert(1)</script>',
+    '<b onclick="alert(1)">hi</b>',
+    '<span style="color:red;background:url(javascript:alert(1))">x</span>',
+    '<scr<script>ipt>alert(1)</script>',
+    '<span title="a>b" onload=alert(1)>x</span>',
+    '<svg><script>alert(1)</script></svg>',
+    '<iframe src=javascript:alert(1)>',
+    '<a href="javascript:alert(1)">x</a>',
+    '<font color="red onmouseover=alert(1)">x</font>',
+    '<b <img src=x onerror=alert(1)>x'
+  ]
+
+  it.each(PAYLOADS)('leaves no handler or scheme in %s', (payload) => {
+    const out = sanitiseRichText(payload)
+
+    expect(out).not.toMatch(/\son\w+\s*=/i)
+    expect(out).not.toMatch(/javascript:/i)
+    expect(out).not.toMatch(/<(script|iframe|svg|img|a)\b/i)
+  })
+
+  it('rebuilds a tag rather than letting an unmatched one through', () => {
+    // The bug was not that the payload was allowed — it was that it was never examined.
+    expect(sanitiseRichText('<b/onmouseover=alert(1)>x')).toBe('<b>x')
+  })
+
+  it('still keeps the formatting the field is for', () => {
+    expect(sanitiseRichText('<b>bold</b> and <span style="color:#ff0000">red</span>')).toBe(
+      '<b>bold</b> and <span style="color:#ff0000">red</span>'
+    )
+  })
+})

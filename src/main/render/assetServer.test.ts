@@ -298,3 +298,101 @@ describe('asset server', () => {
     rmSync(rootDir, { recursive: true, force: true })
   })
 })
+
+/**
+ * Loopback is reachable by every page in every browser on the machine, so "only listening on
+ * 127.0.0.1" was never the boundary it reads as. These are the things standing in for one.
+ */
+describe('asset server, as something hostile would meet it', () => {
+  afterEach(async () => {
+    await closeAssetServer()
+  })
+
+  async function serving(): Promise<{ url: string; root: string; origin: string; secret: string }> {
+    const root = mkdtempSync(join(tmpdir(), 'demo-editor-asset-hostile-'))
+    writeFileSync(join(root, 'private.wav'), 'narration-bytes')
+    const server = await getAssetServer(root)
+    const parsed = new URL(server.url)
+    return { url: server.url, root, origin: parsed.origin, secret: parsed.pathname.slice(1) }
+  }
+
+  it('will not serve a file to someone who did not get the URL from the app', async () => {
+    const { origin, root } = await serving()
+
+    // The port is findable by scanning; this is what is not.
+    const response = await fetch(`${origin}/private.wav`)
+
+    expect(response.status).toBe(404)
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('refuses a guessed secret the same way it refuses a missing file', async () => {
+    const { origin, root } = await serving()
+
+    const wrong = await fetch(`${origin}/${'0'.repeat(32)}/private.wav`)
+    const missing = await fetch(`${origin}/${'0'.repeat(32)}/nothing-here.wav`)
+
+    // Identical answers, so probing cannot map what is here.
+    expect(wrong.status).toBe(404)
+    expect(missing.status).toBe(404)
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('refuses a request arriving under someone else’s hostname', async () => {
+    const { url, root } = await serving()
+    const parsed = new URL(`${url}/private.wav`)
+
+    // `fetch` will not send a forged Host — it is a forbidden header there — so this goes out
+    // over a raw request, which is what an attacker would be using anyway.
+    const status = await new Promise<number>((resolve, reject) => {
+      const request = httpRequest(
+        {
+          host: '127.0.0.1',
+          port: Number(parsed.port),
+          path: parsed.pathname,
+          // The shape of DNS rebinding: a name the attacker controls, pointed at 127.0.0.1 so
+          // their page and this server share an origin.
+          headers: { Host: 'evil.example.com' }
+        },
+        (response) => {
+          response.resume()
+          resolve(response.statusCode ?? 0)
+        }
+      )
+      request.on('error', reject)
+      request.end()
+    })
+
+    expect(status).toBe(404)
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('still serves the app itself, holding the URL it was given', async () => {
+    const { url, root } = await serving()
+
+    const response = await fetch(`${url}/private.wav`)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('narration-bytes')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('gives each run a secret of its own', async () => {
+    const first = await serving()
+    await closeAssetServer()
+    const second = await serving()
+
+    expect(second.secret).not.toBe(first.secret)
+    rmSync(first.root, { recursive: true, force: true })
+    rmSync(second.root, { recursive: true, force: true })
+  })
+
+  it('still refuses to climb out of the root it was given', async () => {
+    const { url, root } = await serving()
+
+    const response = await fetch(`${url}/../../../etc/passwd`)
+
+    expect(response.status).toBe(404)
+    rmSync(root, { recursive: true, force: true })
+  })
+})

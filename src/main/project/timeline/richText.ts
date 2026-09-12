@@ -24,20 +24,58 @@ export function sanitiseRichText(html: string): string {
     .replace(/<(script|style|iframe|object|embed|svg|math)\b[\s\S]*?<\/\1>/gi, '')
     .replace(/<(script|style|iframe|object|embed|svg|math)\b[^>]*\/?>/gi, '')
 
-  return withoutDangerousBlocks.replace(/<\/?([a-z0-9]+)((?:\s[^>]*)?)>/gi, (match, rawTag, rawAttrs) => {
-    const tag = String(rawTag).toLowerCase()
-    if (!ALLOWED_TAGS.has(tag)) return ''
-    if (match.startsWith('</')) return `</${tag}>`
-    if (tag === 'br') return '<br>'
+  /**
+   * Anything a browser would read as a tag: a name, then everything up to the closing bracket.
+   *
+   * Requiring whitespace before the attributes is what an earlier version did, and HTML does not
+   * — `<b/onmouseover=alert(1)>` separates them with a slash, matched nothing, and was therefore
+   * copied through untouched into a live event handler. Nothing `<`-led may leave here without
+   * having been rebuilt.
+   *
+   * Quoted attribute values are stepped over whole, because a `>` inside one does not end the
+   * tag. Stopping at it instead split `<span title="a>b">` down the middle and spilled the
+   * remainder into the text — harmless, since text is not markup, but it corrupted the words.
+   */
+  const TAG = /<\/?([a-z0-9]+)((?:"[^"]*"|'[^']*'|[^>])*)>/gi
 
-    // A span is kept only for the one thing it is allowed to do.
-    if (tag === 'span') {
-      const colour = String(rawAttrs).match(/color\s*:\s*([^;"']+)/i)?.[1]?.trim()
-      return colour && COLOUR.test(colour) ? `<span style="color:${colour}">` : '<span>'
-    }
+  let out = ''
+  let readTo = 0
+  let match: RegExpExecArray | null
 
-    return `<${tag}>`
-  })
+  while ((match = TAG.exec(withoutDangerousBlocks)) !== null) {
+    out += escapeStrayBrackets(withoutDangerousBlocks.slice(readTo, match.index))
+    out += rebuildTag(match[0], match[1], match[2])
+    readTo = match.index + match[0].length
+  }
+
+  return out + escapeStrayBrackets(withoutDangerousBlocks.slice(readTo))
+}
+
+/** One allowed tag, written from its name alone — every attribute is discarded unread. */
+function rebuildTag(whole: string, rawTag: string, rawAttrs: string): string {
+  const tag = rawTag.toLowerCase()
+  if (!ALLOWED_TAGS.has(tag)) return ''
+  if (whole.startsWith('</')) return `</${tag}>`
+  if (tag === 'br') return '<br>'
+
+  // A span is kept only for the one thing it is allowed to do.
+  if (tag === 'span') {
+    const colour = rawAttrs.match(/color\s*:\s*([^;"']+)/i)?.[1]?.trim()
+    return colour && COLOUR.test(colour) ? `<span style="color:${colour}">` : '<span>'
+  }
+
+  return `<${tag}>`
+}
+
+/**
+ * A `<` that opened nothing, left where text goes.
+ *
+ * An unterminated tag is dropped at the end of input by the HTML parser rather than executed, so
+ * this is not the thing standing between the app and an injection — but text is where it belongs,
+ * and escaping it means no path through here ends in a bracket the parser gets to interpret.
+ */
+function escapeStrayBrackets(text: string): string {
+  return text.replace(/</g, '&lt;')
 }
 
 /**

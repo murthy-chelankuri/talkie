@@ -8,6 +8,8 @@ import { migrateStorageRoot } from './project/migrateStorageRoot'
 import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
 import { registerEditContextMenu } from './menu/editContextMenu'
+import { applyContentSecurityPolicy } from './security/contentSecurityPolicy'
+import { closeAssetServer } from './render/assetServer'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -76,6 +78,10 @@ app.whenReady().then(() => {
   migrateStorageRoot()
   repairAssetPaths()
 
+  // What the renderer may load and where it may connect. Set before the window exists, so the
+  // first document is covered rather than only the ones after it.
+  applyContentSecurityPolicy(session.defaultSession, Boolean(process.env['ELECTRON_RENDERER_URL']))
+
   // Recording a narration take needs the microphone, and Electron denies it unless asked.
   // Nothing else is granted: a request for anything but audio is refused.
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
@@ -95,4 +101,10 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// The asset server outlives the window that needed it otherwise, and went on serving every
+// project on the machine to anything on loopback for as long as the app was open.
+app.on('will-quit', () => {
+  void closeAssetServer()
 })
