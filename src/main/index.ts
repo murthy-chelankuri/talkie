@@ -7,6 +7,7 @@ import { registerTranscriptHandlers } from './ipc/transcriptHandlers'
 import { migrateStorageRoot } from './project/migrateStorageRoot'
 import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
+import { registerEditContextMenu } from './menu/editContextMenu'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -26,6 +27,9 @@ function createWindow(): void {
     }
   })
   mainWindowRef = mainWindow
+
+  // Right-clicking text reaches the system's own text features from here — see editContextMenu.
+  registerEditContextMenu(mainWindow.webContents)
 
   // Shown once it has something to draw, rather than as an empty frame that then fills in.
   mainWindow.once('ready-to-show', () => mainWindow.show())
