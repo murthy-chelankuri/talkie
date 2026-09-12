@@ -18,7 +18,15 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const titleIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 18 })
+  /**
+   * A settle, not an entrance.
+   *
+   * These used to start at nothing and fade up, which meant the first frame of every slide was
+   * empty — and when a slide opened the project, so was the first frame of the whole video: the
+   * frame every player, unfurl and thumbnail shows before anyone presses play. A slide that is
+   * read for four seconds cannot spend the first half-second arriving.
+   */
+  const titleIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 12 })
   const centred = theme.align === 'center'
 
   return (
@@ -32,7 +40,12 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
         fontFamily: theme.bodyFont
       }}
     >
-      <div style={{ opacity: titleIn, transform: `translateY(${interpolate(titleIn, [0, 1], [26, 0])}px)` }}>
+      <div
+        style={{
+          opacity: interpolate(titleIn, [0, 1], [0.82, 1]),
+          transform: `translateY(${interpolate(titleIn, [0, 1], [12, 0])}px)`
+        }}
+      >
         <h1
           style={{
             margin: 0,
@@ -63,7 +76,7 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
           {bullets.map((bullet, index) => {
             // Each line waits its turn, so the narration has room to reach it.
             const enter = spring({
-              frame: frame - 14 - index * 9,
+              frame: frame - index * 6,
               fps,
               config: { damping: 200 },
               durationInFrames: 16
@@ -78,8 +91,8 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
                   justifyContent: centred ? 'center' : 'flex-start',
                   gap: 22,
                   marginBottom: 30,
-                  opacity: enter,
-                  transform: `translateY(${interpolate(enter, [0, 1], [18, 0])}px)`
+                  opacity: interpolate(enter, [0, 1], [0.7, 1]),
+                  transform: `translateY(${interpolate(enter, [0, 1], [10, 0])}px)`
                 }}
               >
                 <span

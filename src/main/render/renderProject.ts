@@ -62,6 +62,10 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },
     serveUrl: bundleLocation,
     codec: 'h264',
+    // Tagged as high-definition colour, which is what it is. Left to itself the file came out
+    // marked bt470bg — the colour space of PAL television — with its transfer and primaries
+    // unset, so any player that honoured the tag showed the wrong colours for a 1080p video.
+    colorSpace: 'bt709',
     outputLocation: outputPath,
     inputProps: { timeline }
   })

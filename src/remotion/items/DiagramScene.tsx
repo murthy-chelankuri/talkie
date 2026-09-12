@@ -46,8 +46,9 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
     }
   }, [src])
 
-  const titleIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 16 })
-  const drawIn = spring({ frame: frame - 8, fps, config: { damping: 200 }, durationInFrames: 26 })
+  // Present on the first frame and settling, rather than arriving — see TextScene for why.
+  const titleIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 12 })
+  const drawIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 18 })
 
   // The SVG was normalised when it was drawn, so it already scales to whatever it is given.
   const sized = useMemo(() => markup || null, [markup])
@@ -68,8 +69,8 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
             fontSize: 64,
             fontWeight: 500,
             color: theme.heading,
-            opacity: titleIn,
-            transform: `translateY(${interpolate(titleIn, [0, 1], [20, 0])}px)`
+            opacity: interpolate(titleIn, [0, 1], [0.82, 1]),
+            transform: `translateY(${interpolate(titleIn, [0, 1], [10, 0])}px)`
           }}
         >
           <span dangerouslySetInnerHTML={{ __html: title }} />
@@ -83,8 +84,8 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: 0,
-          opacity: drawIn,
-          transform: `scale(${interpolate(drawIn, [0, 1], [0.965, 1])})`
+          opacity: interpolate(drawIn, [0, 1], [0.75, 1]),
+          transform: `scale(${interpolate(drawIn, [0, 1], [0.985, 1])})`
         }}
       >
         {sized ? (
