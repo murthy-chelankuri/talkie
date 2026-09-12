@@ -30,9 +30,10 @@ import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { hasVisibleContent } from '../lib/frameContent'
 import { chooseTickIntervalSeconds, formatTimecode, frameAtOffset, offsetAtFrame } from '../lib/timelineLayout'
-import { FPS } from '../../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../remotion/constants'
 import { richTextToPlain } from '../../../main/project/timeline/richText'
 import { RECORDED_VOICE, hasStaleVoice, segmentsForItem, voiceOf } from '../lib/clipNarration'
+import { WAVEFORM_BUCKETS, useWaveform } from '../lib/waveform'
 import { IconButton } from './ui/IconButton'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
@@ -206,6 +207,18 @@ export function VoiceLayer({
   const own = voice === RECORDED_VOICE
   const hasWords = Boolean(segment?.text.trim())
 
+  // Read only for a clip wide enough to draw it on, which also keeps a long project from
+  // decoding fifty takes to show fifty slivers.
+  const audioUrl = (item.data as { audioUrl?: string } | null | undefined)?.audioUrl
+  const waveform = useWaveform(audioUrl, narrated && !compact)
+
+  // Drawn where it actually plays: narration is held back a beat so the clip is seen before it
+  // is spoken over, and a take shorter than its clip leaves the rest of the clip silent. A
+  // waveform stretched over the whole band would claim otherwise.
+  const clipSeconds = item.duration / FPS
+  const startShare = NARRATION_LEAD_IN_FRAMES / FPS / clipSeconds
+  const widthShare = waveform ? Math.min(waveform.seconds / clipSeconds, 1 - startShare) : 0
+
   const tone = !narrated
     ? 'border-dashed border-border bg-transparent text-text-muted'
     : stale
@@ -228,16 +241,51 @@ export function VoiceLayer({
     <div
       title={label}
       className={cn(
-        'flex h-full items-center gap-1.5 overflow-hidden rounded border px-1.5 text-[10px]',
+        'relative flex h-full items-center overflow-hidden rounded border px-1.5 text-[10px]',
         tone
       )}
     >
-      {own ? (
-        <Mic size={11} className="shrink-0" aria-hidden="true" />
-      ) : (
-        <AudioLines size={11} className="shrink-0" aria-hidden="true" />
+      {/* The take itself, sitting where it plays. The bars are stretched to that span rather
+          than redrawn at each zoom, so scrubbing and zooming cost nothing once it is read. */}
+      {waveform && widthShare > 0 && (
+        <svg
+          viewBox={`0 0 ${WAVEFORM_BUCKETS} 20`}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          // An explicit height, not top-and-bottom: an <svg> is a replaced element, so once a
+          // width is given the height follows the viewBox ratio and `bottom` is ignored — which
+          // drew a 200px waveform inside a 28px band.
+          className="pointer-events-none absolute top-1 h-5 opacity-45"
+          style={{ left: `${startShare * 100}%`, width: `${widthShare * 100}%` }}
+        >
+          {waveform.peaks.map((peak, index) => {
+            // A floor, so silence between words is a mark on the line rather than a gap in it.
+            const height = Math.max(1.5, peak * 20)
+            return (
+              <rect
+                key={index}
+                x={index + 0.15}
+                y={(20 - height) / 2}
+                width={0.7}
+                height={height}
+                rx={0.35}
+                fill="currentColor"
+              />
+            )
+          })}
+        </svg>
       )}
-      {!compact && <span className="truncate">{label}</span>}
+
+      {/* Over the waveform rather than beside it, so the words stay readable and the picture
+          keeps the whole width it is entitled to. */}
+      <span className="relative flex items-center gap-1.5 rounded bg-surface/75 px-1 backdrop-blur-[1px]">
+        {own ? (
+          <Mic size={11} className="shrink-0" aria-hidden="true" />
+        ) : (
+          <AudioLines size={11} className="shrink-0" aria-hidden="true" />
+        )}
+        {!compact && <span className="truncate">{label}</span>}
+      </span>
     </div>
   )
 }
