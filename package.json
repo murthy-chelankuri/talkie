@@ -8,9 +8,10 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build && npm run build:mcp",
+    "notices": "node scripts/generateNotices.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "package": "npm run build && electron-builder --mac",
+    "package": "npm run notices && npm run build && electron-builder --mac",
     "package:dir": "npm run build && electron-builder --mac --dir",
     "build:mcp": "vite build --config vite.mcp.config.ts"
   },

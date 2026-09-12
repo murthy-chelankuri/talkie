@@ -9,6 +9,7 @@ import {
   Plug,
   RotateCcw,
   Download,
+  Scale,
   Sparkles,
   Subtitles,
   TriangleAlert,
@@ -34,15 +35,17 @@ import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import { VoicePicker } from './VoicePicker'
+import { LicencesSection } from './LicencesSection'
 
-type SectionId = 'narration' | 'voice' | 'recording' | 'export' | 'system'
+type SectionId = 'narration' | 'voice' | 'recording' | 'export' | 'system' | 'licences'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: string }> = [
   { id: 'narration', label: 'Narration', icon: <Sparkles size={15} />, blurb: 'Who writes the words' },
   { id: 'voice', label: 'Voice', icon: <Volume2 size={15} />, blurb: 'How they are spoken' },
   { id: 'recording', label: 'Recording', icon: <Video size={15} />, blurb: 'What a capture shows' },
   { id: 'export', label: 'Export', icon: <Download size={15} />, blurb: 'What the file carries' },
-  { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' }
+  { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' },
+  { id: 'licences', label: 'Licences', icon: <Scale size={15} />, blurb: 'What Talkie is built on' }
 ]
 
 /**
@@ -192,6 +195,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
               <RecordingSection settings={settings} onPatch={patchRecording} />
             ) : section === 'export' ? (
               <ExportSection settings={settings} onPatch={patchExport} />
+            ) : section === 'licences' ? (
+              <LicencesSection />
             ) : (
               <SystemSection checks={readiness} />
             )}
