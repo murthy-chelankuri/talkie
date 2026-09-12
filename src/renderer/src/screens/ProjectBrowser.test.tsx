@@ -128,21 +128,33 @@ describe('ProjectBrowser', () => {
     )
   })
 
-  it('asks only what it must, with the rest a click away', async () => {
+  it('puts every question on screen at once, with nothing to reveal or scroll to', async () => {
     const user = userEvent.setup()
     mockedOverviews.mockResolvedValue([])
     render(<ProjectBrowser onOpen={vi.fn()} />)
 
     await user.click(await screen.findByRole('button', { name: 'New project' }))
 
-    // A form in the way of starting is worse than a panel found later.
-    expect(screen.queryByRole('textbox', { name: 'Who is watching' })).not.toBeInTheDocument()
+    for (const field of [
+      'Project name',
+      'What this project is about',
+      'Who is watching',
+      'How it should sound',
+      'Never say'
+    ]) {
+      expect(screen.getByRole('textbox', { name: field })).toBeInTheDocument()
+    }
+  })
 
-    await user.click(screen.getByRole('button', { name: /Audience, tone and rules/ }))
+  it('says which of them actually has to be answered', async () => {
+    // Four questions look like a form unless it is clear that three can be left alone.
+    const user = userEvent.setup()
+    mockedOverviews.mockResolvedValue([])
+    render(<ProjectBrowser onOpen={vi.fn()} />)
 
-    expect(screen.getByRole('textbox', { name: 'Who is watching' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'How it should sound' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Never say' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+
+    expect(screen.getByText(/Only the name is needed/)).toBeInTheDocument()
   })
 
   it('reads a comma-separated list of rules as separate rules', async () => {
@@ -158,7 +170,6 @@ describe('ProjectBrowser', () => {
 
     await user.click(await screen.findByRole('button', { name: 'New project' }))
     await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Rules')
-    await user.click(screen.getByRole('button', { name: /Audience, tone and rules/ }))
     await user.type(screen.getByRole('textbox', { name: 'Never say' }), 'pricing, roadmap')
     await user.click(screen.getByRole('button', { name: 'Create project' }))
 

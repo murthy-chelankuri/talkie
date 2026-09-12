@@ -135,7 +135,6 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newName, setNewName] = useState('')
   const [newContext, setNewContext] = useState<ProjectContext>(EMPTY_CONTEXT)
-  const [showMore, setShowMore] = useState(false)
   // Held as typed, not as parsed: deriving the field's value from the parsed list deleted the
   // comma on the keystroke that made it, so "pricing, roadmap" became one rule called
   // "pricingroadmap".
@@ -163,7 +162,6 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
       setNewName('')
       setNewContext(EMPTY_CONTEXT)
       setNeverSayText('')
-      setShowMore(false)
       setShowCreateForm(false)
       onOpen(created)
     } catch (err) {
@@ -188,7 +186,6 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
     setNewName('')
     setNewContext(EMPTY_CONTEXT)
     setNeverSayText('')
-    setShowMore(false)
   }
 
   /**
@@ -199,46 +196,61 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
    * is worse than a panel found later, so only the question that does the most work is shown —
    * the other three are a click away, and every one of them can be left empty.
    */
+  /**
+   * Asked while the answer is in mind.
+   *
+   * This is the one moment someone is actively thinking about what they are about to make, and
+   * the only thing ever asked for was the name. Laid out across the width it has rather than in
+   * one tall column: everything fits on screen at once, so nothing is hidden behind a disclosure
+   * and nothing has to be scrolled to — which is what made four short questions feel like a form.
+   *
+   * Only the name is required. The rest says so.
+   */
   const createForm = (
-    <div className="flex w-full max-w-xl flex-col gap-3 rounded-xl border border-accent bg-surface p-4">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-[13px] font-medium text-text">Name</span>
-        <Input
-          autoFocus
-          aria-label="Project name"
-          value={newName}
-          onChange={(event) => setNewName(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) handleCreate()
-            if (event.key === 'Escape') handleCancelCreate()
-          }}
-          placeholder="What are you showing?"
-          disabled={creating}
-        />
-      </label>
+    <div className="flex w-full flex-col gap-4 rounded-xl border border-accent bg-surface p-5">
+      <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-text">Name</span>
+            <Input
+              autoFocus
+              aria-label="Project name"
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleCreate()
+                if (event.key === 'Escape') handleCancelCreate()
+              }}
+              placeholder="What are you showing?"
+              disabled={creating}
+            />
+          </label>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-[13px] font-medium text-text">What it is about</span>
-        <span className="text-[11px] leading-relaxed text-text-muted">
-          The narration is written from this. Without it, the words can only describe what moved
-          on screen. You can change it later.
-        </span>
-        <Textarea
-          aria-label="What this project is about"
-          value={newContext.background}
-          onChange={(event) => setNewContext((c) => ({ ...c, background: event.target.value }))}
-          placeholder={
-            'Acme Ads is a self-serve advertising tool for small shops.\nA saved group of customers is an "audience". Budgets are always daily.'
-          }
-          disabled={creating}
-          className="min-h-[5rem] resize-y leading-relaxed"
-        />
-      </label>
+          <label className="flex min-h-0 flex-1 flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-text">What it is about</span>
+            <span className="text-[11px] leading-relaxed text-text-muted">
+              The narration is written from this. Without it, the words can only describe what
+              moved on screen.
+            </span>
+            <Textarea
+              aria-label="What this project is about"
+              value={newContext.background}
+              onChange={(event) => setNewContext((c) => ({ ...c, background: event.target.value }))}
+              placeholder={
+                'Acme Ads is a self-serve advertising tool for small shops.\nA saved group of customers is an "audience". Budgets are always daily.'
+              }
+              disabled={creating}
+              className="min-h-[8.5rem] flex-1 resize-y leading-relaxed"
+            />
+          </label>
+        </div>
 
-      {showMore && (
-        <>
+        <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-text">Who is watching</span>
+            <span className="text-[11px] leading-relaxed text-text-muted">
+              Decides what is assumed and what is explained.
+            </span>
             <Input
               aria-label="Who is watching"
               value={newContext.audience}
@@ -247,6 +259,7 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
               disabled={creating}
             />
           </label>
+
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-text">How it should sound</span>
             <Input
@@ -257,8 +270,12 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
               disabled={creating}
             />
           </label>
+
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-text">Never say</span>
+            <span className="text-[11px] leading-relaxed text-text-muted">
+              Separate with commas. Every draft is checked against these.
+            </span>
             <Input
               aria-label="Never say"
               value={neverSayText}
@@ -267,27 +284,19 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
               disabled={creating}
             />
           </label>
-        </>
-      )}
+        </div>
+      </div>
 
-      {!showMore && (
-        <button
-          type="button"
-          onClick={() => setShowMore(true)}
-          className="flex items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
-        >
-          <Plus size={11} />
-          Audience, tone and rules
-        </button>
-      )}
-
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2 border-t border-border pt-4">
         <Button onClick={handleCreate} disabled={creating || !newName.trim()}>
           {creating ? <Spinner size="sm" /> : 'Create project'}
         </Button>
         <Button variant="ghost" onClick={handleCancelCreate} disabled={creating}>
           Cancel
         </Button>
+        <span className="ml-auto text-[11px] text-text-muted">
+          Only the name is needed. Everything else can be added later.
+        </span>
       </div>
     </div>
   )
