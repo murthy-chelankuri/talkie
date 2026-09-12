@@ -20,7 +20,7 @@ import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { voiceProgress } from '../lib/voiceProgress'
 import { onSettingsChanged } from '../lib/settingsChanged'
-import { settingsClient } from '../api/projectClient'
+import { settingsClient, type Voice } from '../api/projectClient'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { DemoComposition } from '../../../remotion/DemoComposition'
@@ -54,6 +54,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
   const [appVoice, setAppVoice] = useState('')
+  const [voices, setVoices] = useState<Voice[]>([])
   const [importingDeck, setImportingDeck] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
@@ -176,6 +177,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       void settingsClient.read().then((settings) => setAppVoice(settings.speech.voice))
     }
     load()
+    // The list of voices this machine has, for the demo's own voice picker.
+    void settingsClient.voices().then(setVoices)
     return onSettingsChanged(load)
   }, [])
 
@@ -195,6 +198,15 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     const keeping = progress.previousVoice
     if (!keeping) return
     setProject(await projectClient.setVoice(projectId, keeping))
+  }
+
+  /**
+   * Change the voice this demo speaks in, at any point, to anything — including back to
+   * following the app's. Nothing already recorded is touched: the mismatch card then offers to
+   * re-speak, which is the only place work gets redone.
+   */
+  async function handleProjectVoiceChange(next: string | null): Promise<void> {
+    setProject(await projectClient.setVoice(projectId, next))
   }
   const needingNarration = progress.needing
 
@@ -519,6 +531,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               progress={progress}
               currentVoice={voice}
               onKeepProjectVoice={handleKeepProjectVoice}
+              projectVoice={project?.voice ?? null}
+              appVoice={appVoice}
+              voices={voices}
+              onProjectVoiceChange={(next) => void handleProjectVoiceChange(next)}
               onAddScene={() => setSceneEditing('new')}
               recording={recording}
               exporting={exporting}

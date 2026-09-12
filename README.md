@@ -52,6 +52,16 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 `APPLE_TEAM_ID`, remove `identity: null` from `electron-builder.yml`, and turn
 `hardenedRuntime` on.
 
+## Which voice a demo speaks in
+
+Every demo can hold a voice of its own, chosen in the editor beside the project summary. Settings
+holds the **default for new demos**; a demo that has chosen a voice keeps it, so changing the
+default never turns finished work into work that looks unfinished.
+
+The picker's first option puts a demo back to following the default, so the choice is reversible
+at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
+they are, and the panel then offers to re-speak them in the new voice if that is what you want.
+
 ## What a recording shows
 
 A screen recording shows the result of a click but not the click: a value changes somewhere and

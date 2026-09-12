@@ -34,6 +34,10 @@ function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
       totalFrames={0}
       progress={noProgress}
       currentVoice="Samantha"
+      projectVoice={null}
+      appVoice="Samantha"
+      voices={[]}
+      onProjectVoiceChange={vi.fn()}
       recording={false}
       exporting={false}
       exportedPath={null}
@@ -186,5 +190,57 @@ describe('SourcesPanel', () => {
     renderPanel({ exportError: 'Rendering failed.' })
 
     expect(screen.getByRole('alert')).toHaveTextContent('Rendering failed.')
+  })
+})
+
+/**
+ * The voice a demo speaks in has to be changeable at any time, in both directions. It was once
+ * reachable only from a card that appeared on a mismatch, so a voice could be chosen once and
+ * never changed again.
+ */
+describe('the voice this demo speaks in', () => {
+  const voices = [
+    { name: 'Samantha', locale: 'en_US', sample: 'Hello.', novelty: false },
+    { name: 'Rishi', locale: 'en_IN', sample: 'Hello.', novelty: false }
+  ] as never
+
+  it('is offered whether or not anything is wrong', () => {
+    renderPanel({ voices })
+
+    expect(screen.getByRole('combobox', { name: 'Voice for this demo' })).toBeInTheDocument()
+  })
+
+  it('follows the app until a voice is chosen, and says which that is', () => {
+    renderPanel({ voices, projectVoice: null, appVoice: 'Samantha' })
+
+    expect(screen.getByRole('option', { name: 'App default (Samantha)' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Voice for this demo' })).toHaveValue('')
+  })
+
+  it('shows the voice the demo has been pinned to', () => {
+    renderPanel({ voices, projectVoice: 'Rishi', appVoice: 'Samantha' })
+
+    expect(screen.getByRole('combobox', { name: 'Voice for this demo' })).toHaveValue('Rishi')
+  })
+
+  it('can pin a demo to a voice', async () => {
+    const user = userEvent.setup()
+    const onProjectVoiceChange = vi.fn()
+    renderPanel({ voices, projectVoice: null, onProjectVoiceChange })
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Voice for this demo' }), 'Rishi')
+
+    expect(onProjectVoiceChange).toHaveBeenCalledWith('Rishi')
+  })
+
+  it('can let a pinned demo follow the app again, which is the way out', async () => {
+    const user = userEvent.setup()
+    const onProjectVoiceChange = vi.fn()
+    renderPanel({ voices, projectVoice: 'Rishi', appVoice: 'Samantha', onProjectVoiceChange })
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Voice for this demo' }), '')
+
+    // Null, not an empty string: the project keeps no voice of its own.
+    expect(onProjectVoiceChange).toHaveBeenCalledWith(null)
   })
 })

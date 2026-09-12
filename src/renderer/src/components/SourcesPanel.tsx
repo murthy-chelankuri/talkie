@@ -15,7 +15,9 @@ import { formatTimecode } from '../lib/timelineLayout'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
+import type { Voice } from '../api/projectClient'
 import { Button } from './ui/Button'
+import { FOLLOWS_DEFAULT, VoicePicker } from './VoicePicker'
 import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
 import { ErrorBanner } from './ui/ErrorBanner'
@@ -165,6 +167,10 @@ export function SourcesPanel({
   progress,
   currentVoice,
   onKeepProjectVoice,
+  projectVoice,
+  appVoice,
+  voices,
+  onProjectVoiceChange,
   recording,
   exporting,
   exportedPath,
@@ -191,6 +197,11 @@ export function SourcesPanel({
   currentVoice: string
   /** Adopt the voice the narration was read in, instead of re-speaking it. */
   onKeepProjectVoice?: () => void
+  /** The voice pinned to this demo, or null when it follows the app's. */
+  projectVoice: string | null
+  appVoice: string
+  voices: Voice[]
+  onProjectVoiceChange: (voice: string | null) => void
   recording: boolean
   exporting: boolean
   exportedPath: string | null
@@ -242,6 +253,28 @@ export function SourcesPanel({
 
       {!collapsed && (
         <ProjectSummary totalFrames={totalFrames} clipCount={timeline.length} narrated={narrated} />
+      )}
+
+      {/* The voice this demo speaks in, always here rather than only when something is wrong.
+          It was reachable only from a card that appeared on a mismatch, which meant a voice
+          could be chosen once and never changed again. */}
+      {!collapsed && (
+        <div className="mt-2 flex flex-col gap-1.5 rounded-lg border border-border bg-surface p-3">
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-[11px] font-medium text-text">Voice</span>
+            {!projectVoice && (
+              <span className="text-[10px] text-text-muted">from Settings</span>
+            )}
+          </span>
+          <VoicePicker
+            ariaLabel="Voice for this demo"
+            value={projectVoice ?? FOLLOWS_DEFAULT}
+            voices={voices}
+            onChange={(next) => onProjectVoiceChange(next === FOLLOWS_DEFAULT ? null : next)}
+            // Short enough to read whole in a narrow panel, where the long form was cut off.
+            defaultOption={{ label: appVoice ? `App default (${appVoice})` : 'App default' }}
+          />
+        </div>
       )}
 
       {/* Under the summary, because it qualifies it. A loose line of text here read as something

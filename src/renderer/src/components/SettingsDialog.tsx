@@ -30,6 +30,7 @@ import { Input } from './ui/Input'
 import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
+import { VoicePicker } from './VoicePicker'
 
 type SectionId = 'narration' | 'voice' | 'recording' | 'system'
 
@@ -389,29 +390,20 @@ function VoiceSection({
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
-      <Field label="Narrator" hint="Reads the narration aloud.">
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Narration voice"
-            value={settings.speech.voice}
-            onChange={(event) => onPatch({ voice: event.target.value })}
-            className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
-          >
-            {groupVoices(voices).map(([locale, group]) => (
-              <optgroup key={locale} label={describeLocale(locale)}>
-                {group.map((voice) => (
-                  <option key={voice.name} value={voice.name}>
-                    {voice.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <Button variant="secondary" disabled={previewing} onClick={onPreview}>
-            {previewing ? <Spinner size="sm" /> : <Volume2 size={15} />}
-            Hear it
-          </Button>
-        </div>
+      {/* A default rather than the answer: a demo that has chosen a voice keeps it, which is
+          what stops changing this from making finished work look unfinished. */}
+      <Field
+        label="Default voice for new demos"
+        hint="Each demo can use a voice of its own — set that while editing it."
+      >
+        <VoicePicker
+          ariaLabel="Narration voice"
+          value={settings.speech.voice}
+          voices={voices}
+          onChange={(voice) => void onPatch({ voice })}
+          onPreview={onPreview}
+          previewing={previewing}
+        />
       </Field>
 
       <Field
@@ -851,39 +843,3 @@ function CheckRow({ check }: { check: ReadinessCheck }): JSX.Element {
 }
 
 /** Voices for the language the app is running in come first; the rest follow alphabetically. */
-function groupVoices(voices: Voice[]): Array<[string, Voice[]]> {
-  const groups = new Map<string, Voice[]>()
-  for (const voice of voices) {
-    const existing = groups.get(voice.locale)
-    if (existing) existing.push(voice)
-    else groups.set(voice.locale, [voice])
-  }
-
-  const preferred = navigator.language.replace('-', '_')
-  const preferredLanguage = preferred.split('_')[0]
-
-  return [...groups.entries()]
-    .map(([locale, group]) => {
-      // Novelty voices stay available but never sit above a usable narrator.
-      group.sort((a, b) => Number(a.novelty) - Number(b.novelty) || a.name.localeCompare(b.name))
-      return [locale, group] as [string, Voice[]]
-    })
-    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
-
-  function rank(locale: string): number {
-    if (locale === preferred) return 0
-    return locale.startsWith(preferredLanguage) ? 1 : 2
-  }
-}
-
-function describeLocale(locale: string): string {
-  try {
-    const [language, region] = locale.split('_')
-    const languageName = new Intl.DisplayNames([navigator.language], { type: 'language' }).of(language)
-    if (!region) return languageName ?? locale
-    const regionName = new Intl.DisplayNames([navigator.language], { type: 'region' }).of(region)
-    return `${languageName} (${regionName})`
-  } catch {
-    return locale
-  }
-}
