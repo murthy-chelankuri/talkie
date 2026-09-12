@@ -55,13 +55,13 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 ## Rewriting narration with the system's own tools
 
 Right-clicking selected text anywhere you can type — the narration box, a slide's title — opens
-an edit menu with **Services** on it, which is where macOS puts what it can do with the words you
-have selected. On a Mac with Apple Intelligence turned on that includes Writing Tools: Rewrite,
-Proofread, Make Concise and the rest, applied straight back into the field.
+an edit menu with Writing Tools on it, where Apple Intelligence is turned on: Rewrite, Proofread,
+Make Concise and the rest, applied straight back into the field. Spelling corrections, the usual
+editing commands and the Services menu are on it too.
 
-Talkie implements none of that and stores none of it; it simply stops being in the way. If the
-Writing Tools entries are missing, they are turned off rather than absent — System Settings →
-Apple Intelligence & Siri.
+Talkie implements none of that and stores none of it; it simply stops being in the way. This
+needs a Chromium that has adopted Apple's Writing Tools API, which is why the app runs on
+Electron 36 or newer — Electron 32 shipped Chromium 128, older than the feature itself.
 
 ## Which voice a demo speaks in
 

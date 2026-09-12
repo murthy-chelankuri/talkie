@@ -48,7 +48,8 @@ export async function renderPdfPages(
       context.fillStyle = '#ffffff'
       context.fillRect(0, 0, canvas.width, canvas.height)
 
-      await page.render({ canvasContext: context, viewport }).promise
+      // pdfjs 6 takes the canvas itself rather than inferring it from the context.
+      await page.render({ canvas, canvasContext: context, viewport }).promise
       pages.push({ png: await toPng(canvas) })
 
       page.cleanup()

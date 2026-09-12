@@ -5,10 +5,13 @@ import { join } from 'path'
 /**
  * Guards against a class of bug that unit tests cannot see.
  *
- * Slide import rasterises PDFs in the renderer, which is Electron's Chromium — an older engine
- * than the Node these tests run under. pdfjs 6 calls `Uint8Array.prototype.toHex`, which Node
- * has and that Chromium does not, so importing a deck failed at runtime with "n.toHex is not a
- * function" while every test passed. Raising either version means checking the other.
+ * Slide import rasterises PDFs in the renderer, which is Electron's Chromium, not the Node these
+ * tests run under. pdfjs 6 calls `Uint8Array.prototype.toHex`; Node had it and Electron 32's
+ * Chromium 128 did not, so importing a deck failed at runtime with "n.toHex is not a function"
+ * while every test passed. Chromium 152 has it, which is what allowed pdfjs to be raised again.
+ *
+ * The pairing is what matters, so this fails whenever either side moves — not because the new
+ * pair is wrong, but because nothing else will make anyone check it in the renderer.
  */
 const packageJson = JSON.parse(
   readFileSync(join(__dirname, '..', '..', '..', 'package.json'), 'utf-8')
@@ -18,24 +21,23 @@ function majorOf(range: string): number {
   return Number(range.replace(/^[^\d]*/, '').split('.')[0])
 }
 
-describe('renderer runtime compatibility', () => {
-  it('keeps pdfjs on a line the bundled Chromium can actually run', () => {
-    const pdfjs = packageJson.dependencies?.['pdfjs-dist']
-    expect(pdfjs, 'pdfjs-dist is no longer a dependency').toBeTruthy()
+/** The pair last checked together by importing a real deck in the packaged renderer. */
+const CHECKED_TOGETHER = { electron: 44, pdfjs: 6 }
 
-    // 5.x and 6.x both reach for JS newer than Electron 32 ships.
-    expect(
-      majorOf(pdfjs as string),
-      'pdfjs was raised past 4.x — check it still runs in Electron\'s Chromium before allowing this'
-    ).toBeLessThanOrEqual(4)
+describe('renderer runtime compatibility', () => {
+  it('still has the pdf library the importer needs', () => {
+    expect(packageJson.dependencies?.['pdfjs-dist'], 'pdfjs-dist is no longer a dependency').toBeTruthy()
   })
 
-  it('notices if Electron is raised, since that is what pins pdfjs', () => {
+  it('has not moved either side of a pairing that was checked together', () => {
     const electron = packageJson.devDependencies?.electron ?? packageJson.dependencies?.electron
-    expect(electron).toBeTruthy()
+    const pdfjs = packageJson.dependencies?.['pdfjs-dist']
 
-    // If this fails, Electron moved: re-check whether pdfjs can be raised with it.
-    expect(majorOf(electron as string)).toBe(32)
+    // If this fails, one of them moved. Import a deck in the built app before updating the pair:
+    // nothing else exercises pdfjs against Electron's Chromium rather than against Node.
+    expect({ electron: majorOf(electron as string), pdfjs: majorOf(pdfjs as string) }).toEqual(
+      CHECKED_TOGETHER
+    )
   })
 
   it('has not quietly picked up a second pdf library to drift out of step with', () => {
