@@ -1,10 +1,20 @@
-import { OffthreadVideo } from 'remotion'
+import { OffthreadVideo, useCurrentFrame } from 'remotion'
+import { zoomAt, type ClickFocus } from '../clickZoom'
 
 export function VideoItem({ data }: { data: unknown }): JSX.Element {
   // Same constraint as ImageItem: `src` must already be a fetchable http URL by the time it
   // reaches here (resolveTimelineAssetUrls handles that), since Remotion serves compositions
   // from an http://localhost page and Chromium blocks file:// subresources on such pages.
-  const { src, trimBefore } = data as { src: string; trimBefore?: number }
+  const { src, trimBefore, focus } = data as {
+    src: string
+    trimBefore?: number
+    focus?: ClickFocus[]
+  }
+
+  // A recording is a wide, even picture of a whole window, and cannot say where to look. The
+  // recorder wrote down where every click landed, so the picture leans towards them — see
+  // clickZoom.ts for why the move is as small as it is.
+  const zoom = zoomAt(useCurrentFrame(), focus ?? [])
 
   // OffthreadVideo, not Video: during rendering it extracts frames with Remotion's own
   // compositor instead of seeking an HTML5 <video>, which hangs indefinitely (delayRender
@@ -16,7 +26,13 @@ export function VideoItem({ data }: { data: unknown }): JSX.Element {
     <OffthreadVideo
       src={src}
       trimBefore={trimBefore}
-      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        transform: `scale(${zoom.scale})`,
+        transformOrigin: `${zoom.originX}% ${zoom.originY}%`
+      }}
     />
   )
 }

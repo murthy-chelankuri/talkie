@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { request as httpRequest } from 'http'
@@ -228,7 +228,48 @@ describe('asset server', () => {
 
     const resolved = resolveTimelineAssetUrls(timeline, '/root', 'http://127.0.0.1:5000')
 
-    expect(resolved[0].data).toEqual({ src: 'http://127.0.0.1:5000/sources/session-1/video.webm' })
+    // A video also carries where its clicks landed; with no log beside it, that is simply empty.
+    expect(resolved[0].data).toEqual({
+      src: 'http://127.0.0.1:5000/sources/session-1/video.webm',
+      focus: []
+    })
+  })
+
+  it('gives a video clip the clicks inside it, timed from its own start', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-focus-test-'))
+    const session = join(rootDir, 'sources', 'session-1')
+    mkdirSync(session, { recursive: true })
+    writeFileSync(
+      join(session, 'actions.jsonl'),
+      [
+        // Before the trim: belongs to a part of the recording this clip does not show.
+        JSON.stringify({ t: 500, type: 'click', x: 0.1, y: 0.1 }),
+        JSON.stringify({ t: 4000, type: 'click', x: 0.4, y: 0.6 }),
+        // Past the end of the clip.
+        JSON.stringify({ t: 60000, type: 'click', x: 0.9, y: 0.9 })
+      ].join('\n')
+    )
+
+    const timeline = [
+      {
+        id: 'a',
+        kind: 'video',
+        start: 0,
+        duration: 300,
+        data: { src: join(session, 'video.webm'), trimBefore: 60 }
+      }
+    ]
+
+    const focus = (resolveTimelineAssetUrls(timeline, rootDir, 'http://127.0.0.1:5000')[0].data as {
+      focus: { frame: number; x: number }[]
+    }).focus
+
+    // Only the one inside the clip, and shifted by the two seconds trimmed off the front.
+    expect(focus).toHaveLength(1)
+    expect(focus[0].frame).toBe(Math.round(4 * 30) - 60)
+    expect(focus[0].x).toBe(0.4)
+
+    rmSync(rootDir, { recursive: true, force: true })
   })
 
   it('serves a .webm file with the video/webm content type', async () => {

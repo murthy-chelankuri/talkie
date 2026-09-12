@@ -2,9 +2,17 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
-import { readTimelineLenient, readNarrationAudioPaths, openProject } from '../project/projectApi'
+import { writeFileSync } from 'fs'
+import {
+  readTimelineLenient,
+  readNarrationAudioPaths,
+  readTranscript,
+  openProject
+} from '../project/projectApi'
 import { slugify } from '../project/slug'
 import { findProjectDir, projectsRootDir } from '../project/paths'
+import { buildCaptions, toSrt } from '../transcript/captions'
+import { getWavDurationSeconds } from '../tts/wavDuration'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
@@ -58,5 +66,45 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     inputProps: { timeline }
   })
 
+  writeCaptionsBeside(outputPath, id, baseDir)
+
   return outputPath
+}
+
+/**
+ * The narration as a subtitle file, written next to the video it belongs to.
+ *
+ * Beside rather than burned in: captions are the first thing anyone needs to correct, and a
+ * word painted into the picture cannot be corrected without rendering the whole thing again.
+ * Every player and every upload form reads SubRip, so this is the form that travels.
+ *
+ * Never fatal. The video is finished and on disk by this point, and a missing sidecar is not a
+ * reason to tell someone their export failed.
+ */
+function writeCaptionsBeside(outputPath: string, id: string, baseDir: string): void {
+  try {
+    const captions = buildCaptions(
+      readTimelineLenient(id, baseDir),
+      readTranscript(id, baseDir),
+      (segment) => durationOfTake(id, segment.audioFile, baseDir)
+    )
+    if (captions.length === 0) return
+
+    writeFileSync(outputPath.replace(/\.mp4$/, '.srt'), toSrt(captions), 'utf-8')
+  } catch (err) {
+    console.error('Could not write the caption file beside the video:', err)
+  }
+}
+
+function durationOfTake(id: string, audioFile: string | undefined, baseDir: string): number | undefined {
+  if (!audioFile) return undefined
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) return undefined
+
+  try {
+    return getWavDurationSeconds(join(dir, 'audio', audioFile))
+  } catch {
+    // A take whose file has gone is one the video does not play either.
+    return undefined
+  }
 }

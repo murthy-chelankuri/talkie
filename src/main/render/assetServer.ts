@@ -1,9 +1,12 @@
 import { createServer, type Server } from 'http'
 import { createReadStream, existsSync, statSync } from 'fs'
-import { extname, join, normalize, relative, sep } from 'path'
+import { dirname, extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
 import type { TimelineItem } from '../../remotion/types'
 import type { NarrationAudio } from '../project/projectApi'
+import { readActionLog } from '../capture/actionLog'
+import { mergeFocuses, type ClickFocus } from '../../remotion/clickZoom'
+import { FPS } from '../../remotion/constants'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -143,6 +146,33 @@ export function resolveAssetUrl(absolutePath: string, rootDir: string, serverUrl
     .join('/')}`
 }
 
+/**
+ * The clicks inside one clip, as frames from that clip's own start.
+ *
+ * The action log sits beside the recording and is written in milliseconds from the moment the
+ * browser opened, so a clip trimmed at the front has to have that taken off — otherwise the
+ * picture would lean towards a click a second before it happened.
+ */
+function focusesFor(videoPath: string, item: TimelineItem, trimBefore: number): ClickFocus[] {
+  try {
+    const entries = readActionLog(join(dirname(videoPath), 'actions.jsonl'))
+
+    const focuses = entries
+      .filter((entry) => entry.type === 'click' && typeof entry.x === 'number')
+      .map((entry) => ({
+        frame: Math.round((entry.t / 1000) * FPS) - trimBefore,
+        x: entry.x as number,
+        y: entry.y as number
+      }))
+      .filter((focus) => focus.frame >= 0 && focus.frame < item.duration)
+
+    return mergeFocuses(focuses)
+  } catch {
+    // A recording with no log still plays; it simply does not lean anywhere.
+    return []
+  }
+}
+
 export function resolveTimelineAssetUrls(
   timeline: TimelineItem[],
   rootDir: string,
@@ -159,13 +189,15 @@ export function resolveTimelineAssetUrls(
       return audioUrl ? { ...item, data: { ...(item.data as object), audioUrl } } : item
     }
 
-    const data = item.data as { src: string }
+    const data = item.data as { src: string; trimBefore?: number }
     return {
       ...item,
       data: {
         ...data,
         src: resolveAssetUrl(data.src, rootDir, serverUrl),
-        ...(audioUrl ? { audioUrl } : {})
+        ...(audioUrl ? { audioUrl } : {}),
+        // Where the clicks in this clip landed, so the picture can lean towards them.
+        ...(item.kind === 'video' ? { focus: focusesFor(data.src, item, data.trimBefore ?? 0) } : {})
       }
     }
   })

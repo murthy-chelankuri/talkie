@@ -51,10 +51,22 @@ const INJECTED_LISTENER_SCRIPT = `
   document.addEventListener('click', (event) => {
     const el = event.target
     if (!(el instanceof Element)) return
+
+    // Where it happened, not only what it was. Recorded as a share of the viewport rather than
+    // in pixels, so it still means the same thing in a video of a different size — this is what
+    // lets the export draw attention to the place a click landed.
+    const box = el.getBoundingClientRect()
+    const width = window.innerWidth || 1
+    const height = window.innerHeight || 1
+
     window.__demoEditorRecordAction({
       kind: 'click',
       selector: selectorFor(el),
-      text: (el.textContent || '').trim().slice(0, 100)
+      text: (el.textContent || '').trim().slice(0, 100),
+      x: (box.left + box.width / 2) / width,
+      y: (box.top + box.height / 2) / height,
+      w: box.width / width,
+      h: box.height / height
     })
   }, true)
 
@@ -116,7 +128,9 @@ export async function startRecordingSession(
         type: data.kind as ActionLogEntry['type'],
         selector: data.selector as string | undefined,
         text: data.text as string | undefined,
-        value: isRedactedInput ? '[redacted]' : (data.value as string | undefined)
+        value: isRedactedInput ? '[redacted]' : (data.value as string | undefined),
+        ...(typeof data.x === 'number' ? { x: data.x as number, y: data.y as number } : {}),
+        ...(typeof data.w === 'number' ? { w: data.w as number, h: data.h as number } : {})
       }
       appendActionLogEntry(actionLogPath, entry)
     })

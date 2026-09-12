@@ -69,3 +69,31 @@ describe('what a recording is worth looking at', () => {
     rmSync(baseDir, { recursive: true, force: true })
   }, 60_000)
 })
+
+describe('where a click landed', () => {
+  it('records the place, not only the thing', async () => {
+    // A screen recording cannot say where to look. These are what let the export say it.
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-click-where-'))
+    const project = createProject('Where', baseDir)
+    writeFileSync(
+      join(baseDir, 'page.html'),
+      `<!doctype html><body style="margin:0">
+       <button id="go" style="position:absolute;left:25%;top:50%;width:10%;height:10%">Go</button>
+       </body>`
+    )
+
+    const session = await startRecordingSession(project.id, `file://${join(baseDir, 'page.html')}`, baseDir)
+    await session.page.click('#go')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    const { actionLogPath } = await session.stop()
+
+    const click = readActionLog(actionLogPath).find((entry) => entry.type === 'click')
+    expect(click).toBeTruthy()
+    // Shares of the viewport, so they mean the same thing at any render size.
+    expect(click?.x).toBeCloseTo(0.3, 1)
+    expect(click?.y).toBeCloseTo(0.55, 1)
+    expect(click?.w).toBeCloseTo(0.1, 1)
+
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 60_000)
+})
