@@ -1,5 +1,19 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, Cloud, Copy, Laptop, Plug, RotateCcw, Sparkles, TriangleAlert, Volume2, Wrench, X } from 'lucide-react'
+import {
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Cloud,
+  Copy,
+  Laptop,
+  Plug,
+  RotateCcw,
+  Sparkles,
+  TriangleAlert,
+  Volume2,
+  Wrench,
+  X
+} from 'lucide-react'
 import {
   settingsClient,
   type ProviderDescription,
@@ -633,7 +647,16 @@ function McpSection(): JSX.Element | null {
   )
 }
 
+/**
+ * What this machine can and cannot do.
+ *
+ * A check that passes has nothing to tell anyone, so a list of five green rows is five rows of
+ * decoration — it takes up the place where a real problem would have to be noticed. Everything
+ * working collapses to a single line; anything that needs attention is what the panel shows.
+ */
 function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
+  const [showAll, setShowAll] = useState(false)
+
   if (checks.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -643,53 +666,113 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
   }
 
   const unready = checks.filter((check) => !check.ready)
+  const ready = checks.filter((check) => check.ready)
+  const allWell = unready.length === 0
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs leading-relaxed text-text-muted">
-        {unready.length === 0
-          ? 'Everything Talkie needs is available here.'
-          : 'Anything below without a setting is still optional unless it is marked in red.'}
-      </p>
-
-      <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
-        {checks.map((check) => (
-          <div key={check.id} className="flex items-start gap-3 px-4 py-3">
-            <span
-              className={cn(
-                'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
-                check.ready ? 'bg-success' : check.required ? 'bg-danger' : 'bg-text-muted/40'
-              )}
-              aria-label={check.ready ? 'Ready' : check.required ? 'Not ready' : 'Optional, not set up'}
-            />
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-[13px] text-text">{check.label}</span>
-                {check.ready && check.detail && (
-                  <span className="text-[11px] text-text-muted">{check.detail}</span>
-                )}
-              </span>
-              {!check.ready && (
-                <>
-                  <span className="text-xs text-text-muted">{check.purpose}</span>
-                  {check.fix && (
-                    <span
-                      className={cn(
-                        'text-xs leading-relaxed',
-                        check.required ? 'text-danger' : 'text-text-muted'
-                      )}
-                    >
-                      {check.fix}
-                    </span>
-                  )}
-                </>
-              )}
+      <div className="flex flex-col gap-2">
+        {allWell ? (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+            <span className="flex items-center gap-2.5">
+              <CheckCircle2 size={14} className="shrink-0 text-success" aria-hidden="true" />
+              <span className="text-[13px] text-text">Everything Talkie needs is available</span>
             </span>
+            <Disclosure open={showAll} onToggle={() => setShowAll(!showAll)}>
+              {showAll ? 'Hide the checks' : 'Show the checks'}
+            </Disclosure>
           </div>
-        ))}
+        ) : (
+          <>
+            <p className="text-xs leading-relaxed text-text-muted">
+              {unready.some((check) => check.required)
+                ? 'Something Talkie needs is missing. What is marked in red has to be fixed before that part will work.'
+                : 'Everything required is available. These are optional, and only affect what they say.'}
+            </p>
+            <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+              {unready.map((check) => (
+                <CheckRow key={check.id} check={check} />
+              ))}
+            </div>
+            {ready.length > 0 && (
+              <Disclosure open={showAll} onToggle={() => setShowAll(!showAll)}>
+                {showAll
+                  ? 'Hide what is working'
+                  : `${ready.length} other ${ready.length === 1 ? 'check is' : 'checks are'} fine`}
+              </Disclosure>
+            )}
+          </>
+        )}
+
+        {showAll && (
+          <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+            {(allWell ? checks : ready).map((check) => (
+              <CheckRow key={check.id} check={check} />
+            ))}
+          </div>
+        )}
       </div>
 
       <McpSection />
+    </div>
+  )
+}
+
+function Disclosure({
+  open,
+  onToggle,
+  children
+}: {
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="flex shrink-0 items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-text-muted hover:text-text"
+    >
+      <ChevronRight size={11} className={cn('transition-transform', open && 'rotate-90')} aria-hidden="true" />
+      {children}
+    </button>
+  )
+}
+
+function CheckRow({ check }: { check: ReadinessCheck }): JSX.Element {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <span
+        className={cn(
+          'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+          check.ready ? 'bg-success' : check.required ? 'bg-danger' : 'bg-text-muted/40'
+        )}
+        aria-label={check.ready ? 'Ready' : check.required ? 'Not ready' : 'Optional, not set up'}
+      />
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-[13px] text-text">{check.label}</span>
+          {check.ready && check.detail && (
+            <span className="text-[11px] text-text-muted">{check.detail}</span>
+          )}
+        </span>
+        {!check.ready && (
+          <>
+            <span className="text-xs text-text-muted">{check.purpose}</span>
+            {check.fix && (
+              <span
+                className={cn(
+                  'text-xs leading-relaxed',
+                  check.required ? 'text-danger' : 'text-text-muted'
+                )}
+              >
+                {check.fix}
+              </span>
+            )}
+          </>
+        )}
+      </span>
     </div>
   )
 }

@@ -13,7 +13,10 @@ vi.mock('../api/projectClient', () => ({
     localServer: vi.fn(),
     readiness: vi.fn(),
     resetSpeech: vi.fn(),
-    previewVoice: vi.fn()
+    previewVoice: vi.fn(),
+    mcpConnection: vi.fn(),
+    mcpCreateToken: vi.fn(),
+    mcpRevokeToken: vi.fn()
   }
 }))
 
@@ -45,6 +48,14 @@ beforeEach(() => {
   ] as never)
   vi.mocked(settingsClient.localServer).mockResolvedValue(null as never)
   vi.mocked(settingsClient.readiness).mockResolvedValue([check()] as never)
+  vi.mocked(settingsClient.mcpConnection).mockResolvedValue({
+    serverPath: '/tmp/talkie-mcp.mjs',
+    enabled: false,
+    hasToken: false,
+    tokenCreatedAt: '',
+    configJson: '{}',
+    addCommand: 'claude mcp add talkie'
+  } as never)
 })
 
 describe('SettingsDialog', () => {
@@ -129,5 +140,78 @@ describe('SettingsDialog', () => {
     await user.keyboard('{Escape}')
 
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+/**
+ * A passing check has nothing to say, and five rows saying nothing is where a real problem goes
+ * unnoticed. These pin the panel to showing what needs attention rather than reassurance.
+ */
+describe('what the System panel puts in front of you', () => {
+  async function openSystem(): Promise<void> {
+    const user = userEvent.setup()
+    render(<SettingsDialog onClose={vi.fn()} />)
+    await screen.findByRole('switch', { name: 'Draft narration automatically' })
+    await user.click(screen.getByRole('button', { name: /System/ }))
+  }
+
+  it('says everything is available in one line, without listing it', async () => {
+    vi.mocked(settingsClient.readiness).mockResolvedValue([
+      check({ id: 'export', label: 'Video export' }),
+      check({ id: 'recording', label: 'Session recording' }),
+      check({ id: 'decks', label: 'PowerPoint import', required: false })
+    ] as never)
+
+    await openSystem()
+
+    expect(await screen.findByText('Everything Talkie needs is available')).toBeInTheDocument()
+    expect(screen.queryByText('Video export')).not.toBeInTheDocument()
+    expect(screen.queryByText('Session recording')).not.toBeInTheDocument()
+  })
+
+  it('shows the checks when they are asked for', async () => {
+    const user = userEvent.setup()
+    vi.mocked(settingsClient.readiness).mockResolvedValue([
+      check({ id: 'export', label: 'Video export' }),
+      check({ id: 'recording', label: 'Session recording' })
+    ] as never)
+
+    await openSystem()
+    await user.click(await screen.findByRole('button', { name: /Show the checks/ }))
+
+    expect(screen.getByText('Video export')).toBeInTheDocument()
+    expect(screen.getByText('Session recording')).toBeInTheDocument()
+  })
+
+  it('leads with what is wrong, and how to fix it', async () => {
+    vi.mocked(settingsClient.readiness).mockResolvedValue([
+      check({ id: 'export', label: 'Video export' }),
+      check({
+        id: 'recording',
+        label: 'Session recording',
+        ready: false,
+        required: true,
+        purpose: 'Capture a browser walkthrough',
+        fix: 'Install Google Chrome.'
+      })
+    ] as never)
+
+    await openSystem()
+
+    expect(await screen.findByText('Session recording')).toBeInTheDocument()
+    expect(screen.getByText('Install Google Chrome.')).toBeInTheDocument()
+    // The working one stays out of the way until it is asked for.
+    expect(screen.queryByText('Video export')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /1 other check is fine/ })).toBeInTheDocument()
+  })
+
+  it('does not claim something is missing when only an optional piece is', async () => {
+    vi.mocked(settingsClient.readiness).mockResolvedValue([
+      check({ id: 'decks', label: 'PowerPoint import', ready: false, required: false, fix: 'Install LibreOffice.' })
+    ] as never)
+
+    await openSystem()
+
+    expect(await screen.findByText(/Everything required is available/)).toBeInTheDocument()
   })
 })
