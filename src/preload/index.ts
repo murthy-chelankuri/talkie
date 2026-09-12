@@ -10,6 +10,7 @@ import type { Voice } from '../main/tts/listVoices'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
 import type { McpConnection } from '../main/setup/mcpConnection'
+import type { ProjectContext } from '../main/project/projectContext'
 import type { ExportedFile } from '../main/render/revealExport'
 import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
@@ -22,6 +23,8 @@ const projectApi = {
   remove: (id: string): Promise<void> => ipcRenderer.invoke('project:delete', id),
   setVoice: (id: string, voice: string | null): Promise<ProjectMetadata> =>
     ipcRenderer.invoke('project:setVoice', id, voice),
+  setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
+    ipcRenderer.invoke('project:setContext', id, context),
   historyState: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:state', id),
   undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),

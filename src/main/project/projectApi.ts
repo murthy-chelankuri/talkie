@@ -13,6 +13,7 @@ import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from
 import { slugify } from './slug'
 import { writeJsonAtomic } from './atomicWrite'
 import { migrateProjectMetadata } from './migrate'
+import { ProjectContextSchema, type ProjectContext } from './projectContext'
 import { TimelineItemSchema, TIMELINE_ITEM_DATA_SCHEMAS, type TimelineItem } from './timeline/schema'
 import { TranscriptSegmentSchema, type TranscriptSegment } from '../transcript/schema'
 import { z } from 'zod'
@@ -132,6 +133,24 @@ export function setProjectVoice(
   const next = ProjectMetadataSchema.parse({
     ...current,
     ...(voice?.trim() ? { voice: voice.trim() } : { voice: undefined })
+  })
+
+  writeJsonAtomic(join(dir, 'project.json'), next)
+  return next
+}
+
+/** What this demo is about, which every prompt written for it is given. */
+export function setProjectContext(
+  id: string,
+  context: ProjectContext,
+  baseDir: string = homedir()
+): ProjectMetadata {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) throw new Error(`No project found with id ${id}`)
+
+  const next = ProjectMetadataSchema.parse({
+    ...openProject(id, baseDir),
+    context: ProjectContextSchema.parse(context)
   })
 
   writeJsonAtomic(join(dir, 'project.json'), next)

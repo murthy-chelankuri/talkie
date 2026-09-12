@@ -2,6 +2,8 @@ import { homedir } from 'os'
 import { readSettings } from '../settings/settingsStore'
 import { narrationProvider } from './providerRegistry'
 import { cleanDraft, targetWordCount } from './narrationProvider'
+import { describeProjectContext, type ProjectContext } from '../project/projectContext'
+import { openProject } from '../project/projectApi'
 
 export const REWRITE_STYLES = ['rephrase', 'proofread', 'concise', 'fit'] as const
 export type RewriteStyle = (typeof REWRITE_STYLES)[number]
@@ -11,6 +13,10 @@ export interface RewriteRequest {
   style: RewriteStyle
   /** How long the clip runs, for the one rewrite that has a length to hit. */
   seconds?: number
+  /** What this demo is about, so a rewrite keeps its terms and its tone. */
+  context?: ProjectContext
+  /** Which project this line belongs to, when the context should be looked up. */
+  projectId?: string
 }
 
 export const REWRITE_LABELS: Record<RewriteStyle, string> = {
@@ -28,11 +34,14 @@ export const REWRITE_LABELS: Record<RewriteStyle, string> = {
  * others are here because a rewrite that leaves the tone somewhere else is not much use — every
  * prompt says this is spoken aloud, which is the fact that decides the answer.
  */
-export function buildRewritePrompt({ text, style, seconds }: RewriteRequest): string {
+export function buildRewritePrompt({ text, style, seconds, context }: RewriteRequest): string {
   const shared = [
     'You are editing one line of narration that will be read aloud over a clip in a product demo.',
     'It is speech, not prose: it has to sound like a person talking to someone watching.',
-    ''
+    '',
+    // A rewrite that drops the product's own words for generic ones is a worse line, however
+    // well it reads.
+    ...describeProjectContext(context)
   ]
 
   const instruction: Record<RewriteStyle, string[]> = {
@@ -85,7 +94,11 @@ export async function rewriteText(
   // The built-in provider writes from a template and has no model to ask.
   if (!provider.complete) throw new NoRewriteProviderError(provider.label)
 
-  const answer = cleanDraft(await provider.complete(buildRewritePrompt(request)))
+  const context =
+    request.context ??
+    (request.projectId ? openProject(request.projectId, baseDir).context : undefined)
+
+  const answer = cleanDraft(await provider.complete(buildRewritePrompt({ ...request, context })))
   if (!answer.trim()) throw new Error('The model returned nothing to put back.')
 
   return answer

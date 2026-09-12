@@ -52,6 +52,30 @@ ready for it: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFI
 `APPLE_TEAM_ID`, remove `identity: null` from `electron-builder.yml`, and turn
 `hardenedRuntime` on.
 
+## Telling the model what the demo is about
+
+Narration is drafted a clip at a time from an action log and a few sampled frames, which is
+enough to know what moved on screen and nothing about what it was. So it writes "you click the
+menu" where a presenter would say "you open the campaign builder" — not from vagueness, but
+because nobody said what the product is called.
+
+**About this demo**, in the editor panel, is where that is said once for the whole project:
+
+| | |
+| --- | --- |
+| What this demo is about | the product, and the words it uses for its own parts |
+| Who is watching | decides what is assumed and what is explained |
+| How it should sound | a sentence is enough |
+| Never say | rules, not preferences |
+
+It reaches narration, slide writing and rewriting alike, so a slide and the words spoken over it
+call the same thing by the same name.
+
+The last one is checked rather than only asked for. A prompt is a request, and a model can be
+told not to mention pricing and mention it anyway — so every draft is searched for the terms, on
+word boundaries, and anything that slips through is reported instead of left for someone to find
+by proofreading fifty clips.
+
 ## Rewriting narration
 
 Select some narration, right-click, and **Rewrite** offers four things:

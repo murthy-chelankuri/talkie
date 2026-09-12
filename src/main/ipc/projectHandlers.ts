@@ -7,9 +7,11 @@ import {
   openProject,
   sweepUnusedNarrationAudio,
   deleteProject,
-  setProjectVoice
+  setProjectVoice,
+  setProjectContext
 } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
+import { ProjectContextSchema } from '../project/projectContext'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { clearHistory, historyState, redo, undo, withHistory } from '../project/history'
 import { readSettings, updateSettings, resetSpeechSettings } from '../settings/settingsStore'
@@ -51,6 +53,10 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
 
   ipcMain.handle('project:setVoice', (_event, projectId: string, voice: string | null) =>
     setProjectVoice(projectId, voice)
+  )
+
+  ipcMain.handle('project:setContext', (_event, projectId: string, context: unknown) =>
+    setProjectContext(projectId, ProjectContextSchema.parse(context))
   )
 
   ipcMain.handle('project:delete', (_event, id: string) => {

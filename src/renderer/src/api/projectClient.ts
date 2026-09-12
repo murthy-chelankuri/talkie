@@ -1,5 +1,6 @@
 import type { TimelineItem } from '../../../main/project/timeline/schema'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
+import type { ProjectContext } from '../../../main/project/projectContext'
 
 export type { TimelineItem }
 export type { TranscriptSegment }
@@ -14,6 +15,8 @@ export interface ProjectMetadata extends ProjectSummary {
   schemaVersion: number
   /** The voice this project speaks in. Absent means it follows the one set in Settings. */
   voice?: string
+  /** What the demo is about, given to everything that writes words for it. */
+  context?: ProjectContext
 }
 
 export interface HistoryState {
@@ -38,6 +41,8 @@ export const projectClient = {
   remove: (id: string): Promise<void> => window.api.project.remove(id),
   setVoice: (id: string, voice: string | null): Promise<ProjectMetadata> =>
     window.api.project.setVoice(id, voice),
+  setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
+    window.api.project.setContext(id, context),
   historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
@@ -52,6 +57,7 @@ export type { ProviderDescription } from '../../../main/agent/providerRegistry'
 export type { LocalServer } from '../../../main/agent/localProvider'
 export type { Voice } from '../../../main/tts/listVoices'
 export type { PreparedDeck } from '../../../main/slides/importSlides'
+export type { ProjectContext }
 export type { ReadinessCheck } from '../../../main/setup/readiness'
 export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'

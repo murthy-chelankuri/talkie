@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ProjectContextSchema } from './projectContext'
 
 export const CURRENT_SCHEMA_VERSION = 1
 
@@ -15,7 +16,9 @@ export const ProjectMetadataSchema = z.object({
    * Absent means the project follows whatever voice is set in Settings, which is how a new
    * project starts and how every project made before this behaved.
    */
-  voice: z.string().optional()
+  voice: z.string().optional(),
+  /** What the demo is about, for everything that writes words for it. See projectContext.ts. */
+  context: ProjectContextSchema.optional()
 })
 
 export type ProjectMetadata = z.infer<typeof ProjectMetadataSchema>

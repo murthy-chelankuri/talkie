@@ -16,6 +16,8 @@ import {
 import { Timeline } from '../components/Timeline'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
+import { AboutDemoDialog } from '../components/AboutDemoDialog'
+import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { voiceProgress } from '../lib/voiceProgress'
@@ -27,6 +29,18 @@ import { DemoComposition } from '../../../remotion/DemoComposition'
 import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
 import { computeTimelineDuration } from '../../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/types'
+
+/**
+ * A draft broke one of this demo's rules.
+ *
+ * Said as what happened rather than as an error, because the words are saved and readable: the
+ * user decides whether to fix them, and the point is that they know without proofreading fifty
+ * clips for it.
+ */
+function forbiddenWarning(terms: string[]): string {
+  const list = terms.map((term) => `"${term}"`).join(', ')
+  return `This draft says ${list}, which this demo never says. Edit the words, or change the rule in About this demo.`
+}
 
 /** Far enough in for a scene's entrance to have finished — see the seek on open below. */
 const SETTLED_FRAME = 20
@@ -55,6 +69,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [draftingAll, setDraftingAll] = useState(false)
   const [appVoice, setAppVoice] = useState('')
   const [voices, setVoices] = useState<Voice[]>([])
+  const [editingContext, setEditingContext] = useState(false)
   const [importingDeck, setImportingDeck] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
@@ -406,6 +421,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       // Asking for a draft on a clip you already wrote is an explicit request to replace it.
       const result = await agentClient.draftItem(projectId, item.id, true)
       if (result.status === 'failed') setTranscriptError(result.reason ?? 'Could not draft this narration.')
+      // Saved either way — it may be most of the way there — but never quietly.
+      if (result.forbidden?.length) setTranscriptError(forbiddenWarning(result.forbidden))
       await refreshSegments()
       await refreshTimeline()
     } catch (err) {
@@ -422,6 +439,18 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       const results = await agentClient.draftAll(projectId)
       const failure = results.find((result) => result.status === 'failed')
       if (failure) setTranscriptError(failure.reason ?? 'Could not draft the narration.')
+
+      // Across a whole project this is the case that matters: nobody proofreads fifty clips for
+      // a word they asked not to hear.
+      const broken = [...new Set(results.flatMap((result) => result.forbidden ?? []))]
+      if (!failure && broken.length > 0) {
+        const clips = results.filter((result) => result.forbidden?.length).length
+        setTranscriptError(
+          `${clips} draft${clips === 1 ? '' : 's'} said ${broken
+            .map((term) => `"${term}"`)
+            .join(', ')}, which this demo never says. Look for the clips in question before voicing them.`
+        )
+      }
       await refreshSegments()
       await refreshTimeline()
     } catch (err) {
@@ -531,6 +560,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               progress={progress}
               currentVoice={voice}
               onKeepProjectVoice={handleKeepProjectVoice}
+              hasContext={hasProjectContext(project?.context)}
+              onEditContext={() => setEditingContext(true)}
               projectVoice={project?.voice ?? null}
               appVoice={appVoice}
               voices={voices}
@@ -640,6 +671,15 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         />
         </div>
       </ResizablePanel>
+      {editingContext && project && (
+        <AboutDemoDialog
+          projectName={project.name}
+          context={project.context ?? EMPTY_CONTEXT}
+          onClose={() => setEditingContext(false)}
+          onSave={async (context) => setProject(await projectClient.setContext(projectId, context))}
+        />
+      )}
+
       {sceneEditing && project && (
         <SceneEditor
           projectId={projectId}

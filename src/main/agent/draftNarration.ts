@@ -3,6 +3,7 @@ import { appendFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { findProjectDir } from '../project/paths'
 import { openProject, readTimeline, readTranscript, setDraftedNarration } from '../project/projectApi'
+import { findForbiddenTerms, type ProjectContext } from '../project/projectContext'
 import { readSettings } from '../settings/settingsStore'
 import { narrationProvider } from './providerRegistry'
 import { gatherClipEvidence } from './clipEvidence'
@@ -19,6 +20,11 @@ export interface DraftResult {
   status: 'drafted' | 'skipped' | 'failed'
   text?: string
   reason?: string
+  /**
+   * Words the demo said never to use that turned up anyway. The draft is still saved — it may
+   * be most of the way there — but the user is told rather than left to find it themselves.
+   */
+  forbidden?: string[]
 }
 
 /**
@@ -58,12 +64,14 @@ export async function draftNarrationForItem(
   try {
     const timeline = readTimeline(projectId, baseDir)
     const index = timeline.findIndex((item) => item.id === timelineItemId)
+    const project = projectFacts(projectId, baseDir)
     const text = await provider.draft({
       evidence,
-      projectName: projectName(projectId, baseDir),
+      projectName: project.name,
       clipIndex: index + 1,
       clipCount: timeline.length,
-      previousNarration: narrationOf(projectId, timeline[index - 1]?.id, baseDir)
+      previousNarration: narrationOf(projectId, timeline[index - 1]?.id, baseDir),
+      context: project.context
     })
 
     if (!text.trim()) {
@@ -76,7 +84,23 @@ export async function draftNarrationForItem(
     }
 
     setDraftedNarration(projectId, timelineItemId, text, baseDir)
-    return record(projectId, { timelineItemId, providerId: provider.id, status: 'drafted', text }, startedAt, baseDir)
+
+    // A prompt is a request, not a guarantee — so what came back is checked against the rules
+    // rather than assumed to follow them.
+    const forbidden = findForbiddenTerms(text, project.context?.neverSay ?? [])
+
+    return record(
+      projectId,
+      {
+        timelineItemId,
+        providerId: provider.id,
+        status: 'drafted',
+        text,
+        ...(forbidden.length > 0 ? { forbidden } : {})
+      },
+      startedAt,
+      baseDir
+    )
   } catch (err) {
     return record(
       projectId,
@@ -117,11 +141,18 @@ function narrationOf(projectId: string, timelineItemId: string | undefined, base
   return readTranscript(projectId, baseDir).find((segment) => segment.timelineItemId === timelineItemId)?.text
 }
 
-function projectName(projectId: string, baseDir: string): string {
+/**
+ * The project's name and context, or sensible stand-ins.
+ *
+ * A project.json that cannot be read is not a reason to refuse to write narration — the clip,
+ * its action log and its frames are all still there, and they are most of what the model uses.
+ */
+function projectFacts(projectId: string, baseDir: string): { name: string; context?: ProjectContext } {
   try {
-    return openProject(projectId, baseDir).name
+    const project = openProject(projectId, baseDir)
+    return { name: project.name, context: project.context }
   } catch {
-    return 'this demo'
+    return { name: 'this demo' }
   }
 }
 

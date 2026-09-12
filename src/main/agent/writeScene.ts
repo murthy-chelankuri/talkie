@@ -2,6 +2,7 @@ import { homedir } from 'os'
 import { readSettings } from '../settings/settingsStore'
 import { narrationProvider } from './providerRegistry'
 import { TextSceneDataSchema, DiagramSceneDataSchema } from '../project/timeline/schema'
+import { describeProjectContext, type ProjectContext } from '../project/projectContext'
 
 export type SceneKind = 'scene' | 'diagram'
 
@@ -12,6 +13,8 @@ export interface SceneRequest {
   /** What the user asked for, in their words. */
   instruction: string
   projectName: string
+  /** What this demo is about — see projectContext.ts. */
+  context?: ProjectContext
 }
 
 export type SceneResult =
@@ -51,13 +54,16 @@ export async function writeScene(request: SceneRequest, baseDir: string = homedi
 }
 
 export function buildScenePrompt(request: SceneRequest): string {
-  const { kind, current, instruction, projectName } = request
+  const { kind, current, instruction, projectName, context } = request
 
   const lines = [
     `You are building one scene of a product demo called "${projectName}".`,
     'It will be on screen for a few seconds while someone talks over it, so it carries the',
     'shape of an idea, not the whole of it.',
-    ''
+    '',
+    // The same context the narration is given, so a slide and the words spoken over it do not
+    // call the same thing by two different names.
+    ...describeProjectContext(context)
   ]
 
   if (kind === 'scene') {

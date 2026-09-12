@@ -1,6 +1,7 @@
 import { extname } from 'path'
 import type { ClipEvidence } from './clipEvidence'
 import type { NarrationProviderId } from '../settings/schema'
+import { describeProjectContext, type ProjectContext } from '../project/projectContext'
 
 export interface NarrationRequest {
   evidence: ClipEvidence
@@ -10,6 +11,8 @@ export interface NarrationRequest {
   clipCount: number
   /** What was said over the previous clip, so this one carries on rather than restarting. */
   previousNarration?: string
+  /** What this demo is about — see projectContext.ts. */
+  context?: ProjectContext
 }
 
 export interface ProviderAvailability {
@@ -48,7 +51,7 @@ export function targetWordCount(durationSeconds: number): number {
  * someone narrating to themselves — so the instructions name that failure and rule it out.
  */
 export function buildPrompt(request: NarrationRequest): string {
-  const { evidence, projectName, clipIndex, clipCount, previousNarration } = request
+  const { evidence, projectName, clipIndex, clipCount, previousNarration, context } = request
   const words = targetWordCount(evidence.durationSeconds)
 
   const lines = [
@@ -56,6 +59,9 @@ export function buildPrompt(request: NarrationRequest): string {
     'Someone is watching this video to understand what the product does and why it is worth their',
     'time. You are talking to them.',
     '',
+    // Before the evidence, because it decides how the evidence should be read: the same click
+    // is "you click the menu" without it and "you open the campaign builder" with it.
+    ...describeProjectContext(context),
     `This is clip ${clipIndex} of ${clipCount}, on screen for ${evidence.durationSeconds.toFixed(1)} seconds.`,
     ''
   ]
