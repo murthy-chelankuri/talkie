@@ -1,24 +1,50 @@
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron'
 import { join } from 'path'
 import { registerProjectHandlers } from './ipc/projectHandlers'
 import { registerTimelineHandlers } from './ipc/timelineHandlers'
 import { registerCaptureHandlers } from './ipc/captureHandlers'
 import { registerTranscriptHandlers } from './ipc/transcriptHandlers'
 import { migrateStorageRoot } from './project/migrateStorageRoot'
+import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
 
 let mainWindowRef: BrowserWindow | null = null
 
 function createWindow(): void {
+  // Sized to the screen rather than to a number chosen once: a fixed 1280x800 is a small window
+  // on most displays, and this is an app whose preview wants the room.
+  const bounds = openingBounds(screen.getPrimaryDisplay().workArea)
+
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    ...bounds,
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
+    show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       sandbox: false
     }
   })
   mainWindowRef = mainWindow
+
+  // Shown once it has something to draw, rather than as an empty frame that then fills in.
+  mainWindow.once('ready-to-show', () => mainWindow.show())
+
+  // Remembered on settle rather than on every pixel of a drag.
+  let saveTimer: NodeJS.Timeout | undefined
+  const remember = (): void => {
+    if (mainWindow.isDestroyed() || mainWindow.isMinimized() || mainWindow.isFullScreen()) return
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => saveWindowState(mainWindow.getNormalBounds()), 400)
+  }
+  mainWindow.on('resize', remember)
+  mainWindow.on('move', remember)
+  mainWindow.on('close', () => {
+    clearTimeout(saveTimer)
+    if (!mainWindow.isMinimized() && !mainWindow.isFullScreen()) {
+      saveWindowState(mainWindow.getNormalBounds())
+    }
+  })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
