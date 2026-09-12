@@ -1,6 +1,7 @@
 import type { TimelineItem } from '../../../main/project/timeline/schema'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
 import type { ProjectContext } from '../../../main/project/projectContext'
+import type { NarrationFidelity } from '../../../main/tts/voiceFidelity'
 
 export type { TimelineItem }
 export type { TranscriptSegment }
@@ -57,6 +58,7 @@ export type { Settings } from '../../../main/settings/schema'
 export type { ProviderDescription } from '../../../main/agent/providerRegistry'
 export type { LocalServer } from '../../../main/agent/localProvider'
 export type { Voice } from '../../../main/tts/listVoices'
+export type { NarrationFidelity }
 export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { ProjectContext }
 export type { SpeechEngineDescription } from '../../../main/tts/engineRegistry'
@@ -122,6 +124,8 @@ export const captureClient = {
 
 export const transcriptClient = {
   read: (projectId: string): Promise<TranscriptSegment[]> => window.api.transcript.read(projectId),
+  fidelity: (projectId: string): Promise<NarrationFidelity | null> =>
+    window.api.transcript.fidelity(projectId),
   addSegment: (
     projectId: string,
     input: { text: string; timelineItemId: string }

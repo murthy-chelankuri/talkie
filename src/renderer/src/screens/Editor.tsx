@@ -21,6 +21,7 @@ import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectC
 import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { voiceProgress } from '../lib/voiceProgress'
+import { describeFidelity, type FidelityNote } from '../../../main/tts/voiceFidelity'
 import { onSettingsChanged } from '../lib/settingsChanged'
 import { settingsClient, type Voice } from '../api/projectClient'
 import { Spinner } from '../components/ui/Spinner'
@@ -207,6 +208,33 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   // Having no voice and having a different voice are different situations — see voiceProgress.
   const progress = voiceProgress(timeline, segments, voice)
+
+  /**
+   * Why the project sounds the way it does, measured from the takes on disk.
+   *
+   * Keyed on the takes themselves rather than on `segments`, which changes on every keystroke in
+   * the words box: re-reading sixty wav headers to answer a question about audio nobody has
+   * touched would be work done for nothing.
+   */
+  const [fidelityNote, setFidelityNote] = useState<FidelityNote | null>(null)
+  const takeKey = segments
+    .filter((segment) => segment.status === 'narrated' && segment.audioFile)
+    .map((segment) => `${segment.audioFile}:${segment.voice ?? ''}`)
+    .join('|')
+
+  useEffect(() => {
+    let cancelled = false
+    void transcriptClient
+      .fidelity(projectId)
+      .then((fidelity) => {
+        if (!cancelled) setFidelityNote(describeFidelity(fidelity))
+      })
+      // A note that cannot be worked out is a note not shown; nothing here is worth an error.
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, takeKey])
 
   /** Adopt the voice this project's narration was already read in, changing nothing on disk. */
   async function handleKeepProjectVoice(): Promise<void> {
@@ -559,6 +587,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               totalFrames={computeTimelineDuration(remotionTimeline)}
               progress={progress}
               currentVoice={voice}
+              fidelityNote={fidelityNote}
               onKeepProjectVoice={handleKeepProjectVoice}
               hasContext={hasProjectContext(project?.context)}
               onEditContext={() => setEditingContext(true)}

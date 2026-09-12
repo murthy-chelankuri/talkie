@@ -7,6 +7,7 @@ import type { Settings } from '../main/settings/schema'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
 import type { Voice } from '../main/tts/listVoices'
+import type { NarrationFidelity } from '../main/tts/voiceFidelity'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
 import type { McpConnection } from '../main/setup/mcpConnection'
@@ -107,6 +108,8 @@ const captureApi = {
 
 const transcriptApi = {
   read: (projectId: string): Promise<TranscriptSegment[]> => ipcRenderer.invoke('project:transcript:read', projectId),
+  fidelity: (projectId: string): Promise<NarrationFidelity | null> =>
+    ipcRenderer.invoke('project:transcript:fidelity', projectId),
   addSegment: (
     projectId: string,
     input: { text: string; timelineItemId: string }

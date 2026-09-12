@@ -5,10 +5,12 @@ import {
   Download,
   Film,
   ImagePlus,
+  Info,
   LayoutTemplate,
   Menu,
   Presentation
 } from 'lucide-react'
+import type { FidelityNote } from '../../../main/tts/voiceFidelity'
 import type { ProjectMetadata, TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { segmentsForItem } from '../lib/clipNarration'
 import { voiceProgressHint, type VoiceProgress } from '../lib/voiceProgress'
@@ -167,6 +169,7 @@ export function SourcesPanel({
   totalFrames,
   progress,
   currentVoice,
+  fidelityNote,
   onKeepProjectVoice,
   projectVoice,
   appVoice,
@@ -198,6 +201,8 @@ export function SourcesPanel({
   /** Clips still waiting on a voice, counted once in the editor and shared from there. */
   progress: VoiceProgress
   currentVoice: string
+  /** Why the project sounds the way it does, when a compact voice is what is limiting it. */
+  fidelityNote: FidelityNote | null
   /** Adopt the voice the narration was read in, instead of re-speaking it. */
   onKeepProjectVoice?: () => void
   /** Whether this project has been described to the model yet. */
@@ -300,6 +305,24 @@ export function SourcesPanel({
             // Short enough to read whole in a narrow panel, where the long form was cut off.
             defaultOption={{ label: appVoice ? `App default (${appVoice})` : 'App default' }}
           />
+          {/* Under the picker because it describes what was picked. Not a task and not an error:
+              the project sounds the way it sounds, and this is the only place that explains why. */}
+          {fidelityNote && (
+            <details className="group mt-0.5">
+              <summary className="flex cursor-pointer list-none items-start gap-1.5 text-[10px] leading-relaxed text-text-muted marker:content-none hover:text-text">
+                <Info size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0">
+                  {fidelityNote.summary}{' '}
+                  <span className="whitespace-nowrap text-accent group-open:hidden">
+                    Improve it
+                  </span>
+                </span>
+              </summary>
+              <p className="mt-1.5 pl-[1.15rem] text-[10px] leading-relaxed text-text-muted">
+                {fidelityNote.detail}
+              </p>
+            </details>
+          )}
         </div>
       )}
 

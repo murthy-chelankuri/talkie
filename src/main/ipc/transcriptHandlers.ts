@@ -8,10 +8,16 @@ import {
 import { narrateSegment } from '../transcript/narrate'
 import { saveRecordedNarration } from '../transcript/recordNarration'
 import { ensureMicrophoneAccess } from '../transcript/microphone'
+import { narrationFidelityFor } from '../transcript/narrationFidelity'
 import { withHistory } from '../project/history'
 
 export function registerTranscriptHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:transcript:read', (_event, projectId: string) => readTranscript(projectId))
+
+  // Reads wav headers, so it stays out of the transcript read that runs on every keystroke.
+  ipcMain.handle('project:transcript:fidelity', (_event, projectId: string) =>
+    narrationFidelityFor(projectId)
+  )
 
   ipcMain.handle(
     'project:transcript:addSegment',

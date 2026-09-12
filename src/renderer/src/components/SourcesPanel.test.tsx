@@ -33,6 +33,7 @@ function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
       segments={[]}
       totalFrames={0}
       progress={noProgress}
+      fidelityNote={null}
       currentVoice="Samantha"
       hasContext={false}
       onEditContext={vi.fn()}
@@ -244,5 +245,35 @@ describe('the voice this demo speaks in', () => {
 
     // Null, not an empty string: the project keeps no voice of its own.
     expect(onProjectVoiceChange).toHaveBeenCalledWith(null)
+  })
+})
+
+describe('why a project sounds the way it does', () => {
+  const note = {
+    summary: 'Samantha is a compact voice — thinner than it needs to be.',
+    detail: 'Recorded at 22.1 kHz. macOS has better versions of the same voices, free to download under Manage Voices.'
+  }
+
+  it('says nothing when the voice is not what is limiting the recording', () => {
+    renderPanel({ fidelityNote: null })
+
+    expect(screen.queryByText(/compact voice/)).not.toBeInTheDocument()
+  })
+
+  it('names the voice without making the errand permanent furniture', () => {
+    renderPanel({ fidelityNote: note })
+
+    expect(screen.getByText(/Samantha is a compact voice/)).toBeInTheDocument()
+    // The remedy is written, but folded away until it is asked for.
+    expect(screen.getByText(/free to download/).closest('details')).not.toHaveAttribute('open')
+  })
+
+  it('opens to the fix when asked', async () => {
+    const user = userEvent.setup()
+    renderPanel({ fidelityNote: note })
+
+    await user.click(screen.getByText(/Samantha is a compact voice/))
+
+    expect(screen.getByText(/free to download/).closest('details')).toHaveAttribute('open')
   })
 })
