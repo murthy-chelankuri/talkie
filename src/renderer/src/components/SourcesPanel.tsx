@@ -83,11 +83,51 @@ function Action({ icon, label, hint, tone, collapsed, disabled, busy, onClick }:
   )
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }): JSX.Element {
+/**
+ * The panel's one piece of status, written as a sentence rather than a table.
+ *
+ * Three rows of label and value read like debug output and give equal weight to three unequal
+ * things. What is being worked towards is a finished length with every clip voiced, so the
+ * length leads and the voicing is a bar you can see fill up.
+ */
+function ProjectSummary({
+  totalFrames,
+  clipCount,
+  narrated
+}: {
+  totalFrames: number
+  clipCount: number
+  narrated: number
+}): JSX.Element {
+  const complete = clipCount > 0 && narrated === clipCount
+  const progress = clipCount === 0 ? 0 : (narrated / clipCount) * 100
+
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[11px] text-text-muted">{label}</span>
-      <span className={cn('text-[13px] tabular-nums', tone ?? 'text-text')}>{value}</span>
+    <div className="mb-4 flex flex-col gap-2.5 rounded-lg border border-border bg-surface px-3.5 py-3">
+      <div className="flex items-baseline gap-2">
+        <span className="font-serif text-2xl leading-none tabular-nums text-text">
+          {formatTimecode(totalFrames / FPS)}
+        </span>
+        <span className="text-[11px] text-text-muted">
+          {clipCount} clip{clipCount === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="h-1 overflow-hidden rounded-full bg-border">
+          <div
+            className={cn('h-full rounded-full transition-[width]', complete ? 'bg-success' : 'bg-accent')}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className={cn('text-[11px]', complete ? 'text-success' : 'text-text-muted')}>
+          {clipCount === 0
+            ? 'Nothing on the timeline yet'
+            : complete
+              ? 'Every clip has a voice'
+              : `${narrated} of ${clipCount} clips voiced`}
+        </span>
+      </div>
     </div>
   )
 }
@@ -134,7 +174,6 @@ export function SourcesPanel({
   const narrated = timeline.filter(
     (item) => segmentsForItem(segments, item.id)[0]?.status === 'narrated'
   ).length
-  const allVoiced = timeline.length > 0 && narrated === timeline.length
 
   return (
     <div
@@ -165,15 +204,7 @@ export function SourcesPanel({
       </div>
 
       {!collapsed && (
-        <div className="mb-4 flex flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2.5">
-          <Stat label="Duration" value={formatTimecode(totalFrames / FPS)} />
-          <Stat label="Clips" value={String(timeline.length)} />
-          <Stat
-            label="Voiced"
-            value={`${narrated} of ${timeline.length}`}
-            tone={allVoiced ? 'text-success' : undefined}
-          />
-        </div>
+        <ProjectSummary totalFrames={totalFrames} clipCount={timeline.length} narrated={narrated} />
       )}
 
       <div className={cn('flex flex-col gap-2', collapsed && 'items-center')}>

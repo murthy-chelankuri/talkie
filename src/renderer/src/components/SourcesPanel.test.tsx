@@ -57,18 +57,45 @@ describe('SourcesPanel', () => {
     }
   })
 
-  it('gives up the project details and stats to make room when collapsed', () => {
+  it('gives up the project details and summary to make room when collapsed', () => {
     renderPanel({ collapsed: true })
 
     expect(screen.queryByText('Checkout demo')).not.toBeInTheDocument()
-    expect(screen.queryByText('Duration')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nothing on the timeline/)).not.toBeInTheDocument()
   })
 
-  it('shows them when open', () => {
-    renderPanel()
+  it('leads with the finished length when open', () => {
+    renderPanel({ totalFrames: 30 * 36 })
 
     expect(screen.getByText('Checkout demo')).toBeInTheDocument()
-    expect(screen.getByText('Duration')).toBeInTheDocument()
+    expect(screen.getByText('0:36')).toBeInTheDocument()
+  })
+
+  it('says how much of the demo still has no voice', () => {
+    renderPanel({
+      timeline: [
+        { id: 'a', kind: 'image', start: 0, duration: 90, data: {} },
+        { id: 'b', kind: 'image', start: 90, duration: 90, data: {} }
+      ] as never,
+      segments: [{ id: 's', text: 'x', timelineItemId: 'a', status: 'narrated' }] as never
+    })
+
+    expect(screen.getByText('1 of 2 clips voiced')).toBeInTheDocument()
+  })
+
+  it('says so plainly once every clip has a voice', () => {
+    renderPanel({
+      timeline: [{ id: 'a', kind: 'image', start: 0, duration: 90, data: {} }] as never,
+      segments: [{ id: 's', text: 'x', timelineItemId: 'a', status: 'narrated' }] as never
+    })
+
+    expect(screen.getByText('Every clip has a voice')).toBeInTheDocument()
+  })
+
+  it('does not claim progress on an empty timeline', () => {
+    renderPanel()
+
+    expect(screen.getByText('Nothing on the timeline yet')).toBeInTheDocument()
   })
 
   it('asks to be collapsed', async () => {
