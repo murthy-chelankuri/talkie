@@ -24,6 +24,12 @@ export const templateProvider: NarrationProvider = {
       return `Slide ${clipIndex} of ${clipCount}.`
     }
 
+    // A scene knows exactly what it says, so even without a model there is something true to
+    // write: name what is on screen rather than counting slides.
+    if (evidence.kind === 'scene' || evidence.kind === 'diagram') {
+      return describeSceneBriefly(evidence.sceneText, clipIndex, clipCount)
+    }
+
     const sentences = describeActions(evidence.actions)
     if (sentences.length === 0) {
       return `A ${Math.round(evidence.durationSeconds)}-second walkthrough.`
@@ -31,6 +37,13 @@ export const templateProvider: NarrationProvider = {
 
     return sentences.join(' ')
   }
+}
+
+function describeSceneBriefly(sceneText: string | undefined, index: number, total: number): string {
+  const heading = sceneText?.match(/^(?:Heading on screen|Title on screen): (.+)$/m)?.[1]?.trim()
+  if (heading) return `${heading}.`
+
+  return `Slide ${index} of ${total}.`
 }
 
 function describeActions(actions: CleanAction[]): string[] {

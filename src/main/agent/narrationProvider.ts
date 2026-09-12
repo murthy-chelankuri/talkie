@@ -64,6 +64,14 @@ export function buildPrompt(request: NarrationRequest): string {
     lines.push('You have just said, over the previous clip:', `  "${previousNarration.trim()}"`, '')
   }
 
+  if (evidence.sceneText) {
+    lines.push(
+      evidence.kind === 'diagram' ? 'This clip is a diagram:' : 'This clip is a slide:',
+      evidence.sceneText,
+      ''
+    )
+  }
+
   if (evidence.actions.length > 0) {
     lines.push('Recorded while this clip was on screen:')
     for (const action of evidence.actions) {
@@ -98,13 +106,27 @@ export function buildPrompt(request: NarrationRequest): string {
     '  something is, say plainly what is on screen instead of guessing.'
   )
 
-  if (clipIndex === 1) {
+  if (clipIndex === 1 && clipCount > 1) {
     lines.push('- This is the opening. Say what the viewer is about to see, then get on with it.')
-  } else {
+  }
+  if (clipIndex !== 1) {
     lines.push('- Carry on from what you just said. Do not reintroduce the product or start again.')
   }
   if (clipIndex === clipCount && clipCount > 1) {
     lines.push('- This is the last clip. Land it rather than trailing off.')
+  }
+
+  // Last, so it is the instruction closest to hand: reading the slide out is the oldest
+  // mistake in presenting, and on a one-clip demo there is no opening to write — the clip is
+  // the whole of it, and an introduction would crowd out what it actually says.
+  if (evidence.sceneText) {
+    lines.push(
+      evidence.kind === 'diagram'
+        ? '- The viewer can see the diagram. Say what it means and why the shape of it matters, not' +
+          '\n  what each box is called.'
+        : '- The viewer can already read the slide. Do not say the lines back to them — say the' +
+          '\n  thing the slide is too short to say.'
+    )
   }
 
   lines.push(

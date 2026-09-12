@@ -353,3 +353,68 @@ describe('networked providers', () => {
     await expect(localProvider.draft(request())).rejects.toThrow(/spent its whole answer thinking/)
   })
 })
+
+describe('prompting for a scene written in the app', () => {
+  function sceneRequest(overrides: Partial<NarrationRequest> = {}): NarrationRequest {
+    return {
+      projectName: 'Checkout demo',
+      clipIndex: 1,
+      clipCount: 1,
+      evidence: {
+        kind: 'diagram',
+        durationSeconds: 6,
+        actions: [],
+        framePaths: [],
+        sceneText: 'Title on screen: The flow\nThe diagram, as mermaid source:\nflowchart LR\n  A --> B'
+      },
+      ...overrides
+    }
+  }
+
+  it('sends the diagram source, which says more than a picture of it would', () => {
+    expect(buildPrompt(sceneRequest())).toContain('flowchart LR')
+  })
+
+  it('sends a slide as the words that are on it', () => {
+    const prompt = buildPrompt(
+      sceneRequest({
+        evidence: {
+          kind: 'scene',
+          durationSeconds: 5,
+          actions: [],
+          framePaths: [],
+          sceneText: 'Heading on screen: How it works\nLine on screen: Record a session'
+        }
+      })
+    )
+
+    expect(prompt).toContain('How it works')
+    expect(prompt).toContain('Record a session')
+  })
+
+  it('tells it not to read the slide back to someone already reading it', () => {
+    const prompt = buildPrompt(
+      sceneRequest({
+        evidence: { kind: 'scene', durationSeconds: 5, actions: [], framePaths: [], sceneText: 'Heading on screen: X' }
+      })
+    )
+
+    expect(prompt).toContain('Do not say the lines back to them')
+  })
+
+  it('does not ask a one-clip demo to write an opening', () => {
+    // There is nothing to open into: the clip is the whole demo, and an introduction would
+    // crowd out what the scene actually says.
+    expect(buildPrompt(sceneRequest())).not.toContain('This is the opening')
+  })
+
+  it('still asks for an opening when there are clips to follow', () => {
+    expect(buildPrompt(sceneRequest({ clipCount: 4 }))).toContain('This is the opening')
+  })
+
+  it('puts what to do with the scene last, where it carries most weight', () => {
+    const prompt = buildPrompt(sceneRequest({ clipIndex: 2, clipCount: 4 }))
+
+    expect(prompt.lastIndexOf('the diagram')).toBeGreaterThan(prompt.indexOf('Carry on from what you just said'))
+  })
+})

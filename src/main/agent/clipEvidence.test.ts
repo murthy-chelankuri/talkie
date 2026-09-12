@@ -165,3 +165,71 @@ describe('gatherClipEvidence', () => {
     for (const path of evidence.framePaths) expect(existsSync(path)).toBe(false)
   }, 60_000)
 })
+
+describe('scenes written in the app', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-scene-evidence-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  it('reads a slide rather than looking at a picture of it', async () => {
+    const project = createProject('Slides', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'scene', start: 0, duration: 150, data: { title: 'How it works', bullets: ['Record', 'Narrate'] } },
+      baseDir
+    )
+
+    const evidence = await gatherClipEvidence(project.id, item.id, baseDir)
+
+    expect(evidence.kind).toBe('scene')
+    expect(evidence.sceneText).toContain('How it works')
+    expect(evidence.sceneText).toContain('Record')
+    expect(evidence.framePaths).toEqual([])
+  })
+
+  it('sends a diagram as its source, never through the frame sampler', async () => {
+    // ffmpeg has no SVG decoder, so sampling a diagram fails outright — and the source says
+    // more about a flow than a rendering of it would anyway.
+    const project = createProject('Diagrams', baseDir)
+    const dir = findProjectDir(project.id, baseDir) as string
+    const svgPath = join(dir, 'sources', 'scenes', 'diagram.svg')
+    mkdirSync(dirname(svgPath), { recursive: true })
+    writeFileSync(svgPath, '<svg></svg>')
+
+    const item = addTimelineItem(
+      project.id,
+      {
+        kind: 'diagram',
+        start: 0,
+        duration: 150,
+        data: { source: 'flowchart LR\n  A[Record] --> B[Export]', src: svgPath, title: 'The flow' }
+      },
+      baseDir
+    )
+
+    const evidence = await gatherClipEvidence(project.id, item.id, baseDir)
+
+    expect(evidence.kind).toBe('diagram')
+    expect(evidence.sceneText).toContain('flowchart LR')
+    expect(evidence.sceneText).toContain('The flow')
+    expect(evidence.framePaths).toEqual([])
+    expect(evidence.cleanup).toBeUndefined()
+  })
+
+  it('has nothing to clean up, having sampled nothing', async () => {
+    const project = createProject('Slides', baseDir)
+    const item = addTimelineItem(
+      project.id,
+      { kind: 'scene', start: 0, duration: 150, data: { title: 'Title only', bullets: [] } },
+      baseDir
+    )
+
+    expect((await gatherClipEvidence(project.id, item.id, baseDir)).cleanup).toBeUndefined()
+  })
+})

@@ -14,12 +14,18 @@ import type { TimelineItem } from '../project/timeline/schema'
 export const MAX_FRAMES = 4
 
 export interface ClipEvidence {
-  kind: 'video' | 'image'
+  kind: 'video' | 'image' | 'scene' | 'diagram'
   durationSeconds: number
-  /** Empty for an image, which has no recording behind it. */
+  /** Empty for anything without a recording behind it. */
   actions: CleanAction[]
-  /** Stills sampled across the clip, or the image itself. */
+  /** Stills sampled across the clip, or the image itself. Empty for a scene. */
   framePaths: string[]
+  /**
+   * What a scene written in the app actually says — the slide's words, or the diagram's source.
+   * Worth more than a picture of it: the words are exact, and mermaid source describes a flow
+   * far better than a rendering of it does.
+   */
+  sceneText?: string
   /** Present only while sampled frames need cleaning up afterwards. */
   cleanup?: () => void
 }
@@ -51,7 +57,35 @@ export async function gatherClipEvidence(
     }
   }
 
+  // A scene is read, not watched. Its own content is the evidence, and sampling frames from it
+  // is not merely wasteful — a diagram's source is an SVG, which ffmpeg cannot decode at all.
+  if (item.kind === 'scene' || item.kind === 'diagram') {
+    return {
+      kind: item.kind,
+      durationSeconds,
+      actions: [],
+      framePaths: [],
+      sceneText: describeScene(item)
+    }
+  }
+
   return gatherVideoEvidence(item, src, durationSeconds)
+}
+
+/** A scene written out as the model should read it: what is on screen, in the order it appears. */
+function describeScene(item: TimelineItem): string {
+  if (item.kind === 'diagram') {
+    const { title, source } = item.data as { title?: string; source?: string }
+    return [title ? `Title on screen: ${title}` : null, 'The diagram, as mermaid source:', source ?? '']
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  const { title, bullets } = item.data as { title?: string; bullets?: string[] }
+  return [
+    `Heading on screen: ${title ?? ''}`,
+    ...(bullets ?? []).filter((line) => line.trim()).map((line) => `Line on screen: ${line}`)
+  ].join('\n')
 }
 
 async function gatherVideoEvidence(
