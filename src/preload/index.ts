@@ -9,6 +9,7 @@ import type { LocalServer } from '../main/agent/localProvider'
 import type { Voice } from '../main/tts/listVoices'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
+import type { ExportedFile } from '../main/render/revealExport'
 import type { DraftResult } from '../main/agent/draftNarration'
 
 const projectApi = {
@@ -64,7 +65,10 @@ const timelineApi = {
 }
 
 const renderApi = {
-  exportVideo: (id: string): Promise<string> => ipcRenderer.invoke('project:render:export', id)
+  exportVideo: (id: string): Promise<string> => ipcRenderer.invoke('project:render:export', id),
+  describe: (path: string): Promise<ExportedFile | null> => ipcRenderer.invoke('project:render:describe', path),
+  open: (path: string): Promise<string | null> => ipcRenderer.invoke('project:render:open', path),
+  reveal: (path: string): Promise<string | null> => ipcRenderer.invoke('project:render:reveal', path)
 }
 
 const captureApi = {

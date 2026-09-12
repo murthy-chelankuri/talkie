@@ -1,5 +1,4 @@
 import {
-  CircleCheck,
   Clapperboard,
   Download,
   Film,
@@ -17,6 +16,7 @@ import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
 import { ErrorBanner } from './ui/ErrorBanner'
+import { ExportedCard } from './ExportedCard'
 
 /**
  * Each action carries its own colour so the rail can be read at a glance when it is too narrow
@@ -149,6 +149,7 @@ export function SourcesPanel({
   deckProgress,
   onRecordSession,
   onExport,
+  onDismissExport,
   collapsed,
   onToggleCollapsed
 }: {
@@ -168,6 +169,7 @@ export function SourcesPanel({
   deckProgress: string | null
   onRecordSession: () => void
   onExport: () => void
+  onDismissExport: () => void
   collapsed: boolean
   onToggleCollapsed: () => void
 }): JSX.Element {
@@ -205,6 +207,12 @@ export function SourcesPanel({
 
       {!collapsed && (
         <ProjectSummary totalFrames={totalFrames} clipCount={timeline.length} narrated={narrated} />
+      )}
+
+      {!collapsed && exportedPath && (
+        <div className="mb-4">
+          <ExportedCard path={exportedPath} onDismiss={onDismissExport} />
+        </div>
       )}
 
       <div className={cn('flex flex-col gap-2', collapsed && 'items-center')}>
@@ -255,13 +263,6 @@ export function SourcesPanel({
         >
           <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-danger" aria-hidden="true" />
           {!collapsed && 'Recording in progress'}
-        </p>
-      )}
-
-      {!collapsed && exportedPath && (
-        <p className="mt-3 flex items-start gap-2 rounded-lg border border-border bg-surface p-2 text-[11px] text-text-muted">
-          <CircleCheck size={13} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
-          <span className="min-w-0 break-all">Exported to {exportedPath}</span>
         </p>
       )}
 

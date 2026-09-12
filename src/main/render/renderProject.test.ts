@@ -59,3 +59,23 @@ describe('renderProjectVideo', () => {
     rmSync(baseDir, { recursive: true, force: true })
   }, 180_000)
 })
+
+describe('exportFileName', () => {
+  it('names the file after the demo and the day it was made', async () => {
+    const { exportFileName } = await import('./renderProject')
+
+    expect(exportFileName('Checkout demo', new Date(2026, 8, 11))).toBe('checkout-demo-2026-09-11')
+  })
+
+  it('pads months and days so the names sort', async () => {
+    const { exportFileName } = await import('./renderProject')
+
+    expect(exportFileName('Demo', new Date(2026, 0, 5))).toBe('demo-2026-01-05')
+  })
+
+  it('still produces a usable name for a project whose title is all punctuation', async () => {
+    const { exportFileName } = await import('./renderProject')
+
+    expect(exportFileName('!!!', new Date(2026, 8, 11))).toBe('untitled-2026-09-11')
+  })
+})

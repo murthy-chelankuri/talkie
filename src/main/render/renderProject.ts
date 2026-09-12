@@ -2,12 +2,24 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
-import { readTimelineLenient, readNarrationAudioPaths } from '../project/projectApi'
+import { readTimelineLenient, readNarrationAudioPaths, openProject } from '../project/projectApi'
+import { slugify } from '../project/slug'
 import { findProjectDir, projectsRootDir } from '../project/paths'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { COMPOSITION_ID } from '../../remotion/constants'
+
+/** `checkout-demo-2026-09-11` — the project, and when it was rendered. */
+export function exportFileName(projectName: string, now: Date = new Date()): string {
+  const day = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')
+  ].join('-')
+
+  return `${slugify(projectName)}-${day}`
+}
 
 export async function renderProjectVideo(id: string, baseDir: string = homedir()): Promise<string> {
   const dir = findProjectDir(id, baseDir)
@@ -34,7 +46,9 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     inputProps: { timeline }
   })
 
-  const outputPath = join(dir, 'renders', `export-${Date.now()}.mp4`)
+  // Named for the demo and the day it was made, because this is the file the user hands to
+  // somebody: `export-1789179493000.mp4` tells its owner nothing about what it is.
+  const outputPath = join(dir, 'renders', `${exportFileName(openProject(id, baseDir).name)}.mp4`)
 
   await renderMedia({
     composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },

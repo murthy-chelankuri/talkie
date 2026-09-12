@@ -49,6 +49,7 @@ export type { LocalServer } from '../../../main/agent/localProvider'
 export type { Voice } from '../../../main/tts/listVoices'
 export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
+export type { ExportedFile } from '../../../main/render/revealExport'
 export type { DraftResult } from '../../../main/agent/draftNarration'
 
 export const settingsClient = {
@@ -81,7 +82,10 @@ export const timelineClient = {
 }
 
 export const renderClient = {
-  exportVideo: (id: string): Promise<string> => window.api.render.exportVideo(id)
+  exportVideo: (id: string): Promise<string> => window.api.render.exportVideo(id),
+  describe: (path: string) => window.api.render.describe(path),
+  open: (path: string) => window.api.render.open(path),
+  reveal: (path: string) => window.api.render.reveal(path)
 }
 
 export const captureClient = {

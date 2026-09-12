@@ -13,6 +13,7 @@ import {
 import { projectsRootDir } from '../project/paths'
 import { withHistory } from '../project/history'
 import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
+import { describeExport, openExport, showExportInFinder } from '../render/revealExport'
 import { renderProjectVideo } from '../render/renderProject'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -69,6 +70,10 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
 
     return withHistory(id, () => importImage(id, result.filePaths[0]))
   })
+
+  ipcMain.handle('project:render:describe', (_event, path: string) => describeExport(path))
+  ipcMain.handle('project:render:open', (_event, path: string) => openExport(path))
+  ipcMain.handle('project:render:reveal', (_event, path: string) => showExportInFinder(path))
 
   ipcMain.handle('project:import:deck', async (_event, _id: string) => {
     const window = getWindow()

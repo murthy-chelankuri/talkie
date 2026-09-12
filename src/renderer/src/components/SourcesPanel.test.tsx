@@ -31,6 +31,7 @@ function renderPanel(props: Partial<Parameters<typeof SourcesPanel>[0]> = {}) {
       deckProgress={null}
       onRecordSession={vi.fn()}
       onExport={vi.fn()}
+      onDismissExport={vi.fn()}
       collapsed={false}
       onToggleCollapsed={onToggleCollapsed}
       {...props}

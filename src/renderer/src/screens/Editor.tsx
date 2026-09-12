@@ -483,6 +483,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           deckProgress={deckProgress}
               onRecordSession={handleRecordSession}
               onExport={handleExport}
+              onDismissExport={() => setExportedPath(null)}
               collapsed={sourcesCollapsed}
               onToggleCollapsed={() => setSourcesCollapsed((open) => !open)}
             />
