@@ -14,6 +14,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   AudioLines,
   Film,
+  Mic,
   Image as ImageIcon,
   LayoutTemplate,
   Redo2,
@@ -31,6 +32,7 @@ import { hasVisibleContent } from '../lib/frameContent'
 import { chooseTickIntervalSeconds, formatTimecode, frameAtOffset, offsetAtFrame } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { richTextToPlain } from '../../../main/project/timeline/richText'
+import { RECORDED_VOICE, hasStaleVoice, segmentsForItem, voiceOf } from '../lib/clipNarration'
 import { IconButton } from './ui/IconButton'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
@@ -175,6 +177,68 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
         item.kind === 'diagram' ? 'bg-[#171b22] object-contain p-1' : 'object-cover'
       )}
     />
+  )
+}
+
+/**
+ * The voice actually attached to a clip.
+ *
+ * The picture and the script were both on the timeline, but the audio between them — the thing
+ * that ends up in the video — was only ever a word in the corner of a text box. Which meant the
+ * question this answers, "whose voice is on this clip", was the one thing the timeline would not
+ * tell you. It is a layer of its own because that is what it is.
+ */
+export function VoiceLayer({
+  item,
+  segments,
+  currentVoice,
+  compact
+}: {
+  item: TimelineItem
+  segments: TranscriptSegment[]
+  currentVoice: string
+  compact: boolean
+}): JSX.Element {
+  const segment = segmentsForItem(segments, item.id)[0]
+  const narrated = segment?.status === 'narrated' && Boolean(segment.audioFile)
+  const stale = hasStaleVoice(segments, item.id, currentVoice)
+  const voice = voiceOf(segments, item.id)
+  const own = voice === RECORDED_VOICE
+  const hasWords = Boolean(segment?.text.trim())
+
+  const tone = !narrated
+    ? 'border-dashed border-border bg-transparent text-text-muted'
+    : stale
+      ? 'border-accent/60 bg-accent/10 text-accent'
+      : own
+        ? 'border-accent/55 bg-accent/15 text-accent'
+        : 'border-success/45 bg-success/10 text-success'
+
+  const label = !narrated
+    ? hasWords
+      ? 'Written, not spoken'
+      : 'No voice'
+    : own
+      ? 'Your voice'
+      : stale
+        ? `${voice} — voice has changed`
+        : (voice ?? 'Voiced')
+
+  return (
+    <div
+      title={label}
+      className={cn(
+        'flex h-full items-center gap-1.5 overflow-hidden rounded border px-1.5 text-[10px]',
+        tone
+      )}
+    >
+      {own ? (
+        <Mic size={11} className="shrink-0" aria-hidden="true" />
+      ) : (
+        <AudioLines size={11} className="shrink-0" aria-hidden="true" />
+      )}
+      {!compact && <span className="truncate">{label}</span>}
+    </div>
   )
 }
 
@@ -601,6 +665,29 @@ export function Timeline({
                 ))}
               </SortableContext>
             </DndContext>
+          </div>
+
+          {/* Between the picture and the script, because that is where the audio sits. */}
+          <div className="relative mt-1.5 h-7">
+            {timeline.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  left: offsetAtFrame(item.start, pixelsPerSecond, FPS),
+                  width: offsetAtFrame(item.duration, pixelsPerSecond, FPS)
+                }}
+                className="absolute top-0 h-full pr-1"
+              >
+                <VoiceLayer
+                  item={item}
+                  segments={segments}
+                  currentVoice={currentVoice}
+                  compact={
+                    offsetAtFrame(item.duration, pixelsPerSecond, FPS) < NARRATION_TEXT_MIN_WIDTH
+                  }
+                />
+              </div>
+            ))}
           </div>
 
           <div className="relative mt-2 h-36">

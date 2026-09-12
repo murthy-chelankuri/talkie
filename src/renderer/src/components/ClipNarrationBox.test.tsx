@@ -58,15 +58,7 @@ describe('ClipNarrationBox', () => {
     await waitFor(() => expect(onCommit).toHaveBeenCalledWith(item, 'Rewritten'))
   })
 
-  it('reports its narration state', () => {
-    renderBox()
-    expect(screen.getByText('Voiced')).toBeInTheDocument()
-  })
-
-  it('flags a clip whose narration has not been voiced yet', () => {
-    renderBox({ segments: [{ ...narratedSegment, status: 'edited' }] })
-    expect(screen.getByText('Silent')).toBeInTheDocument()
-  })
+  // Whose voice a clip carries is the voice layer's to report — see VoiceLayer.test.tsx.
 
   it('narrates the clip on request', async () => {
     const user = userEvent.setup()

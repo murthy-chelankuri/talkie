@@ -65,30 +65,16 @@ export function ClipNarrationBox({
         active ? 'border-accent' : 'border-paper-border'
       )}
     >
+      {/* Whose voice this is, and whether it has one, is the voice layer's job now — saying it
+          here too only left less room for the words. What is left is the one thing the layer
+          cannot show, because it is happening right now. */}
       <div className="flex items-center gap-1.5 border-b border-paper-border px-1.5 py-1">
-        <span
-          className={cn(
-            'h-1.5 w-1.5 shrink-0 rounded-full',
-            staleVoice ? 'bg-accent' : narrated ? 'bg-success' : 'border border-text-muted'
-          )}
-          aria-hidden="true"
-        />
-        <span
-          className={cn(
-            'truncate text-[10px]',
-            recording ? 'text-danger' : staleVoice ? 'text-accent' : 'text-text-muted'
-          )}
-        >
-          {recording
-            ? 'Recording…'
-            : staleVoice
-              ? `Voiced by ${recordedVoice}`
-              : narrated
-                ? recordedVoice === RECORDED_VOICE
-                  ? 'Your voice'
-                  : 'Voiced'
-                : 'Silent'}
-        </span>
+        {recording && (
+          <>
+            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-danger" aria-hidden="true" />
+            <span className="truncate text-[10px] text-danger">Recording…</span>
+          </>
+        )}
         <IconButton
           aria-label={recording ? `Stop recording ${label}` : `Record ${label} in your own voice`}
           className={cn(
