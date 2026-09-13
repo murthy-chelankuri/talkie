@@ -39,3 +39,14 @@ dist/
 
 # Packaged builds
 release/
+
+# macOS
+.DS_Store
+
+# Claude Code
+# Project-level agents, skills, commands and settings.json are meant to be committed so a
+# checkout on another machine picks them up. These three are not: worktrees carry their own
+# node_modules, and the other two are per-machine.
+.claude/worktrees/
+.claude/settings.local.json
+.claude/shell-snapshots/
