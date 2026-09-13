@@ -39,3 +39,16 @@ dist/
 
 # Packaged builds
 release/
+
+# macOS
+.DS_Store
+
+# Coding agents
+# Shared configuration — agents, skills, commands, committed settings — is meant to travel, so a
+# checkout on another machine behaves the same. What follows is not: worktrees carry their own
+# node_modules, and the rest is per-machine or generated. Instructions live in AGENTS.md.
+.claude/worktrees/
+.claude/settings.local.json
+.claude/shell-snapshots/
+.aider*
+.cursor/rules/generated/
