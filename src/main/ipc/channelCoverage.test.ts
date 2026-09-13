@@ -60,8 +60,9 @@ describe('IPC channels', () => {
     expect(unused).toEqual([])
   })
 
-  it('names every channel for the project area it belongs to', () => {
-    const odd = [...handled].filter((channel) => !/^(project|settings):/.test(channel)).sort()
+  it('names every channel for the area it belongs to', () => {
+    // Three areas: a project's own data, the app's settings, and the application menu.
+    const odd = [...handled].filter((channel) => !/^(project|settings|menu):/.test(channel)).sort()
 
     expect(odd).toEqual([])
   })

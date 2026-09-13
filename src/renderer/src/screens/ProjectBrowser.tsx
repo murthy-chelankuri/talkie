@@ -128,7 +128,14 @@ function ProjectCard({
   )
 }
 
-export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) => void }): JSX.Element {
+export function ProjectBrowser({
+  onOpen,
+  createRequest = 0
+}: {
+  onOpen: (project: ProjectSummary) => void
+  /** Bumped by File -> New Project, which opens the same form the button does. */
+  createRequest?: number
+}): JSX.Element {
   const [projects, setProjects] = useState<ProjectOverview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,6 +147,10 @@ export function ProjectBrowser({ onOpen }: { onOpen: (project: ProjectSummary) =
   // "pricingroadmap".
   const [neverSayText, setNeverSayText] = useState('')
   const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    if (createRequest > 0) setShowCreateForm(true)
+  }, [createRequest])
 
   useEffect(() => {
     projectClient

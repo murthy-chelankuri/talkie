@@ -8,6 +8,7 @@ import { migrateStorageRoot } from './project/migrateStorageRoot'
 import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
 import { registerEditContextMenu } from './menu/editContextMenu'
+import { installApplicationMenu, INITIAL_MENU_STATE, type MenuState } from './menu/applicationMenu'
 import { applyContentSecurityPolicy } from './security/contentSecurityPolicy'
 import { closeAssetServer } from './render/assetServer'
 import { applyNavigationGuards } from './security/navigationGuards'
@@ -91,6 +92,21 @@ app.whenReady().then(() => {
   // Nothing else is granted: a request for anything but audio is refused.
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
     callback(permission === 'media')
+  })
+
+  // The default Electron menu has no File items beyond closing the window, which is what the
+  // app shipped with. Rebuilt whenever the window's state changes, since an item's enabled flag
+  // is decided when the menu is built.
+  let menuState: MenuState = INITIAL_MENU_STATE
+  installApplicationMenu(() => mainWindowRef, menuState)
+  ipcMain.handle('menu:setState', (_event, next: Partial<MenuState>) => {
+    const merged = { ...menuState, ...next }
+    // Rebuilding on every keystroke would be wasteful; nothing changes unless a flag does.
+    if (merged.projectOpen === menuState.projectOpen && merged.canUndo === menuState.canUndo && merged.canRedo === menuState.canRedo) {
+      return
+    }
+    menuState = merged
+    installApplicationMenu(() => mainWindowRef, menuState)
   })
 
   registerProjectHandlers(ipcMain)

@@ -3,6 +3,7 @@ import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { IconButton } from './ui/IconButton'
 import { SettingsDialog } from './SettingsDialog'
+import { useMenuActions } from '../lib/menuActions'
 
 export function AppShell({
   children,
@@ -14,6 +15,19 @@ export function AppShell({
 }): JSX.Element {
   const { theme, toggleTheme } = useTheme()
   const [showSettings, setShowSettings] = useState(false)
+  // Which section the menu asked for; the button opens where it always did.
+  const [settingsSection, setSettingsSection] = useState<'narration' | 'licences'>('narration')
+
+  useMenuActions({
+    settings: () => {
+      setSettingsSection('narration')
+      setShowSettings(true)
+    },
+    licences: () => {
+      setSettingsSection('licences')
+      setShowSettings(true)
+    }
+  })
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
@@ -56,7 +70,9 @@ export function AppShell({
         </span>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
-      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsDialog initialSection={settingsSection} onClose={() => setShowSettings(false)} />
+      )}
     </div>
   )
 }

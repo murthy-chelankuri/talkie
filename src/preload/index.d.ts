@@ -6,12 +6,14 @@ import type {
   TranscriptApi,
   SettingsApi,
   AgentApi,
-  SceneApi
+  SceneApi,
+  MenuApi
 } from './index'
 
 declare global {
   interface Window {
     api: {
+      menu: MenuApi
       settings: SettingsApi
       agent: AgentApi
       project: ProjectApi

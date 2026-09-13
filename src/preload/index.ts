@@ -8,6 +8,7 @@ import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
 import type { Voice } from '../main/tts/listVoices'
 import type { NarrationFidelity } from '../main/tts/voiceFidelity'
+import type { MenuAction, MenuState } from '../main/menu/applicationMenu'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
 import type { McpConnection } from '../main/setup/mcpConnection'
@@ -126,7 +127,19 @@ const transcriptApi = {
     ipcRenderer.invoke('project:transcript:requestMicrophone')
 }
 
+const menuApi = {
+  /** Tell the menu what is on screen, so items that cannot apply are greyed rather than inert. */
+  setState: (state: Partial<MenuState>): Promise<void> => ipcRenderer.invoke('menu:setState', state),
+  /** Menu items name an action; the window decides what that means where the user is. */
+  onAction: (callback: (action: MenuAction) => void): (() => void) => {
+    const listener = (_event: unknown, action: MenuAction): void => callback(action)
+    ipcRenderer.on('menu:action', listener)
+    return () => ipcRenderer.removeListener('menu:action', listener)
+  }
+}
+
 contextBridge.exposeInMainWorld('api', {
+  menu: menuApi,
   settings: settingsApi,
   agent: agentApi,
   project: projectApi,
@@ -137,6 +150,7 @@ contextBridge.exposeInMainWorld('api', {
   transcript: transcriptApi
 })
 
+export type MenuApi = typeof menuApi
 export type SettingsApi = typeof settingsApi
 export type AgentApi = typeof agentApi
 export type SceneApi = typeof sceneApi

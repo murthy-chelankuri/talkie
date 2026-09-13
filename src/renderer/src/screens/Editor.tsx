@@ -21,6 +21,7 @@ import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectC
 import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { voiceProgress } from '../lib/voiceProgress'
+import { useMenuActions, useMenuState } from '../lib/menuActions'
 import { describeFidelity, type FidelityNote } from '../../../main/tts/voiceFidelity'
 import { onSettingsChanged } from '../lib/settingsChanged'
 import { settingsClient, type Voice } from '../api/projectClient'
@@ -252,6 +253,40 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     setProject(await projectClient.setVoice(projectId, next))
   }
   const needingNarration = progress.needing
+
+  useMenuState({ canUndo: history.canUndo, canRedo: history.canRedo })
+
+  /**
+   * Undo means different things depending on where the cursor is.
+   *
+   * On the timeline it steps the project back. Inside a text field it has to stay the field's
+   * own undo, or typing a sentence and pressing Cmd-Z would throw away the last clip you moved.
+   * The keyboard handler below already drew that line; the menu item now asks the same question,
+   * because an accelerator on a menu item takes the keystroke before the window ever sees it.
+   */
+  const editingText = (): boolean => {
+    const el = document.activeElement as HTMLElement | null
+    return Boolean(el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable))
+  }
+
+  useMenuActions({
+    undo: () => {
+      if (editingText()) document.execCommand('undo')
+      else void handleUndo()
+    },
+    redo: () => {
+      if (editingText()) document.execCommand('redo')
+      else void handleRedo()
+    },
+    'import-image': () => void handleImportImage(),
+    'import-deck': () => void handleImportDeck(),
+    'add-scene': () => setSceneEditing('new'),
+    'record-session': () => void handleRecordSession(),
+    'export-video': () => void handleExport(),
+    'draft-all': () => void handleDraftAll(),
+    'speak-all': () => void handleNarrateAll(),
+    'project-context': () => setEditingContext(true)
+  })
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {

@@ -63,8 +63,15 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: st
  * missing one says what it is for and what to do — with the only standing signal a dot on the
  * section that needs attention.
  */
-export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Element {
-  const [section, setSection] = useState<SectionId>('narration')
+export function SettingsDialog({
+  onClose,
+  initialSection = 'narration'
+}: {
+  onClose: () => void
+  /** Where to open. Help -> Licences goes straight to the section it names. */
+  initialSection?: SectionId
+}): JSX.Element {
+  const [section, setSection] = useState<SectionId>(initialSection)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [providers, setProviders] = useState<ProviderDescription[]>([])
   const [voices, setVoices] = useState<Voice[]>([])
