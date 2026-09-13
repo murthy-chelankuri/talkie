@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import {
   Check,
   CheckCircle2,
@@ -35,7 +35,14 @@ import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import { VoicePicker } from './VoicePicker'
-import { LicencesSection } from './LicencesSection'
+/**
+ * Loaded when the section is first opened, not when the app starts.
+ *
+ * It carries the full text of every dependency's licence — roughly a quarter of what the window
+ * would otherwise have to parse before it can draw anything — to serve a screen most people open
+ * once, if ever.
+ */
+const LicencesSection = lazy(async () => ({ default: (await import('./LicencesSection')).LicencesSection }))
 
 type SectionId = 'narration' | 'voice' | 'recording' | 'export' | 'system' | 'licences'
 
@@ -196,7 +203,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
             ) : section === 'export' ? (
               <ExportSection settings={settings} onPatch={patchExport} />
             ) : section === 'licences' ? (
-              <LicencesSection />
+              <Suspense fallback={<Spinner size="md" label="Loading licences" />}>
+                <LicencesSection />
+              </Suspense>
             ) : (
               <SystemSection checks={readiness} />
             )}
