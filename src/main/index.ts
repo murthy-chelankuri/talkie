@@ -10,6 +10,7 @@ import { repairAssetPaths } from './project/repairAssetPaths'
 import { registerEditContextMenu } from './menu/editContextMenu'
 import { applyContentSecurityPolicy } from './security/contentSecurityPolicy'
 import { closeAssetServer } from './render/assetServer'
+import { applyNavigationGuards } from './security/navigationGuards'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -77,6 +78,10 @@ app.whenReady().then(() => {
   // and point their media at wherever the files now sit.
   migrateStorageRoot()
   repairAssetPaths()
+
+  // Applied to every window the app ever creates, including the recording toolbar, rather than
+  // to each one at the point it is built and forgotten for the next one.
+  app.on('web-contents-created', (_event, contents) => applyNavigationGuards(contents))
 
   // What the renderer may load and where it may connect. Set before the window exists, so the
   // first document is covered rather than only the ones after it.

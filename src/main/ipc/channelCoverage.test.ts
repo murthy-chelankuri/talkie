@@ -37,12 +37,10 @@ const HANDLED = /ipcMain\.handle\(\s*'([^']+)'/g
 const INVOKED = /ipcRenderer\.invoke\(\s*'([^']+)'/g
 
 const handled = channelsMatching(sourceFiles(join(SRC, 'main'), ['.ts']), HANDLED)
-// The renderer reaches the main process through the preload bridge; the recording toolbar is a
-// separate window that talks to it directly from its own HTML.
-const invoked = channelsMatching(
-  [...sourceFiles(join(SRC, 'preload'), ['.ts']), join(SRC, 'main', 'capture', 'toolbar.html')],
-  INVOKED
-)
+// Every window reaches the main process through a preload bridge — the editor through one, the
+// recording toolbar through a smaller one of its own. The toolbar used to invoke IPC straight
+// from its HTML with node integration on, which is why that file was named here separately.
+const invoked = channelsMatching(sourceFiles(join(SRC, 'preload'), ['.ts']), INVOKED)
 
 describe('IPC channels', () => {
   it('finds channels on both sides, so a silent regex failure cannot pass this file', () => {

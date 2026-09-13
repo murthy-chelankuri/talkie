@@ -77,7 +77,12 @@ const INJECTED_LISTENER_SCRIPT = `
       kind: 'input',
       selector: selectorFor(el),
       value: el.value,
-      inputType: 'type' in el ? el.type : 'text'
+      inputType: 'type' in el ? el.type : 'text',
+      // Sent so the value can be judged before it is written down: a one-time code and an API
+      // key are ordinary text fields, and only these say what the field is really for.
+      autocomplete: el.autocomplete || '',
+      name: el.name || '',
+      fieldId: el.id || ''
     })
   }, true)
 })()
@@ -122,7 +127,14 @@ export async function startRecordingSession(
     })
 
     await context.exposeFunction('__demoEditorRecordAction', (data: Record<string, unknown>) => {
-      const isRedactedInput = data.kind === 'input' && shouldRedactInputValue((data.inputType as string) ?? '')
+      const isRedactedInput =
+        data.kind === 'input' &&
+        shouldRedactInputValue({
+          type: data.inputType as string | undefined,
+          autocomplete: data.autocomplete as string | undefined,
+          name: data.name as string | undefined,
+          id: data.fieldId as string | undefined
+        })
       const entry: ActionLogEntry = {
         t: Date.now() - startTime,
         type: data.kind as ActionLogEntry['type'],

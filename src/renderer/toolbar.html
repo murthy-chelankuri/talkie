@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Recording</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 14px;
+        font-size: 13px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      #url-input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      button {
+        padding: 6px 10px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      #error {
+        margin: 10px 0 0;
+        color: #c0392b;
+        line-height: 1.4;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="setup" class="row">
+      <input id="url-input" type="text" placeholder="https://..." />
+      <button id="start">Start recording</button>
+    </div>
+
+    <div id="controls" class="row" hidden>
+      <button id="important">Important</button>
+      <button id="redo">Redo</button>
+      <button id="skip">Skip</button>
+      <button id="stop">Stop</button>
+    </div>
+
+    <p id="error" hidden></p>
+
+    <script type="module" src="./toolbar.ts"></script>
+  </body>
+</html>

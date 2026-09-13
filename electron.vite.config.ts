@@ -1,3 +1,4 @@
+import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
@@ -15,9 +16,29 @@ const commonJsOutput = {
 
 export default defineConfig({
   main: { plugins: [externalizeDepsPlugin()], ...commonJsOutput },
-  preload: { plugins: [externalizeDepsPlugin()], ...commonJsOutput },
+  preload: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        // The recording toolbar is its own window with its own, much smaller, bridge.
+        input: {
+          index: resolve('src/preload/index.ts'),
+          toolbar: resolve('src/preload/toolbar.ts')
+        },
+        output: commonJsOutput.build.rollupOptions.output
+      }
+    }
+  },
   renderer: {
     root: 'src/renderer',
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          toolbar: resolve('src/renderer/toolbar.html')
+        }
+      }
+    }
   }
 })
