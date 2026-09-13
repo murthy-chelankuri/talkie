@@ -11,7 +11,7 @@ const THEME = {
   background: '#171b22',
   primaryColor: '#232833',
   primaryTextColor: '#f4f6f9',
-  primaryBorderColor: '#d3a24c',
+  primaryBorderColor: '#7ab5f0',
   lineColor: '#8a93a6',
   secondaryColor: '#2b313c',
   tertiaryColor: '#1b1f27',

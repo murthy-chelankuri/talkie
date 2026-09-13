@@ -7,9 +7,14 @@
  *
  * The chrome is cool graphite so that recorded footage is the only saturated thing on screen.
  * The narration row is a warmer "paper" surface, because writing a script is a different act
- * from operating a timeline and should feel like one. Brass marks what can be acted on. Red is
+ * from operating a timeline and should feel like one — and a warm surface under a cool signal
+ * keeps the whole window from reading as cold. Azure marks what can be acted on. Red is
  * reserved for what is live right now — the record control and the playhead — so it never has
  * to compete for attention.
+ *
+ * The accent is dark in the light theme and light in the dark one because it is set as text at
+ * 10 and 11 pixels in places; every pairing below clears 5.8:1, which the brass it replaces did
+ * not always manage.
  */
 :root {
   --color-bg: #f4f6f9;
@@ -18,8 +23,8 @@
   --color-border: #d9dee6;
   --color-text: #171b22;
   --color-text-muted: #5d6675;
-  --color-accent: #8a6314;
-  --color-accent-hover: #6f4e0e;
+  --color-accent: #1a5fb4;
+  --color-accent-hover: #164e96;
   --color-accent-foreground: #ffffff;
   --color-paper: #fdfbf6;
   --color-paper-border: #e4dccb;
@@ -38,9 +43,9 @@
   --color-border: #2c323d;
   --color-text: #e8eaee;
   --color-text-muted: #99a2b1;
-  --color-accent: #d3a24c;
-  --color-accent-hover: #e2b566;
-  --color-accent-foreground: #17120a;
+  --color-accent: #7ab5f0;
+  --color-accent-hover: #96c7f5;
+  --color-accent-foreground: #0b1622;
   --color-paper: #1e1b16;
   --color-paper-border: #342f26;
   --color-danger: #ef6470;

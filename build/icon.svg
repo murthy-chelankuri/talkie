@@ -19,11 +19,11 @@
       <stop offset="100%" stop-color="#12151b"/>
     </linearGradient>
 
-    <!-- Brass, lit from the top left so the bars read as objects rather than as flat shapes. -->
-    <linearGradient id="brass" x1="0" y1="0" x2="0.35" y2="1">
-      <stop offset="0%" stop-color="#f0cd8d"/>
-      <stop offset="45%" stop-color="#d3a24c"/>
-      <stop offset="100%" stop-color="#b07f2d"/>
+    <!-- Azure, lit from the top left so the bars read as objects rather than as flat shapes. -->
+    <linearGradient id="accent" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#b5d8f9"/>
+      <stop offset="45%" stop-color="#7ab5f0"/>
+      <stop offset="100%" stop-color="#3d7fc4"/>
     </linearGradient>
 
     <!-- The light a dock icon catches along its top edge. -->
@@ -42,7 +42,7 @@
     between them fell below a pixel. These are the widest bars and the widest gaps that still
     read as speech, which is the size that decides an icon.
   -->
-  <g fill="url(#brass)">
+  <g fill="url(#accent)">
     <!-- Silence: one line, held. Same weight as the bars, so it is the same voice. -->
     <rect x="206" y="486" width="232" height="52" rx="26"/>
 

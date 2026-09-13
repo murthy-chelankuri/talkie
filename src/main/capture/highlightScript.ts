@@ -22,7 +22,7 @@ export interface HighlightOptions {
   accent?: string
 }
 
-const DEFAULT_ACCENT = '#d3a24c'
+const DEFAULT_ACCENT = '#7ab5f0'
 
 export function highlightScript({ accent = DEFAULT_ACCENT }: HighlightOptions = {}): string {
   return `

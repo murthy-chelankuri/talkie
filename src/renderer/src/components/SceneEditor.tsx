@@ -26,7 +26,7 @@ const DEFAULT_STYLE: SceneStyle = {
   font: 'serif',
   align: 'left',
   size: 'regular',
-  accent: '#d3a24c'
+  accent: '#7ab5f0'
 }
 
 const STARTER_DIAGRAM = 'flowchart LR\n  A[Record] --> B[Narrate]\n  B --> C[Export]'
@@ -419,7 +419,7 @@ function SceneStyleControls({
       <div className="flex flex-col gap-1.5">
         <span className="text-[11px] text-text-muted">Accent</span>
         <div className="flex items-center gap-1.5">
-          {['#d3a24c', '#5eead4', '#c4b5fd', '#f87171', '#ffffff'].map((colour) => (
+          {['#7ab5f0', '#5eead4', '#c4b5fd', '#f87171', '#ffffff'].map((colour) => (
             <button
               key={colour}
               type="button"

@@ -4,7 +4,7 @@ import { sanitiseRichText } from '../../../main/project/timeline/richText'
 import { cn } from '../lib/cn'
 
 /** A few colours that sit well on a slide, plus whatever the user picks themselves. */
-const SWATCHES = ['#d3a24c', '#e8be74', '#5eead4', '#c4b5fd', '#f87171', '#ffffff', '#9aa3b4']
+const SWATCHES = ['#7ab5f0', '#b5d8f9', '#5eead4', '#c4b5fd', '#f87171', '#ffffff', '#9aa3b4']
 
 /**
  * A text field that keeps a little formatting.

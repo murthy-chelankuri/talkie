@@ -93,7 +93,7 @@ export const McpSettingsSchema = z.object({
 export const RecordingSettingsSchema = z.object({
   highlight: z.boolean().default(true),
   /** The ring colour, so a recording can match the product being demonstrated. */
-  highlightColour: z.string().default('#d3a24c')
+  highlightColour: z.string().default('#7ab5f0')
 })
 
 /**

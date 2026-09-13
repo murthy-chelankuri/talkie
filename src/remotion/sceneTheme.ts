@@ -48,7 +48,7 @@ export function resolveSceneTheme(style: SceneStyle | undefined): ResolvedSceneT
 
   return {
     ...theme,
-    accent: style?.accent || '#d3a24c',
+    accent: style?.accent || '#7ab5f0',
     headingFont: style?.font === 'sans' ? SANS : SERIF,
     bodyFont: SANS,
     align: style?.align ?? 'left',

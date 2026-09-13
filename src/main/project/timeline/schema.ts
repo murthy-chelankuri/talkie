@@ -26,7 +26,7 @@ export const SceneStyleSchema = z.object({
   align: z.enum(['left', 'center']).default('left'),
   size: z.enum(['regular', 'large']).default('regular'),
   /** The one free colour: the rule, the bullets, and anything marked up in the accent. */
-  accent: z.string().default('#d3a24c')
+  accent: z.string().default('#7ab5f0')
 })
 
 export const TextSceneDataSchema = z.object({

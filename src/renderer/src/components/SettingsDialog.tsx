@@ -788,7 +788,7 @@ function ExportSection({
 }
 
 /** A few colours that read clearly over a page, plus whatever the user picks. */
-const HIGHLIGHT_COLOURS = ['#d3a24c', '#f87171', '#4ade80', '#38bdf8', '#c084fc', '#f59e0b']
+const HIGHLIGHT_COLOURS = ['#7ab5f0', '#f87171', '#4ade80', '#38bdf8', '#c084fc', '#f59e0b']
 
 /**
  * What a recording shows besides the page.

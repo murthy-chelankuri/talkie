@@ -13,10 +13,10 @@
       <stop offset="55%" stop-color="#1b1f27"/>
       <stop offset="100%" stop-color="#12151b"/>
     </linearGradient>
-    <linearGradient id="brass" x1="0" y1="0" x2="0.35" y2="1">
-      <stop offset="0%" stop-color="#f0cd8d"/>
-      <stop offset="45%" stop-color="#d3a24c"/>
-      <stop offset="100%" stop-color="#b07f2d"/>
+    <linearGradient id="accent" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#b5d8f9"/>
+      <stop offset="45%" stop-color="#7ab5f0"/>
+      <stop offset="100%" stop-color="#3d7fc4"/>
     </linearGradient>
   </defs>
 
@@ -27,7 +27,7 @@
     bars merge into one blob; these gaps are nearly as wide as the bars, which is what keeps them
     three things.
   -->
-  <g fill="url(#brass)">
+  <g fill="url(#accent)">
     <rect x="236" y="402" width="120" height="220" rx="60"/>
     <rect x="452" y="282" width="120" height="460" rx="60"/>
     <rect x="668" y="352" width="120" height="320" rx="60"/>
