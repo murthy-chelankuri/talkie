@@ -30,8 +30,9 @@ describe('startRecordingSession (real Playwright)', () => {
 
     const result = await session.stop()
 
-    expect(existsSync(result.videoPath)).toBe(true)
-    expect(statSync(result.videoPath).size).toBeGreaterThan(0)
+    expect(result.clips).toHaveLength(1)
+    expect(existsSync(result.clips[0].videoPath)).toBe(true)
+    expect(statSync(result.clips[0].videoPath).size).toBeGreaterThan(0)
 
     const entries = readActionLog(result.actionLogPath)
 
@@ -61,9 +62,9 @@ describe('what a recording is worth looking at', () => {
 
     const session = await startRecordingSession(project.id, `file://${join(baseDir, 'page.html')}`, baseDir)
     await new Promise((resolve) => setTimeout(resolve, 1200))
-    const { videoPath } = await session.stop()
+    const { clips } = await session.stop()
 
-    const { width, height } = await getVideoMetadata(videoPath)
+    const { width, height } = await getVideoMetadata(clips[0].videoPath)
     expect({ width, height }).toEqual({ width: WIDTH, height: HEIGHT })
 
     rmSync(baseDir, { recursive: true, force: true })

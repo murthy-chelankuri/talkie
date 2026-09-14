@@ -2,9 +2,18 @@ import { extname } from 'path'
 import type { ClipEvidence } from './clipEvidence'
 import type { NarrationProviderId } from '../settings/schema'
 import { describeProjectContext, type ProjectContext } from '../project/projectContext'
+import { DEFAULT_PACE } from '../settings/schema'
 
 export interface NarrationRequest {
   evidence: ClipEvidence
+  /**
+   * Words per minute the finished take will actually be spoken at.
+   *
+   * How many words fit in a clip is a question about the voice, not about writing, and the pace
+   * is a setting that runs from 90 to 300. Budgeting at a fixed rate asked for the same number
+   * of words whatever the user had chosen — far too many at the slow end.
+   */
+  pace?: number
   projectName: string
   /** 1-based position of this clip in the project, so narration can place itself. */
   clipIndex: number
@@ -35,11 +44,19 @@ export interface NarrationProvider {
   complete?(prompt: string): Promise<string>
 }
 
-/** Speech runs at roughly this rate, so it sets how much text a clip can hold. */
-const WORDS_PER_SECOND = 2.5
+/**
+ * How much of a clip the words themselves may fill.
+ *
+ * A take is not only words: `say` is given an explicit pause at every full stop and every
+ * comma, and those are seconds of the clip that no word is being spoken in. Measured on a real
+ * take, they cost about a fiftieth of its length; the rest of this margin is there because a
+ * clip that ends a beat early is unremarkable and one that runs past its own last frame is the
+ * bug this exists to avoid.
+ */
+const PAUSE_ALLOWANCE = 0.92
 
-export function targetWordCount(durationSeconds: number): number {
-  return Math.max(8, Math.round(durationSeconds * WORDS_PER_SECOND))
+export function targetWordCount(durationSeconds: number, wordsPerMinute = DEFAULT_PACE): number {
+  return Math.max(8, Math.round(((durationSeconds * wordsPerMinute) / 60) * PAUSE_ALLOWANCE))
 }
 
 /**
@@ -52,7 +69,7 @@ export function targetWordCount(durationSeconds: number): number {
  */
 export function buildPrompt(request: NarrationRequest): string {
   const { evidence, projectName, clipIndex, clipCount, previousNarration, context } = request
-  const words = targetWordCount(evidence.durationSeconds)
+  const words = targetWordCount(evidence.durationSeconds, request.pace)
 
   const lines = [
     `You are the presenter of a product demo called "${projectName}".`,
@@ -101,8 +118,19 @@ export function buildPrompt(request: NarrationRequest): string {
   }
 
   lines.push(
-    'Write what you say out loud over this clip.',
-    `- About ${words} words. Going long means your voice runs past the clip.`,
+    'Write what you say out loud over this clip, as a few lines, each one timed.',
+    '',
+    'Start every line with the second of the clip at which it should be spoken, in square',
+    'brackets: "[0.0] " then the words. The recording does not move at a steady rate — a screen',
+    'may sit waiting for data and then take five actions in as many seconds — so say each thing',
+    'at the moment it is on screen and leave the gaps where the gaps are. A line timed at 40',
+    'seconds is silence until then, which is correct if nothing has happened yet.',
+    '',
+    `- ${words} words at the very most across all the lines — that is what fits in` +
+      ` ${evidence.durationSeconds.toFixed(0)}` +
+      ' seconds at the speed this will be read. Shorter is fine. Going over does not make the clip' +
+      ' longer; it makes the voice run past the end of the footage and describe things the viewer' +
+      ' has already stopped seeing.',
     '- Talk to the viewer. Say what is happening and why it matters to them.',
     '- Do not read out the clicks. "You click the menu. You click State News." is a list of',
     '  instructions, not an explanation — say what is being looked for and what turns up.',
@@ -137,7 +165,9 @@ export function buildPrompt(request: NarrationRequest): string {
 
   lines.push(
     '- No markdown, headings, bullets, stage directions or speaker labels.',
-    '- Reply with the spoken words and nothing else.'
+    `- The last line must start before ${Math.max(0, evidence.durationSeconds - 4).toFixed(0)} seconds,` +
+      ' so there is time left to say it.',
+    '- Reply with the timed lines and nothing else.'
   )
 
   return lines.join('\n')

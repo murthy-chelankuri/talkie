@@ -2,7 +2,14 @@ import type { Config } from 'tailwindcss'
 
 export default {
   darkMode: ['selector', '[data-theme="dark"]'],
-  content: ['./src/renderer/index.html', './src/renderer/src/**/*.{ts,tsx}'],
+  content: [
+    './src/renderer/index.html',
+    // The recording toolbar is a plain page rather than a React screen, but it is the same
+    // product and must not drift into its own look.
+    './src/renderer/toolbar.html',
+    './src/renderer/toolbar.ts',
+    './src/renderer/src/**/*.{ts,tsx}'
+  ],
   theme: {
     extend: {
       fontFamily: {

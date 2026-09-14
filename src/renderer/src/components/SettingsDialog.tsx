@@ -803,7 +803,7 @@ function RecordingSection({
   settings: Settings
   onPatch: (next: Partial<Settings['recording']>) => void
 }): JSX.Element {
-  const { highlight, highlightColour } = settings.recording
+  const { highlight, highlightColour, allowUntrustedCertificates } = settings.recording
 
   return (
     <div className="flex flex-col gap-5">
@@ -850,6 +850,25 @@ function RecordingSection({
           </div>
         </Field>
       )}
+
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="text-[13px] font-medium text-text">
+            Record sites with untrusted certificates
+          </span>
+          <span className="text-xs leading-relaxed text-text-muted">
+            A build on your own machine is usually served over https with a certificate nothing
+            trusts, and the browser refuses to open it at all. Leave this off for anything you do
+            not control: with it on, the recording browser cannot tell a self-signed certificate
+            from an intercepted one, and a demo is often a demo of signing in.
+          </span>
+        </span>
+        <Switch
+          label="Record sites with untrusted certificates"
+          checked={allowUntrustedCertificates}
+          onChange={(next) => onPatch({ allowUntrustedCertificates: next })}
+        />
+      </div>
     </div>
   )
 }

@@ -3,56 +3,139 @@
   <head>
     <meta charset="UTF-8" />
     <title>Recording</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      }
-      body {
-        margin: 0;
-        padding: 14px;
-        font-size: 13px;
-      }
-      .row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-      #url-input {
-        flex: 1;
-        min-width: 0;
-        padding: 6px 8px;
-        font-size: 13px;
-      }
-      button {
-        padding: 6px 10px;
-        font-size: 13px;
-        white-space: nowrap;
-      }
-      #error {
-        margin: 10px 0 0;
-        color: #c0392b;
-        line-height: 1.4;
-      }
-      [hidden] {
-        display: none !important;
-      }
-    </style>
   </head>
-  <body>
-    <div id="setup" class="row">
-      <input id="url-input" type="text" placeholder="https://..." />
-      <button id="start">Start recording</button>
-    </div>
+  <body class="bg-bg font-sans text-text antialiased">
+    <main class="flex h-screen flex-col gap-3 overflow-y-auto p-4">
+      <!-- Before the browser opens: where to go, and what is about to happen. -->
+      <section id="setup" class="flex flex-1 flex-col gap-3">
+        <h1 class="text-[13px] font-medium text-text">Record a web session</h1>
 
-    <div id="controls" class="row" hidden>
-      <button id="important">Important</button>
-      <button id="redo">Redo</button>
-      <button id="skip">Skip</button>
-      <button id="stop">Stop</button>
-    </div>
+        <input
+          id="url-input"
+          type="text"
+          placeholder="example.com"
+          spellcheck="false"
+          autocomplete="off"
+          class="w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none placeholder:text-text-muted focus:border-accent"
+        />
 
-    <p id="error" hidden></p>
+        <button
+          id="start"
+          type="button"
+          class="w-full rounded-md border-0 bg-accent px-3 py-2 text-[13px] font-medium text-accent-foreground hover:bg-accent-hover"
+        >
+          Start recording
+        </button>
+
+        <p id="setup-hint" class="mt-auto text-[11px] leading-relaxed text-text-muted">
+          A browser opens and everything you do in it is recorded — silently. Nothing is listening
+          to your microphone; the narration is written and spoken afterwards, in the editor.
+        </p>
+      </section>
+
+      <!-- While it runs: that it is running, where you are, and the three notes you can leave. -->
+      <section id="controls" class="flex flex-1 flex-col gap-3" hidden>
+        <div class="flex items-center justify-between gap-3">
+          <span class="flex items-center gap-2">
+            <span class="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden="true"></span>
+            <span class="text-[13px] font-medium text-text">Recording</span>
+            <span id="elapsed" class="font-mono text-[13px] tabular-nums text-text-muted">0:00</span>
+          </span>
+          <button
+            id="stop"
+            type="button"
+            class="rounded-md border-0 bg-danger px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-90"
+          >
+            Stop
+          </button>
+        </div>
+
+        <div class="border-t border-border"></div>
+
+        <p class="text-[11px] leading-relaxed text-text-muted">
+          Leave a note at this moment. Notes change nothing in the video — they mark the time on
+          the timeline and tell the narration what happened here.
+        </p>
+
+        <div class="flex flex-col gap-1.5">
+          <button
+            id="important"
+            type="button"
+            class="flex w-full items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-left hover:bg-surface-hover"
+          >
+            <svg
+              class="h-4 w-4 shrink-0 text-accent"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+            </svg>
+            <span class="flex min-w-0 flex-col">
+              <span class="text-[13px] font-medium text-text">Important</span>
+              <span class="text-[11px] text-text-muted">Worth talking about — say more here</span>
+            </span>
+          </button>
+
+          <button
+            id="redo"
+            type="button"
+            class="flex w-full items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-left hover:bg-surface-hover"
+          >
+            <svg
+              class="h-4 w-4 shrink-0 text-accent"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            <span class="flex min-w-0 flex-col">
+              <span class="text-[13px] font-medium text-text">Redo</span>
+              <span class="text-[11px] text-text-muted">That went wrong — about to do it again</span>
+            </span>
+          </button>
+
+          <button
+            id="skip"
+            type="button"
+            class="flex w-full items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-left hover:bg-surface-hover"
+          >
+            <svg
+              class="h-4 w-4 shrink-0 text-accent"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="m4.9 4.9 14.2 14.2" />
+            </svg>
+            <span class="flex min-w-0 flex-col">
+              <span class="text-[13px] font-medium text-text">Skip</span>
+              <span class="text-[11px] text-text-muted">Leave this bit out of the video</span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Pressing a button that looks the same afterwards is pressing a button twice. -->
+        <p id="marks" class="mt-auto truncate text-[11px] text-text-muted">No notes yet</p>
+      </section>
+
+      <p id="error" class="rounded-md bg-danger-bg px-3 py-2 text-[11px] leading-relaxed text-danger" hidden></p>
+    </main>
 
     <script type="module" src="./toolbar.ts"></script>
   </body>

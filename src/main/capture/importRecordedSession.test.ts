@@ -18,11 +18,13 @@ describe('importRecordedSession (real Playwright recording)', () => {
     await session.page.waitForTimeout(300)
     const result = await session.stop()
 
-    const item = await importRecordedSession(project.id, result.videoPath, baseDir)
+    const item = await importRecordedSession(project.id, result, baseDir)
 
     expect(item.kind).toBe('video')
-    // The item points at the converted, seekable copy rather than the raw capture.
-    expect((item.data as { src: string }).src).toBe(result.videoPath.replace(/\.webm$/, '.mp4'))
+    // The item points at the stitched, seekable copy rather than at a raw page capture.
+    expect((item.data as { src: string }).src).toBe(
+      join(result.clips[0].videoPath, '..', 'video.mp4')
+    )
     // Appended after the pre-existing 90-frame image item.
     expect(item.start).toBe(90)
     expect(item.duration).toBeGreaterThan(0)
@@ -43,11 +45,13 @@ describe('importRecordedSession (real Playwright recording)', () => {
     await session.page.waitForTimeout(3000)
     const recording = await session.stop()
 
-    const untrimmed = await importRecordedSession(project.id, recording.videoPath, baseDir)
-    const trimmed = await importRecordedSession(project.id, recording.videoPath, baseDir, {
+    const untrimmed = await importRecordedSession(project.id, { clips: recording.clips }, baseDir)
+    const trimmed = await importRecordedSession(
+      project.id,
       // A full second of blank page before the site appeared.
-      contentStartMs: 1000
-    })
+      { clips: recording.clips, contentStartMs: 1000 },
+      baseDir
+    )
 
     expect((untrimmed.data as { trimBefore?: number }).trimBefore).toBeUndefined()
     expect((trimmed.data as { trimBefore?: number }).trimBefore).toBe(30)
@@ -65,9 +69,11 @@ describe('importRecordedSession (real Playwright recording)', () => {
     await session.page.waitForTimeout(1000)
     const recording = await session.stop()
 
-    const item = await importRecordedSession(project.id, recording.videoPath, baseDir, {
-      contentStartMs: 60_000
-    })
+    const item = await importRecordedSession(
+      project.id,
+      { clips: recording.clips, contentStartMs: 60_000 },
+      baseDir
+    )
 
     expect((item.data as { trimBefore?: number }).trimBefore).toBeUndefined()
     expect(item.duration).toBeGreaterThan(0)

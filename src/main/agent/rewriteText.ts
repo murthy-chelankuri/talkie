@@ -17,6 +17,8 @@ export interface RewriteRequest {
   context?: ProjectContext
   /** Which project this line belongs to, when the context should be looked up. */
   projectId?: string
+  /** Words per minute this will be read at, which is what decides how many of them fit. */
+  pace?: number
 }
 
 export const REWRITE_LABELS: Record<RewriteStyle, string> = {
@@ -34,7 +36,7 @@ export const REWRITE_LABELS: Record<RewriteStyle, string> = {
  * others are here because a rewrite that leaves the tone somewhere else is not much use — every
  * prompt says this is spoken aloud, which is the fact that decides the answer.
  */
-export function buildRewritePrompt({ text, style, seconds, context }: RewriteRequest): string {
+export function buildRewritePrompt({ text, style, seconds, context, pace }: RewriteRequest): string {
   const shared = [
     'You are editing one line of narration that will be read aloud over a clip in a product demo.',
     'It is speech, not prose: it has to sound like a person talking to someone watching.',
@@ -60,7 +62,7 @@ export function buildRewritePrompt({ text, style, seconds, context }: RewriteReq
     fit: seconds
       ? [
           `This has to be spoken in about ${seconds.toFixed(1)} seconds, which is roughly`,
-          `${targetWordCount(seconds)} words. Rewrite it to that length.`,
+          `${targetWordCount(seconds, pace)} words. Rewrite it to that length.`,
           'Keep what matters and drop what does not. Going over means the voice runs past the clip.'
         ]
       : ['Say it in fewer words, keeping every fact.']
@@ -98,7 +100,11 @@ export async function rewriteText(
     request.context ??
     (request.projectId ? openProject(request.projectId, baseDir).context : undefined)
 
-  const answer = cleanDraft(await provider.complete(buildRewritePrompt({ ...request, context })))
+  const settings = readSettings(baseDir)
+  const answer = cleanDraft(
+    // The length that fits depends on how fast this will be read.
+    await provider.complete(buildRewritePrompt({ ...request, context, pace: settings.speech.pace }))
+  )
   if (!answer.trim()) throw new Error('The model returned nothing to put back.')
 
   return answer

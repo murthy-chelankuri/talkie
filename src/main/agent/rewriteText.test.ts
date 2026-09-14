@@ -37,8 +37,8 @@ describe('what the model is asked for', () => {
     const prompt = buildRewritePrompt({ text, style: 'fit', seconds: 6 })
 
     expect(prompt).toContain('6.0 seconds')
-    // 6 seconds at roughly 2.5 words a second.
-    expect(prompt).toContain('15 words')
+    // Six seconds at the default 170 words a minute, less the pauses between sentences.
+    expect(prompt).toContain('16 words')
   })
 
   it('still asks for something sensible when the length is unknown', () => {
