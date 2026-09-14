@@ -15,7 +15,7 @@ import { writeJsonAtomic } from './atomicWrite'
 import { migrateProjectMetadata } from './migrate'
 import { ProjectContextSchema, hasProjectContext, type ProjectContext } from './projectContext'
 import { TimelineItemSchema, TIMELINE_ITEM_DATA_SCHEMAS, type TimelineItem } from './timeline/schema'
-import { TranscriptSegmentSchema, type TranscriptSegment } from '../transcript/schema'
+import { TranscriptSegmentSchema, type NarrationBeat, type TranscriptSegment } from '../transcript/schema'
 import { z } from 'zod'
 
 export function createProject(
@@ -463,6 +463,7 @@ export function setDraftedNarration(
   id: string,
   timelineItemId: string,
   text: string,
+  beats: NarrationBeat[] = [],
   baseDir: string = homedir()
 ): TranscriptSegment {
   const dir = findProjectDir(id, baseDir)
@@ -473,10 +474,12 @@ export function setDraftedNarration(
   const transcript = readTranscript(id, baseDir)
   const index = transcript.findIndex((segment) => segment.timelineItemId === timelineItemId)
 
+  // An untimed draft drops any beats the previous one had: they described different words.
+  const timing = beats.length > 0 ? { beats } : { beats: undefined }
   const segment = TranscriptSegmentSchema.parse(
     index === -1
-      ? { id: randomUUID(), text, timelineItemId, status: 'draft' }
-      : { ...transcript[index], text, status: 'draft' }
+      ? { id: randomUUID(), text, timelineItemId, status: 'draft', ...timing }
+      : { ...transcript[index], text, status: 'draft', ...timing }
   )
 
   if (index === -1) transcript.push(segment)
@@ -505,7 +508,14 @@ export function updateTranscriptSegmentText(
 
   let updated: TranscriptSegment
   try {
-    updated = TranscriptSegmentSchema.parse({ ...transcript[index], text, status: 'edited' })
+    // Beats describe words the user has just replaced, so timing them is no longer possible;
+    // an edited take is read as one piece until it is drafted again.
+    updated = TranscriptSegmentSchema.parse({
+      ...transcript[index],
+      text,
+      beats: undefined,
+      status: 'edited'
+    })
   } catch (err) {
     if (err instanceof z.ZodError) {
       throw new Error(err.issues.map((issue) => issue.message).join('; '))

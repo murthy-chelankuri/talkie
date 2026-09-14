@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { RenderInternals } from '@remotion/renderer'
 import { readActionLog } from '../capture/actionLog'
+import { VIDEO_TIME_LOG } from '../capture/rebaseActionLog'
 import { ffOptions } from '../render/binaries'
 import { cleanActionLog, type CleanAction } from './cleanActionLog'
 import { readTimeline } from '../project/projectApi'
@@ -96,9 +97,10 @@ async function gatherVideoEvidence(
   const trimBefore = (item.data as { trimBefore?: number }).trimBefore ?? 0
   const startSeconds = trimBefore / FPS
 
-  // The recorder writes the log beside the video it belongs to.
+  // The log timed against this video sits beside it. Recordings made before a session could
+  // span several tabs have only the session log, and for those the two are the same thing.
   const actions = src
-    ? cleanActionLog(readActionLog(join(dirname(src), 'actions.jsonl')), {
+    ? cleanActionLog(readActionLog(logBeside(src)), {
         startSeconds,
         endSeconds: startSeconds + durationSeconds
       })
@@ -118,6 +120,11 @@ async function gatherVideoEvidence(
     framePaths,
     cleanup: () => rmSync(frameDir, { recursive: true, force: true })
   }
+}
+
+function logBeside(src: string): string {
+  const onVideoClock = join(dirname(src), VIDEO_TIME_LOG)
+  return existsSync(onVideoClock) ? onVideoClock : join(dirname(src), 'actions.jsonl')
 }
 
 /**

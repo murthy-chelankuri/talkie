@@ -67,14 +67,7 @@ export async function finishRecording(baseDir: string): Promise<TimelineItem> {
   try {
     const result = await session.stop()
 
-    return await withHistory(
-      projectId,
-      () =>
-        importRecordedSession(projectId, result.videoPath, baseDir, {
-          contentStartMs: result.contentStartMs
-        }),
-      baseDir
-    )
+    return await withHistory(projectId, () => importRecordedSession(projectId, result, baseDir), baseDir)
   } finally {
     active = null
     busy = false

@@ -3,6 +3,9 @@ import { z } from 'zod'
 /** Ships with every macOS and is known to produce real audio. */
 export const DEFAULT_VOICE = 'Samantha'
 
+/** Words per minute. Lower sounds like explaining; higher like reading out. */
+export const DEFAULT_PACE = 170
+
 /** Providers that can draft a clip's narration. `template` needs nothing installed. */
 export const NARRATION_PROVIDER_IDS = [
   'template',
@@ -56,7 +59,7 @@ export const SpeechSettingsSchema = z.object({
   voice: z.string().default(DEFAULT_VOICE),
   openai: OpenAiSpeechSchema.default({}),
   /** Words per minute. Lower sounds like explaining; higher like reading out. */
-  pace: z.number().min(90).max(300).default(170),
+  pace: z.number().min(90).max(300).default(DEFAULT_PACE),
   /** Silence at a full stop, in milliseconds. */
   sentencePauseMs: z.number().min(0).max(2000).default(420),
   /** Silence at a comma or dash, in milliseconds. */
@@ -93,7 +96,18 @@ export const McpSettingsSchema = z.object({
 export const RecordingSettingsSchema = z.object({
   highlight: z.boolean().default(true),
   /** The ring colour, so a recording can match the product being demonstrated. */
-  highlightColour: z.string().default('#7ab5f0')
+  highlightColour: z.string().default('#7ab5f0'),
+  /**
+   * Record a site whose certificate the machine does not trust.
+   *
+   * A build running on a development box is usually served over https with a self-signed
+   * certificate or an internal authority, and the browser refuses to load it — which is the
+   * whole recording, not a corner of it. Off by default, because turning it on means the
+   * recording browser will no longer notice that a page is being intercepted, and the demo
+   * being recorded is often being logged into. It applies only to the browser a recording is
+   * made in; Talkie's own windows are unaffected.
+   */
+  allowUntrustedCertificates: z.boolean().default(false)
 })
 
 /**

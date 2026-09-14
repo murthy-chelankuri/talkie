@@ -1,6 +1,6 @@
 import type { IpcMain, BrowserWindow } from 'electron'
-import { startRecordingSession, type RecordingSession } from '../capture/recordSession'
-import { openToolbarWindow } from '../capture/toolbarWindow'
+import { startRecordingSession, type RecordingResult, type RecordingSession } from '../capture/recordSession'
+import { openToolbarWindow, setToolbarMode } from '../capture/toolbarWindow'
 import { importRecordedSession } from '../capture/importRecordedSession'
 import { withHistory } from '../project/history'
 import { readSettings } from '../settings/settingsStore'
@@ -15,15 +15,11 @@ let stopping = false
 // stop itself (which would strand the session). The Editor is only told to refresh on success.
 async function importAndNotify(
   projectId: string,
-  recording: { videoPath: string; contentStartMs: number },
+  recording: RecordingResult,
   getWindow: () => BrowserWindow | null
 ): Promise<void> {
   try {
-    const item = await withHistory(projectId, () =>
-      importRecordedSession(projectId, recording.videoPath, undefined, {
-        contentStartMs: recording.contentStartMs
-      })
-    )
+    const item = await withHistory(projectId, () => importRecordedSession(projectId, recording))
     getWindow()?.webContents.send('project:capture:sessionImported', projectId)
     void autoDraft(projectId, item.id, getWindow)
   } catch (err) {
@@ -83,6 +79,7 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     starting = true
     try {
       activeSession = await startRecordingSession(projectId, url)
+      setToolbarMode('recording')
       return { sessionId: activeSession.sessionId }
     } finally {
       starting = false

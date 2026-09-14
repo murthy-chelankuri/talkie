@@ -119,12 +119,20 @@ describe('templateProvider', () => {
 
 describe('buildPrompt', () => {
   it('asks for a length the clip can actually hold', () => {
-    expect(targetWordCount(20)).toBe(50)
-    expect(buildPrompt(request())).toContain('About 50 words')
+    // Twenty seconds at the default 170 words a minute, less the pauses between sentences.
+    expect(targetWordCount(20)).toBe(52)
+    expect(buildPrompt(request())).toContain('52 words at the very most')
   })
 
   it('never asks for so few words that the narration is a fragment', () => {
     expect(targetWordCount(0.5)).toBe(8)
+  })
+
+  it('asks for fewer words when the voice has been slowed down', () => {
+    // The same clip read at 90 words a minute holds barely half of what it holds at 170, and
+    // asking for the same number either way is what makes a take run past its own last frame.
+    expect(targetWordCount(20, 90)).toBeLessThan(targetWordCount(20, 170))
+    expect(targetWordCount(20, 300)).toBeGreaterThan(targetWordCount(20, 170))
   })
 
   it('includes the action log with its timings', () => {

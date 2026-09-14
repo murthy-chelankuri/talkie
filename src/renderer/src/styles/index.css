@@ -68,6 +68,16 @@ body {
  * part of the design system. Remove once nothing relies on it.
  */
 @layer base {
+  /*
+   * Preflight sets `[hidden] { display: none }`, which a display utility on the same element
+   * then overrides — `.flex` and `[hidden]` have equal specificity and the utility comes later.
+   * Anything hidden by the attribute stayed on screen. React screens hide by not rendering, so
+   * this is here for the pages that do not.
+   */
+  [hidden] {
+    display: none !important;
+  }
+
   select {
     border: 1px solid #767676;
     padding: 0.25rem 0.5rem;

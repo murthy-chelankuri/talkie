@@ -7,6 +7,8 @@ import { findForbiddenTerms, type ProjectContext } from '../project/projectConte
 import { readSettings } from '../settings/settingsStore'
 import { narrationProvider } from './providerRegistry'
 import { gatherClipEvidence } from './clipEvidence'
+import { cleanDraft } from './narrationProvider'
+import { beatsToText, parseBeats } from '../transcript/narrationBeats'
 import type { NarrationProviderId } from '../settings/schema'
 
 export interface DraftOptions {
@@ -71,7 +73,9 @@ export async function draftNarrationForItem(
       clipIndex: index + 1,
       clipCount: timeline.length,
       previousNarration: narrationOf(projectId, timeline[index - 1]?.id, baseDir),
-      context: project.context
+      context: project.context,
+      // How many words fit is a question about the voice this will be read in.
+      pace: settings.speech.pace
     })
 
     if (!text.trim()) {
@@ -83,7 +87,11 @@ export async function draftNarrationForItem(
       )
     }
 
-    setDraftedNarration(projectId, timelineItemId, text, baseDir)
+    // Timed lines where the model gave them; a draft with none is still good narration and is
+    // kept as the one beat every take used to be. See narrationBeats.ts.
+    const beats = parseBeats(text)
+    const prose = beats.length > 0 ? beatsToText(beats) : cleanDraft(text)
+    setDraftedNarration(projectId, timelineItemId, prose, beats, baseDir)
 
     // A prompt is a request, not a guarantee — so what came back is checked against the rules
     // rather than assumed to follow them.

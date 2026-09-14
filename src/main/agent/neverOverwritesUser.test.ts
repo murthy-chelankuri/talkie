@@ -91,7 +91,7 @@ describe('drafting never takes the user\'s words away', () => {
   it('replaces only its own earlier draft', async () => {
     const project = createProject('Redraft', baseDir)
     const item = clip(project)
-    setDraftedNarration(project.id, item.id, 'An earlier guess', baseDir)
+    setDraftedNarration(project.id, item.id, 'An earlier guess', [], baseDir)
 
     await draftNarrationForItem(project.id, item.id, {}, baseDir)
 

@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, readFileSync } from 'fs'
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'fs'
 
 export interface ActionLogEntry {
   t: number
@@ -23,6 +23,10 @@ export interface ActionLogEntry {
 
 export function appendActionLogEntry(actionLogPath: string, entry: ActionLogEntry): void {
   appendFileSync(actionLogPath, `${JSON.stringify(entry)}\n`, 'utf-8')
+}
+
+export function writeActionLog(actionLogPath: string, entries: ActionLogEntry[]): void {
+  writeFileSync(actionLogPath, entries.map((entry) => `${JSON.stringify(entry)}\n`).join(''), 'utf-8')
 }
 
 export function readActionLog(actionLogPath: string): ActionLogEntry[] {

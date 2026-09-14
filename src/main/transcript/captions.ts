@@ -1,6 +1,6 @@
 import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../remotion/constants'
 import type { TimelineItem } from '../project/timeline/schema'
-import type { TranscriptSegment } from './schema'
+import type { NarrationBeat, TranscriptSegment } from './schema'
 
 export interface Caption {
   /** Where the words start and stop, in frames of the finished video. */
@@ -38,6 +38,14 @@ export function buildCaptions(
     const endFrame = Math.min(item.start + item.duration, startFrame + Math.round(seconds * FPS))
     if (endFrame <= startFrame) continue
 
+    // A timed take already says when each thing is said, so its cues are placed rather than
+    // guessed — and a caption that sat over a sixteen-second wait for data was the clearest sign
+    // that the words and the picture had come apart. See narrationBeats.ts.
+    if (segment.beats && segment.beats.length > 1) {
+      captions.push(...cuesFromBeats(segment.beats, item, endFrame))
+      continue
+    }
+
     // Long narration becomes several cues rather than one that sits on screen for nine seconds.
     // Time is shared out by length, which is as close to the speech as the take's own duration
     // allows without measuring the audio word by word.
@@ -55,6 +63,43 @@ export function buildCaptions(
   }
 
   return captions
+}
+
+/**
+ * One cue per beat, starting where the beat does and ending where the next one begins.
+ *
+ * The beat times are what the take was assembled to, so these are the speech's own timings
+ * rather than a share-out of the clip by sentence length.
+ */
+function cuesFromBeats(beats: NarrationBeat[], item: TimelineItem, endFrame: number): Caption[] {
+  const cues: Caption[] = []
+
+  for (const [index, beat] of beats.entries()) {
+    const startFrame = item.start + Math.round(beat.at * FPS)
+    const next = beats[index + 1]
+    const stops = next ? item.start + Math.round(next.at * FPS) : endFrame
+    if (stops <= startFrame || startFrame >= endFrame) continue
+
+    for (const part of splitIntoCues(beat.text.trim())) {
+      cues.push({ startFrame, endFrame: Math.min(stops, endFrame), text: part })
+    }
+  }
+
+  // A beat long enough to need several cues shares its own window between them, rather than
+  // stacking them all on the same frame.
+  return cues.flatMap((cue, index, all) => {
+    const sameWindow = all.filter((other) => other.startFrame === cue.startFrame)
+    if (sameWindow.length === 1) return [cue]
+    const position = sameWindow.indexOf(cue)
+    const span = (cue.endFrame - cue.startFrame) / sameWindow.length
+    return [
+      {
+        ...cue,
+        startFrame: Math.round(cue.startFrame + span * position),
+        endFrame: Math.round(cue.startFrame + span * (position + 1))
+      }
+    ]
+  })
 }
 
 /**
