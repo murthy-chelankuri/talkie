@@ -21,6 +21,17 @@ export interface Take {
   wavPath: string
 }
 
+/**
+ * The least silence between two pieces of a take.
+ *
+ * Beats are placed at the moments they describe, and where two of them want the same moment the
+ * later one follows on. Following on used to mean immediately: the voice ran out of one sentence
+ * and into the next with no breath at all, which is the one thing a person never does and the
+ * thing that made a take sound recited rather than spoken. A full stop is worth about this much
+ * even when the clip is in a hurry.
+ */
+export const BREATH_SECONDS = 0.34
+
 export interface AssembledTake {
   /** Where each piece actually landed, which is its own time or later — never earlier. */
   at: number[]
@@ -66,9 +77,14 @@ function header(format: WavFormat, dataBytes: number): Buffer {
 /**
  * A piece never starts before the one in front of it has finished: a demo that overruns its own
  * commentary is a scheduling problem, not something to solve by talking over yourself. Where two
- * pieces collide the later one simply follows on, and the take runs longer than asked.
+ * pieces collide the later one follows on after a breath — see BREATH_SECONDS — and the take
+ * runs longer than asked.
  */
-export function assembleTake(pieces: Take[], outputPath: string): AssembledTake {
+export function assembleTake(
+  pieces: Take[],
+  outputPath: string,
+  breathSeconds: number = BREATH_SECONDS
+): AssembledTake {
   if (pieces.length === 0) throw new Error('A take needs at least one piece')
 
   // Every piece comes from the same engine in the same run, so the first one's format is the
@@ -80,8 +96,10 @@ export function assembleTake(pieces: Take[], outputPath: string): AssembledTake 
   const at: number[] = []
   let cursor = 0
 
-  for (const piece of pieces) {
-    const startsAt = Math.max(piece.at, cursor)
+  for (const [index, piece] of pieces.entries()) {
+    // Never earlier than its own moment, and never right on the heels of the one before it.
+    const earliest = index === 0 ? 0 : cursor + breathSeconds
+    const startsAt = Math.max(piece.at, earliest)
     chunks.push(silence(format, startsAt - cursor))
 
     const data = dataChunk(piece.wavPath)

@@ -38,9 +38,30 @@ export function parseBeats(draft: string): NarrationBeat[] {
 
   // Time only ever runs forwards. A model that puts a beat before the one in front of it has
   // made an ordering mistake, not asked for two things to be said at once.
+  //
+  // Punctuated here rather than as each line is read, so a line the model wrapped is joined on
+  // before the full stop goes at the end of the whole beat rather than into the middle of it.
   return beats
-    .map((beat, index) => ({ ...beat, at: Math.max(beat.at, index === 0 ? 0 : beats[index - 1].at) }))
+    .map((beat, index) => ({
+      ...beat,
+      at: Math.max(beat.at, index === 0 ? 0 : beats[index - 1].at),
+      text: finished(beat.text)
+    }))
     .filter((beat) => beat.text.length > 0)
+}
+
+/**
+ * A line with something to fall on at the end of it.
+ *
+ * A model asked for short timed lines often leaves the full stop off, and the voice has nothing
+ * to end on: `say` falls at a full stop and runs flat without one, so a beat written without
+ * punctuation is read as though the sentence were going to continue — and then stops dead. Read
+ * one after another that is what makes a take sound recited. It also keeps the prose readable,
+ * since the beats are joined with a space to make it.
+ */
+function finished(text: string): string {
+  if (text.length === 0) return text
+  return /[.!?…:;,—–]$/.test(text) ? text : `${text}.`
 }
 
 /** The narration as one piece of prose, which is what the editor shows and the user edits. */

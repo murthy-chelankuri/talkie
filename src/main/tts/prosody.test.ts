@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toSpokenMarkup, splitSentences, DEFAULT_PROSODY } from './prosody'
+import { DEFAULT_PROSODY, WHOLE_ARC, arcFor, splitSentences, toSpokenMarkup } from './prosody'
 
 describe('toSpokenMarkup', () => {
   it('sets the pace once, at the front', () => {
@@ -70,5 +70,33 @@ describe('splitSentences', () => {
 
   it('handles narration with no terminator at all', () => {
     expect(splitSentences('no full stop here')).toEqual(['no full stop here'])
+  })
+})
+
+describe('the pitch fall across a take read a beat at a time', () => {
+  it('gives a lone sentence in a beat a place in the fall, not the baseline', () => {
+    // A beat is very often a single sentence. Left at the baseline every beat came out at the
+    // same pitch, so a four-beat take was four identical flat utterances — which is the one
+    // thing that stops narration sounding like a person talking.
+    const first = toSpokenMarkup('Here is the watchlist.', DEFAULT_PROSODY, arcFor(0, 4))
+    const last = toSpokenMarkup('And that is the analysis.', DEFAULT_PROSODY, arcFor(3, 4))
+
+    expect(first).toContain('[[pbas +3]]')
+    expect(last).not.toContain('[[pbas +3]]')
+  })
+
+  it('falls across the take rather than resetting every beat', () => {
+    const pitches = [0, 1, 2, 3].map((index) => {
+      const markup = toSpokenMarkup('One sentence.', DEFAULT_PROSODY, arcFor(index, 4))
+      return Number(/\[\[pbas ([+-]?\d+)\]\]/.exec(markup)![1])
+    })
+
+    // Each beat starts no higher than the one before it, and the take ends lower than it began.
+    expect(pitches).toEqual([...pitches].sort((a, b) => b - a))
+    expect(pitches[3]).toBeLessThan(pitches[0])
+  })
+
+  it('still hands a take read in one piece the whole fall', () => {
+    expect(arcFor(0, 1)).toEqual(WHOLE_ARC)
   })
 })

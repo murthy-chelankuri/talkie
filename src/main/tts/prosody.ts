@@ -34,10 +34,43 @@ export const DEFAULT_PROSODY: ProsodySettings = {
  * natural variation between one sentence and the next and did nothing audible; a range twice
  * this wide fell from 200Hz to 126Hz, which is too far to sound like the same person.
  */
-const PITCH_TOP = 3
-const PITCH_BOTTOM = -1
+export const PITCH_TOP = 3
+export const PITCH_BOTTOM = -1
 
-export function toSpokenMarkup(text: string, settings: ProsodySettings = DEFAULT_PROSODY): string {
+/**
+ * The stretch of the pitch fall this piece of speech covers.
+ *
+ * A take used to be one call to the voice, so the drift ran the length of the narration on its
+ * own. Timed narration is read a beat at a time — separate processes, each starting from the
+ * voice's baseline — so every beat restarted the contour, and a beat of a single sentence got
+ * no contour at all. Four one-sentence beats came out as four identical flat utterances, which
+ * is exactly how a person does not talk. Each beat is now told which part of the whole take's
+ * fall it is responsible for.
+ */
+export interface PitchArc {
+  from: number
+  to: number
+}
+
+export const WHOLE_ARC: PitchArc = { from: PITCH_TOP, to: PITCH_BOTTOM }
+
+/** Whether this piece of speech is the whole take rather than one beat of it. */
+function isWholeArc(arc: PitchArc): boolean {
+  return arc.from === PITCH_TOP && arc.to === PITCH_BOTTOM
+}
+
+/** The slice of the fall belonging to piece `index` of `total`. */
+export function arcFor(index: number, total: number): PitchArc {
+  if (total <= 1) return WHOLE_ARC
+  const at = (step: number): number => PITCH_TOP + (PITCH_BOTTOM - PITCH_TOP) * (step / total)
+  return { from: at(index), to: at(index + 1) }
+}
+
+export function toSpokenMarkup(
+  text: string,
+  settings: ProsodySettings = DEFAULT_PROSODY,
+  arc: PitchArc = WHOLE_ARC
+): string {
   const sentences = splitSentences(sanitize(text))
   if (sentences.length === 0) return ''
 
@@ -47,7 +80,7 @@ export function toSpokenMarkup(text: string, settings: ProsodySettings = DEFAULT
   // should have been a steady fall.
   let previous = 0
   const spoken = sentences.map((sentence, index) => {
-    const target = pitchFor(index, sentences.length)
+    const target = pitchFor(index, sentences.length, arc)
     const step = target - previous
     previous = target
     const sign = step >= 0 ? '+' : ''
@@ -73,11 +106,19 @@ export function splitSentences(text: string): string[] {
     .filter((sentence) => sentence.length > 0)
 }
 
-/** First sentence sits highest and the last lowest, drifting down in between. */
-function pitchFor(index: number, total: number): number {
-  if (total === 1) return 0
+/**
+ * First sentence sits highest and the last lowest, drifting down in between.
+ *
+ * A lone sentence that is the whole take has no arc to sit on and takes the voice's own pitch;
+ * raising it would leave every short narration sounding slightly high. A lone sentence that is
+ * one beat of several does have a place in the fall, and sits at it — which is the difference
+ * between a take with a contour and four identical flat utterances, since a beat is very often
+ * a single sentence.
+ */
+function pitchFor(index: number, total: number, arc: PitchArc): number {
+  if (total === 1) return isWholeArc(arc) ? 0 : Math.round(arc.from)
   const progress = index / (total - 1)
-  return Math.round(PITCH_TOP + (PITCH_BOTTOM - PITCH_TOP) * progress)
+  return Math.round(arc.from + (arc.to - arc.from) * progress)
 }
 
 function withClausePauses(sentence: string, pauseMs: number): string {
