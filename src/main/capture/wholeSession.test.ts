@@ -76,10 +76,12 @@ describe('a recording of a session that moves between tabs', () => {
     await second.waitForTimeout(4000)
 
     const recording = await session.stop()
-    const item = await importRecordedSession(project.id, recording, baseDir)
+    const scenes = await importRecordedSession(project.id, recording, baseDir)
+    const item = scenes[0]
 
-    // The whole session, not the two seconds before the tab went away.
-    expect(item.duration).toBeGreaterThan(5 * FPS)
+    // The whole session, not the two seconds before the tab went away — however many scenes it
+    // was cut into on the way in.
+    expect(scenes.reduce((total, scene) => total + scene.duration, 0)).toBeGreaterThan(5 * FPS)
 
     const { durationInSeconds } = await getVideoMetadata((item.data as { src: string }).src)
     expect(durationInSeconds).toBeGreaterThan(5)
@@ -101,7 +103,7 @@ describe('a recording of a session that moves between tabs', () => {
     await second.waitForTimeout(3000)
     const recording = await session.stop()
 
-    const item = await importRecordedSession(project.id, recording, baseDir)
+    const [item] = await importRecordedSession(project.id, recording, baseDir)
     const watched = recording.clips.reduce((total, clip) => total + clip.durationMs, 0)
 
     const { durationInSeconds, codec } = await getVideoMetadata((item.data as { src: string }).src)

@@ -53,12 +53,12 @@ export async function beginRecording(projectId: string, url: string, baseDir: st
 }
 
 /**
- * Stop, and put the clip on the timeline.
+ * Stop, and put the recording's scenes on the timeline.
  *
  * The video is already on disk once stop resolves, so an import failure is reported without
  * pretending the recording itself was lost — the file is still there to be imported by hand.
  */
-export async function finishRecording(baseDir: string): Promise<TimelineItem> {
+export async function finishRecording(baseDir: string): Promise<TimelineItem[]> {
   const session = activeRecording()
   if (busy) throw new Error('A stop is already in progress.')
 

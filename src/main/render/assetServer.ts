@@ -6,6 +6,7 @@ import type { AddressInfo } from 'net'
 import type { TimelineItem } from '../../remotion/types'
 import type { NarrationAudio } from '../project/projectApi'
 import { readActionLog } from '../capture/actionLog'
+import { VIDEO_TIME_LOG } from '../capture/rebaseActionLog'
 import { mergeFocuses, type ClickFocus } from '../../remotion/clickZoom'
 import type { Caption as CaptionCue } from '../transcript/captions'
 import { FPS } from '../../remotion/constants'
@@ -186,13 +187,19 @@ export function resolveAssetUrl(absolutePath: string, rootDir: string, serverUrl
 /**
  * The clicks inside one clip, as frames from that clip's own start.
  *
- * The action log sits beside the recording and is written in milliseconds from the moment the
- * browser opened, so a clip trimmed at the front has to have that taken off — otherwise the
- * picture would lean towards a click a second before it happened.
+ * `trimBefore` counts frames of the stitched video, so the log has to be the one written on the
+ * video's own clock — the session log it sits beside runs on a different one the moment a
+ * recording spans more than one tab, and reading that one leant the picture towards clicks that
+ * had not happened yet. See rebaseActionLog.ts.
+ *
+ * Bounded by the footage the clip plays rather than by how long it is on screen: a scene whose
+ * narration outgrew its footage holds its last frame, and it should not go on leaning towards
+ * clicks that belong to the scene after it.
  */
-function focusesFor(videoPath: string, item: TimelineItem, trimBefore: number): ClickFocus[] {
+function focusesFor(videoPath: string, item: TimelineItem, trimBefore: number, trimAfter?: number): ClickFocus[] {
   try {
-    const entries = readActionLog(join(dirname(videoPath), 'actions.jsonl'))
+    const entries = readActionLog(logBeside(videoPath))
+    const lastFrame = Math.min(item.duration, (trimAfter ?? Infinity) - trimBefore)
 
     const focuses = entries
       .filter((entry) => entry.type === 'click' && typeof entry.x === 'number')
@@ -201,13 +208,20 @@ function focusesFor(videoPath: string, item: TimelineItem, trimBefore: number): 
         x: entry.x as number,
         y: entry.y as number
       }))
-      .filter((focus) => focus.frame >= 0 && focus.frame < item.duration)
+      .filter((focus) => focus.frame >= 0 && focus.frame < lastFrame)
 
     return mergeFocuses(focuses)
   } catch {
     // A recording with no log still plays; it simply does not lean anywhere.
     return []
   }
+}
+
+/** The log timed against this video, falling back to the session log for recordings made
+ * before the two could differ. */
+function logBeside(videoPath: string): string {
+  const onVideoClock = join(dirname(videoPath), VIDEO_TIME_LOG)
+  return existsSync(onVideoClock) ? onVideoClock : join(dirname(videoPath), 'actions.jsonl')
 }
 
 export function resolveTimelineAssetUrls(
@@ -238,7 +252,7 @@ export function resolveTimelineAssetUrls(
         : item
     }
 
-    const data = item.data as { src: string; trimBefore?: number }
+    const data = item.data as { src: string; trimBefore?: number; trimAfter?: number }
     return {
       ...item,
       data: {
@@ -247,7 +261,9 @@ export function resolveTimelineAssetUrls(
         ...(audioUrl ? { audioUrl } : {}),
         ...(captions ? { captions } : {}),
         // Where the clicks in this clip landed, so the picture can lean towards them.
-        ...(item.kind === 'video' ? { focus: focusesFor(data.src, item, data.trimBefore ?? 0) } : {})
+        ...(item.kind === 'video'
+          ? { focus: focusesFor(data.src, item, data.trimBefore ?? 0, data.trimAfter) }
+          : {})
       }
     }
   })

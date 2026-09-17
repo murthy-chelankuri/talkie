@@ -19,9 +19,11 @@ async function importAndNotify(
   getWindow: () => BrowserWindow | null
 ): Promise<void> {
   try {
-    const item = await withHistory(projectId, () => importRecordedSession(projectId, recording))
+    const items = await withHistory(projectId, () => importRecordedSession(projectId, recording))
     getWindow()?.webContents.send('project:capture:sessionImported', projectId)
-    void autoDraft(projectId, item.id, getWindow)
+    // One scene at a time, in order: the drafter is told what was said over the clip before
+    // this one, so drafting them at once would give every scene the same empty answer.
+    void autoDraftAll(projectId, items.map((item) => item.id), getWindow)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)
   }
@@ -34,6 +36,16 @@ async function importAndNotify(
  * once and the words catch up. A provider that is missing or failing is logged and nothing
  * more: the clip is on the timeline either way, and the user can still write their own.
  */
+async function autoDraftAll(
+  projectId: string,
+  timelineItemIds: string[],
+  getWindow: () => BrowserWindow | null
+): Promise<void> {
+  for (const timelineItemId of timelineItemIds) {
+    await autoDraft(projectId, timelineItemId, getWindow)
+  }
+}
+
 async function autoDraft(
   projectId: string,
   timelineItemId: string,

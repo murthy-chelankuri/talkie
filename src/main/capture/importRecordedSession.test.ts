@@ -18,7 +18,9 @@ describe('importRecordedSession (real Playwright recording)', () => {
     await session.page.waitForTimeout(300)
     const result = await session.stop()
 
-    const item = await importRecordedSession(project.id, result, baseDir)
+    // Short enough to be one scene, so this still describes a single clip landing on the
+    // timeline. Splitting is covered in sceneBoundaries.test.ts and recordedScenes.test.ts.
+    const [item] = await importRecordedSession(project.id, result, baseDir)
 
     expect(item.kind).toBe('video')
     // The item points at the stitched, seekable copy rather than at a raw page capture.
@@ -45,8 +47,8 @@ describe('importRecordedSession (real Playwright recording)', () => {
     await session.page.waitForTimeout(3000)
     const recording = await session.stop()
 
-    const untrimmed = await importRecordedSession(project.id, { clips: recording.clips }, baseDir)
-    const trimmed = await importRecordedSession(
+    const [untrimmed] = await importRecordedSession(project.id, { clips: recording.clips }, baseDir)
+    const [trimmed] = await importRecordedSession(
       project.id,
       // A full second of blank page before the site appeared.
       { clips: recording.clips, contentStartMs: 1000 },
@@ -69,7 +71,7 @@ describe('importRecordedSession (real Playwright recording)', () => {
     await session.page.waitForTimeout(1000)
     const recording = await session.stop()
 
-    const item = await importRecordedSession(
+    const [item] = await importRecordedSession(
       project.id,
       { clips: recording.clips, contentStartMs: 60_000 },
       baseDir

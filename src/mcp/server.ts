@@ -8,13 +8,16 @@ import {
   readTranscript,
   addScene,
   addTranscriptSegment,
-  updateTranscriptSegmentText
+  updateTranscriptSegmentText,
+  splitTimelineItem
 } from '../main/project/projectApi'
 import { withHistory } from '../main/project/history'
 import { draftNarrationForItem, draftNarrationForProject } from '../main/agent/draftNarration'
 import { narrateSegment } from '../main/transcript/narrate'
 import { renderProjectVideo } from '../main/render/renderProject'
 import { richTextToPlain } from '../main/project/timeline/richText'
+import { clipActions } from '../main/agent/clipEvidence'
+import { beatsToText, parseBeats } from '../main/transcript/narrationBeats'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
@@ -32,13 +35,21 @@ function text(body: string): { content: [{ type: 'text'; text: string }] } {
 
 function describeItem(item: TimelineItem, index: number): string {
   const seconds = (item.duration / 30).toFixed(1)
-  const data = item.data as { title?: string; source?: string } | null
+  const data = item.data as { title?: string; source?: string; trimBefore?: number; trimAfter?: number } | null
   const name =
     item.kind === 'scene' || item.kind === 'diagram'
       ? richTextToPlain(data?.title ?? '') || 'untitled'
       : item.kind
 
-  return `${index + 1}. ${item.kind} — ${name} (${seconds}s, id ${item.id})`
+  // A recorded session arrives as several scenes cut from one file, so which stretch this one
+  // plays is the difference between "clip 3" and something an agent can reason about.
+  const from = (data?.trimBefore ?? 0) / 30
+  const window =
+    item.kind === 'video' && (data?.trimBefore || data?.trimAfter)
+      ? `, recording ${from.toFixed(1)}–${((data?.trimAfter ?? 0) / 30 || from + item.duration / 30).toFixed(1)}s`
+      : ''
+
+  return `${index + 1}. ${item.kind} — ${name} (${seconds}s${window}, id ${item.id})`
 }
 
 /** The token this server was started with, from its own configuration. */
@@ -131,7 +142,12 @@ export function createTalkieServer(
       const transcript = readTranscript(projectId, baseDir)
       const lines = timeline.map((item, index) => {
         const segment = transcript.find((s) => s.timelineItemId === item.id)
-        const narration = segment ? `\n   narration (${segment.status}): ${segment.text}` : '\n   no narration yet'
+        // Whether the take is timed to moments or read as one block is the thing that decides
+        // if it keeps step with the picture, so it belongs in the listing.
+        const timing = segment?.beats?.length ? `, ${segment.beats.length} timed lines` : ', untimed'
+        const narration = segment
+          ? `\n   narration (${segment.status}${timing}): ${segment.text}`
+          : '\n   no narration yet'
         return describeItem(item, index) + narration
       })
 
@@ -147,8 +163,11 @@ export function createTalkieServer(
       title: 'Start recording',
       description:
         'Open a real browser window and start recording it. Drive it with talkie_navigate, ' +
-        'talkie_click, talkie_type and talkie_scroll, then call talkie_stop_recording to put the ' +
-        'clip on the timeline. One recording at a time.',
+        'talkie_click, talkie_type and talkie_scroll, then call talkie_stop_recording to put it ' +
+        'on the timeline. Every tab is followed, so opening a link in a new one keeps recording. ' +
+        'The session is cut into scenes on the way in, roughly one every fifteen seconds and on ' +
+        'whatever happened nearest that mark, so expect several clips back rather than one. ' +
+        'One recording at a time.',
       inputSchema: {
         projectId: z.string(),
         url: z.string().describe('Where the demo starts, e.g. "example.com/pricing"')
@@ -250,14 +269,22 @@ export function createTalkieServer(
     'talkie_stop_recording',
     {
       title: 'Stop recording',
-      description: 'Close the browser and add what was recorded to the project timeline.',
+      description:
+        'Close the browser and add what was recorded to the project timeline, cut into scenes. ' +
+        'Each scene is narrated separately, which is what keeps the words in step with the ' +
+        'picture — so narrate them one at a time rather than writing one take for the session.',
       inputSchema: {}
     },
     async () => {
-      const item = await recording.finishRecording(baseDir)
+      const items = await recording.finishRecording(baseDir)
+      const seconds = items.reduce((total, item) => total + item.duration, 0) / 30
+      // Every clip is listed rather than only the total: each one takes its own narration, and
+      // an agent that is not told their ids cannot write any of it.
       return text(
-        `Recording added to the timeline: ${(item.duration / 30).toFixed(1)}s (clip id ${item.id}).\n` +
-          'Give it words with talkie_set_narration or talkie_draft_narration.'
+        `Recording added to the timeline as ${items.length} clip${items.length === 1 ? '' : 's'}, ` +
+          `${seconds.toFixed(1)}s in all:\n` +
+          items.map((item) => `  ${item.id} — ${(item.duration / 30).toFixed(1)}s`).join('\n') +
+          '\nGive each one words with talkie_set_narration or talkie_draft_narration.'
       )
     }
   )
@@ -309,26 +336,121 @@ export function createTalkieServer(
       title: 'Write narration',
       description:
         'Set the words spoken over one clip. Roughly 2.5 words a second — going long means the ' +
-        'voice runs past the clip. Call talkie_narrate afterwards to turn it into audio.',
+        'voice is hurried to fit, and past about a tenth faster the clip is stretched instead.\n' +
+        'Time the lines. Start each one with the second it belongs to, in square brackets: ' +
+        '"[0.0] Here is the watchlist." then "[8.5] And the analysis comes back." A recording ' +
+        'does not move at a steady rate, so a take read straight through drifts ahead of the ' +
+        'thing it describes; timed lines are read separately with real silence between them. ' +
+        'Use talkie_clip_actions to find out what happens when. Untimed text still works and is ' +
+        'read as one block.\n' +
+        'Call talkie_narrate afterwards to turn it into audio.',
       inputSchema: {
         projectId: z.string(),
         timelineItemId: z.string().describe('The clip id, from talkie_timeline'),
-        text: z.string()
+        text: z.string().describe('Timed lines like "[0.0] ..." on separate lines, or plain prose')
       }
     },
     async ({ projectId, timelineItemId, text: words }) => {
       const existing = readTranscript(projectId, baseDir).find((s) => s.timelineItemId === timelineItemId)
 
+      // Timings where they were given. The prose kept alongside is what the editor shows and
+      // what captions are built from, so it has to be the same words without the brackets.
+      const beats = parseBeats(words)
+      const prose = beats.length > 0 ? beatsToText(beats) : words
+
       const segment = withHistory(
         projectId,
         () =>
           existing
-            ? updateTranscriptSegmentText(projectId, existing.id, words, baseDir)
-            : addTranscriptSegment(projectId, { text: words, timelineItemId }, baseDir),
+            ? updateTranscriptSegmentText(projectId, existing.id, prose, baseDir, beats)
+            : addTranscriptSegment(projectId, { text: prose, timelineItemId, beats }, baseDir),
         baseDir
       )
 
-      return text(`Narration set (segment id ${segment.id}).`)
+      const timing = beats.length > 0 ? `${beats.length} timed lines` : 'read as one block'
+      return text(`Narration set, ${timing} (segment id ${segment.id}).`)
+    }
+  )
+
+  tool(
+    'talkie_clip_actions',
+    {
+      title: 'What happens during a clip',
+      description:
+        'The things that happened while this clip was recorded — navigations, clicks and typing — ' +
+        'each timed in seconds from the start of the clip. This is what to write timed narration ' +
+        'against: it says where the demo waits and where it moves, which a clip length cannot. ' +
+        'Empty for a slide or an imported image, which have nothing happening in them.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline')
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ projectId, timelineItemId }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+
+      const seconds = (item.duration / 30).toFixed(1)
+      const actions = item.kind === 'video' ? clipActions(item) : []
+      if (actions.length === 0) {
+        return text(`This clip is ${seconds}s long and has no recorded actions in it.`)
+      }
+
+      return text(
+        `This clip is ${seconds}s long. What happened, in seconds from its start:\n` +
+          actions.map((action) => `  [${action.atSeconds.toFixed(1)}] ${action.label}`).join('\n')
+      )
+    }
+  )
+
+  tool(
+    'talkie_split_clip',
+    {
+      title: 'Split a clip in two',
+      description:
+        'Cut one clip into two at a moment inside it, so each half can be narrated on its own. ' +
+        'Use this when a clip turns out to cover two subjects — a scene that is the tail of one ' +
+        'thing and the head of the next cannot be narrated well, because it has two things to ' +
+        'introduce and one breath to do it in. Both halves play their own stretch of the same ' +
+        'recording, so nothing is re-encoded and no footage is lost. Narration already on the ' +
+        'clip stays with the first half.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline'),
+        atSeconds: z
+          .number()
+          .positive()
+          .describe('Where to cut, in seconds from the start of that clip')
+      }
+    },
+    async ({ projectId, timelineItemId, atSeconds }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+
+      // Bounds checked here rather than left to the API, which counts frames on the project's
+      // own timeline — an agent that asked in seconds inside one clip cannot act on that.
+      const seconds = item.duration / 30
+      if (atSeconds >= seconds) {
+        return text(
+          `That clip is only ${seconds.toFixed(1)}s long, so it cannot be cut at ${atSeconds.toFixed(1)}s.`
+        )
+      }
+
+      // The API cuts at a frame on the project's own timeline; the agent is talking about a
+      // moment inside this clip, which is the more natural thing to know.
+      const atFrame = item.start + Math.round(atSeconds * 30)
+      const halves = withHistory(
+        projectId,
+        () => splitTimelineItem(projectId, timelineItemId, atFrame, baseDir),
+        baseDir
+      )
+
+      return text(
+        `Split into two clips:\n` +
+          halves.map((half) => `  ${half.id} — ${(half.duration / 30).toFixed(1)}s`).join('\n') +
+          '\nGive the second one words with talkie_set_narration or talkie_draft_narration.'
+      )
     }
   )
 

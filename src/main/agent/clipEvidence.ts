@@ -89,29 +89,56 @@ function describeScene(item: TimelineItem): string {
   ].join('\n')
 }
 
+/**
+ * What this clip has footage behind, in seconds from the start of the recording.
+ *
+ * Scenes cut from one session all point at the same file, so a clip owns a stretch of it rather
+ * than the whole thing — and a clip lengthened to hold its narration still owns only that
+ * stretch. Reading past it would describe, and talk over, the scene that comes next.
+ */
+export function footageWindow(item: TimelineItem): { startSeconds: number; endSeconds: number } {
+  const { trimBefore, trimAfter } = item.data as { trimBefore?: number; trimAfter?: number }
+  const startSeconds = (trimBefore ?? 0) / FPS
+  const durationSeconds = item.duration / FPS
+  const seconds = trimAfter ? Math.min(durationSeconds, trimAfter / FPS - startSeconds) : durationSeconds
+
+  return { startSeconds, endSeconds: startSeconds + seconds }
+}
+
+/**
+ * What happened during one clip, timed from the clip's own start.
+ *
+ * The log timed against the stitched video sits beside it. Recordings made before a session
+ * could span several tabs have only the session log, and for those the two are the same thing.
+ */
+export function clipActions(item: TimelineItem): CleanAction[] {
+  const src = (item.data as { src?: string }).src
+  if (!src) return []
+
+  try {
+    return cleanActionLog(readActionLog(logBeside(src)), footageWindow(item))
+  } catch (err) {
+    // A clip whose log cannot be read is still worth describing from its pictures alone.
+    console.error(`Could not read what happened during ${src}:`, err)
+    return []
+  }
+}
+
 async function gatherVideoEvidence(
   item: TimelineItem,
   src: string | undefined,
   durationSeconds: number
 ): Promise<ClipEvidence> {
-  const trimBefore = (item.data as { trimBefore?: number }).trimBefore ?? 0
-  const startSeconds = trimBefore / FPS
-
-  // The log timed against this video sits beside it. Recordings made before a session could
-  // span several tabs have only the session log, and for those the two are the same thing.
-  const actions = src
-    ? cleanActionLog(readActionLog(logBeside(src)), {
-        startSeconds,
-        endSeconds: startSeconds + durationSeconds
-      })
-    : []
+  const { startSeconds, endSeconds } = footageWindow(item)
+  const footageSeconds = endSeconds - startSeconds
+  const actions = clipActions(item)
 
   if (!src || !existsSync(src)) {
     return { kind: 'video', durationSeconds, actions, framePaths: [] }
   }
 
   const frameDir = mkdtempSync(join(tmpdir(), 'talkie-frames-'))
-  const framePaths = await sampleFrames(src, startSeconds, durationSeconds, frameDir)
+  const framePaths = await sampleFrames(src, startSeconds, footageSeconds, frameDir)
 
   return {
     kind: 'video',

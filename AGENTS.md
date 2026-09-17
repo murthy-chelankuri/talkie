@@ -21,6 +21,11 @@ npm run notices      # regenerates the third-party licence data
 
 Run `npm test` and `npm run typecheck` before committing. Both are expected to pass.
 
+The recording tests drive a real Chromium and run it headless, so a test run does not throw
+windows in front of whatever else is on screen. `TALKIE_HEADLESS=0 npm test` shows them, which
+is worth doing when a recording test misbehaves — the app itself is always headed, because the
+person is the one driving that browser.
+
 ## Things that will bite you
 
 These each cost real time to find. None are obvious from the code.
