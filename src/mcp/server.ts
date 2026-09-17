@@ -198,11 +198,20 @@ export function createTalkieServer(
       annotations: { openWorldHint: true }
     },
     async () => {
-      const visited = await recording.exploreActiveRecording(baseDir)
+      const { visited, ending } = await recording.exploreActiveRecording(baseDir)
+      if (ending === 'waited-too-long') {
+        return text(
+          'The app asked to be signed in and nobody did. The browser is open — sign in there, ' +
+            'then call talkie_explore again.'
+        )
+      }
       if (visited.length === 0) {
         return text('Found nothing safe to explore from here. Drive it with talkie_click instead.')
       }
-      return text(`Walked the app, showing: ${visited.join(' → ')}.\nStill recording — carry on or stop.`)
+      return text(
+        `Walked the app, showing: ${visited.join(' → ')}.\n` +
+          'Still recording — carry on, or call talkie_stop_recording.'
+      )
     }
   )
 

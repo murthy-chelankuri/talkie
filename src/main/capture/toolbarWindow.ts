@@ -95,7 +95,7 @@ export function setToolbarMode(mode: keyof typeof SIZES): void {
  * them round or stuck on a page — and the one control they have is stop, which they should not
  * have to guess about pressing.
  */
-export function setToolbarStatus(status: string): void {
+export function setToolbarStatus(status: string, needsYou = false): void {
   if (!toolbarWindow || toolbarWindow.isDestroyed()) return
-  toolbarWindow.webContents.send('project:capture:exploring', status)
+  toolbarWindow.webContents.send('project:capture:exploring', status, needsYou)
 }

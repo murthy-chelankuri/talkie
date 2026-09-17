@@ -65,6 +65,18 @@ These each cost real time to find. None are obvious from the code.
 whichever narration provider is configured — it reads the page as text, because `complete()` has
 no picture in it.
 
+It stops when it thinks the demo is shown: the recording finishes on its own a few seconds
+later, late enough to read the toolbar and take over by hand. A walk that ended because nobody
+signed in, or because there was nowhere safe to go, leaves the recording running instead — those
+need a person, and ending the recording would throw away the chance to carry on.
+
+`authWall.ts` recognises a login or a second factor by asking `redact.ts` whether it would hide
+the field. That is the same question from the other end — the fields whose values must never be
+written down are exactly the ones only the user can fill — so the two cannot drift apart. The
+walk then waits, up to five minutes, with the browser on screen for the person to sign in, and
+carries on when the wall goes. Without that it finds nothing safe to click, concludes the app is
+finished, and leaves a recording of a login screen with no explanation.
+
 **`safeToClick.ts` is the whole safety boundary, and it is an allowlist.** This runs unattended
 against what may well be production: it may follow links that stay on the origin, tabs and menu
 items, and buttons that are not inside a form; it refuses everything else, anything whose label

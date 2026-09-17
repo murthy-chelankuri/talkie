@@ -12,8 +12,9 @@ const captureApi = {
   start: (projectId: string, url: string, explore = false): Promise<{ sessionId: string }> =>
     ipcRenderer.invoke('project:capture:start', projectId, url, explore),
   /** What the automatic walk is doing, when the user asked for one. One way, main to here. */
-  onExploring: (callback: (status: string) => void): (() => void) => {
-    const listener = (_event: unknown, status: string): void => callback(status)
+  onExploring: (callback: (status: string, needsYou: boolean) => void): (() => void) => {
+    const listener = (_event: unknown, status: string, needsYou: boolean): void =>
+      callback(status, needsYou)
     ipcRenderer.on('project:capture:exploring', listener)
     return () => ipcRenderer.removeListener('project:capture:exploring', listener)
   },

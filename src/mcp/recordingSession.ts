@@ -185,7 +185,7 @@ function normaliseUrl(url: string): string {
  * tabs and menus and refuses anything that acts, types or submits. An agent that wants those
  * still has talkie_click and talkie_type, where a person is approving each call.
  */
-export async function exploreActiveRecording(baseDir: string): Promise<string[]> {
+export async function exploreActiveRecording(baseDir: string): Promise<{ visited: string[]; ending: string }> {
   const { page, projectId } = activeRecording()
   return exploreApp(page, projectId, {}, baseDir)
 }

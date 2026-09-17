@@ -65,6 +65,19 @@ export const READ_PAGE_SCRIPT = `
     })
   }
 
+  // The fields on the page, separately from what can be clicked. Nothing is ever typed into
+  // them; they are how a sign-in wall is recognised — see authWall.ts.
+  const fields = []
+  for (const el of document.querySelectorAll('input')) {
+    if (!onScreen(el)) continue
+    fields.push({
+      type: el.getAttribute('type') || 'text',
+      autocomplete: el.getAttribute('autocomplete') || undefined,
+      name: el.getAttribute('name') || undefined,
+      id: el.id || undefined
+    })
+  }
+
   const heading = document.querySelector('h1, h2')
   return {
     url: location.href,
@@ -72,6 +85,7 @@ export const READ_PAGE_SCRIPT = `
     title: document.title,
     heading: heading ? (heading.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 120) : '',
     text: (document.body ? document.body.innerText || '' : '').replace(/\\s+/g, ' ').trim().slice(0, ${MAX_TEXT_CHARS}),
+    fields,
     candidates
   }
 })()

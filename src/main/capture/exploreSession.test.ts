@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildMovePrompt, parseMove, type PageReading } from './exploreSession'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { buildMovePrompt, exploreApp, parseMove, type PageReading } from './exploreSession'
+import { createProject } from '../project/projectApi'
 import type { Candidate } from './safeToClick'
 
 function reading(labels: string[]): PageReading {
@@ -15,6 +19,7 @@ function reading(labels: string[]): PageReading {
     title: 'Acme',
     heading: 'Dashboard',
     text: 'Your portfolio is up 3% today.',
+    fields: [],
     candidates
   }
 }
@@ -97,5 +102,20 @@ describe('what the recorder is told about a page', () => {
 
     expect(prompt).toContain('Dashboard')
     expect(prompt).toContain('up 3% today')
+  })
+})
+
+describe('asking to be shown round with nothing to ask', () => {
+  it('says the project needs a model rather than quietly doing nothing', async () => {
+    // The built-in provider writes narration from a template and has no model behind it. A walk
+    // that silently produced a recording of one page would look like the feature being broken.
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-explore-noprovider-'))
+    const project = createProject('No model', baseDir)
+
+    await expect(
+      exploreApp({} as never, project.id, {}, baseDir)
+    ).rejects.toThrow(/no model behind it/i)
+
+    rmSync(baseDir, { recursive: true, force: true })
   })
 })

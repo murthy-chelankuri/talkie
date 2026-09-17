@@ -38,22 +38,79 @@ async function importAndNotify(
  * with everything it recorded up to then. A failure here leaves an ordinary recording the user
  * can drive by hand, which is why it is reported rather than thrown.
  */
-async function walkTheApp(session: RecordingSession): Promise<void> {
+/**
+ * End the recording and put it on the timeline.
+ *
+ * Shared by the stop button and by the walk finishing on its own, because two routes to the
+ * same thing are two routes to different bugs — the one that forgets to clear `activeSession`
+ * strands the next recording.
+ */
+async function stopAndImport(
+  session: RecordingSession,
+  getWindow: () => BrowserWindow | null
+): Promise<RecordingResult> {
+  stopping = true
+  const { projectId } = session
+  try {
+    const result = await session.stop()
+    await importAndNotify(projectId, result, getWindow)
+    return result
+  } finally {
+    activeSession = null
+    stopping = false
+  }
+}
+
+/**
+ * How long the walk leaves the recording running after it thinks it is finished.
+ *
+ * Long enough to read the toolbar and take over — the browser is still open and the demo can be
+ * carried on by hand, which is the whole reason this is not instant. Short enough that someone
+ * who asked to be shown round and walked away does not come back to ten minutes of a static
+ * page on the end of their video.
+ */
+const FINISH_AFTER_MS = 12_000
+
+async function walkTheApp(session: RecordingSession, getWindow: () => BrowserWindow | null): Promise<void> {
+  let result: Awaited<ReturnType<typeof exploreApp>> | undefined
   try {
     setToolbarStatus('Looking around…')
-    const visited = await exploreApp(session.page, session.projectId, {
+    result = await exploreApp(session.page, session.projectId, {
       // The walk stops the moment the session does, so pressing stop is not waiting on it.
       shouldStop: () => activeSession !== session,
-      onProgress: ({ doing }) => setToolbarStatus(doing)
+      onProgress: ({ doing, needsYou }) => setToolbarStatus(doing, needsYou)
     })
-    // Still recording: the user decides when there is enough, and may carry on by hand.
-    setToolbarStatus(
-      visited.length > 0 ? `Shown ${visited.length} screens — carry on or press stop` : 'Nothing safe to explore here'
-    )
   } catch (err) {
     console.error('Could not walk the app by itself:', err)
-    setToolbarStatus(err instanceof Error ? err.message : 'Could not explore by itself')
+    setToolbarStatus(err instanceof Error ? err.message : 'Could not explore by itself', true)
+    return
   }
+
+  // Stopped because the session went away: the stop path is already running and owns the rest.
+  if (result.ending === 'stopped' || activeSession !== session) return
+
+  if (result.ending === 'waited-too-long') {
+    setToolbarStatus('Gave up waiting to be signed in — press stop when you are done', true)
+    return
+  }
+
+  if (result.visited.length === 0) {
+    setToolbarStatus('Found nothing safe to explore — drive it yourself, then press stop', true)
+    return
+  }
+
+  // The walk is over, so the recording is too unless the user says otherwise. Asked for rather
+  // than done instantly: the browser is still open, and someone may want to carry on by hand.
+  setToolbarStatus(`Shown ${result.visited.length} screens — finishing in ${FINISH_AFTER_MS / 1000}s`)
+  await new Promise((resolve) => setTimeout(resolve, FINISH_AFTER_MS))
+
+  // Anything the user did in the meantime — pressing stop, or closing the toolbar — wins.
+  if (activeSession !== session || stopping) return
+
+  setToolbarStatus('Finishing the recording…')
+  await stopAndImport(session, getWindow).catch((err) =>
+    console.error('Could not finish the recording after walking the app:', err)
+  )
 }
 
 /**
@@ -121,7 +178,7 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
       try {
         activeSession = await startRecordingSession(projectId, url)
         setToolbarMode('recording')
-        if (explore) void walkTheApp(activeSession)
+        if (explore) void walkTheApp(activeSession, getWindow)
         return { sessionId: activeSession.sessionId }
       } finally {
         starting = false
@@ -143,15 +200,6 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     if (stopping) {
       throw new Error('A stop is already in progress')
     }
-    stopping = true
-    const { projectId } = activeSession
-    try {
-      const result = await activeSession.stop()
-      await importAndNotify(projectId, result, getWindow)
-      return result
-    } finally {
-      activeSession = null
-      stopping = false
-    }
+    return stopAndImport(activeSession, getWindow)
   })
 }

@@ -6,6 +6,8 @@ import { openProject } from '../project/projectApi'
 import { describeProjectContext } from '../project/projectContext'
 import { READ_PAGE_SCRIPT } from './readPage'
 import { safeCandidates, type Candidate } from './safeToClick'
+import { authWall, type Wall } from './authWall'
+import type { CapturedField } from './redact'
 
 /**
  * Walk an app on its own and record what it finds.
@@ -33,6 +35,18 @@ export const MAX_SECONDS = 240
 /** Time on each screen before moving on, so there is something to narrate over. */
 export const DWELL_MS = 2600
 
+/**
+ * How long to hold at a sign-in wall before giving up on the person coming back.
+ *
+ * Generous on purpose: signing in can mean fetching a phone, opening an authenticator, or
+ * finding a password. The recording is running the whole time, which costs nothing but a
+ * stretch of footage the user can trim.
+ */
+export const WAIT_FOR_USER_MS = 5 * 60 * 1000
+
+/** How often to look at the page while waiting, which only has to beat human reaction time. */
+const CHECK_EVERY_MS = 1500
+
 /** What the model may ask for next. */
 export type Move = { kind: 'click'; index: number } | { kind: 'scroll' } | { kind: 'done' }
 
@@ -41,6 +55,21 @@ export interface ExploreProgress {
   url: string
   /** What it decided to do, in words, for the toolbar to show. */
   doing: string
+  /**
+   * Set while the walk is stopped and the person has to do something.
+   *
+   * The toolbar shows this differently: a recorder that is quietly waiting looks exactly like a
+   * recorder that has hung, and the difference matters when the answer is "type your password".
+   */
+  needsYou?: boolean
+}
+
+/** Why the walk finished, which decides whether the recording should finish with it. */
+export type ExploreEnding = 'done' | 'nowhere' | 'budget' | 'stopped' | 'waited-too-long'
+
+export interface ExploreResult {
+  visited: string[]
+  ending: ExploreEnding
 }
 
 export class NoExploreProviderError extends Error {
@@ -59,13 +88,57 @@ export interface PageReading {
   title: string
   heading: string
   text: string
+  /** The page's input fields. Never typed into — this is how a sign-in wall is recognised. */
+  fields: CapturedField[]
   candidates: Candidate[]
 }
 
 /** What the page says about itself, with everything unsafe already taken out. */
 export async function readPage(page: Page): Promise<PageReading> {
   const raw = (await page.evaluate(READ_PAGE_SCRIPT)) as PageReading
-  return { ...raw, candidates: safeCandidates(raw.candidates ?? [], raw.origin) }
+  return { ...raw, fields: raw.fields ?? [], candidates: safeCandidates(raw.candidates ?? [], raw.origin) }
+}
+
+/**
+ * Hold while the person signs in, and carry on when they have.
+ *
+ * Nothing here touches the page. It watches for the wall to go, which is the only signal that
+ * does not depend on guessing how a particular app's login is laid out — an email-then-password
+ * form, a single-sign-on round trip and a code from an authenticator all end the same way, with
+ * a page that is no longer asking.
+ *
+ * Returns the reading on the other side, or null if the person never came back.
+ */
+export async function waitForSignIn(
+  page: Page,
+  wall: Wall,
+  options: { waitMs?: number; onProgress?: (progress: ExploreProgress) => void; shouldStop?: () => boolean } = {}
+): Promise<PageReading | null> {
+  const until = Date.now() + (options.waitMs ?? WAIT_FOR_USER_MS)
+  let announced = ''
+
+  while (Date.now() < until) {
+    if (options.shouldStop?.()) return null
+
+    const left = Math.ceil((until - Date.now()) / 60000)
+    const doing = `Waiting for you to enter ${wall?.asking ?? 'your details'} — ${left} min left`
+    // Re-sent only when the wording changes, so the toolbar is not rewritten twice a second.
+    if (doing !== announced) {
+      announced = doing
+      options.onProgress?.({ step: -1, url: page.url(), doing, needsYou: true })
+    }
+
+    await page.waitForTimeout(CHECK_EVERY_MS).catch(() => undefined)
+
+    try {
+      const reading = await readPage(page)
+      if (!authWall(reading) && reading.candidates.length > 0) return reading
+    } catch {
+      // Mid-navigation, which is what signing in looks like. Look again shortly.
+    }
+  }
+
+  return null
 }
 
 export function buildMovePrompt(
@@ -147,7 +220,7 @@ export async function exploreApp(
   projectId: string,
   options: ExploreOptions = {},
   baseDir: string = homedir()
-): Promise<string[]> {
+): Promise<ExploreResult> {
   const settings = readSettings(baseDir)
   const provider = narrationProvider(settings.narration.provider)
   if (!provider.complete) throw new NoExploreProviderError(provider.label)
@@ -159,9 +232,11 @@ export async function exploreApp(
 
   const project = projectFacts(projectId, baseDir)
   const visited: string[] = []
+  const done = (ending: ExploreEnding): ExploreResult => ({ visited, ending })
 
   for (let step = 0; step < maxSteps; step += 1) {
-    if (options.shouldStop?.() || Date.now() > until) break
+    if (options.shouldStop?.()) return done('stopped')
+    if (Date.now() > until) return done('budget')
 
     // Whatever the last move did, let the screen settle and give the narration something to
     // talk over before deciding again.
@@ -175,7 +250,22 @@ export async function exploreApp(
       continue
     }
 
-    if (reading.candidates.length === 0) break
+    // A login, or a code from an authenticator. The walk cannot get past either — it never
+    // types — but the browser is real and on screen, so the person can, and the recording keeps
+    // running while they do. Without this the walk would find nothing safe to click, decide the
+    // app was finished, and leave a recording of a login screen with no explanation.
+    const wall = authWall(reading)
+    if (wall) {
+      const past = await waitForSignIn(page, wall, {
+        onProgress: options.onProgress,
+        shouldStop: options.shouldStop
+      })
+      if (!past) return done(options.shouldStop?.() ? 'stopped' : 'waited-too-long')
+      reading = past
+      options.onProgress?.({ step, url: reading.url, doing: 'Signed in — carrying on' })
+    }
+
+    if (reading.candidates.length === 0) return done('nowhere')
 
     const answer = await provider
       .complete(
@@ -188,7 +278,7 @@ export async function exploreApp(
       .catch(() => 'DONE')
 
     const move = parseMove(answer, reading.candidates.length)
-    if (move.kind === 'done') break
+    if (move.kind === 'done') return done('done')
 
     if (move.kind === 'scroll') {
       options.onProgress?.({ step, url: reading.url, doing: 'Looking further down the page' })
@@ -211,7 +301,7 @@ export async function exploreApp(
     }
   }
 
-  return visited
+  return done('budget')
 }
 
 function projectFacts(projectId: string, baseDir: string): { name: string; context?: string } {

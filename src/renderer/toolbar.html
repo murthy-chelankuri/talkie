@@ -141,8 +141,10 @@
           </button>
         </div>
 
-        <!-- What the automatic walk is doing, so a browser moving on its own is explicable. -->
-        <p id="exploring" class="mt-auto truncate text-[11px] text-accent" hidden></p>
+        <!-- What the automatic walk is doing, so a browser moving on its own is explicable.
+             Wraps rather than truncates when it needs the user: "waiting for your sign-in
+             details" cut off at one line is the one message that must not be missed. -->
+        <p id="exploring" class="mt-auto text-[11px] leading-relaxed text-accent" hidden></p>
 
         <!-- Pressing a button that looks the same afterwards is pressing a button twice. -->
         <p id="marks" class="truncate text-[11px] text-text-muted">No notes yet</p>
