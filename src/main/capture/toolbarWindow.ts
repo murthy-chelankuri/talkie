@@ -87,3 +87,15 @@ export function setToolbarMode(mode: keyof typeof SIZES): void {
 
   toolbarWindow.setContentBounds({ x: current.x, y: Math.max(workArea.y, y), width, height })
 }
+
+/**
+ * Tell the toolbar what the automatic walk is doing.
+ *
+ * Without this the user watches a browser move on its own with no idea whether it is showing
+ * them round or stuck on a page — and the one control they have is stop, which they should not
+ * have to guess about pressing.
+ */
+export function setToolbarStatus(status: string): void {
+  if (!toolbarWindow || toolbarWindow.isDestroyed()) return
+  toolbarWindow.webContents.send('project:capture:exploring', status)
+}

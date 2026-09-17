@@ -59,6 +59,19 @@ These each cost real time to find. None are obvious from the code.
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
   `0600`.
 
+## Recording an app automatically
+
+`exploreSession.ts` walks an app on its own when the user ticks "Show me round it", driven by
+whichever narration provider is configured — it reads the page as text, because `complete()` has
+no picture in it.
+
+**`safeToClick.ts` is the whole safety boundary, and it is an allowlist.** This runs unattended
+against what may well be production: it may follow links that stay on the origin, tabs and menu
+items, and buttons that are not inside a form; it refuses everything else, anything whose label
+reads as a verb, and anything that would sign it out. It never types and never submits. Widening
+it is not a small change — a recording is the worst place to discover a click did something,
+because by the time anyone watches the video the record is already gone.
+
 ## Security invariants
 
 Do not weaken these without understanding what they are for. Each has tests.

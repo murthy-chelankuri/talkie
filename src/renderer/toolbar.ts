@@ -48,6 +48,15 @@ const setup = el('setup')
 const controls = el('controls')
 const elapsed = el('elapsed')
 const marks = el('marks')
+const exploreBox = el<HTMLInputElement>('explore')
+const exploring = el('exploring')
+
+// A browser that moves on its own is alarming unless it says what it is doing, and stop is the
+// only control the user has while it does.
+window.capture.onExploring((status) => {
+  exploring.textContent = status
+  exploring.hidden = false
+})
 const startButton = el<HTMLButtonElement>('start')
 const urlInput = el<HTMLInputElement>('url-input')
 
@@ -74,7 +83,7 @@ startButton.onclick = async () => {
   startButton.textContent = 'Opening the browser…'
   try {
     error.hidden = true
-    await window.capture.start(projectId, urlInput.value)
+    await window.capture.start(projectId, urlInput.value, exploreBox.checked)
     startedAt = Date.now()
     elapsed.textContent = '0:00'
     setInterval(() => {

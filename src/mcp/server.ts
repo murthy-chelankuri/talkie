@@ -184,6 +184,29 @@ export function createTalkieServer(
   )
 
   tool(
+    'talkie_explore',
+    {
+      title: 'Walk the app by itself',
+      description:
+        'Let Talkie find its own way round the app being recorded, instead of you driving every ' +
+        'click. It follows links, tabs and menus and takes a route someone showing the app off ' +
+        'would take. It never types, never submits a form, never presses anything whose label ' +
+        'says it acts (Delete, Send, Pay, Cancel) and never signs out or leaves the origin it ' +
+        'started on — so it is safe to point at a real system, but flows that need input will ' +
+        'not be demoed. Use talkie_click and talkie_type for those. Returns where it went.',
+      inputSchema: {},
+      annotations: { openWorldHint: true }
+    },
+    async () => {
+      const visited = await recording.exploreActiveRecording(baseDir)
+      if (visited.length === 0) {
+        return text('Found nothing safe to explore from here. Drive it with talkie_click instead.')
+      }
+      return text(`Walked the app, showing: ${visited.join(' → ')}.\nStill recording — carry on or stop.`)
+    }
+  )
+
+  tool(
     'talkie_navigate',
     {
       title: 'Go to a page',

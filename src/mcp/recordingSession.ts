@@ -1,4 +1,5 @@
 import { startRecordingSession, type RecordingSession } from '../main/capture/recordSession'
+import { exploreApp } from '../main/capture/exploreSession'
 import { importRecordedSession } from '../main/capture/importRecordedSession'
 import { withHistory } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
@@ -175,4 +176,16 @@ function locatorFor(
 
 function normaliseUrl(url: string): string {
   return /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`
+}
+
+/**
+ * Walk the app on its own, for an agent that would rather not drive every click.
+ *
+ * The same walk the app's own "show me round it" offers, under the same rules: it follows links,
+ * tabs and menus and refuses anything that acts, types or submits. An agent that wants those
+ * still has talkie_click and talkie_type, where a person is approving each call.
+ */
+export async function exploreActiveRecording(baseDir: string): Promise<string[]> {
+  const { page, projectId } = activeRecording()
+  return exploreApp(page, projectId, {}, baseDir)
 }

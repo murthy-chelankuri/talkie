@@ -19,6 +19,17 @@
           class="w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none placeholder:text-text-muted focus:border-accent"
         />
 
+        <label class="flex cursor-pointer items-start gap-2 text-[12px] leading-snug text-text">
+          <input id="explore" type="checkbox" class="mt-[2px] accent-accent" />
+          <span>
+            Show me round it
+            <span class="block text-[11px] leading-relaxed text-text-muted">
+              Talkie walks the app itself. It only follows links, tabs and menus — it never types
+              and never presses a button that does something.
+            </span>
+          </span>
+        </label>
+
         <button
           id="start"
           type="button"
@@ -130,8 +141,11 @@
           </button>
         </div>
 
+        <!-- What the automatic walk is doing, so a browser moving on its own is explicable. -->
+        <p id="exploring" class="mt-auto truncate text-[11px] text-accent" hidden></p>
+
         <!-- Pressing a button that looks the same afterwards is pressing a button twice. -->
-        <p id="marks" class="mt-auto truncate text-[11px] text-text-muted">No notes yet</p>
+        <p id="marks" class="truncate text-[11px] text-text-muted">No notes yet</p>
       </section>
 
       <p id="error" class="rounded-md bg-danger-bg px-3 py-2 text-[11px] leading-relaxed text-danger" hidden></p>

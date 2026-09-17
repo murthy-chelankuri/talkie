@@ -1,6 +1,7 @@
 import type { IpcMain, BrowserWindow } from 'electron'
 import { startRecordingSession, type RecordingResult, type RecordingSession } from '../capture/recordSession'
-import { openToolbarWindow, setToolbarMode } from '../capture/toolbarWindow'
+import { exploreApp } from '../capture/exploreSession'
+import { openToolbarWindow, setToolbarMode, setToolbarStatus } from '../capture/toolbarWindow'
 import { importRecordedSession } from '../capture/importRecordedSession'
 import { withHistory } from '../project/history'
 import { readSettings } from '../settings/settingsStore'
@@ -26,6 +27,32 @@ async function importAndNotify(
     void autoDraftAll(projectId, items.map((item) => item.id), getWindow)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)
+  }
+}
+
+/**
+ * Walk the app while the recording runs, for someone who asked not to drive it themselves.
+ *
+ * Started rather than awaited: the toolbar has to come up and its stop button has to work from
+ * the first moment, and a walk that is still going when the user presses stop should simply end
+ * with everything it recorded up to then. A failure here leaves an ordinary recording the user
+ * can drive by hand, which is why it is reported rather than thrown.
+ */
+async function walkTheApp(session: RecordingSession): Promise<void> {
+  try {
+    setToolbarStatus('Looking around…')
+    const visited = await exploreApp(session.page, session.projectId, {
+      // The walk stops the moment the session does, so pressing stop is not waiting on it.
+      shouldStop: () => activeSession !== session,
+      onProgress: ({ doing }) => setToolbarStatus(doing)
+    })
+    // Still recording: the user decides when there is enough, and may carry on by hand.
+    setToolbarStatus(
+      visited.length > 0 ? `Shown ${visited.length} screens — carry on or press stop` : 'Nothing safe to explore here'
+    )
+  } catch (err) {
+    console.error('Could not walk the app by itself:', err)
+    setToolbarStatus(err instanceof Error ? err.message : 'Could not explore by itself')
   }
 }
 
@@ -84,19 +111,23 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     openToolbarWindow(projectId, stopActiveSessionIfAny)
   })
 
-  ipcMain.handle('project:capture:start', async (_event, projectId: string, url: string) => {
-    if (activeSession || starting) {
-      throw new Error('A recording session is already in progress')
+  ipcMain.handle(
+    'project:capture:start',
+    async (_event, projectId: string, url: string, explore = false) => {
+      if (activeSession || starting) {
+        throw new Error('A recording session is already in progress')
+      }
+      starting = true
+      try {
+        activeSession = await startRecordingSession(projectId, url)
+        setToolbarMode('recording')
+        if (explore) void walkTheApp(activeSession)
+        return { sessionId: activeSession.sessionId }
+      } finally {
+        starting = false
+      }
     }
-    starting = true
-    try {
-      activeSession = await startRecordingSession(projectId, url)
-      setToolbarMode('recording')
-      return { sessionId: activeSession.sessionId }
-    } finally {
-      starting = false
-    }
-  })
+  )
 
   ipcMain.handle('project:capture:mark', (_event, annotation: 'important' | 'redo' | 'skip') => {
     if (!activeSession) {
