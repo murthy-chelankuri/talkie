@@ -1,3 +1,5 @@
+import type { PitchArc } from './prosody'
+
 /** How a take should sound, decided by the caller rather than read from settings by each engine. */
 export interface SpeechOptions {
   voice: string
@@ -5,6 +7,15 @@ export interface SpeechOptions {
   pace: number
   sentencePauseMs: number
   clausePauseMs: number
+  /**
+   * Which part of the take's pitch fall this piece covers.
+   *
+   * Absent means the text is the whole take and owns the whole fall. Timed narration is read a
+   * beat at a time in separate processes, so without this every beat restarts the contour from
+   * the voice's baseline and a take comes out as a row of flat, identical utterances. See
+   * prosody.ts. Ignored by engines whose pitch cannot be directed.
+   */
+  arc?: PitchArc
 }
 
 export interface TTSProvider {

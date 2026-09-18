@@ -120,6 +120,17 @@ const VISIBILITY_SCRIPT = `
 })()
 `
 
+/**
+ * Whether the recorded browser is hidden.
+ *
+ * Never in the app: recording means the person drives a real browser and watches what they are
+ * demonstrating. The test suite is the other case — it drives every page through Playwright, so
+ * a window is no use to anyone and stealing focus from whatever else is being worked on is a
+ * real cost. Set by vitest.config.ts rather than by a setting, because a user has no reason to
+ * want this and no way to get their recording back if they turn it on by accident.
+ */
+const HEADLESS = process.env.TALKIE_HEADLESS === '1'
+
 function normalizeUrl(url: string): string {
   return /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`
 }
@@ -170,7 +181,9 @@ export async function startRecordingSession(
       throw new Error(NO_BROWSER_MESSAGE)
     }
     browser = await chromium.launch({
-      headless: false,
+      // The person is the one driving this browser, so it has to be on screen. The exception is
+      // the test suite, which drives it itself and has no one watching — see HEADLESS.
+      headless: HEADLESS,
       channel: choice.channel,
       args: choice.channel ? LAUNCH_ARGS : []
     })

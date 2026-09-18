@@ -21,6 +21,11 @@ npm run notices      # regenerates the third-party licence data
 
 Run `npm test` and `npm run typecheck` before committing. Both are expected to pass.
 
+The recording tests drive a real Chromium and run it headless, so a test run does not throw
+windows in front of whatever else is on screen. `TALKIE_HEADLESS=0 npm test` shows them, which
+is worth doing when a recording test misbehaves — the app itself is always headed, because the
+person is the one driving that browser.
+
 ## Things that will bite you
 
 These each cost real time to find. None are obvious from the code.
@@ -53,6 +58,31 @@ These each cost real time to find. None are obvious from the code.
 - Projects live in `~/Talkie/Projects/<id>-<slug>/` as `project.json`, `timeline.json`,
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
   `0600`.
+
+## Recording an app automatically
+
+`exploreSession.ts` walks an app on its own when the user ticks "Show me round it", driven by
+whichever narration provider is configured — it reads the page as text, because `complete()` has
+no picture in it.
+
+It stops when it thinks the demo is shown: the recording finishes on its own a few seconds
+later, late enough to read the toolbar and take over by hand. A walk that ended because nobody
+signed in, or because there was nowhere safe to go, leaves the recording running instead — those
+need a person, and ending the recording would throw away the chance to carry on.
+
+`authWall.ts` recognises a login or a second factor by asking `redact.ts` whether it would hide
+the field. That is the same question from the other end — the fields whose values must never be
+written down are exactly the ones only the user can fill — so the two cannot drift apart. The
+walk then waits, up to five minutes, with the browser on screen for the person to sign in, and
+carries on when the wall goes. Without that it finds nothing safe to click, concludes the app is
+finished, and leaves a recording of a login screen with no explanation.
+
+**`safeToClick.ts` is the whole safety boundary, and it is an allowlist.** This runs unattended
+against what may well be production: it may follow links that stay on the origin, tabs and menu
+items, and buttons that are not inside a form; it refuses everything else, anything whose label
+reads as a verb, and anything that would sign it out. It never types and never submits. Widening
+it is not a small change — a recording is the worst place to discover a click did something,
+because by the time anyone watches the video the record is already gone.
 
 ## Security invariants
 

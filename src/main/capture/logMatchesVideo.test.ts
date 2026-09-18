@@ -62,7 +62,7 @@ describe('the action log against the video it describes', () => {
     const recording = await session.stop()
     expect(recording.clips).toHaveLength(2)
 
-    const item = await importRecordedSession(project.id, recording, baseDir)
+    const [item] = await importRecordedSession(project.id, recording, baseDir)
     const src = (item.data as { src: string }).src
 
     const click = readActionLog(join(src, '..', VIDEO_TIME_LOG)).find((e) => e.type === 'click')

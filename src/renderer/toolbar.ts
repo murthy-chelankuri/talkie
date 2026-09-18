@@ -48,6 +48,26 @@ const setup = el('setup')
 const controls = el('controls')
 const elapsed = el('elapsed')
 const marks = el('marks')
+const exploreBox = el<HTMLInputElement>('explore')
+const exploring = el('exploring')
+
+/**
+ * What the automatic walk is doing.
+ *
+ * A browser that moves on its own is alarming unless it says why, and a browser that has gone
+ * still is indistinguishable from one that has hung — which matters most in the one case where
+ * the answer is "it is waiting for you to type your password". That case is marked, so it reads
+ * as a request rather than as more progress.
+ */
+window.capture.onExploring((status, needsYou) => {
+  exploring.textContent = needsYou ? `⚠ ${status}` : status
+  // Accent on surface, not on surface-hover: the latter measures 5.55:1 in the light theme and
+  // the floor for accent-as-small-text is 5.8:1. This pairing is 6.29:1 light, 7.62:1 dark.
+  exploring.className = needsYou
+    ? 'mt-auto rounded-md border border-accent bg-surface px-2 py-1.5 text-[11px] font-medium leading-relaxed text-accent'
+    : 'mt-auto text-[11px] leading-relaxed text-text-muted'
+  exploring.hidden = false
+})
 const startButton = el<HTMLButtonElement>('start')
 const urlInput = el<HTMLInputElement>('url-input')
 
@@ -74,7 +94,7 @@ startButton.onclick = async () => {
   startButton.textContent = 'Opening the browser…'
   try {
     error.hidden = true
-    await window.capture.start(projectId, urlInput.value)
+    await window.capture.start(projectId, urlInput.value, exploreBox.checked)
     startedAt = Date.now()
     elapsed.textContent = '0:00'
     setInterval(() => {

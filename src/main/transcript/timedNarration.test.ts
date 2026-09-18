@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { parseBeats, beatsToText, placeBeats } from './narrationBeats'
-import { assembleTake } from './assembleTake'
+import { assembleTake, BREATH_SECONDS } from './assembleTake'
 import { readWavFormat, getWavDurationSeconds } from '../tts/wavDuration'
 import {
   createProject,
@@ -53,6 +53,24 @@ describe('reading the times out of a draft', () => {
 
     expect(beats[0].text).toBe('A sentence that ran on and finished on the next line.')
     expect(beats).toHaveLength(2)
+  })
+
+  it('gives a line with no full stop something to fall on', () => {
+    // A model asked for short timed lines often leaves the punctuation off. `say` falls at a
+    // full stop and runs flat without one, so the line is read as though it were going to carry
+    // on — and then stops dead, which is what makes a take sound recited.
+    const beats = parseBeats('[0.0] Here is the watchlist\n[6.0] And the analysis comes back')
+
+    expect(beats.map((beat) => beat.text)).toEqual([
+      'Here is the watchlist.',
+      'And the analysis comes back.'
+    ])
+  })
+
+  it('leaves punctuation the model did write alone', () => {
+    const beats = parseBeats('[0.0] Ready?\n[3.0] Here we go!\n[6.0] And so on…')
+
+    expect(beats.map((beat) => beat.text)).toEqual(['Ready?', 'Here we go!', 'And so on…'])
   })
 
   it('never lets a beat be spoken before the one in front of it', () => {
@@ -135,9 +153,11 @@ describe('a take assembled out of its beats', () => {
       join(dir, 'take.wav')
     )
 
-    // Talking over yourself is never the answer; the second piece waits its turn.
-    expect(assembled.at).toEqual([0, 5])
-    expect(assembled.seconds).toBeCloseTo(7, 2)
+    // Talking over yourself is never the answer; the second piece waits its turn, and waits a
+    // breath longer than that — see BREATH_SECONDS.
+    expect(assembled.at[0]).toBe(0)
+    expect(assembled.at[1]).toBeCloseTo(5 + BREATH_SECONDS, 2)
+    expect(assembled.seconds).toBeCloseTo(7 + BREATH_SECONDS, 2)
 
     rmSync(dir, { recursive: true, force: true })
   })
@@ -155,6 +175,52 @@ describe('a take assembled out of its beats', () => {
     expect(at(0.5)).toBeGreaterThan(0)
     expect(at(4)).toBe(0)
     expect(at(8.5)).toBeGreaterThan(0)
+
+    rmSync(dir, { recursive: true, force: true })
+  })
+})
+
+describe('the breath between one sentence and the next', () => {
+  it('never runs two beats straight together, however tightly they were timed', async () => {
+    // Beats that wanted the same moment used to be concatenated with no silence at all, so the
+    // voice ran out of one sentence and into the next without drawing breath — the thing that
+    // makes a take sound recited rather than spoken.
+    const dir = mkdtempSync(join(tmpdir(), 'talkie-breath-'))
+    tone(join(dir, 'a.wav'), 2)
+    tone(join(dir, 'b.wav'), 2)
+    const out = join(dir, 'take.wav')
+
+    // Both asked for the very start, so the second can only follow the first.
+    const assembled = assembleTake(
+      [
+        { at: 0, wavPath: join(dir, 'a.wav') },
+        { at: 0, wavPath: join(dir, 'b.wav') }
+      ],
+      out
+    )
+
+    expect(assembled.at[1]).toBeGreaterThan(2)
+    expect(assembled.at[1] - 2).toBeCloseTo(BREATH_SECONDS, 2)
+
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('leaves a beat that already has room where the recording put it', () => {
+    // The breath is a floor, not a delay added to everything: a beat timed to a moment the
+    // screen actually reaches still lands on it.
+    const dir = mkdtempSync(join(tmpdir(), 'talkie-breath-room-'))
+    tone(join(dir, 'a.wav'), 1)
+    tone(join(dir, 'b.wav'), 1)
+
+    const assembled = assembleTake(
+      [
+        { at: 0, wavPath: join(dir, 'a.wav') },
+        { at: 8, wavPath: join(dir, 'b.wav') }
+      ],
+      join(dir, 'take.wav')
+    )
+
+    expect(assembled.at[1]).toBe(8)
 
     rmSync(dir, { recursive: true, force: true })
   })

@@ -37,11 +37,15 @@ export const sayTtsProvider: TTSProvider = {
 
     // Marked up rather than read flat: pace, pauses at punctuation, and a pitch that drifts
     // down across the paragraph are what separate explaining from reciting.
-    const spoken = toSpokenMarkup(text, {
-      pace: options.pace,
-      sentencePauseMs: options.sentencePauseMs,
-      clausePauseMs: options.clausePauseMs
-    })
+    const spoken = toSpokenMarkup(
+      text,
+      {
+        pace: options.pace,
+        sentencePauseMs: options.sentencePauseMs,
+        clausePauseMs: options.clausePauseMs
+      },
+      options.arc
+    )
 
     await execFileAsync('say', ['-v', voice, '-o', aiffPath, spoken || text])
     await execFileAsync('afconvert', ['-f', 'WAVE', '-d', 'LEI16', aiffPath, outputPath])

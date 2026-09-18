@@ -36,7 +36,7 @@ const MAX_ATTEMPTS = 2
  * problem. Aiming short also converges faster against a voice that under-delivers the rate it is
  * asked for, which every one measured here does.
  */
-const AIM_INSIDE = 0.97
+export const AIM_INSIDE = 0.97
 
 /** Seconds of a clip the words themselves get, once the beats either side are taken. */
 export function roomFor(footageFrames: number): number {
@@ -64,17 +64,27 @@ export function hurriedBy(speech: SpeechOptions, speedUp: number): SpeechOptions
  *
  * Only a recording has an answer: a slide or an image is drawn for as long as it is asked to be.
  * Null means there is no footage to fit to, and the narration sets the length as it always did.
+ *
+ * A scene cut out of a session owns a stretch of the file rather than the whole of it, so the
+ * answer is the length of that stretch. Measuring the file would tell every scene but the last
+ * that it has minutes to play with, which is exactly the mistake that let narration run on over
+ * a picture that had already moved on.
  */
 export async function footageFrames(item: TimelineItem | undefined): Promise<number | null> {
   if (!item || item.kind !== 'video') return null
 
-  const { src, trimBefore } = item.data as { src?: string; trimBefore?: number }
+  const { src, trimBefore, trimAfter } = item.data as {
+    src?: string
+    trimBefore?: number
+    trimAfter?: number
+  }
   if (!src || !existsSync(src)) return null
 
   try {
     const { durationInSeconds } = await getVideoMetadata(src)
     if (!durationInSeconds || durationInSeconds <= 0) return null
-    return Math.max(1, Math.round(durationInSeconds * FPS) - (trimBefore ?? 0))
+    const lastFrame = Math.min(Math.round(durationInSeconds * FPS), trimAfter ?? Infinity)
+    return Math.max(1, lastFrame - (trimBefore ?? 0))
   } catch (err) {
     // A clip we cannot measure is one we cannot fit to; the narration sets the length instead.
     console.error(`Could not measure the footage behind ${src}:`, err)

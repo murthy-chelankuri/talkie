@@ -8,7 +8,16 @@ export const VideoItemDataSchema = z.object({
   src: z.string(),
   // Frames to skip at the start of the source video, used to drop the blank lead-in a browser
   // recording begins with. Optional so timelines written before this existed still load.
-  trimBefore: z.number().int().min(0).optional()
+  trimBefore: z.number().int().min(0).optional(),
+  /**
+   * The frame of the source video this clip stops at.
+   *
+   * A recorded session is cut into scenes that all point at the same file, so without this every
+   * scene but the last would run on into the footage the next one is about to play — and a scene
+   * whose narration grew would play it twice. Absent on a clip that owns its whole file, and on
+   * every timeline written before sessions were split.
+   */
+  trimAfter: z.number().int().min(1).optional()
 })
 
 /**

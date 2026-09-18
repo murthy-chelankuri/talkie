@@ -1,6 +1,7 @@
 import type { IpcMain, BrowserWindow } from 'electron'
 import { startRecordingSession, type RecordingResult, type RecordingSession } from '../capture/recordSession'
-import { openToolbarWindow, setToolbarMode } from '../capture/toolbarWindow'
+import { exploreApp } from '../capture/exploreSession'
+import { openToolbarWindow, setToolbarMode, setToolbarStatus } from '../capture/toolbarWindow'
 import { importRecordedSession } from '../capture/importRecordedSession'
 import { withHistory } from '../project/history'
 import { readSettings } from '../settings/settingsStore'
@@ -19,12 +20,97 @@ async function importAndNotify(
   getWindow: () => BrowserWindow | null
 ): Promise<void> {
   try {
-    const item = await withHistory(projectId, () => importRecordedSession(projectId, recording))
+    const items = await withHistory(projectId, () => importRecordedSession(projectId, recording))
     getWindow()?.webContents.send('project:capture:sessionImported', projectId)
-    void autoDraft(projectId, item.id, getWindow)
+    // One scene at a time, in order: the drafter is told what was said over the clip before
+    // this one, so drafting them at once would give every scene the same empty answer.
+    void autoDraftAll(projectId, items.map((item) => item.id), getWindow)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)
   }
+}
+
+/**
+ * Walk the app while the recording runs, for someone who asked not to drive it themselves.
+ *
+ * Started rather than awaited: the toolbar has to come up and its stop button has to work from
+ * the first moment, and a walk that is still going when the user presses stop should simply end
+ * with everything it recorded up to then. A failure here leaves an ordinary recording the user
+ * can drive by hand, which is why it is reported rather than thrown.
+ */
+/**
+ * End the recording and put it on the timeline.
+ *
+ * Shared by the stop button and by the walk finishing on its own, because two routes to the
+ * same thing are two routes to different bugs — the one that forgets to clear `activeSession`
+ * strands the next recording.
+ */
+async function stopAndImport(
+  session: RecordingSession,
+  getWindow: () => BrowserWindow | null
+): Promise<RecordingResult> {
+  stopping = true
+  const { projectId } = session
+  try {
+    const result = await session.stop()
+    await importAndNotify(projectId, result, getWindow)
+    return result
+  } finally {
+    activeSession = null
+    stopping = false
+  }
+}
+
+/**
+ * How long the walk leaves the recording running after it thinks it is finished.
+ *
+ * Long enough to read the toolbar and take over — the browser is still open and the demo can be
+ * carried on by hand, which is the whole reason this is not instant. Short enough that someone
+ * who asked to be shown round and walked away does not come back to ten minutes of a static
+ * page on the end of their video.
+ */
+const FINISH_AFTER_MS = 12_000
+
+async function walkTheApp(session: RecordingSession, getWindow: () => BrowserWindow | null): Promise<void> {
+  let result: Awaited<ReturnType<typeof exploreApp>> | undefined
+  try {
+    setToolbarStatus('Looking around…')
+    result = await exploreApp(session.page, session.projectId, {
+      // The walk stops the moment the session does, so pressing stop is not waiting on it.
+      shouldStop: () => activeSession !== session,
+      onProgress: ({ doing, needsYou }) => setToolbarStatus(doing, needsYou)
+    })
+  } catch (err) {
+    console.error('Could not walk the app by itself:', err)
+    setToolbarStatus(err instanceof Error ? err.message : 'Could not explore by itself', true)
+    return
+  }
+
+  // Stopped because the session went away: the stop path is already running and owns the rest.
+  if (result.ending === 'stopped' || activeSession !== session) return
+
+  if (result.ending === 'waited-too-long') {
+    setToolbarStatus('Gave up waiting to be signed in — press stop when you are done', true)
+    return
+  }
+
+  if (result.visited.length === 0) {
+    setToolbarStatus('Found nothing safe to explore — drive it yourself, then press stop', true)
+    return
+  }
+
+  // The walk is over, so the recording is too unless the user says otherwise. Asked for rather
+  // than done instantly: the browser is still open, and someone may want to carry on by hand.
+  setToolbarStatus(`Shown ${result.visited.length} screens — finishing in ${FINISH_AFTER_MS / 1000}s`)
+  await new Promise((resolve) => setTimeout(resolve, FINISH_AFTER_MS))
+
+  // Anything the user did in the meantime — pressing stop, or closing the toolbar — wins.
+  if (activeSession !== session || stopping) return
+
+  setToolbarStatus('Finishing the recording…')
+  await stopAndImport(session, getWindow).catch((err) =>
+    console.error('Could not finish the recording after walking the app:', err)
+  )
 }
 
 /**
@@ -34,6 +120,16 @@ async function importAndNotify(
  * once and the words catch up. A provider that is missing or failing is logged and nothing
  * more: the clip is on the timeline either way, and the user can still write their own.
  */
+async function autoDraftAll(
+  projectId: string,
+  timelineItemIds: string[],
+  getWindow: () => BrowserWindow | null
+): Promise<void> {
+  for (const timelineItemId of timelineItemIds) {
+    await autoDraft(projectId, timelineItemId, getWindow)
+  }
+}
+
 async function autoDraft(
   projectId: string,
   timelineItemId: string,
@@ -72,19 +168,23 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     openToolbarWindow(projectId, stopActiveSessionIfAny)
   })
 
-  ipcMain.handle('project:capture:start', async (_event, projectId: string, url: string) => {
-    if (activeSession || starting) {
-      throw new Error('A recording session is already in progress')
+  ipcMain.handle(
+    'project:capture:start',
+    async (_event, projectId: string, url: string, explore = false) => {
+      if (activeSession || starting) {
+        throw new Error('A recording session is already in progress')
+      }
+      starting = true
+      try {
+        activeSession = await startRecordingSession(projectId, url)
+        setToolbarMode('recording')
+        if (explore) void walkTheApp(activeSession, getWindow)
+        return { sessionId: activeSession.sessionId }
+      } finally {
+        starting = false
+      }
     }
-    starting = true
-    try {
-      activeSession = await startRecordingSession(projectId, url)
-      setToolbarMode('recording')
-      return { sessionId: activeSession.sessionId }
-    } finally {
-      starting = false
-    }
-  })
+  )
 
   ipcMain.handle('project:capture:mark', (_event, annotation: 'important' | 'redo' | 'skip') => {
     if (!activeSession) {
@@ -100,15 +200,6 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
     if (stopping) {
       throw new Error('A stop is already in progress')
     }
-    stopping = true
-    const { projectId } = activeSession
-    try {
-      const result = await activeSession.stop()
-      await importAndNotify(projectId, result, getWindow)
-      return result
-    } finally {
-      activeSession = null
-      stopping = false
-    }
+    return stopAndImport(activeSession, getWindow)
   })
 }

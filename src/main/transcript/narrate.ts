@@ -1,5 +1,4 @@
 import { homedir } from 'os'
-import { rmSync } from 'fs'
 import { join } from 'path'
 import { findProjectDir } from '../project/paths'
 import {
@@ -7,7 +6,7 @@ import {
   readTimeline,
   openProject,
   updateTranscriptSegmentAudio,
-  updateTimelineItemDuration
+  fitClipToNarration
 } from '../project/projectApi'
 import { speechEngine } from '../tts/engineRegistry'
 import { readSettings } from '../settings/settingsStore'
@@ -15,8 +14,7 @@ import { DEFAULT_VOICE } from '../settings/schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 import { footageFrames, readFaster } from './fitToFootage'
-import { assembleTake } from './assembleTake'
-import { placeBeats } from './narrationBeats'
+import { readTimedTake } from './readTimedTake'
 import type { TranscriptSegment } from './schema'
 
 export async function narrateSegment(
@@ -56,53 +54,36 @@ export async function narrateSegment(
   // Handed the voice rather than letting the engine look one up: an engine reading settings for
   // itself spoke in the app's voice while the take was labelled with the project's.
   //
-  // A timed take is read a beat at a time and the waits between them are made of silence, so the
-  // words keep step with a recording whose events are not evenly spread. See narrationBeats.ts.
+  // A recording is as long as it is, so either way a take too long for its scene is read a
+  // little faster rather than allowed to run on over a picture that has already moved on.
   const beats = segment.beats ?? []
   let durationSeconds: number
+
   if (beats.length > 1) {
-    const pieces: { at: number; wavPath: string }[] = []
-    const spoken: number[] = []
-    for (const [index, beat] of beats.entries()) {
-      const beatPath = `${audioPath}.beat${index}.wav`
-      await engine.synthesize(beat.text, beatPath, delivery)
-      spoken.push(getWavDurationSeconds(beatPath))
-      pieces.push({ at: beat.at, wavPath: beatPath })
-    }
-
-    const room = (footage ?? linkedItem?.duration ?? 0) / FPS
-    const at = placeBeats(beats, spoken, {
-      leadInSeconds: NARRATION_LEAD_IN_FRAMES / FPS,
-      roomSeconds: Math.max(room - NARRATION_TAIL_FRAMES / FPS, spoken.reduce((a, b) => a + b, 0))
-    })
-
-    // The take's own clock starts where the composition drops it in, so the lead-in the clip
-    // already leaves is not counted twice.
-    const offset = NARRATION_LEAD_IN_FRAMES / FPS
-    const assembled = assembleTake(
-      pieces.map((piece, index) => ({ ...piece, at: Math.max(0, at[index] - offset) })),
-      audioPath
-    )
-    durationSeconds = assembled.seconds
-    for (const piece of pieces) rmSync(piece.wavPath, { force: true })
-  } else {
-    await engine.synthesize(segment.text, audioPath, delivery)
-    durationSeconds = getWavDurationSeconds(audioPath)
-  }
-
-  // A recording is as long as it is, so a take too long for it is read a little faster rather
-  // than allowed to run on over a picture that has already ended. A timed take has already been
-  // laid out inside the footage, so there is nothing left to hurry. See fitToFootage.ts.
-  if (footage !== null && beats.length <= 1) {
-    const fitted = await readFaster({
-      text: segment.text,
+    // Read a beat at a time, with real silence between, so the voice waits when the screen
+    // does — and read again slightly faster if it still lands late. See readTimedTake.ts.
+    durationSeconds = await readTimedTake({
+      beats,
       audioPath,
-      spokenSeconds: durationSeconds,
       footageFrames: footage,
       delivery,
       synthesize: (text, outputPath, options) => engine.synthesize(text, outputPath, options)
     })
-    if (fitted !== null) durationSeconds = fitted
+  } else {
+    await engine.synthesize(segment.text, audioPath, delivery)
+    durationSeconds = getWavDurationSeconds(audioPath)
+
+    if (footage !== null) {
+      const fitted = await readFaster({
+        text: segment.text,
+        audioPath,
+        spokenSeconds: durationSeconds,
+        footageFrames: footage,
+        delivery,
+        synthesize: (text, outputPath, options) => engine.synthesize(text, outputPath, options)
+      })
+      if (fitted !== null) durationSeconds = fitted
+    }
   }
 
   // The clip has to hold the silence either side of the words as well as the words themselves,
@@ -110,11 +91,10 @@ export async function narrateSegment(
   const durationFrames =
     Math.max(1, Math.round(durationSeconds * FPS)) + NARRATION_LEAD_IN_FRAMES + NARRATION_TAIL_FRAMES
 
-  // An image has no length of its own, so the narration defines it. A video does: shrinking it
-  // to fit a shorter narration would silently cut the recording off, so only ever grow it.
-  const nextDuration =
-    linkedItem && linkedItem.kind === 'video' ? Math.max(linkedItem.duration, durationFrames) : durationFrames
-  updateTimelineItemDuration(projectId, segment.timelineItemId, nextDuration, baseDir)
+  // Where the extra time comes from is not this function's business: a slide simply takes it, and
+  // a scene cut out of a recording moves its cut later so it plays more of the footage rather
+  // than holding a still. See fitClipToNarration.
+  fitClipToNarration(projectId, segment.timelineItemId, durationFrames, baseDir)
 
   // Recording the voice is what lets the editor notice narration left over from a different one.
   return updateTranscriptSegmentAudio(projectId, segmentId, audioFileName, voice, baseDir)

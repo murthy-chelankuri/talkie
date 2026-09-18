@@ -423,7 +423,7 @@ export function sweepUnusedNarrationAudio(id: string, baseDir: string = homedir(
 
 export function addTranscriptSegment(
   id: string,
-  input: { text: string; timelineItemId: string },
+  input: { text: string; timelineItemId: string; beats?: NarrationBeat[] },
   baseDir: string = homedir()
 ): TranscriptSegment {
   const dir = findProjectDir(id, baseDir)
@@ -436,6 +436,10 @@ export function addTranscriptSegment(
     newSegment = TranscriptSegmentSchema.parse({
       id: randomUUID(),
       text: input.text,
+      // Timings where the words came with them. Whoever wrote these said which moment each line
+      // belongs to, and that is the whole difference between a take that keeps step and one
+      // that only happens to start at the right time.
+      ...(input.beats && input.beats.length > 0 ? { beats: input.beats } : {}),
       timelineItemId: input.timelineItemId,
       status: 'edited'
     })
@@ -493,7 +497,15 @@ export function updateTranscriptSegmentText(
   id: string,
   segmentId: string,
   text: string,
-  baseDir: string = homedir()
+  baseDir: string = homedir(),
+  /**
+   * Timings for the new words, when whoever wrote them supplied some.
+   *
+   * Absent for a person typing in the editor, who has no way to say when each line lands. An
+   * agent writing through MCP does have one, and throwing its timings away would leave it no
+   * way to produce a take that keeps step with the picture.
+   */
+  beats?: NarrationBeat[]
 ): TranscriptSegment {
   const dir = findProjectDir(id, baseDir)
   if (!dir) {
@@ -508,12 +520,12 @@ export function updateTranscriptSegmentText(
 
   let updated: TranscriptSegment
   try {
-    // Beats describe words the user has just replaced, so timing them is no longer possible;
-    // an edited take is read as one piece until it is drafted again.
+    // Beats describe the words they were written for. New words with no timings of their own
+    // cannot keep the old ones, so an edited take is read as one piece until it is drafted again.
     updated = TranscriptSegmentSchema.parse({
       ...transcript[index],
       text,
-      beats: undefined,
+      beats: beats && beats.length > 0 ? beats : undefined,
       status: 'edited'
     })
   } catch (err) {
@@ -596,6 +608,84 @@ function withSequentialStarts(items: TimelineItem[]): TimelineItem[] {
     cursor += updated.duration
     return updated
   })
+}
+
+/**
+ * The least footage a scene may be left with when the one before it borrows.
+ *
+ * Same floor sceneBoundaries.ts cuts to — below about this a scene is too short to be seen,
+ * introduced and spoken over, and taking it down there to lengthen its neighbour trades one
+ * clip that fits for two that do not.
+ */
+const MIN_SCENE_FRAMES = 150
+
+/**
+ * Make a clip long enough to hold its narration.
+ *
+ * A picture is only as long as it is. An image or a slide has no length of its own, so the
+ * narration sets it; a recording does, and shrinking one to fit a shorter take would cut the
+ * demo off, so a recording is only ever lengthened.
+ *
+ * Where the extra time has to come from is the part scenes changed. Scenes are cut from one
+ * continuous file, so the cut between two of them is the one thing here that can move without
+ * anything being frozen, repeated or lost: this clip plays a little further into the recording
+ * and the next one starts where it now leaves off. Only when there is no next scene to borrow
+ * from — the end of the recording — does the clip simply run past its own last frame, which is
+ * what a single-clip import always did.
+ */
+export function fitClipToNarration(
+  id: string,
+  timelineItemId: string,
+  durationFrames: number,
+  baseDir: string = homedir()
+): TimelineItem {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const timeline = readTimeline(id, baseDir)
+  const index = timeline.findIndex((item) => item.id === timelineItemId)
+  if (index === -1) {
+    throw new Error(`No timeline item found with id ${timelineItemId}`)
+  }
+
+  const item = timeline[index]
+  if (item.kind !== 'video') return updateTimelineItemDuration(id, timelineItemId, durationFrames, baseDir)
+
+  const duration = Math.max(item.duration, durationFrames)
+  const data = item.data as { src: string; trimBefore?: number; trimAfter?: number }
+  const trimBefore = data.trimBefore ?? 0
+  const wanted = trimBefore + duration - (data.trimAfter ?? Infinity)
+  if (wanted <= 0) return updateTimelineItemDuration(id, timelineItemId, duration, baseDir)
+
+  const next = timeline[index + 1]
+  const nextData = next?.data as { src?: string; trimBefore?: number; trimAfter?: number } | undefined
+  if (!next || next.kind !== 'video' || nextData?.src !== data.src) {
+    return updateTimelineItemDuration(id, timelineItemId, duration, baseDir)
+  }
+
+  // What the next scene can give up is the shorter of what it is on screen for and what it has
+  // footage for, less the floor it has to keep.
+  const nextFootage = (nextData.trimAfter ?? next.duration) - (nextData.trimBefore ?? 0)
+  const spare = Math.max(0, Math.min(next.duration, nextFootage) - MIN_SCENE_FRAMES)
+  const borrowed = Math.min(wanted, spare)
+  if (borrowed === 0) return updateTimelineItemDuration(id, timelineItemId, duration, baseDir)
+
+  timeline[index] = TimelineItemSchema.parse({
+    ...item,
+    duration,
+    data: { ...data, trimAfter: (data.trimAfter ?? 0) + borrowed }
+  })
+  timeline[index + 1] = TimelineItemSchema.parse({
+    ...next,
+    duration: next.duration - borrowed,
+    data: { ...nextData, trimBefore: (nextData.trimBefore ?? 0) + borrowed }
+  })
+
+  const resequenced = withSequentialStarts(timeline)
+  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  return resequenced[index]
 }
 
 export function updateTimelineItemDuration(
@@ -685,7 +775,7 @@ export function splitTimelineItem(
 
   // The second half has to start where the first half stopped, or it would replay footage the
   // first half already showed. Kinds without a trim (an image) are the same picture throughout.
-  const data = item.data as { trimBefore?: number } | undefined
+  const data = item.data as { trimBefore?: number; trimAfter?: number } | undefined
   const secondData =
     data && typeof data.trimBefore === 'number'
       ? { ...data, trimBefore: data.trimBefore + offset }
@@ -693,10 +783,18 @@ export function splitTimelineItem(
         ? { ...(data as object), trimBefore: offset }
         : item.data
 
+  // And the first half has to stop where the second one starts. Left at the whole scene's end
+  // it would claim footage it no longer owns: narration would be fitted against room that is
+  // not there, and lengthening it would quietly replay the frames the second half is about to.
+  const firstData =
+    item.kind === 'video' && data
+      ? { ...data, trimAfter: (data.trimBefore ?? 0) + offset }
+      : item.data
+
   let halves: TimelineItem[]
   try {
     halves = [
-      TimelineItemSchema.parse({ ...item, duration: offset }),
+      TimelineItemSchema.parse({ ...item, duration: offset, data: firstData }),
       TimelineItemSchema.parse({
         ...item,
         id: randomUUID(),

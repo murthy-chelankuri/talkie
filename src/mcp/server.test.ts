@@ -5,7 +5,7 @@ import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { createTalkieServer } from './server'
-import { readTimeline, readTranscript } from '../main/project/projectApi'
+import { addTimelineItem, readTimeline, readTranscript } from '../main/project/projectApi'
 import { createMcpToken } from '../main/settings/mcpAccess'
 import { updateSettings } from '../main/settings/settingsStore'
 
@@ -187,6 +187,130 @@ describe('Talkie over MCP', () => {
 
     expect(await call('talkie_narrate', { projectId })).toContain('Nothing to voice')
   })
+
+  describe('narration an agent writes over MCP', () => {
+    it('keeps the timings when the lines come with them', async () => {
+      // The whole reason narration keeps step with the picture is that each line says which
+      // moment it belongs to. An agent that can only send prose can only produce the drift.
+      const projectId = await newProject('Timed')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_set_narration', {
+        projectId,
+        timelineItemId: clip.id,
+        text: '[0.0] Here is the watchlist.\n[8.5] And the analysis comes back.'
+      })
+
+      expect(said).toContain('2 timed lines')
+      const [segment] = readTranscript(projectId, baseDir)
+      expect(segment.beats).toEqual([
+        { at: 0, text: 'Here is the watchlist.' },
+        { at: 8.5, text: 'And the analysis comes back.' }
+      ])
+      // The prose kept alongside is what the editor shows, so it is the same words unbracketed.
+      expect(segment.text).toBe('Here is the watchlist. And the analysis comes back.')
+    })
+
+    it('still takes plain prose, which is read as one block', async () => {
+      const projectId = await newProject('Untimed')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_set_narration', {
+        projectId,
+        timelineItemId: clip.id,
+        text: 'Just some words.'
+      })
+
+      expect(said).toContain('one block')
+      expect(readTranscript(projectId, baseDir)[0].beats).toBeUndefined()
+    })
+
+    it('drops timings when the words are replaced with untimed ones', async () => {
+      // Beats describe the words they were written for; keeping them against new words would put
+      // the voice at moments chosen for sentences that are no longer there.
+      const projectId = await newProject('Replaced')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+
+      await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: '[0.0] One.\n[5.0] Two.' })
+      await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: 'Something else entirely.' })
+
+      expect(readTranscript(projectId, baseDir)[0].beats).toBeUndefined()
+    })
+
+    it('says whether a clip narration is timed when listing the timeline', async () => {
+      const projectId = await newProject('Listing')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+      await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: '[0.0] One.\n[4.0] Two.' })
+
+      expect(await call('talkie_timeline', { projectId })).toContain('2 timed lines')
+    })
+  })
+
+  describe('reading and cutting a recorded clip over MCP', () => {
+    it('says a slide has nothing happening in it rather than failing', async () => {
+      const projectId = await newProject('Slide')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+
+      expect(await call('talkie_clip_actions', { projectId, timelineItemId: clip.id })).toContain(
+        'no recorded actions'
+      )
+    })
+
+    it('refuses a clip id that is not there instead of throwing at the agent', async () => {
+      const projectId = await newProject('Missing')
+
+      expect(await call('talkie_clip_actions', { projectId, timelineItemId: 'nope' })).toContain(
+        'No clip found'
+      )
+      expect(await call('talkie_split_clip', { projectId, timelineItemId: 'nope', atSeconds: 1 })).toContain(
+        'No clip found'
+      )
+    })
+
+    it('says so in seconds when asked to cut past the end of a clip', async () => {
+      // The API underneath counts frames on the whole project timeline, which is not a thing an
+      // agent that asked in seconds inside one clip could do anything with.
+      const projectId = await newProject('Past the end')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      const [clip] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_split_clip', { projectId, timelineItemId: clip.id, atSeconds: 99 })
+
+      expect(said).toContain('only 3.0s long')
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+    })
+
+    it('cuts a clip in two at a moment inside it, measured from the clip own start', async () => {
+      // An agent knows where it is in a clip, not where that clip sits on the project timeline.
+      const projectId = await newProject('Split')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      addTimelineItem(
+        projectId,
+        { kind: 'video', start: 90, duration: 600, data: { src: '/v.mp4', trimBefore: 30, trimAfter: 630 } },
+        baseDir
+      )
+      const recorded = readTimeline(projectId, baseDir)[1]
+
+      const said = await call('talkie_split_clip', {
+        projectId,
+        timelineItemId: recorded.id,
+        atSeconds: 5
+      })
+
+      expect(said).toContain('Split into two clips')
+      const [, first, second] = readTimeline(projectId, baseDir)
+      expect(first.duration).toBe(150)
+      expect(second.duration).toBe(450)
+      // Both halves play their own stretch of the one file, end to end.
+      expect(first.data).toMatchObject({ trimBefore: 30, trimAfter: 180 })
+      expect(second.data).toMatchObject({ trimBefore: 180, trimAfter: 630 })
+    })
+  })
 })
 
 /**
@@ -318,3 +442,4 @@ describe('agent access', () => {
     await connected.close()
   })
 })
+

@@ -2,7 +2,7 @@ import { homedir } from 'os'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { findProjectDir } from '../project/paths'
-import { readTimeline, readTranscript, updateTimelineItemDuration } from '../project/projectApi'
+import { readTimeline, readTranscript, fitClipToNarration } from '../project/projectApi'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 
@@ -50,7 +50,7 @@ export function repairNarrationDurations(projectId: string, baseDir: string = ho
     const needed = NARRATION_LEAD_IN_FRAMES + audioFrames + NARRATION_TAIL_FRAMES
     if (item.duration >= needed) continue
 
-    updateTimelineItemDuration(projectId, item.id, needed, baseDir)
+    fitClipToNarration(projectId, item.id, needed, baseDir)
     repaired += 1
   }
 
