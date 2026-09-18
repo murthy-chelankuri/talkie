@@ -14,6 +14,8 @@ import {
   type TranscriptSegment
 } from '../api/projectClient'
 import { Timeline } from '../components/Timeline'
+import { ScriptView } from '../components/ScriptView'
+import { cn } from '../lib/cn'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
@@ -77,6 +79,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
   /** The scene being written or edited: an item to edit, 'new' to start one, null for neither. */
   const [sceneEditing, setSceneEditing] = useState<TimelineItem | 'new' | null>(null)
+  // Operating the timeline and writing the script are different jobs wanting different shapes
+  // of room, so the bottom pane does one at a time. See ScriptView.
+  const [bottomPane, setBottomPane] = useState<'timeline' | 'script'>('timeline')
   // Remembered, because the rail is a working preference rather than a per-session choice.
   const [sourcesCollapsed, setSourcesCollapsed] = useState(
     () => localStorage.getItem('talkie.sourcesCollapsed') === 'true'
@@ -701,6 +706,38 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             {transcriptError && <ErrorBanner message={transcriptError} />}
           </div>
         )}
+        <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1">
+          {(['timeline', 'script'] as const).map((pane) => (
+            <button
+              key={pane}
+              type="button"
+              aria-pressed={bottomPane === pane}
+              onClick={() => setBottomPane(pane)}
+              className={cn(
+                'rounded border-0 px-2 py-0.5 text-[11px] capitalize',
+                bottomPane === pane
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-transparent text-text-muted hover:text-text'
+              )}
+            >
+              {pane}
+            </button>
+          ))}
+        </div>
+        {bottomPane === 'script' ? (
+          <ScriptView
+            timeline={timeline}
+            segments={segments}
+            activeItemId={activeItemId}
+            draftingItemId={draftingItemId}
+            narratingItemId={narratingItemId}
+            onSeek={handleSeek}
+            onSelectItem={handleSelectClip}
+            onCommit={handleNarrationCommit}
+            onDraft={handleDraft}
+            onNarrate={handleNarrate}
+          />
+        ) : (
         <Timeline
           timeline={timeline}
           segments={segments}
@@ -733,6 +770,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onUndo={handleUndo}
           onRedo={handleRedo}
         />
+        )}
         </div>
       </ResizablePanel>
       {editingContext && project && (

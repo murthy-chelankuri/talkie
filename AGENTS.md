@@ -59,6 +59,19 @@ These each cost real time to find. None are obvious from the code.
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
   `0600`.
 
+## Writing narration
+
+Two surfaces, because they are two jobs. The timeline's `ClipNarrationBox` is sized by the
+clip's width, which is fine for a glance and hopeless for writing — it hides the words entirely
+below `NARRATION_TEXT_MIN_WIDTH`, and scene splitting made every clip narrower. `ScriptView` is
+the other one: the whole project's narration top to bottom, in a column wide enough to read a
+sentence in, because most of what is wrong with narration is only wrong in context.
+
+**Timings live in the words.** A line beginning `[12.3]` is spoken at that second of its clip,
+and `narrationFromText` reads them back on the way in — in the IPC handlers and in MCP, so every
+route stores them the same way. Before that, editing narration anywhere cleared `beats` and
+silently turned a timed take into one flat block.
+
 ## Recording an app automatically
 
 `exploreSession.ts` walks an app on its own when the user ticks "Show me round it", driven by

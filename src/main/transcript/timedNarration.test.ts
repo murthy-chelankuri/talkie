@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { parseBeats, beatsToText, placeBeats } from './narrationBeats'
+import { parseBeats, beatsToText, placeBeats, narrationFromText } from './narrationBeats'
 import { assembleTake, BREATH_SECONDS } from './assembleTake'
 import { readWavFormat, getWavDurationSeconds } from '../tts/wavDuration'
 import {
@@ -269,4 +269,29 @@ describe('narrating a clip whose screen waits', () => {
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 120_000)
+})
+
+describe('timings surviving an edit', () => {
+  it('keeps the timings when the words come back with them', () => {
+    // Editing used to wipe them: updateTranscriptSegmentText cleared `beats`, so every hand-edit
+    // downgraded a timed take to one flat block and quietly undid the sync.
+    const written = '[0.0] Here is the watchlist.\n[8.5] And the analysis comes back.'
+
+    expect(narrationFromText(written)).toEqual({
+      text: 'Here is the watchlist. And the analysis comes back.',
+      beats: [
+        { at: 0, text: 'Here is the watchlist.' },
+        { at: 8.5, text: 'And the analysis comes back.' }
+      ]
+    })
+  })
+
+  it('keeps plain prose plain, so writing without timings still works', () => {
+    expect(narrationFromText('  Just some words.  ')).toEqual({ text: 'Just some words.', beats: [] })
+  })
+
+  it('drops the timings when the writer takes them out', () => {
+    // Removing the brackets is how you say you no longer want the take broken up.
+    expect(narrationFromText('One sentence now.').beats).toEqual([])
+  })
 })

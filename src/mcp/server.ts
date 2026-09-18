@@ -17,7 +17,7 @@ import { narrateSegment } from '../main/transcript/narrate'
 import { renderProjectVideo } from '../main/render/renderProject'
 import { richTextToPlain } from '../main/project/timeline/richText'
 import { clipActions } from '../main/agent/clipEvidence'
-import { beatsToText, parseBeats } from '../main/transcript/narrationBeats'
+import { narrationFromText } from '../main/transcript/narrationBeats'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
@@ -387,8 +387,7 @@ export function createTalkieServer(
 
       // Timings where they were given. The prose kept alongside is what the editor shows and
       // what captions are built from, so it has to be the same words without the brackets.
-      const beats = parseBeats(words)
-      const prose = beats.length > 0 ? beatsToText(beats) : words
+      const { text: prose, beats } = narrationFromText(words)
 
       const segment = withHistory(
         projectId,

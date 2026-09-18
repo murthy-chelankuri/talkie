@@ -64,6 +64,19 @@ function finished(text: string): string {
   return /[.!?…:;,—–]$/.test(text) ? text : `${text}.`
 }
 
+/**
+ * Narration as written, split into the prose to store and the timings to read it by.
+ *
+ * Every way words reach a segment goes through here — the editor, the script view, MCP — so a
+ * take written with timings keeps them whatever wrote it. Editing used to drop them silently:
+ * `updateTranscriptSegmentText` cleared `beats`, so any hand-edit downgraded a timed take to one
+ * flat block and quietly undid the thing that keeps narration in step with the picture.
+ */
+export function narrationFromText(written: string): { text: string; beats: NarrationBeat[] } {
+  const beats = parseBeats(written)
+  return beats.length > 0 ? { text: beatsToText(beats), beats } : { text: written.trim(), beats: [] }
+}
+
 /** The narration as one piece of prose, which is what the editor shows and the user edits. */
 export function beatsToText(beats: NarrationBeat[]): string {
   return beats.map((beat) => beat.text).join(' ').replace(/\s+/g, ' ').trim()
