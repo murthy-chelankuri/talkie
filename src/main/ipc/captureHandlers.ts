@@ -110,6 +110,13 @@ async function walkTheApp(session: RecordingSession, getWindow: () => BrowserWin
   // Stopped because the session went away: the stop path is already running and owns the rest.
   if (result.ending === 'stopped' || activeSession !== session) return
 
+  if (result.ending === 'model-failed') {
+    // Named for what actually went wrong. Reported as "nothing to explore" it sent people
+    // looking at their own app instead of at the provider that could not be reached.
+    setToolbarStatus(`Could not ask ${result.reason ?? 'the model'} — drive it yourself, then press stop`, true)
+    return
+  }
+
   if (result.ending === 'waited-too-long') {
     setToolbarStatus('Gave up waiting to be signed in — press stop when you are done', true)
     return
