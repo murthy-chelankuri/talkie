@@ -15,6 +15,7 @@ import {
 } from '../api/projectClient'
 import { Timeline } from '../components/Timeline'
 import { ScriptView } from '../components/ScriptView'
+import { AskTheAgent } from '../components/AskTheAgent'
 import { cn } from '../lib/cn'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
@@ -90,6 +91,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // Remembered, because the rail is a working preference rather than a per-session choice.
   const [sourcesCollapsed, setSourcesCollapsed] = useState(
     () => localStorage.getItem('talkie.sourcesCollapsed') === 'true'
+  )
+  const [agentCollapsed, setAgentCollapsed] = useState(
+    () => localStorage.getItem('talkie.agentCollapsed') === 'true'
   )
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
@@ -700,6 +704,22 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </div>
+            <AskTheAgent
+              projectId={projectId}
+              collapsed={agentCollapsed}
+              onToggleCollapsed={() =>
+                setAgentCollapsed((hidden) => {
+                  localStorage.setItem('talkie.agentCollapsed', String(!hidden))
+                  return !hidden
+                })
+              }
+              onChanged={async () => {
+                // The agent wrote to the same files through a process of its own, so nothing
+                // the editor is holding can be trusted until it has been read back.
+                await refreshTimeline()
+                await refreshSegments()
+              }}
+            />
         </div>
       </ResizablePanel>
       <Separator className="h-1 bg-border transition-colors hover:bg-accent" />
@@ -742,7 +762,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         </div>
         {bottomPane === 'script' ? (
           <ScriptView
-            projectId={projectId}
             timeline={timeline}
             segments={segments}
             activeItemId={activeItemId}
@@ -753,12 +772,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             onCommit={handleNarrationCommit}
             onDraft={handleDraft}
             onNarrate={handleNarrate}
-            onAgentChanged={async () => {
-              // The agent wrote to the same files through a process of its own, so nothing the
-              // editor is holding can be trusted until it has been read back.
-              await refreshTimeline()
-              await refreshSegments()
-            }}
           />
         ) : (
         <Timeline

@@ -74,6 +74,10 @@ silently turned a timed take into one flat block.
 
 ## Asking the agent to change a project
 
+It sits beside the video rather than in the script pane: what it changes is the project, not
+only the words, and the stage already has the sources panel down one side — this is the other,
+with the demo between them.
+
 `projectAgent.ts` runs one instruction against a whole project — "add an introduction and a
 closing statement" — by lending the CLI provider the tools Talkie already exposes: it launches
 `claude` with Talkie's own MCP server attached and `--strict-mcp-config`, so the in-app agent

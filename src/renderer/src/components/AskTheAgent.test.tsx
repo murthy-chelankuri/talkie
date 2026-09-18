@@ -15,7 +15,7 @@ describe('asking Talkie to change the project', () => {
   it('sends the instruction and says what was changed', async () => {
     instruct.mockResolvedValue({ status: 'done', say: 'Added an introduction before scene 1.' })
     const onChanged = vi.fn()
-    render(<AskTheAgent projectId="p1" onChanged={onChanged} />)
+    render(<AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={onChanged} />)
 
     await userEvent.type(screen.getByLabelText(/ask talkie/i), 'add an introduction')
     await userEvent.click(screen.getByRole('button', { name: /ask/i }))
@@ -29,7 +29,7 @@ describe('asking Talkie to change the project', () => {
     // trusted once it has run.
     instruct.mockResolvedValue({ status: 'done', say: 'Done.' })
     const onChanged = vi.fn()
-    render(<AskTheAgent projectId="p1" onChanged={onChanged} />)
+    render(<AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={onChanged} />)
 
     await userEvent.type(screen.getByLabelText(/ask talkie/i), 'tidy it up')
     await userEvent.click(screen.getByRole('button', { name: /ask/i }))
@@ -40,7 +40,7 @@ describe('asking Talkie to change the project', () => {
   it('reloads even when the run failed, since it may have changed things first', async () => {
     instruct.mockResolvedValue({ status: 'failed', reason: 'Usage limit reached.' })
     const onChanged = vi.fn()
-    render(<AskTheAgent projectId="p1" onChanged={onChanged} />)
+    render(<AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={onChanged} />)
 
     await userEvent.type(screen.getByLabelText(/ask talkie/i), 'do a lot')
     await userEvent.click(screen.getByRole('button', { name: /ask/i }))
@@ -51,7 +51,7 @@ describe('asking Talkie to change the project', () => {
 
   it('keeps the instruction when it failed, so it can be tried again', async () => {
     instruct.mockResolvedValue({ status: 'failed', reason: 'Not signed in.' })
-    render(<AskTheAgent projectId="p1" onChanged={vi.fn()} />)
+    render(<AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText(/ask talkie/i), 'add a closing statement')
     await userEvent.click(screen.getByRole('button', { name: /ask/i }))
@@ -61,7 +61,7 @@ describe('asking Talkie to change the project', () => {
   })
 
   it('will not send an empty instruction', async () => {
-    render(<AskTheAgent projectId="p1" onChanged={vi.fn()} />)
+    render(<AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: /ask/i })).toBeDisabled()
     await userEvent.type(screen.getByLabelText(/ask talkie/i), '   ')
@@ -72,7 +72,7 @@ describe('asking Talkie to change the project', () => {
     // The one rule while it runs: the agent is writing the same files the editor is showing.
     let finish: (value: unknown) => void = () => undefined
     instruct.mockReturnValue(new Promise((resolve) => (finish = resolve)))
-    render(<AskTheAgent projectId="p1" onChanged={vi.fn()} />)
+    render(<AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText(/ask talkie/i), 'rewrite it all')
     await userEvent.click(screen.getByRole('button', { name: /ask/i }))
@@ -82,5 +82,27 @@ describe('asking Talkie to change the project', () => {
 
     finish({ status: 'done', say: 'Done.' })
     await waitFor(() => expect(screen.getByLabelText(/ask talkie/i)).not.toBeDisabled())
+  })
+
+  it('folds away to a strip, still showing that it is working', async () => {
+    // The stage is mostly the video, so the rail has to be able to get out of the way — but a
+    // run that is still going is the one thing worth saying at that width.
+    let finish: (value: unknown) => void = () => undefined
+    instruct.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const { rerender } = render(
+      <AskTheAgent projectId="p1" collapsed={false} onToggleCollapsed={vi.fn()} onChanged={vi.fn()} />
+    )
+
+    await userEvent.type(screen.getByLabelText(/ask talkie/i), 'rewrite it all')
+    await userEvent.click(screen.getByRole('button', { name: /ask/i }))
+    rerender(
+      <AskTheAgent projectId="p1" collapsed onToggleCollapsed={vi.fn()} onChanged={vi.fn()} />
+    )
+
+    expect(screen.queryByLabelText(/ask talkie to change/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Working')).toBeInTheDocument()
+    expect(screen.getByLabelText('Show the agent')).toBeInTheDocument()
+
+    finish({ status: 'done', say: 'Done.' })
   })
 })
