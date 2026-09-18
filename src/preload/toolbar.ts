@@ -18,6 +18,12 @@ const captureApi = {
     ipcRenderer.on('project:capture:exploring', listener)
     return () => ipcRenderer.removeListener('project:capture:exploring', listener)
   },
+  /** A recording that ended without the stop button — a closed browser, a failed import. */
+  onEnded: (callback: (reason: string, failed: boolean) => void): (() => void) => {
+    const listener = (_event: unknown, reason: string, failed: boolean): void => callback(reason, failed)
+    ipcRenderer.on('project:capture:ended', listener)
+    return () => ipcRenderer.removeListener('project:capture:ended', listener)
+  },
   mark: (kind: 'important' | 'redo' | 'skip'): Promise<void> =>
     ipcRenderer.invoke('project:capture:mark', kind),
   stop: (): Promise<void> => ipcRenderer.invoke('project:capture:stop'),

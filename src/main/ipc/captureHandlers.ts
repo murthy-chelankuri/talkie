@@ -1,7 +1,8 @@
 import type { IpcMain, BrowserWindow } from 'electron'
 import { startRecordingSession, type RecordingResult, type RecordingSession } from '../capture/recordSession'
 import { exploreApp } from '../capture/exploreSession'
-import { openToolbarWindow, setToolbarMode, setToolbarStatus } from '../capture/toolbarWindow'
+import { dirname } from 'path'
+import { openToolbarWindow, setToolbarEnded, setToolbarMode, setToolbarStatus } from '../capture/toolbarWindow'
 import { importRecordedSession } from '../capture/importRecordedSession'
 import { withHistory } from '../project/history'
 import { readSettings } from '../settings/settingsStore'
@@ -27,17 +28,29 @@ async function importAndNotify(
     void autoDraftAll(projectId, items.map((item) => item.id), getWindow)
   } catch (err) {
     console.error('Could not add the recorded session to the timeline:', err)
+    // The video is already on disk, so this is recoverable — but only by someone who has been
+    // told. Logging alone left the toolbar claiming to record and the footage unaccounted for.
+    setToolbarEnded(explainImportFailure(err, recording))
   }
 }
 
 /**
- * Walk the app while the recording runs, for someone who asked not to drive it themselves.
+ * Why the recording did not land, in terms of what the person can do about it.
  *
- * Started rather than awaited: the toolbar has to come up and its stop button has to work from
- * the first moment, and a walk that is still going when the user presses stop should simply end
- * with everything it recorded up to then. A failure here leaves an ordinary recording the user
- * can drive by hand, which is why it is reported rather than thrown.
+ * The common cause is a project that has gone since recording began — deleted, or the toolbar
+ * left open across a switch. `readTimeline` says "No project found with id ..." which is true
+ * and useless: what matters is that the video survived and where it is.
  */
+export function explainImportFailure(err: unknown, recording: RecordingResult): string {
+  const where = recording.clips[0] ? dirname(recording.clips[0].videoPath) : 'the session folder'
+  const message = err instanceof Error ? err.message : String(err)
+
+  if (/No project found/i.test(message)) {
+    return `That project no longer exists, so there was nowhere to put the recording. It is safe in ${where}.`
+  }
+  return `Could not add the recording to the timeline: ${message} It is safe in ${where}.`
+}
+
 /**
  * End the recording and put it on the timeline.
  *
@@ -71,6 +84,14 @@ async function stopAndImport(
  */
 const FINISH_AFTER_MS = 12_000
 
+/**
+ * Walk the app while the recording runs, for someone who asked not to drive it themselves.
+ *
+ * Started rather than awaited: the toolbar has to come up and its stop button has to work from
+ * the first moment, and a walk that is still going when the user presses stop should simply end
+ * with everything it recorded up to then. A failure here leaves an ordinary recording the user
+ * can drive by hand, which is why it is reported rather than thrown.
+ */
 async function walkTheApp(session: RecordingSession, getWindow: () => BrowserWindow | null): Promise<void> {
   let result: Awaited<ReturnType<typeof exploreApp>> | undefined
   try {
@@ -108,9 +129,14 @@ async function walkTheApp(session: RecordingSession, getWindow: () => BrowserWin
   if (activeSession !== session || stopping) return
 
   setToolbarStatus('Finishing the recording…')
-  await stopAndImport(session, getWindow).catch((err) =>
+  try {
+    await stopAndImport(session, getWindow)
+    // Back to a window a new recording can be started from. Left in recording mode it went on
+    // showing a stop button for a session that had already finished.
+    setToolbarEnded(`Shown ${result.visited.length} screens. It is on the timeline.`, false)
+  } catch (err) {
     console.error('Could not finish the recording after walking the app:', err)
-  )
+  }
 }
 
 /**
@@ -178,6 +204,19 @@ export function registerCaptureHandlers(ipcMain: IpcMain, getWindow: () => Brows
       try {
         activeSession = await startRecordingSession(projectId, url)
         setToolbarMode('recording')
+
+        // Closing the browser window is a reasonable way to say "that's the demo". It used to
+        // leave the toolbar recording something that no longer existed, with a stop button that
+        // could not end it — so it is treated as a stop, and whatever was captured is kept.
+        const session = activeSession
+        session.onBrowserGone(() => {
+          if (activeSession !== session || stopping) return
+          void stopAndImport(session, getWindow).catch((err) => {
+            console.error('Could not finish the recording after the browser closed:', err)
+            setToolbarEnded('The browser closed and the recording could not be saved.')
+          })
+        })
+
         if (explore) void walkTheApp(activeSession, getWindow)
         return { sessionId: activeSession.sessionId }
       } finally {

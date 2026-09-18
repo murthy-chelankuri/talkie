@@ -59,6 +59,30 @@ const exploring = el('exploring')
  * the answer is "it is waiting for you to type your password". That case is marked, so it reads
  * as a request rather than as more progress.
  */
+/**
+ * A recording that ended by itself: the browser was closed, or the import found nowhere to put
+ * it. The window goes back to where a new one can be started and says why, because a toolbar
+ * still counting up at a browser that has gone is worse than no toolbar at all.
+ */
+window.capture.onEnded((reason, failed) => {
+  clearInterval(ticking)
+  controls.hidden = true
+  setup.hidden = false
+  exploring.hidden = true
+
+  if (failed) {
+    show(new Error(reason))
+    return
+  }
+
+  // Finished properly: said in the hint line rather than the error banner, so a recording that
+  // worked does not arrive looking like one that did not.
+  error.hidden = true
+  const hint = el('setup-hint')
+  hint.hidden = false
+  hint.textContent = reason
+})
+
 window.capture.onExploring((status, needsYou) => {
   exploring.textContent = needsYou ? `⚠ ${status}` : status
   // Accent on surface, not on surface-hover: the latter measures 5.55:1 in the light theme and
@@ -74,6 +98,7 @@ const urlInput = el<HTMLInputElement>('url-input')
 const MARK_LABELS = { important: 'Important', redo: 'Redo', skip: 'Skip' } as const
 let startedAt = 0
 let counted = 0
+let ticking = 0
 
 function show(err: unknown): void {
   error.textContent = err instanceof Error ? err.message : String(err)
@@ -97,7 +122,10 @@ startButton.onclick = async () => {
     await window.capture.start(projectId, urlInput.value, exploreBox.checked)
     startedAt = Date.now()
     elapsed.textContent = '0:00'
-    setInterval(() => {
+    // Kept so it can be stopped. Left running, the clock counted on past the end of a recording
+    // that had already finished, which is the sort of thing that makes a window look broken.
+    clearInterval(ticking)
+    ticking = window.setInterval(() => {
       elapsed.textContent = clock(Date.now() - startedAt)
     }, 500)
     setup.hidden = true

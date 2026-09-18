@@ -43,8 +43,11 @@ describe('importRecordedSession (real Playwright recording)', () => {
     const project = createProject('Import Trim', baseDir)
 
     const fixtureUrl = `file://${join(__dirname, 'fixtures', 'recording-test-page.html')}`
+    // Five seconds, not three. The trim is only applied while at least a second of clip
+    // survives it, so a three-second recording left one second of margin — and under the load
+    // of the whole suite running at once the capture came in short often enough to fail.
     const session = await startRecordingSession(project.id, fixtureUrl, baseDir)
-    await session.page.waitForTimeout(3000)
+    await session.page.waitForTimeout(5000)
     const recording = await session.stop()
 
     const [untrimmed] = await importRecordedSession(project.id, { clips: recording.clips }, baseDir)
