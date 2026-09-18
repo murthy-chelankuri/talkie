@@ -9,6 +9,7 @@ import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowS
 import { repairAssetPaths } from './project/repairAssetPaths'
 import { registerEditContextMenu } from './menu/editContextMenu'
 import { installApplicationMenu, INITIAL_MENU_STATE, type MenuState } from './menu/applicationMenu'
+import { mayUse } from './security/permissions'
 import { applyContentSecurityPolicy } from './security/contentSecurityPolicy'
 import { closeAssetServer } from './render/assetServer'
 import { applyNavigationGuards } from './security/navigationGuards'
@@ -88,10 +89,10 @@ app.whenReady().then(() => {
   // first document is covered rather than only the ones after it.
   applyContentSecurityPolicy(session.defaultSession, Boolean(process.env['ELECTRON_RENDERER_URL']))
 
-  // Recording a narration take needs the microphone, and Electron denies it unless asked.
-  // Nothing else is granted: a request for anything but audio is refused.
+  // Electron denies everything unless asked. What this app needs and nothing else — see
+  // security/permissions.ts for what is on the list and why.
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
-    callback(permission === 'media')
+    callback(mayUse(permission))
   })
 
   // The default Electron menu has no File items beyond closing the window, which is what the

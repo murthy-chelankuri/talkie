@@ -133,6 +133,11 @@ Do not weaken these without understanding what they are for. Each has tests.
 - **The asset server puts a per-run secret in every URL.** Loopback is not a boundary — any page
   in any browser can scan the ephemeral ports. CORS cannot be the control because the renderer is
   `file://` (origin `null`) and needs to sample video frames onto a canvas.
+- **Permissions are deny-by-default**, in `src/main/security/permissions.ts`. Electron's list
+  includes the camera, screen capture, the clipboard and location; this app needs the
+  microphone and fullscreen. Anything added to that list upstream arrives refused. Written as a
+  named rule rather than an inline comparison because the inline one silently cost the preview
+  its fullscreen button.
 - **No window enables `nodeIntegration`.** Navigation is confined to the app's own pages by
   `src/main/security/navigationGuards.ts`.
 - **The MCP server is off by default** and checks a hashed token on every call.
