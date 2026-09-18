@@ -78,6 +78,11 @@ It sits beside the video rather than in the script pane: what it changes is the 
 only the words, and the stage already has the sources panel down one side — this is the other,
 with the demo between them.
 
+It reads as a conversation because it is one. Each turn passes the previous turn's
+`session_id` back as `--resume`, so "make that shorter" knows what "that" was; a chat that
+forgot between messages would be a worse lie than the single instruction box it replaced. The
+conversation belongs to the project and starts again when another is opened.
+
 `projectAgent.ts` runs one instruction against a whole project — "add an introduction and a
 closing statement" — by lending the CLI provider the tools Talkie already exposes: it launches
 `claude` with Talkie's own MCP server attached and `--strict-mcp-config`, so the in-app agent

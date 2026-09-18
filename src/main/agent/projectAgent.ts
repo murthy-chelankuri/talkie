@@ -49,7 +49,14 @@ export const AGENT_TOOLS = [
 ]
 
 export type AgentOutcome =
-  | { status: 'done'; say: string }
+  | {
+      status: 'done'
+      say: string
+      /** Hand back to the next turn so the conversation carries on where it left off. */
+      sessionId?: string
+      /** What that turn cost, when the CLI says. Shown because a run is not free. */
+      costUsd?: number
+    }
   | { status: 'failed'; reason: string }
 
 export interface AgentRequest {
@@ -58,6 +65,14 @@ export interface AgentRequest {
   instruction: string
   /** Where the built MCP server is, from mcpConnection.ts. Null in a build without one. */
   serverPath: string | null
+  /**
+   * The conversation this turn belongs to, from the previous turn's outcome.
+   *
+   * Without it every message starts again knowing nothing, which is fine for one instruction
+   * and wrong for anything that reads as a conversation — "make that shorter" has to know what
+   * "that" was.
+   */
+  resumeSessionId?: string
 }
 
 export function buildAgentPrompt(
@@ -120,6 +135,8 @@ export async function runProjectAgent(
 
   const project = projectFacts(request.projectId, baseDir)
   const { token, withdraw } = grantRunToken(baseDir)
+  // A turn that carries on says only what is new; the first one has to set the scene.
+  const carryingOn = Boolean(request.resumeSessionId)
 
   try {
     const mcpConfig = JSON.stringify({
@@ -138,7 +155,10 @@ export async function runProjectAgent(
       binary,
       [
         '-p',
-        buildAgentPrompt(request.projectId, request.instruction, project),
+        carryingOn
+          ? request.instruction
+          : buildAgentPrompt(request.projectId, request.instruction, project),
+        ...(request.resumeSessionId ? ['--resume', request.resumeSessionId] : []),
         '--output-format',
         'json',
         '--mcp-config',
@@ -156,9 +176,9 @@ export async function runProjectAgent(
     running.child.stdin?.end()
 
     const { stdout } = await running
-    const said = readResult(stdout)
+    const { said, sessionId, costUsd } = readResult(stdout)
     return said.trim()
-      ? { status: 'done', say: said.trim() }
+      ? { status: 'done', say: said.trim(), sessionId, costUsd }
       : { status: 'failed', reason: 'The agent finished without saying what it did.' }
   } catch (err) {
     return { status: 'failed', reason: whyItFailed(err) }
@@ -167,14 +187,28 @@ export async function runProjectAgent(
   }
 }
 
-function readResult(stdout: string): string {
+interface AgentSaid {
+  said: string
+  sessionId?: string
+  costUsd?: number
+}
+
+function readResult(stdout: string): AgentSaid {
   try {
-    const parsed = JSON.parse(stdout) as { result?: unknown }
-    return typeof parsed.result === 'string' ? parsed.result : ''
+    const parsed = JSON.parse(stdout) as {
+      result?: unknown
+      session_id?: unknown
+      total_cost_usd?: unknown
+    }
+    return {
+      said: typeof parsed.result === 'string' ? parsed.result : '',
+      sessionId: typeof parsed.session_id === 'string' ? parsed.session_id : undefined,
+      costUsd: typeof parsed.total_cost_usd === 'number' ? parsed.total_cost_usd : undefined
+    }
   } catch {
     // Not the shape expected, but the agent may still have done the work and said so in plain
     // text — losing that would be worse than showing it.
-    return stdout.trim().slice(0, 2000)
+    return { said: stdout.trim().slice(0, 2000) }
   }
 }
 

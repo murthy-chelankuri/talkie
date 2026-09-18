@@ -58,8 +58,8 @@ const settingsApi = {
 
 const agentApi = {
   /** One instruction, run against the whole project. See projectAgent.ts. */
-  instruct: (projectId: string, instruction: string): Promise<AgentOutcome> =>
-    ipcRenderer.invoke('project:agent:instruct', projectId, instruction),
+  instruct: (projectId: string, instruction: string, resumeSessionId?: string): Promise<AgentOutcome> =>
+    ipcRenderer.invoke('project:agent:instruct', projectId, instruction, resumeSessionId),
   draftItem: (projectId: string, itemId: string, force = false): Promise<DraftResult> =>
     ipcRenderer.invoke('project:agent:draftItem', projectId, itemId, force),
   draftAll: (projectId: string, force = false): Promise<DraftResult[]> =>

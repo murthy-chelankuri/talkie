@@ -105,10 +105,17 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
    * to cover the run as one action — which is also the only granularity that makes sense to
    * undo: "put it back to before I asked".
    */
-  ipcMain.handle('project:agent:instruct', (_event, projectId: string, instruction: string) =>
-    withHistory(projectId, () =>
-      runProjectAgent({ projectId, instruction, serverPath: mcpConnection().serverPath })
-    )
+  ipcMain.handle(
+    'project:agent:instruct',
+    (_event, projectId: string, instruction: string, resumeSessionId?: string) =>
+      withHistory(projectId, () =>
+        runProjectAgent({
+          projectId,
+          instruction,
+          resumeSessionId,
+          serverPath: mcpConnection().serverPath
+        })
+      )
   )
 
   ipcMain.handle('project:agent:draftAll', (_event, projectId: string, force: boolean) =>
