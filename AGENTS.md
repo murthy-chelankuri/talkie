@@ -72,6 +72,24 @@ and `narrationFromText` reads them back on the way in — in the IPC handlers an
 route stores them the same way. Before that, editing narration anywhere cleared `beats` and
 silently turned a timed take into one flat block.
 
+## Asking the agent to change a project
+
+`projectAgent.ts` runs one instruction against a whole project — "add an introduction and a
+closing statement" — by lending the CLI provider the tools Talkie already exposes: it launches
+`claude` with Talkie's own MCP server attached and `--strict-mcp-config`, so the in-app agent
+and an outside agent are the same agent working through the same tools. There is no second
+implementation to keep in step.
+
+- **The switch still gates it.** Agent access off means the run is refused, exactly as for
+  anyone else. What is new is `mcp.runTokenHash`: a second hashed slot so a run cannot revoke
+  the token an outside agent is already holding. It is withdrawn in a `finally`.
+- **`AGENT_TOOLS` is the reach.** Reading, narration, scenes, splitting. Not recording, not
+  exporting — both take minutes, and neither is what anyone means by "add an introduction".
+- **The whole run is one undo step.** The agent writes from a child process whose own history
+  dies with it, so `project:agent:instruct` wraps the run in a single `withHistory` on the app's
+  side and the editor re-reads from disk afterwards. This is the documented no-locking hazard at
+  its sharpest: nothing should write to the project while a run is going.
+
 ## Recording an app automatically
 
 `exploreSession.ts` walks an app on its own when the user ticks "Show me round it", driven by

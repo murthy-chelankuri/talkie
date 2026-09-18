@@ -5,6 +5,7 @@ import { narrationScriptForItem, segmentsForItem } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
 import { cn } from '../lib/cn'
+import { AskTheAgent } from './AskTheAgent'
 import { ClipThumbnail } from './Timeline'
 import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
@@ -29,6 +30,7 @@ import { Spinner } from './ui/Spinner'
  * which one is playing.
  */
 export function ScriptView({
+  projectId,
   timeline,
   segments,
   activeItemId,
@@ -38,8 +40,10 @@ export function ScriptView({
   onSelectItem,
   onCommit,
   onDraft,
-  onNarrate
+  onNarrate,
+  onAgentChanged
 }: {
+  projectId: string
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
   activeItemId: string | null
@@ -50,6 +54,7 @@ export function ScriptView({
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onDraft: (item: TimelineItem) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
+  onAgentChanged: () => void | Promise<void>
 }): JSX.Element {
   if (timeline.length === 0) {
     return (
@@ -66,8 +71,10 @@ export function ScriptView({
   return (
     <div className="h-full overflow-y-auto bg-paper">
       <div className="mx-auto max-w-3xl px-6 py-5">
+        <AskTheAgent projectId={projectId} onChanged={onAgentChanged} />
+
         {/* What this sheet covers, said once at the top rather than repeated down the margin. */}
-        <p className="mb-5 font-serif text-[13px] italic text-text-muted">
+        <p className="mb-5 mt-4 font-serif text-[13px] italic text-text-muted">
           {timeline.length} {timeline.length === 1 ? 'scene' : 'scenes'} over {formatTimecode(runs / FPS)}
         </p>
 

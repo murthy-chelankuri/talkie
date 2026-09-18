@@ -17,6 +17,7 @@ const noop = (): void => undefined
 function view(timeline: TimelineItem[], segments: TranscriptSegment[], props = {}): void {
   render(
     <ScriptView
+      projectId="p1"
       timeline={timeline}
       segments={segments}
       activeItemId={null}
@@ -27,6 +28,7 @@ function view(timeline: TimelineItem[], segments: TranscriptSegment[], props = {
       onCommit={noop}
       onDraft={noop}
       onNarrate={noop}
+      onAgentChanged={noop}
       {...props}
     />
   )

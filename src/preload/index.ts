@@ -6,6 +6,7 @@ import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
+import type { AgentOutcome } from '../main/agent/projectAgent'
 import type { Voice } from '../main/tts/listVoices'
 import type { NarrationFidelity } from '../main/tts/voiceFidelity'
 import type { MenuAction, MenuState } from '../main/menu/applicationMenu'
@@ -56,6 +57,9 @@ const settingsApi = {
 }
 
 const agentApi = {
+  /** One instruction, run against the whole project. See projectAgent.ts. */
+  instruct: (projectId: string, instruction: string): Promise<AgentOutcome> =>
+    ipcRenderer.invoke('project:agent:instruct', projectId, instruction),
   draftItem: (projectId: string, itemId: string, force = false): Promise<DraftResult> =>
     ipcRenderer.invoke('project:agent:draftItem', projectId, itemId, force),
   draftAll: (projectId: string, force = false): Promise<DraftResult[]> =>

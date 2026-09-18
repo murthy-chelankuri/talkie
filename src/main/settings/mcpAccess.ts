@@ -48,13 +48,39 @@ export function revokeMcpToken(baseDir: string = homedir()): void {
 export function checkMcpAccess(presented: string | undefined, baseDir: string = homedir()): AccessResult {
   const { mcp } = readSettings(baseDir)
 
+  // The switch first, for everyone. Talkie's own agent is a child process like any other and
+  // gets no way round it.
   if (!mcp.enabled) return { allowed: false, refusedBecause: 'disabled' }
-  if (!mcp.tokenHash) return { allowed: false, refusedBecause: 'no-token' }
+  if (!mcp.tokenHash && !mcp.runTokenHash) return { allowed: false, refusedBecause: 'no-token' }
   if (!presented) return { allowed: false, refusedBecause: 'missing-token' }
 
-  return matches(hashToken(presented), mcp.tokenHash)
-    ? { allowed: true }
-    : { allowed: false, refusedBecause: 'wrong-token' }
+  const presentedHash = hashToken(presented)
+  // Either the standing token an outside agent was given, or the one minted for the run
+  // happening right now. Two slots so that asking Talkie to do something cannot revoke the
+  // token something else is already using.
+  const accepted =
+    (mcp.tokenHash && matches(presentedHash, mcp.tokenHash)) ||
+    (mcp.runTokenHash && matches(presentedHash, mcp.runTokenHash))
+
+  return accepted ? { allowed: true } : { allowed: false, refusedBecause: 'wrong-token' }
+}
+
+/**
+ * Mint a token for one run of Talkie's own agent, and hand back the way to withdraw it.
+ *
+ * Hashed and written to settings like any other, because the thing that checks it is a separate
+ * process reading the same file. Withdrawn in a `finally` rather than left to expire: a token
+ * that outlives the run it was made for is just a second permanent credential. It still only
+ * works while agent access is turned on.
+ */
+export function grantRunToken(baseDir: string = homedir()): { token: string; withdraw: () => void } {
+  const token = `talkie_run_${randomBytes(TOKEN_BYTES).toString('base64url')}`
+  updateSettings({ mcp: { runTokenHash: hashToken(token) } }, baseDir)
+
+  return {
+    token,
+    withdraw: () => updateSettings({ mcp: { runTokenHash: '' } }, baseDir)
+  }
 }
 
 /** What to tell whoever was refused, in terms of what they can do about it. */

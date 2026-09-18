@@ -24,6 +24,7 @@ import { findLocalServer } from '../agent/localProvider'
 import { previewVoice } from '../tts/listVoices'
 import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
+import { runProjectAgent } from '../agent/projectAgent'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:create', (_event, name: string, context?: unknown) =>
@@ -96,6 +97,20 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:agent:draftItem', (_event, projectId: string, itemId: string, force: boolean) =>
     withHistory(projectId, () => draftNarrationForItem(projectId, itemId, { force }))
   )
+  /**
+   * One instruction, run against a whole project.
+   *
+   * Wrapped in a single `withHistory` around the entire run rather than per change. The agent
+   * works in a child process with a history of its own that dies with it, so the app's undo has
+   * to cover the run as one action — which is also the only granularity that makes sense to
+   * undo: "put it back to before I asked".
+   */
+  ipcMain.handle('project:agent:instruct', (_event, projectId: string, instruction: string) =>
+    withHistory(projectId, () =>
+      runProjectAgent({ projectId, instruction, serverPath: mcpConnection().serverPath })
+    )
+  )
+
   ipcMain.handle('project:agent:draftAll', (_event, projectId: string, force: boolean) =>
     withHistory(projectId, () => draftNarrationForProject(projectId, { force }))
   )

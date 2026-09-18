@@ -742,6 +742,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         </div>
         {bottomPane === 'script' ? (
           <ScriptView
+            projectId={projectId}
             timeline={timeline}
             segments={segments}
             activeItemId={activeItemId}
@@ -752,6 +753,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             onCommit={handleNarrationCommit}
             onDraft={handleDraft}
             onNarrate={handleNarrate}
+            onAgentChanged={async () => {
+              // The agent wrote to the same files through a process of its own, so nothing the
+              // editor is holding can be trusted until it has been read back.
+              await refreshTimeline()
+              await refreshSegments()
+            }}
           />
         ) : (
         <Timeline

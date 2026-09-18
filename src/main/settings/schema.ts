@@ -83,7 +83,16 @@ export const McpSettingsSchema = z.object({
   /** sha256 of the token. The token itself is shown once, when it is created. */
   tokenHash: z.string().default(''),
   /** ISO date the current token was created, so the settings screen can say how old it is. */
-  tokenCreatedAt: z.string().default('')
+  tokenCreatedAt: z.string().default(''),
+  /**
+   * sha256 of a token Talkie minted for one run of its own agent.
+   *
+   * A second slot rather than reuse of `tokenHash`, so asking Talkie to do something for you
+   * cannot quietly revoke the token an outside agent is already holding. It grants nothing on
+   * its own: agent access still has to be turned on, exactly as for anyone else, and this is
+   * cleared the moment the run ends.
+   */
+  runTokenHash: z.string().default('')
 })
 
 /**

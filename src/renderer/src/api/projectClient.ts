@@ -83,6 +83,8 @@ export const settingsClient = {
 }
 
 export const agentClient = {
+  instruct: (projectId: string, instruction: string) =>
+    window.api.agent.instruct(projectId, instruction),
   draftItem: (projectId: string, itemId: string, force = false) =>
     window.api.agent.draftItem(projectId, itemId, force),
   draftAll: (projectId: string, force = false) => window.api.agent.draftAll(projectId, force),
