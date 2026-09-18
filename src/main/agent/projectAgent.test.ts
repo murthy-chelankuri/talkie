@@ -18,6 +18,10 @@ describe('what the project agent is allowed to do', () => {
     expect(AGENT_TOOLS).toContain('talkie_timeline')
     expect(AGENT_TOOLS).toContain('talkie_set_narration')
     expect(AGENT_TOOLS).toContain('talkie_add_scene')
+    // Able to tidy as well as make: a scene is always added at the end, so without move an
+    // agent asked for an introduction produces one stranded after the whole demo.
+    expect(AGENT_TOOLS).toContain('talkie_move_clip')
+    expect(AGENT_TOOLS).toContain('talkie_delete_clip')
     expect(AGENT_TOOLS).not.toContain('talkie_start_recording')
     expect(AGENT_TOOLS).not.toContain('talkie_export')
     expect(AGENT_TOOLS).not.toContain('talkie_explore')
@@ -137,6 +141,10 @@ describe('what the agent is told', () => {
     expect(prompt).toContain('abc-123')
     expect(prompt).toContain('Ledger')
     expect(prompt).toContain('add an introduction')
+  })
+
+  it('warns that a new scene lands at the end, which is rarely where it belongs', () => {
+    expect(buildAgentPrompt('abc', 'add an introduction', { name: 'L' })).toContain('added at the end')
   })
 
   it('tells it how narration is timed, so it does not write flat prose over a recording', () => {

@@ -816,6 +816,39 @@ export function splitTimelineItem(
   return [resequenced[index], resequenced[index + 1]]
 }
 
+/**
+ * Put one clip at one position, counting from 1, and shuffle the rest along.
+ *
+ * `reorderTimelineItems` wants the whole order as a permutation, which is the right shape for
+ * a drag — the timeline already knows where everything is. It is the wrong shape for anything
+ * working from a description of the project: listing every id back in order to move one of
+ * them is a lot of ways to be refused for a mistake that has nothing to do with the intent.
+ * Agents reach for this one; see talkie_move_clip.
+ */
+export function moveTimelineItem(
+  id: string,
+  timelineItemId: string,
+  toPosition: number,
+  baseDir: string = homedir()
+): TimelineItem[] {
+  const timeline = readTimeline(id, baseDir)
+  const from = timeline.findIndex((item) => item.id === timelineItemId)
+  if (from === -1) {
+    throw new Error(`No timeline item found with id ${timelineItemId}`)
+  }
+  if (!Number.isInteger(toPosition) || toPosition < 1 || toPosition > timeline.length) {
+    throw new Error(
+      `Position ${toPosition} is outside this project, which has ${timeline.length} clip(s)`
+    )
+  }
+
+  const order = timeline.map((item) => item.id)
+  order.splice(from, 1)
+  order.splice(toPosition - 1, 0, timelineItemId)
+
+  return reorderTimelineItems(id, order, baseDir)
+}
+
 export function reorderTimelineItems(id: string, orderedIds: string[], baseDir: string = homedir()): TimelineItem[] {
   const dir = findProjectDir(id, baseDir)
   if (!dir) {

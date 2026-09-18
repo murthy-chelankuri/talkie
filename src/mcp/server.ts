@@ -9,7 +9,9 @@ import {
   addScene,
   addTranscriptSegment,
   updateTranscriptSegmentText,
-  splitTimelineItem
+  splitTimelineItem,
+  moveTimelineItem,
+  deleteTimelineItem
 } from '../main/project/projectApi'
 import { withHistory } from '../main/project/history'
 import { draftNarrationForItem, draftNarrationForProject } from '../main/agent/draftNarration'
@@ -356,11 +358,64 @@ export function createTalkieServer(
         () => addScene(projectId, 'scene', { title, bullets: bullets ?? [], style: style ?? {} }, baseDir),
         baseDir
       )
-      return text(`Added the slide "${title}" (clip id ${item.id}).`)
+      return text(
+        `Added the slide "${title}" at the end (clip id ${item.id}). ` +
+          'Use talkie_move_clip if it belongs somewhere else.'
+      )
     }
   )
 
   // --------------------------------------------------------------- narration
+
+  tool(
+    'talkie_move_clip',
+    {
+      title: 'Move a clip',
+      description:
+        'Put a clip at a different position in the project, counting from 1 as talkie_timeline ' +
+        'lists them; everything else shuffles along. This is how a scene gets to the front — ' +
+        'talkie_add_scene always appends, so an introduction arrives at the end and has to be ' +
+        'moved to where it belongs.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline'),
+        toPosition: z.number().int().min(1).describe('Where it should end up, counting from 1')
+      }
+    },
+    async ({ projectId, timelineItemId, toPosition }) => {
+      const moved = withHistory(
+        projectId,
+        () => moveTimelineItem(projectId, timelineItemId, toPosition, baseDir),
+        baseDir
+      )
+      return text(
+        `Moved it to position ${toPosition}. The project now runs:\n` +
+          moved.map((item, index) => describeItem(item, index)).join('\n')
+      )
+    }
+  )
+
+  tool(
+    'talkie_delete_clip',
+    {
+      title: 'Delete a clip',
+      description:
+        'Remove a clip from the project, along with the narration written for it. The recording ' +
+        'it came from stays on disk. Use it to take back something you added; think twice before ' +
+        'removing footage somebody recorded, which cannot be got back from here.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline')
+      }
+    },
+    async ({ projectId, timelineItemId }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+
+      withHistory(projectId, () => deleteTimelineItem(projectId, timelineItemId, baseDir), baseDir)
+      return text(`Deleted the ${item.kind} clip. ${readTimeline(projectId, baseDir).length} left.`)
+    }
+  )
 
   tool(
     'talkie_set_narration',

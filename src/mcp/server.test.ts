@@ -250,6 +250,77 @@ describe('Talkie over MCP', () => {
     })
   })
 
+  describe('rearranging a project over MCP', () => {
+    it('lifts a scene added at the end to the front, where an introduction belongs', async () => {
+      // The gap this closes: talkie_add_scene only ever appends, so an agent asked to "add an
+      // introduction" produced one stranded after the whole demo and had no way to move it.
+      const projectId = await newProject('Order')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      addTimelineItem(projectId, { kind: 'image', start: 90, duration: 90, data: { src: '/b.png' } }, baseDir)
+      await call('talkie_add_scene', { projectId, title: 'Ledger' })
+      const intro = readTimeline(projectId, baseDir)[2]
+
+      const said = await call('talkie_move_clip', {
+        projectId,
+        timelineItemId: intro.id,
+        toPosition: 1
+      })
+
+      expect(said).toContain('position 1')
+      expect(readTimeline(projectId, baseDir).map((item) => item.id)[0]).toBe(intro.id)
+    })
+
+    it('closes the gaps so the project still plays end to end', async () => {
+      const projectId = await newProject('Gapless')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      addTimelineItem(projectId, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+      addTimelineItem(projectId, { kind: 'image', start: 150, duration: 30, data: { src: '/c.png' } }, baseDir)
+      const last = readTimeline(projectId, baseDir)[2]
+
+      await call('talkie_move_clip', { projectId, timelineItemId: last.id, toPosition: 1 })
+
+      let cursor = 0
+      for (const item of readTimeline(projectId, baseDir)) {
+        expect(item.start).toBe(cursor)
+        cursor += item.duration
+      }
+    })
+
+    it('says a position is outside the project rather than dropping the clip', async () => {
+      const projectId = await newProject('Outside')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      const [only] = readTimeline(projectId, baseDir)
+
+      const result = await client.callTool({
+        name: 'talkie_move_clip',
+        arguments: { projectId, timelineItemId: only.id, toPosition: 9 }
+      })
+
+      expect(result.isError).toBe(true)
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+    })
+
+    it('takes back a scene it should not have added', async () => {
+      // Without this the agent could make a mess and not tidy it.
+      const projectId = await newProject('Undo it')
+      await call('talkie_add_scene', { projectId, title: 'Wrong' })
+      const [added] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_delete_clip', { projectId, timelineItemId: added.id })
+
+      expect(said).toContain('Deleted')
+      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+    })
+
+    it('refuses a clip id that is not there', async () => {
+      const projectId = await newProject('Missing clip')
+
+      expect(await call('talkie_delete_clip', { projectId, timelineItemId: 'nope' })).toContain(
+        'No clip found'
+      )
+    })
+  })
+
   describe('reading and cutting a recorded clip over MCP', () => {
     it('says a slide has nothing happening in it rather than failing', async () => {
       const projectId = await newProject('Slide')

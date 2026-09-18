@@ -41,6 +41,8 @@ export const AGENT_TOOLS = [
   'talkie_timeline',
   'talkie_clip_actions',
   'talkie_add_scene',
+  'talkie_move_clip',
+  'talkie_delete_clip',
   'talkie_set_narration',
   'talkie_draft_narration',
   'talkie_split_clip'
@@ -72,7 +74,7 @@ export function buildAgentPrompt(
     instruction,
     '',
     'Use the talkie tools to do it. Start by reading the timeline so you are changing what is',
-    'actually there. Narration is written as timed lines — "[0.0] Here is the watchlist." — and',
+    'actually there. A new scene is always added at the end, so move it if it belongs elsewhere. Narration is written as timed lines — "[0.0] Here is the watchlist." — and',
     'talkie_clip_actions tells you when things happen in a recorded clip, so use it before you',
     'time anything.',
     '',
