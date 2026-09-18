@@ -49,6 +49,11 @@ function forbiddenWarning(terms: string[]): string {
 /** Far enough in for a scene's entrance to have finished — see the seek on open below. */
 const SETTLED_FRAME = 20
 
+const PANES = [
+  { id: 'timeline', label: 'Timeline' },
+  { id: 'script', label: 'Script' }
+] as const
+
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
@@ -706,21 +711,32 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             {transcriptError && <ErrorBanner message={transcriptError} />}
           </div>
         )}
-        <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1">
-          {(['timeline', 'script'] as const).map((pane) => (
+        {/* Two ways of working on the same project rather than a filter over one, so it is
+            built as a switch between them: the tab that is on carries the material of the pane
+            it opens — graphite for the timeline, paper for the script — which is the same
+            signal the panes themselves use. */}
+        <div
+          role="tablist"
+          aria-label="Ways to work on this project"
+          className="flex shrink-0 items-end gap-0.5 border-b border-border bg-bg px-3 pt-1.5"
+        >
+          {PANES.map(({ id, label }) => (
             <button
-              key={pane}
+              key={id}
               type="button"
-              aria-pressed={bottomPane === pane}
-              onClick={() => setBottomPane(pane)}
+              role="tab"
+              aria-selected={bottomPane === id}
+              onClick={() => setBottomPane(id)}
               className={cn(
-                'rounded border-0 px-2 py-0.5 text-[11px] capitalize',
-                bottomPane === pane
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-transparent text-text-muted hover:text-text'
+                'rounded-t-md border border-b-0 px-3 py-1.5 text-[12px] transition-colors',
+                bottomPane === id
+                  ? id === 'script'
+                    ? '-mb-px border-paper-border bg-paper font-medium text-text'
+                    : '-mb-px border-border bg-surface font-medium text-text'
+                  : 'border-transparent bg-transparent text-text-muted hover:text-text'
               )}
             >
-              {pane}
+              {label}
             </button>
           ))}
         </div>

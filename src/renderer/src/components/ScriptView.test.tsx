@@ -33,7 +33,7 @@ function view(timeline: TimelineItem[], segments: TranscriptSegment[], props = {
 }
 
 describe('writing the whole script in one place', () => {
-  it('shows every clip, so the narration can be read as one piece', () => {
+  it('shows every scene, so the narration can be read as one piece', () => {
     // Most of what is wrong with narration is only wrong in context — two scenes saying the
     // same thing, or a third that does not follow from the second.
     view(
@@ -44,8 +44,8 @@ describe('writing the whole script in one place', () => {
       ]
     )
 
-    expect(screen.getByLabelText('Narration for clip 1')).toHaveValue('Here is the watchlist.')
-    expect(screen.getByLabelText('Narration for clip 2')).toHaveValue('And the analysis.')
+    expect(screen.getByLabelText('Narration for scene 1')).toHaveValue('Here is the watchlist.')
+    expect(screen.getByLabelText('Narration for scene 2')).toHaveValue('And the analysis.')
   })
 
   it('writes the timings into the words, where they can be edited', () => {
@@ -65,7 +65,7 @@ describe('writing the whole script in one place', () => {
       ]
     )
 
-    expect(screen.getByLabelText('Narration for clip 1')).toHaveValue('[0.0] One.\n[8.5] Two.')
+    expect(screen.getByLabelText('Narration for scene 1')).toHaveValue('[0.0] One.\n[8.5] Two.')
   })
 
   it('hands back exactly what was typed, timings and all', async () => {
@@ -74,7 +74,7 @@ describe('writing the whole script in one place', () => {
 
     // Pasted rather than typed: user-event reads a bare "[" as a key descriptor, and the
     // square brackets are the whole point of the format being tested.
-    const box = screen.getByLabelText('Narration for clip 1')
+    const box = screen.getByLabelText('Narration for scene 1')
     await userEvent.clear(box)
     await userEvent.click(box)
     await userEvent.paste('[2.0] New words.')
@@ -83,7 +83,7 @@ describe('writing the whole script in one place', () => {
     expect(onCommit).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }), '[2.0] New words.')
   })
 
-  it('says where each clip has got to, and whether its take is timed', () => {
+  it('says where each scene has got to, and whether its take is timed', () => {
     view(
       [clip('a', 0), clip('b', 450)],
       [
@@ -97,14 +97,14 @@ describe('writing the whole script in one place', () => {
       ]
     )
 
-    expect(screen.getByText('Voiced · 1 timed lines')).toBeInTheDocument()
-    expect(screen.getByText('Drafted · untimed')).toBeInTheDocument()
+    expect(screen.getByText('Voiced, timed to 1 moment')).toBeInTheDocument()
+    expect(screen.getByText('Drafted, read straight through')).toBeInTheDocument()
   })
 
-  it('says a clip has nothing said over it rather than showing an empty box', () => {
+  it('says a scene has nothing said over it rather than showing an empty box', () => {
     view([clip('a', 0)], [])
 
-    expect(screen.getByText('No narration')).toBeInTheDocument()
+    expect(screen.getByText('Nothing written')).toBeInTheDocument()
   })
 
   it('will not voice words that have not been saved yet', async () => {
@@ -112,14 +112,40 @@ describe('writing the whole script in one place', () => {
     const onNarrate = vi.fn()
     view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Saved.' })], { onNarrate })
 
-    await userEvent.type(screen.getByLabelText('Narration for clip 1'), ' Edited.')
+    await userEvent.type(screen.getByLabelText('Narration for scene 1'), ' Edited.')
 
-    expect(screen.getByLabelText('Narrate Narration for clip 1')).toBeDisabled()
+    expect(screen.getByLabelText('Narrate Narration for scene 1')).toBeDisabled()
   })
 
   it('invites a first draft when the project is empty', () => {
     view([], [])
 
-    expect(screen.getByText(/narration will be written here/i)).toBeInTheDocument()
+    expect(screen.getByText(/what you say over it is written here/i)).toBeInTheDocument()
+  })
+})
+
+describe('the script as a piece of paper', () => {
+  it('says how much there is to read before any of it', () => {
+    // One line at the top rather than the same meta repeated beside every scene.
+    view([clip('a', 0, 450), clip('b', 450, 450)], [])
+
+    expect(screen.getByText('2 scenes over 0:30')).toBeInTheDocument()
+  })
+
+  it('counts a single scene as one', () => {
+    view([clip('a', 0, 450)], [])
+
+    expect(screen.getByText('1 scene over 0:15')).toBeInTheDocument()
+  })
+
+  it('lets you play from a scene without leaving the script', () => {
+    // Reading and watching are the same job here: the words only make sense against what is
+    // on screen while they are said.
+    const onSeek = vi.fn()
+    view([clip('a', 0), clip('b', 450)], [], { onSeek })
+
+    screen.getByLabelText('Play from scene 2').click()
+
+    expect(onSeek).toHaveBeenCalledWith(450)
   })
 })
