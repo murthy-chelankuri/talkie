@@ -145,6 +145,22 @@ reads as a verb, and anything that would sign it out. It never types and never s
 it is not a small change — a recording is the worst place to discover a click did something,
 because by the time anyone watches the video the record is already gone.
 
+## Narration drives the picture
+
+A timed take is a list of moments, so the visuals can follow it rather than run on a stagger of
+their own. `revealOnBeat.ts` turns beats into frames and both scene kinds use it: a slide brings
+in each line as it is spoken, and `buildDiagram.ts` tags every mermaid node so a diagram is
+drawn in the order it is explained rather than arriving whole.
+
+- **Beats reach the composition through `resolveTimelineAssetUrls`**, alongside audio and
+  captions. A clip with no timed take gets none, and both scenes fall back to what they did
+  before — lines settling on a fixed stagger, a diagram shown complete.
+- **Beats are matched to lines from the end.** A slide is nearly always introduced before its
+  first point, so counting back puts each line with the sentence about it whether or not there
+  is an opening beat.
+- **An untimed slide never starts empty.** Lines settle from 0.7 rather than arriving from
+  nothing, because the first frame of a slide is what every thumbnail shows.
+
 ## Security invariants
 
 Do not weaken these without understanding what they are for. Each has tests.

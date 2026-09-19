@@ -10,7 +10,9 @@ import {
   splitTimelineItem,
   deleteTimelineItem
 } from '../project/projectApi'
+import { readTranscript } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
+import { beatsByItem } from '../transcript/captions'
 import { withHistory } from '../project/history'
 import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
 import { describeExport, openExport, showExportInFinder } from '../render/revealExport'
@@ -37,7 +39,8 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
       rootDir,
       assetServer.url,
       narrationAudioPaths,
-      burnedCaptionsFor(id)
+      burnedCaptionsFor(id),
+      beatsByItem(readTranscript(id))
     )
   })
 

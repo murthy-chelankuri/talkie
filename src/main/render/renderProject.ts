@@ -16,6 +16,7 @@ import { burnedCaptionsFor } from '../transcript/burnedCaptions'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
+import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { COMPOSITION_ID } from '../../remotion/constants'
 
@@ -51,7 +52,8 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     rootDir,
     assetServer.url,
     narrationAudioPaths,
-    burnedCaptionsFor(id, baseDir)
+    burnedCaptionsFor(id, baseDir),
+    beatsByItem(readTranscript(id, baseDir))
   )
 
   const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
