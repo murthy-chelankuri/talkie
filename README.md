@@ -19,6 +19,8 @@ npm run dev
 `npm test` runs the suite, `npm run typecheck` the type check. Both are expected to pass before
 a build is packaged.
 
+What has changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Building something to hand to someone
 
 ```bash
