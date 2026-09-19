@@ -240,13 +240,138 @@ describe('Talkie over MCP', () => {
       expect(readTranscript(projectId, baseDir)[0].beats).toBeUndefined()
     })
 
-    it('says whether a clip narration is timed when listing the timeline', async () => {
+    it('lists the timings themselves, not just how many there are', async () => {
+      // A count is no use for changing one line: without the times, adjusting a beat means
+      // rewriting the whole take from memory, and an edit someone else made is invisible.
       const projectId = await newProject('Listing')
       await call('talkie_add_scene', { projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
       await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: '[0.0] One.\n[4.0] Two.' })
 
-      expect(await call('talkie_timeline', { projectId })).toContain('2 timed lines')
+      const said = await call('talkie_timeline', { projectId })
+
+      expect(said).toContain('[0.0] One.')
+      expect(said).toContain('[4.0] Two.')
+    })
+
+    it('says plainly when a take has no timings at all', async () => {
+      const projectId = await newProject('Untimed listing')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+      await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: 'Just words.' })
+
+      expect(await call('talkie_timeline', { projectId })).toContain('read straight through')
+    })
+  })
+
+  describe('knowing what the project is for', () => {
+    it('reads back what it was told, so drafts use the terms the project uses', async () => {
+      const projectId = await newProject('Ledger')
+
+      await call('talkie_set_context', {
+        projectId,
+        background: 'Ledger grades stock calls over time.',
+        audience: 'finance teams',
+        neverSay: ['guaranteed returns']
+      })
+
+      const said = await call('talkie_project', { projectId })
+      expect(said).toContain('Ledger grades stock calls')
+      expect(said).toContain('finance teams')
+      expect(said).toContain('guaranteed returns')
+    })
+
+    it('says plainly when nothing has been recorded, and what to use', async () => {
+      const projectId = await newProject('Blank')
+
+      const said = await call('talkie_project', { projectId })
+      expect(said).toContain('talkie_set_context')
+    })
+
+    it('sets the voice, and says re-voicing is a separate step', async () => {
+      const projectId = await newProject('Voiced')
+
+      const said = await call('talkie_set_voice', { projectId, voice: 'Daniel' })
+      expect(said).toContain('Daniel')
+      expect(said).toMatch(/re-voice/i)
+    })
+  })
+
+  describe('how long a clip holds', () => {
+    it('gives a slide the room it was asked for', async () => {
+      // A slide is on screen for exactly as long as it is told to be, and nothing else could
+      // say so — duration only ever moved as a side effect of voicing.
+      const projectId = await newProject('Timing')
+      await call('talkie_add_scene', { projectId, title: 'Hold this' })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      await call('talkie_set_duration', { projectId, timelineItemId: slide.id, seconds: 8 })
+
+      expect(readTimeline(projectId, baseDir)[0].duration).toBe(240)
+    })
+  })
+
+  describe('pictures and diagrams', () => {
+    it('writes a diagram as source, and says it is drawn later', async () => {
+      // Mermaid needs a browser and this does not run in one, so the source is what is stored
+      // and Talkie draws it when it next opens the project.
+      const projectId = await newProject('Drawn')
+
+      const said = await call('talkie_add_diagram', {
+        projectId,
+        source: 'graph LR; A[Client] --> B[API]',
+        title: 'How it fits together'
+      })
+
+      expect(said).toMatch(/drawn the next time/i)
+      const [item] = readTimeline(projectId, baseDir)
+      expect(item.kind).toBe('diagram')
+      expect(item.data).toMatchObject({ source: 'graph LR; A[Client] --> B[API]' })
+    })
+
+    it('drops the old drawing when the source changes, so the two cannot disagree', async () => {
+      const projectId = await newProject('Redrawn')
+      await call('talkie_add_diagram', { projectId, source: 'graph LR; A --> B' })
+      const [item] = readTimeline(projectId, baseDir)
+      // Stand in for the app having drawn it once already.
+      await call('talkie_edit_diagram', { projectId, timelineItemId: item.id, source: 'graph TD; C --> D' })
+
+      const data = readTimeline(projectId, baseDir)[0].data as { source: string; src?: string }
+      expect(data.source).toBe('graph TD; C --> D')
+      expect(data.src).toBeUndefined()
+    })
+
+    it('refuses to treat a slide as a diagram', async () => {
+      const projectId = await newProject('Not a diagram')
+      await call('talkie_add_scene', { projectId, title: 'A slide' })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      expect(
+        await call('talkie_edit_diagram', { projectId, timelineItemId: slide.id, source: 'graph LR; A-->B' })
+      ).toContain('not a diagram')
+    })
+  })
+
+  describe('taking a change back', () => {
+    it('steps back its own last change', async () => {
+      const projectId = await newProject('Undoable')
+      await call('talkie_add_scene', { projectId, title: 'First' })
+      await call('talkie_add_scene', { projectId, title: 'Second' })
+      expect(readTimeline(projectId, baseDir)).toHaveLength(2)
+
+      await call('talkie_undo', { projectId })
+
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+    })
+
+    it('puts it back again', async () => {
+      const projectId = await newProject('Redoable')
+      await call('talkie_add_scene', { projectId, title: 'Only' })
+      await call('talkie_undo', { projectId })
+
+      await call('talkie_redo', { projectId })
+
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
     })
   })
 

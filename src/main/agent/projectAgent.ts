@@ -38,15 +38,30 @@ const TIMEOUT_MS = 10 * 60 * 1000
  * reading a timeline, and neither is what someone means by "add an introduction".
  */
 export const AGENT_TOOLS = [
+  // Reading
+  'talkie_project',
   'talkie_timeline',
   'talkie_clip_actions',
+  // Saying what the project is
+  'talkie_set_context',
+  'talkie_set_voice',
+  // Making
   'talkie_add_scene',
+  'talkie_add_diagram',
+  'talkie_add_image',
+  // Changing
   'talkie_edit_slide',
-  'talkie_move_clip',
-  'talkie_delete_clip',
+  'talkie_edit_diagram',
   'talkie_set_narration',
   'talkie_draft_narration',
-  'talkie_split_clip'
+  'talkie_set_duration',
+  // Arranging
+  'talkie_move_clip',
+  'talkie_split_clip',
+  'talkie_delete_clip',
+  // Taking it back
+  'talkie_undo',
+  'talkie_redo'
 ]
 
 export type AgentOutcome =
@@ -89,18 +104,23 @@ export function buildAgentPrompt(
     'What you have been asked to do:',
     instruction,
     '',
-    'Use the talkie tools to do it. Start by reading the timeline so you are changing what is',
-    'actually there. A new scene is always added at the end, so move it if it belongs elsewhere.',
-    'The words on a slide and the words said over it are two different things — talkie_edit_slide',
-    'changes the picture, talkie_set_narration changes the voice. Rewording a slide usually means',
-    'both, or the screen and the narration stop agreeing. Narration is written as timed lines — "[0.0] Here is the watchlist." — and',
-    'talkie_clip_actions tells you when things happen in a recorded clip, so use it before you',
-    'time anything.',
+    'Start with talkie_project and talkie_timeline, so you are changing what is actually there',
+    'and writing in the terms this project already uses.',
+    '',
+    'Things that are easy to get wrong here:',
+    '- The words on a slide and the words said over it are two different things.',
+    '  talkie_edit_slide changes the picture; talkie_set_narration changes the voice. Rewording',
+    '  an opening usually means both, or the screen and the narration stop agreeing.',
+    '- Anything new is added at the end. Use talkie_move_clip to put it where it belongs.',
+    '- Narration is written as timed lines: "[0.0] Here is the watchlist." talkie_clip_actions',
+    '  says when things happen in a recorded clip, so read it before timing anything.',
+    '- A slide holds for as long as talkie_set_duration says. A recording plays its own footage.',
     '',
     'Do what was asked and no more: this is someone\'s project, and a change they did not ask',
-    'for is one they have to find and undo. When you are done, say in one or two sentences what',
-    'you changed, naming the scenes. If the request cannot be done with these tools, say so',
-    'plainly instead of doing something else.'
+    'for is one they have to find and undo. If you make a mess, talkie_undo steps back your own',
+    'changes. When you are done, say in one or two sentences what you changed, naming the',
+    'scenes. If the request cannot be done with these tools, say so plainly instead of doing',
+    'something else.'
   ].join('\n')
 }
 

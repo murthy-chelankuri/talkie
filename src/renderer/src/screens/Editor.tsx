@@ -22,6 +22,7 @@ import {
 import { Timeline } from '../components/Timeline'
 import { ScriptView } from '../components/ScriptView'
 import { AskTheAgent } from '../components/AskTheAgent'
+import { drawPendingDiagrams } from '../lib/drawPendingDiagrams'
 import { cn } from '../lib/cn'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
@@ -182,8 +183,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }, [projectId])
 
   async function refreshTimeline(): Promise<void> {
-    setTimeline(await timelineClient.read(projectId))
+    const items = await timelineClient.read(projectId)
+    setTimeline(items)
     setHistory(await projectClient.historyState(projectId))
+
+    // An agent can write mermaid source but cannot draw it — there is no browser where it
+    // runs. This is where the drawing happens, so its diagram is a picture rather than a blank
+    // clip. See drawPendingDiagrams.
+    if ((await drawPendingDiagrams(projectId, items)) > 0) {
+      setTimeline(await timelineClient.read(projectId))
+    }
   }
 
   const refreshEverything = useCallback(async (): Promise<void> => {

@@ -92,8 +92,16 @@ implementation to keep in step.
 - **The switch still gates it.** Agent access off means the run is refused, exactly as for
   anyone else. What is new is `mcp.runTokenHash`: a second hashed slot so a run cannot revoke
   the token an outside agent is already holding. It is withdrawn in a `finally`.
-- **`AGENT_TOOLS` is the reach.** Reading, narration, scenes, splitting. Not recording, not
-  exporting — both take minutes, and neither is what anyone means by "add an introduction".
+- **`AGENT_TOOLS` is the reach.** Reading, project context, narration, every scene kind,
+  arranging, and undo. Not recording and not exporting — both take minutes, and neither is what
+  anyone means by "add an introduction".
+- **Every kind needs all five verbs.** Create, read, modify, remove, place. Both agent bugs
+  found in use were the same shape — create exposed, modify not: `add_scene` with no way to
+  edit a slide, and no way to reorder. Adding a tool means checking the other four.
+- **Two things an agent cannot do, because they need a browser.** Mermaid is drawn in the
+  renderer, so an agent writes diagram *source* and `drawPendingDiagrams` draws it when the app
+  next reads the timeline. Deck import rasterises a PDF in the renderer too, and has no MCP
+  tool at all for the same reason.
 - **The whole run is one undo step.** The agent writes from a child process whose own history
   dies with it, so `project:agent:instruct` wraps the run in a single `withHistory` on the app's
   side and the editor re-reads from disk afterwards. This is the documented no-locking hazard at
