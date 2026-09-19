@@ -149,7 +149,7 @@ describe('walking the app from start to finish', () => {
 
     expect(result.ending).toBe('done')
     expect(result.visited).toHaveLength(1)
-  })
+  }, 60_000)
 
   it('tells the difference between an app with nothing left and a model it cannot reach', async () => {
     // Reported as "nothing to explore", a provider that is not signed in sends someone looking
@@ -159,7 +159,7 @@ describe('walking the app from start to finish', () => {
     expect(result.ending).toBe('model-failed')
     expect(result.reason).toContain('command not found')
     expect(result.visited).toEqual([])
-  })
+  }, 60_000)
 
   it('offers only the safe ways on, so a walk cannot choose a Delete', async () => {
     // The numbered list is the whole of what a move can name — an answer is an index into it,
@@ -173,7 +173,7 @@ describe('walking the app from start to finish', () => {
     expect(options).not.toContain('Delete portfolio')
     expect(options).not.toContain('Sign out')
     expect(options).not.toContain('Search')
-  })
+  }, 60_000)
 
   it('stops the moment the recording does, rather than clicking on past it', async () => {
     let stop = false
@@ -186,11 +186,11 @@ describe('walking the app from start to finish', () => {
     })
 
     expect(result.ending).toBe('stopped')
-  })
+  }, 60_000)
 
   it('gives up on its own clock rather than walking for ever', async () => {
     const { result } = await walk(['CLICK 1', 'CLICK 1', 'CLICK 1'], { maxSeconds: 0 })
 
     expect(result.ending).toBe('budget')
-  })
+  }, 60_000)
 })

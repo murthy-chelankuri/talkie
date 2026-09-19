@@ -17,6 +17,20 @@ import type { TimelineItem } from '../project/timeline/schema'
 // its duration can be corrected later.
 const FALLBACK_DURATION_FRAMES = 90
 
+/**
+ * How much of the front of the recording is the blank page before the site painted.
+ *
+ * Dropped only while at least a second of clip survives it: a lead-in measured as longer than
+ * the recording is a measurement that has gone wrong, and trimming on it would leave a clip of
+ * nothing. Pure, because it is the part worth being sure of — how long a real capture comes out
+ * varies with the machine, and a test that pinned it to a frame count was a test that failed
+ * when the machine was busy.
+ */
+export function leadInToDrop(durationFrames: number, contentStartMs: number | undefined): number {
+  const requested = Math.max(0, Math.round(((contentStartMs ?? 0) / 1000) * FPS))
+  return requested > 0 && durationFrames - requested >= FPS ? requested : 0
+}
+
 export interface RecordedSession {
   clips: RecordedClip[]
   /** How much of the start is the blank page before the site loaded. */
@@ -62,10 +76,7 @@ export async function importRecordedSession(
     console.error(`Could not read duration of recorded video ${playablePath}:`, err)
   }
 
-  // Drop the blank page the recording opens with, but only while at least a second of clip
-  // survives — a lead-in longer than that means the measurement is not to be trusted.
-  const requestedTrim = Math.max(0, Math.round(((recording.contentStartMs ?? 0) / 1000) * FPS))
-  const trimBefore = requestedTrim > 0 && durationFrames - requestedTrim >= FPS ? requestedTrim : 0
+  const trimBefore = leadInToDrop(durationFrames, recording.contentStartMs)
 
   const playedMs = ((durationFrames - trimBefore) / FPS) * 1000
   // On the same clock as the trim: both are measured from the start of the stitched file.

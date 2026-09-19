@@ -250,6 +250,52 @@ describe('Talkie over MCP', () => {
     })
   })
 
+  describe('changing what a slide says', () => {
+    it('rewrites the words on screen, not only the words said over them', async () => {
+      // The gap this closes: the agent could change narration but not the slide, so asked to
+      // reword an opening it changed the voice and left the picture — which reads as a preview
+      // that will not update, because the picture genuinely never changed.
+      const projectId = await newProject('Slide words')
+      await call('talkie_add_scene', { projectId, title: 'Old title', bullets: ['One', 'Two'] })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_edit_slide', {
+        projectId,
+        timelineItemId: slide.id,
+        title: 'New title'
+      })
+
+      expect(said).toContain('New title')
+      expect(readTimeline(projectId, baseDir)[0].data).toMatchObject({ title: 'New title' })
+    })
+
+    it('keeps the lines it was not asked about', async () => {
+      // Leaving the bullets out of a retitle should not silently empty the slide.
+      const projectId = await newProject('Keep bullets')
+      await call('talkie_add_scene', { projectId, title: 'Old', bullets: ['One', 'Two'] })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'New' })
+
+      expect(readTimeline(projectId, baseDir)[0].data).toMatchObject({ bullets: ['One', 'Two'] })
+    })
+
+    it('says a recording has no words to rewrite, and what to use instead', async () => {
+      const projectId = await newProject('Not a slide')
+      addTimelineItem(projectId, { kind: 'video', start: 0, duration: 90, data: { src: '/v.mp4' } }, baseDir)
+      const [clip] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_edit_slide', {
+        projectId,
+        timelineItemId: clip.id,
+        title: 'Nope'
+      })
+
+      expect(said).toContain('only a slide')
+      expect(said).toContain('talkie_set_narration')
+    })
+  })
+
   describe('rearranging a project over MCP', () => {
     it('lifts a scene added at the end to the front, where an introduction belongs', async () => {
       // The gap this closes: talkie_add_scene only ever appends, so an agent asked to "add an

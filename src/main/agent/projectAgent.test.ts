@@ -20,6 +20,7 @@ describe('what the project agent is allowed to do', () => {
     expect(AGENT_TOOLS).toContain('talkie_add_scene')
     // Able to tidy as well as make: a scene is always added at the end, so without move an
     // agent asked for an introduction produces one stranded after the whole demo.
+    expect(AGENT_TOOLS).toContain('talkie_edit_slide')
     expect(AGENT_TOOLS).toContain('talkie_move_clip')
     expect(AGENT_TOOLS).toContain('talkie_delete_clip')
     expect(AGENT_TOOLS).not.toContain('talkie_start_recording')
@@ -141,6 +142,15 @@ describe('what the agent is told', () => {
     expect(prompt).toContain('abc-123')
     expect(prompt).toContain('Ledger')
     expect(prompt).toContain('add an introduction')
+  })
+
+  it('separates the words on a slide from the words said over it', () => {
+    // Told only to set narration, the agent changes the voice and leaves the picture — which
+    // reads as a preview that will not update.
+    const prompt = buildAgentPrompt('abc', 'reword the opening', { name: 'L' })
+
+    expect(prompt).toContain('talkie_edit_slide')
+    expect(prompt).toContain('talkie_set_narration')
   })
 
   it('warns that a new scene lands at the end, which is rarely where it belongs', () => {

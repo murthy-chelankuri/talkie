@@ -7,6 +7,7 @@ import {
   readTimeline,
   readTranscript,
   addScene,
+  updateSceneData,
   addTranscriptSegment,
   updateTranscriptSegmentText,
   splitTimelineItem,
@@ -362,6 +363,56 @@ export function createTalkieServer(
         `Added the slide "${title}" at the end (clip id ${item.id}). ` +
           'Use talkie_move_clip if it belongs somewhere else.'
       )
+    }
+  )
+
+  tool(
+    'talkie_edit_slide',
+    {
+      title: 'Change what a slide says',
+      description:
+        'Rewrite the words on a slide that is already in the project. This changes the picture ' +
+        'on screen, which is not the same thing as talkie_set_narration — that changes what is ' +
+        'said over it. Asked to reword an opening, you almost certainly want both. Only works ' +
+        'on a slide; a recorded clip shows whatever was recorded.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The slide id, from talkie_timeline'),
+        title: z.string(),
+        bullets: z.array(z.string()).optional().describe('A few short lines, or none at all'),
+        style: SceneStyleSchema.partial().optional().describe('Theme, font, alignment, accent colour')
+      }
+    },
+    async ({ projectId, timelineItemId, title, bullets, style }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+      if (item.kind !== 'scene') {
+        return text(
+          `That clip is a ${item.kind}, and only a slide has words that can be rewritten. ` +
+            'Use talkie_set_narration to change what is said over a recording.'
+        )
+      }
+
+      // Merged rather than replaced: leaving the bullets out should keep them, not silently
+      // empty the slide.
+      const current = item.data as { bullets?: string[]; style?: unknown }
+      withHistory(
+        projectId,
+        () =>
+          updateSceneData(
+            projectId,
+            timelineItemId,
+            {
+              title,
+              bullets: bullets ?? current.bullets ?? [],
+              style: style ?? current.style ?? {}
+            },
+            baseDir
+          ),
+        baseDir
+      )
+
+      return text(`The slide now reads "${title}".`)
     }
   )
 
