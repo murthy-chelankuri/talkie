@@ -5,14 +5,13 @@ import type { TimelineItem } from '../api/projectClient'
 /**
  * Draw any diagram that arrived without a drawing.
  *
- * Mermaid is a browser library, so a diagram can only be drawn where there is a browser — here.
- * An agent working over MCP has no browser: it can write the source and nothing more, and its
- * diagram would sit on the timeline showing nothing at all, which reads as a broken clip rather
- * than as one waiting for the app to catch up.
+ * Not the usual path any more: an agent draws its own diagrams now, in the headless browser
+ * the MCP server already has. This is the net underneath — a diagram written before that
+ * existed, or one whose drawing was lost with the file it lived in, would otherwise sit on the
+ * timeline showing nothing at all.
  *
- * So the app draws them when it opens the project. Source is the thing that is stored and the
- * SVG is derived from it, which is the same order the scene editor works in — this just applies
- * it to work that was done elsewhere.
+ * Source is the thing that is stored and the SVG is derived from it, which is the order the
+ * scene editor works in too; this only applies it to work that arrived from elsewhere.
  *
  * Returns how many were drawn, so the caller knows whether to re-read the timeline. Failures are
  * per diagram: source that mermaid cannot parse is the author's to fix, and it must not stop the

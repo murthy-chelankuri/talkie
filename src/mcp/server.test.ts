@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { execFileSync } from 'child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -350,34 +350,51 @@ describe('Talkie over MCP', () => {
   })
 
   describe('pictures and diagrams', () => {
-    it('writes a diagram as source, and says it is drawn later', async () => {
-      // Mermaid needs a browser and this does not run in one, so the source is what is stored
-      // and Talkie draws it when it next opens the project.
+    it('draws the diagram there and then, rather than leaving a blank clip', async () => {
+      // Mermaid needs a browser to measure text, and the server has one — the same headless
+      // Chromium that records demos. Waiting for the app to open meant an agent's diagram sat
+      // on the timeline showing nothing, which reads as broken rather than pending.
       const projectId = await newProject('Drawn')
 
-      const said = await call('talkie_add_diagram', {
+      await call('talkie_add_diagram', {
         projectId,
         source: 'graph LR; A[Client] --> B[API]',
         title: 'How it fits together'
       })
 
-      expect(said).toMatch(/drawn the next time/i)
       const [item] = readTimeline(projectId, baseDir)
       expect(item.kind).toBe('diagram')
-      expect(item.data).toMatchObject({ source: 'graph LR; A[Client] --> B[API]' })
-    })
+      const data = item.data as { source: string; src?: string }
+      expect(data.source).toBe('graph LR; A[Client] --> B[API]')
+      expect(data.src).toBeDefined()
 
-    it('drops the old drawing when the source changes, so the two cannot disagree', async () => {
+      const svg = readFileSync(data.src as string, 'utf-8')
+      expect(svg).toContain('<svg')
+      expect(svg).toContain('Client')
+    }, 120_000)
+
+    it('hands back the complaint from mermaid instead of saving a diagram that will not draw', async () => {
+      const projectId = await newProject('Broken diagram')
+
+      const said = await call('talkie_add_diagram', { projectId, source: 'graph LR; A -->' })
+
+      expect(said).toMatch(/could not be drawn/i)
+      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+    }, 120_000)
+
+    it('redraws when the source changes, so the picture and the project agree', async () => {
       const projectId = await newProject('Redrawn')
-      await call('talkie_add_diagram', { projectId, source: 'graph LR; A --> B' })
+      await call('talkie_add_diagram', { projectId, source: 'graph LR; Alpha --> Beta' })
       const [item] = readTimeline(projectId, baseDir)
-      // Stand in for the app having drawn it once already.
-      await call('talkie_edit_diagram', { projectId, timelineItemId: item.id, source: 'graph TD; C --> D' })
+      const first = (item.data as { src: string }).src
 
-      const data = readTimeline(projectId, baseDir)[0].data as { source: string; src?: string }
-      expect(data.source).toBe('graph TD; C --> D')
-      expect(data.src).toBeUndefined()
-    })
+      await call('talkie_edit_diagram', { projectId, timelineItemId: item.id, source: 'graph TD; Gamma --> Delta' })
+
+      const data = readTimeline(projectId, baseDir)[0].data as { source: string; src: string }
+      expect(data.source).toBe('graph TD; Gamma --> Delta')
+      expect(data.src).not.toBe(first)
+      expect(readFileSync(data.src, 'utf-8')).toContain('Gamma')
+    }, 120_000)
 
     it('refuses to treat a slide as a diagram', async () => {
       const projectId = await newProject('Not a diagram')

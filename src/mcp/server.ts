@@ -8,6 +8,7 @@ import {
   readTranscript,
   addScene,
   updateSceneData,
+  writeDiagramSvg,
   openProject,
   setProjectContext,
   setProjectVoice,
@@ -31,6 +32,7 @@ import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { prepareDeck, saveSlides } from '../main/slides/importSlides'
 import { rasterisePdf } from '../main/slides/rasterisePdf'
+import { renderMermaidHeadless } from '../main/slides/renderMermaidHeadless'
 import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
@@ -63,6 +65,21 @@ function describeItem(item: TimelineItem, index: number): string {
       : ''
 
   return `${index + 1}. ${item.kind} — ${name} (${seconds}s${window}, id ${item.id})`
+}
+
+/**
+ * Draw a diagram, turning a failure into something to read rather than an exception.
+ *
+ * Mermaid's own errors name the line and what it did not understand, and the person who wrote
+ * the source is the one who can fix it — so they are passed through rather than summarised.
+ */
+async function draw(source: string): Promise<{ ok: true; svg: string } | { ok: false; reason: string }> {
+  try {
+    return { ok: true, svg: await renderMermaidHeadless(source) }
+  } catch (err) {
+    const said = err instanceof Error ? err.message.split('\n')[0] : String(err)
+    return { ok: false, reason: `That diagram could not be drawn: ${said}` }
+  }
 }
 
 /** The token this server was started with, from its own configuration. */
@@ -598,10 +615,9 @@ export function createTalkieServer(
       title: 'Add a diagram',
       description:
         'Add a diagram written as mermaid source — a flow, a sequence, an architecture. Better ' +
-        'than describing a structure in words over a screen recording that does not show it.\n' +
-        'It is drawn when the project is next open in Talkie, because drawing it needs a ' +
-        'browser and this does not run in one. The source is what is stored, so it stays ' +
-        'editable; until it has been drawn once the clip has nothing to show.',
+        'than describing a structure in words over a screen recording that does not show it. ' +
+        'It is drawn straight away, so a syntax error comes back here rather than surfacing as ' +
+        'a blank clip later. The source is kept, so it stays editable.',
       inputSchema: {
         projectId: z.string(),
         source: z.string().describe('mermaid source, e.g. "graph LR; A[Client] --> B[API]"'),
@@ -610,14 +626,22 @@ export function createTalkieServer(
       }
     },
     async ({ projectId, source, title, style }) => {
+      const drawn = await draw(source)
+      if (!drawn.ok) return text(drawn.reason)
+
       const item = withHistory(
         projectId,
-        () => addScene(projectId, 'diagram', { source, title, style: style ?? {} }, baseDir),
+        () =>
+          addScene(
+            projectId,
+            'diagram',
+            { source, title, style: style ?? {}, src: writeDiagramSvg(projectId, drawn.svg, baseDir) },
+            baseDir
+          ),
         baseDir
       )
       return text(
-        `Added the diagram at the end (clip id ${item.id}). It will be drawn the next time this ` +
-          'project is open in Talkie.'
+        `Added the diagram at the end (clip id ${item.id}). Use talkie_move_clip to place it.`
       )
     }
   )
@@ -627,8 +651,8 @@ export function createTalkieServer(
     {
       title: 'Change a diagram',
       description:
-        'Rewrite the mermaid source of a diagram already in the project. It is redrawn the next ' +
-        'time the project is open in Talkie.',
+        'Rewrite the mermaid source of a diagram already in the project. It is redrawn straight ' +
+        'away, so a syntax error comes back here rather than leaving a blank clip behind.',
       inputSchema: {
         projectId: z.string(),
         timelineItemId: z.string().describe('The diagram id, from talkie_timeline'),
@@ -643,21 +667,29 @@ export function createTalkieServer(
         return text(`That clip is a ${item.kind}, not a diagram.`)
       }
 
+      const drawn = await draw(source)
+      if (!drawn.ok) return text(drawn.reason)
+
       const current = item.data as { title?: string; style?: unknown }
       withHistory(
         projectId,
         () =>
-          // `src` is deliberately dropped: the drawing that is there belongs to the old source,
-          // and keeping it would show one thing while the project says another.
+          // Drawn again rather than kept: the old picture belongs to the old source, and
+          // showing one while the project says the other is the worst of both.
           updateSceneData(
             projectId,
             timelineItemId,
-            { source, title: title ?? current.title, style: current.style ?? {} },
+            {
+              source,
+              title: title ?? current.title,
+              style: current.style ?? {},
+              src: writeDiagramSvg(projectId, drawn.svg, baseDir)
+            },
             baseDir
           ),
         baseDir
       )
-      return text('The diagram source is changed. It will be redrawn next time Talkie opens this project.')
+      return text('Redrawn.')
     }
   )
 

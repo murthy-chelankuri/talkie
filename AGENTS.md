@@ -98,8 +98,12 @@ implementation to keep in step.
 - **Every kind needs all five verbs.** Create, read, modify, remove, place. Both agent bugs
   found in use were the same shape — create exposed, modify not: `add_scene` with no way to
   edit a slide, and no way to reorder. Adding a tool means checking the other four.
-- **Mermaid still needs a browser.** It is drawn in the renderer, so an agent writes diagram
-  *source* and `drawPendingDiagrams` draws it when the app next reads the timeline.
+- **Mermaid needs a browser, and the server has one.** `renderMermaidHeadless.ts` draws a
+  diagram in the same Playwright Chromium that records demos, so an agent's diagram is a
+  picture immediately and a syntax error comes back to whoever wrote it. Both drawings go
+  through `mermaidTheme.ts` — same config, same font, injected as a data URL because a headless
+  browser has no fonts and mermaid sizes every box to the text in it. `drawPendingDiagrams` in
+  the renderer is now only the net underneath.
 - **Deck import does not.** `renderPdfPages.ts` rasterises in the renderer on Chromium's own
   canvas; `rasterisePdf.ts` does the same in Node for the MCP server, using the `@napi-rs/canvas`
   that `pdfjs-dist` already brings with it. Two implementations of one thing, deliberately: the
