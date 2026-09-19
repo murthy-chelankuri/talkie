@@ -52,18 +52,29 @@ export function isNoveltyVoice(name: string): boolean {
  * Names are not a single word — `Eddy (German (Germany))` is one voice — and they are separated
  * from the locale by a single space in some rows and many in others, so the locale itself is
  * what the line is split on.
+ *
+ * macOS 27 lists a handful of voices twice under one name — the Siri variant of Samantha, Daniel,
+ * Moira, Aman, Rishi and Tara — differing only in the sample line. `say -v` cannot tell them
+ * apart either, so a second row is not a second choice: it is a duplicate option in the picker
+ * and a repeated React key. The first row of a name and locale wins.
  */
 export function parseVoiceList(raw: string): Voice[] {
   const voices: Voice[] = []
+  const seen = new Set<string>()
 
   for (const line of raw.split('\n')) {
     const match = line.match(/^(.*?)\s+([a-z]{2,3}(?:_[A-Z]{2})?)\s+#\s?(.*)$/)
     if (!match) continue
 
-    const [, name, locale, sample] = match
-    if (!name.trim()) continue
+    const [, rawName, locale, sample] = match
+    const name = rawName.trim()
+    if (!name) continue
 
-    voices.push({ name: name.trim(), locale, sample: sample.trim(), novelty: isNoveltyVoice(name.trim()) })
+    const key = `${name}\u0000${locale}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    voices.push({ name, locale, sample: sample.trim(), novelty: isNoveltyVoice(name) })
   }
 
   return voices

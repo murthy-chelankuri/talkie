@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseVoiceList, listVoices, isNoveltyVoice } from './listVoices'
+import { DEFAULT_VOICE } from '../settings/schema'
 
 // Lines copied verbatim from `say -v '?'` on macOS, including the awkward ones.
 const REAL_OUTPUT = [
@@ -56,6 +57,25 @@ describe('parseVoiceList', () => {
     expect(parseVoiceList('some unrelated output\n\n')).toEqual([])
   })
 
+  it('offers a voice listed twice only once', () => {
+    // macOS 27 prints the Siri variant of a voice under the same name and locale, differing only
+    // in the sample. `say -v` cannot be told which one is meant, so offering both is a lie.
+    const twice = [
+      'Samantha (English (US)) en_US    # Hello! My name is Samantha.',
+      'Samantha (English (US)) en_US    # Hi, I’m Siri!',
+      ''
+    ].join('\n')
+
+    expect(parseVoiceList(twice)).toEqual([
+      {
+        name: 'Samantha (English (US))',
+        locale: 'en_US',
+        sample: 'Hello! My name is Samantha.',
+        novelty: false
+      }
+    ])
+  })
+
   it('knows which voices are jokes rather than narrators', () => {
     expect(isNoveltyVoice('Zarvox')).toBe(true)
     expect(isNoveltyVoice('Samantha')).toBe(false)
@@ -68,8 +88,13 @@ describe('listVoices (real say)', () => {
     const voices = await listVoices()
 
     expect(voices.length).toBeGreaterThan(10)
-    // Samantha ships with macOS and is the narration default.
-    expect(voices.map((voice) => voice.name)).toContain('Samantha')
+    // The default ships with every macOS, but macOS 27 qualifies the name — `Samantha` became
+    // `Samantha (English (US))` — so it is the base name that has to be there.
+    const names = voices.map((voice) => voice.name)
+    expect(
+      names.some((name) => name === DEFAULT_VOICE || name.startsWith(`${DEFAULT_VOICE} (`))
+    ).toBe(true)
+    expect(new Set(names).size).toBe(names.length)
     for (const voice of voices) {
       expect(voice.name).not.toMatch(/\s{2,}/)
       expect(voice.locale).toMatch(/^[a-z]{2,3}(_[A-Z]{2})?$/)
