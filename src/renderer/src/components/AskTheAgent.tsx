@@ -83,7 +83,7 @@ export function AskTheAgent({
 
   if (collapsed) {
     return (
-      <aside className="flex w-[3.75rem] shrink-0 flex-col items-center gap-2 border-l border-border bg-surface px-2 py-3">
+      <aside className="flex h-full w-full flex-col items-center gap-2 overflow-hidden bg-surface px-2 py-3">
         <IconButton aria-label="Show the agent" onClick={onToggleCollapsed}>
           <PanelRightOpen size={16} />
         </IconButton>
@@ -94,7 +94,9 @@ export function AskTheAgent({
   }
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-surface">
+    // Sized by the panel it is in rather than by itself: the edge beside it drags, so how much
+    // room a conversation gets is the reader's to decide.
+    <aside className="flex h-full w-full flex-col bg-surface">
       <header className="flex shrink-0 items-center gap-2 border-b border-border px-3.5 py-2.5">
         <Sparkles size={13} className="shrink-0 text-accent" aria-hidden="true" />
         <h2 className="font-serif text-[14px] leading-none text-text">Ask Talkie</h2>
@@ -110,10 +112,12 @@ export function AskTheAgent({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-3">
+        {/* Capped even when the rail is dragged wide: a line of text that runs the width of
+            half the window is one nobody can find their way back across. */}
         {turns.length === 0 && !working ? (
           <Opening />
         ) : (
-          <ol className="flex flex-col gap-3.5">
+          <ol className="mx-auto flex max-w-2xl flex-col gap-3.5">
             {turns.map((turn, index) => (
               <li key={index}>
                 <Said turn={turn} />
@@ -130,7 +134,7 @@ export function AskTheAgent({
       </div>
 
       <div className="shrink-0 border-t border-border p-2.5">
-        <div className="flex items-end gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-2 focus-within:border-accent">
+        <div className="mx-auto flex max-w-2xl items-end gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-2 focus-within:border-accent">
           <textarea
             value={instruction}
             aria-label="Ask Talkie to change this project"
