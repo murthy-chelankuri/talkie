@@ -21,6 +21,11 @@ npm run notices      # regenerates the third-party licence data
 
 Run `npm test` and `npm run typecheck` before committing. Both are expected to pass.
 
+A test that speaks through `say`, drives a browser or runs ffmpeg gets at least 60 seconds,
+and 90 where it asks for a voice macOS has to fetch and warm up first. None of them are
+testing the clock, and a limit close to the real cost turns the suite into a report on how
+busy the machine is — which it did three times before they were all raised together.
+
 The recording tests drive a real Chromium and run it headless, so a test run does not throw
 windows in front of whatever else is on screen. `TALKIE_HEADLESS=0 npm test` shows them, which
 is worth doing when a recording test misbehaves — the app itself is always headed, because the
