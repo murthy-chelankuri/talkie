@@ -1,4 +1,5 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { revealFrames, type Beat } from '../revealOnBeat'
 import type { TextSceneData } from '../../main/project/timeline/schema'
 import { resolveSceneTheme } from '../sceneTheme'
 
@@ -9,11 +10,11 @@ import { resolveSceneTheme } from '../sceneTheme'
  * than as a string — the markup has already been reduced to a handful of tags on the way in
  * (see richText.ts), so what reaches the renderer is only ever emphasis and colour.
  *
- * Lines arrive one after another rather than all at once, which is what gives a narrator
- * something to talk over.
+ * Lines arrive one after another rather than all at once, and where the narration is timed
+ * each one waits for the sentence about it — see revealOnBeat.ts.
  */
 export function TextScene({ data }: { data: unknown }): JSX.Element {
-  const { title, bullets, style } = data as TextSceneData
+  const { title, bullets, style, beats } = data as TextSceneData & { beats?: Beat[] }
   const theme = resolveSceneTheme(style)
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -28,6 +29,20 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
    */
   const titleIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 12 })
   const centred = theme.align === 'center'
+
+  /**
+   * When each line arrives, and whether it is arriving or settling.
+   *
+   * A timed take says when each point is spoken, so a line can wait for its own sentence
+   * instead of appearing on a fixed stagger and being read twenty seconds early. That is a
+   * real entrance, so it starts from nothing.
+   *
+   * Without timings nothing is known about when anything is said, and the old rule holds: the
+   * lines settle rather than arrive, because a slide read for four seconds cannot spend its
+   * first half-second empty. See revealOnBeat.ts.
+   */
+  const timed = (beats?.length ?? 0) > 0
+  const reveals = revealFrames(bullets.length, beats ?? [], fps)
 
   return (
     <AbsoluteFill
@@ -74,9 +89,8 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
       {bullets.length > 0 && (
         <ul style={{ listStyle: 'none', margin: '56px 0 0', padding: 0 }}>
           {bullets.map((bullet, index) => {
-            // Each line waits its turn, so the narration has room to reach it.
             const enter = spring({
-              frame: frame - index * 6,
+              frame: frame - reveals[index],
               fps,
               config: { damping: 200 },
               durationInFrames: 16
@@ -91,7 +105,7 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
                   justifyContent: centred ? 'center' : 'flex-start',
                   gap: 22,
                   marginBottom: 30,
-                  opacity: interpolate(enter, [0, 1], [0.7, 1]),
+                  opacity: interpolate(enter, [0, 1], [timed ? 0 : 0.7, 1]),
                   transform: `translateY(${interpolate(enter, [0, 1], [10, 0])}px)`
                 }}
               >

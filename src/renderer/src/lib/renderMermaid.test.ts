@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normaliseSvg } from './renderMermaid'
+import { normaliseSvg } from '../../../main/slides/mermaidTheme'
 
 // What mermaid actually produces: a natural width, an inline cap, and no background.
 const MERMAID_OUTPUT =

@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { createProject } from '../project/projectApi'
 import { startRecordingSession } from './recordSession'
-import { readPage, waitForSignIn } from './exploreSession'
+import { exploreApp, readPage, waitForSignIn } from './exploreSession'
 import { authWall } from './authWall'
 
 describe('what the recorder sees when it reads a real page', () => {
@@ -109,5 +109,88 @@ describe('an app that wants signing in to', () => {
 
     await session.stop()
     rmSync(baseDir, { recursive: true, force: true })
+  }, 60_000)
+})
+
+describe('walking the app from start to finish', () => {
+  async function walk(decisions: string[], options: Record<string, unknown> = {}) {
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-walk-'))
+    const project = createProject('Walk', baseDir)
+    const url = `file://${join(__dirname, 'fixtures', 'explore-test-page.html')}`
+    const session = await startRecordingSession(project.id, url, baseDir)
+
+    const asked: string[] = []
+    let n = 0
+    const result = await exploreApp(
+      session.page,
+      project.id,
+      {
+        maxSteps: 6,
+        dwellMs: 50,
+        decide: async (prompt) => {
+          asked.push(prompt)
+          const next = decisions[n++]
+          if (next === undefined) return 'DONE'
+          if (next.startsWith('THROW')) throw new Error(next.slice(6))
+          return next
+        },
+        ...options
+      },
+      baseDir
+    )
+
+    await session.stop()
+    rmSync(baseDir, { recursive: true, force: true })
+    return { result, asked }
+  }
+
+  it('follows the moves it is given and reports where it went', async () => {
+    const { result } = await walk(['CLICK 1', 'DONE'])
+
+    expect(result.ending).toBe('done')
+    expect(result.visited).toHaveLength(1)
+  }, 60_000)
+
+  it('tells the difference between an app with nothing left and a model it cannot reach', async () => {
+    // Reported as "nothing to explore", a provider that is not signed in sends someone looking
+    // at their own app instead of at the CLI.
+    const { result } = await walk(['THROW claude: command not found'])
+
+    expect(result.ending).toBe('model-failed')
+    expect(result.reason).toContain('command not found')
+    expect(result.visited).toEqual([])
+  }, 60_000)
+
+  it('offers only the safe ways on, so a walk cannot choose a Delete', async () => {
+    // The numbered list is the whole of what a move can name — an answer is an index into it,
+    // so a control missing from it cannot be reached however the model replies. The screen
+    // description above it still mentions the Delete button, and should: it is on the page,
+    // and describing the screen inaccurately would be its own problem.
+    const { asked } = await walk(['DONE'])
+    const options = asked[0].slice(asked[0].indexOf('You can go to one of these:'))
+
+    expect(options).toContain('Watchlist')
+    expect(options).not.toContain('Delete portfolio')
+    expect(options).not.toContain('Sign out')
+    expect(options).not.toContain('Search')
+  }, 60_000)
+
+  it('stops the moment the recording does, rather than clicking on past it', async () => {
+    let stop = false
+    const { result } = await walk(['CLICK 1', 'CLICK 1', 'CLICK 1'], {
+      shouldStop: () => {
+        const now = stop
+        stop = true
+        return now
+      }
+    })
+
+    expect(result.ending).toBe('stopped')
+  }, 60_000)
+
+  it('gives up on its own clock rather than walking for ever', async () => {
+    const { result } = await walk(['CLICK 1', 'CLICK 1', 'CLICK 1'], { maxSeconds: 0 })
+
+    expect(result.ending).toBe('budget')
   }, 60_000)
 })

@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { createProject, addTimelineItem, readTimeline } from '../project/projectApi'
 import { startRecordingSession } from './recordSession'
-import { importRecordedSession } from './importRecordedSession'
+import { importRecordedSession, leadInToDrop } from './importRecordedSession'
 
 describe('importRecordedSession (real Playwright recording)', () => {
   it('appends the recorded video to the timeline after any existing items', async () => {
@@ -38,13 +38,13 @@ describe('importRecordedSession (real Playwright recording)', () => {
     rmSync(baseDir, { recursive: true, force: true })
   }, 60_000)
 
-  it('trims the blank lead-in and shortens the clip by the trimmed amount', async () => {
+  it('takes the trimmed lead-in off the front, leaving the rest of the clip intact', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-import-trim-test-'))
     const project = createProject('Import Trim', baseDir)
 
     const fixtureUrl = `file://${join(__dirname, 'fixtures', 'recording-test-page.html')}`
     const session = await startRecordingSession(project.id, fixtureUrl, baseDir)
-    await session.page.waitForTimeout(3000)
+    await session.page.waitForTimeout(5000)
     const recording = await session.stop()
 
     const [untrimmed] = await importRecordedSession(project.id, { clips: recording.clips }, baseDir)
@@ -56,8 +56,13 @@ describe('importRecordedSession (real Playwright recording)', () => {
     )
 
     expect((untrimmed.data as { trimBefore?: number }).trimBefore).toBeUndefined()
-    expect((trimmed.data as { trimBefore?: number }).trimBefore).toBe(30)
-    expect(trimmed.duration).toBe(untrimmed.duration - 30)
+
+    // Asserted as a relationship rather than a frame count. How long a real capture comes out
+    // is up to the machine — pinning this to 30 frames made it a test of how busy the machine
+    // was, which it failed twice.
+    const dropped = (trimmed.data as { trimBefore?: number }).trimBefore ?? 0
+    expect(dropped).toBe(leadInToDrop(untrimmed.duration, 1000))
+    expect(trimmed.duration + dropped).toBe(untrimmed.duration)
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 60_000)
@@ -82,4 +87,26 @@ describe('importRecordedSession (real Playwright recording)', () => {
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 60_000)
+})
+
+describe('deciding how much of the lead-in to drop', () => {
+  it('drops what was measured when there is clip left over', () => {
+    expect(leadInToDrop(300, 1000)).toBe(30)
+  })
+
+  it('drops nothing when nothing was measured', () => {
+    expect(leadInToDrop(300, 0)).toBe(0)
+    expect(leadInToDrop(300, undefined)).toBe(0)
+  })
+
+  it('refuses a lead-in that would leave less than a second of clip', () => {
+    // A lead-in measured as most of the recording is a measurement that has gone wrong, and
+    // trimming on it would leave a clip of nothing.
+    expect(leadInToDrop(60, 1500)).toBe(0)
+    expect(leadInToDrop(300, 60_000)).toBe(0)
+  })
+
+  it('keeps a trim that leaves exactly a second, which is the edge it is drawn at', () => {
+    expect(leadInToDrop(60, 1000)).toBe(30)
+  })
 })

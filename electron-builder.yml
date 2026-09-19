@@ -18,6 +18,15 @@ asarUnpack:
   - node_modules/@remotion/compositor-**/**
   - node_modules/playwright/**
   - node_modules/playwright-core/**
+  # Importing a deck means rasterising a PDF, which the MCP server does itself rather than
+  # asking a renderer it has not got. Same reason as above for pdfjs — plain node cannot read
+  # it from inside the archive — and @napi-rs/canvas is a native module, which cannot load
+  # from in there at all.
+  - node_modules/pdfjs-dist/**
+  - node_modules/@napi-rs/**
+  # Drawing a diagram means reading mermaid's own files off disk and serving them to a headless
+  # page, which cannot be done from inside the archive.
+  - node_modules/mermaid/**
 
 mac:
   icon: build/icon.icns

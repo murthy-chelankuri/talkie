@@ -169,15 +169,42 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
     return <VideoThumbnail src={src} startSeconds={(data.trimBefore ?? 0) / FPS} />
   }
 
-  // A diagram's SVG and an image are both just pictures here.
+  // A diagram is not just a picture here, however much it looks like one: mermaid draws its
+  // labels as HTML inside the SVG, and a browser will not render HTML in an image. Shown
+  // through an `<img>` it came out as empty boxes, so it goes into the document instead —
+  // which is what the player does with the same file.
+  if (item.kind === 'diagram') {
+    return <DiagramThumbnail src={src} />
+  }
+
+  return <img src={src} alt="" className="pointer-events-none h-full w-full object-cover" />
+}
+
+/** The diagram's own SVG, put in the document so the labels inside it draw. */
+function DiagramThumbnail({ src }: { src: string }): JSX.Element {
+  const [svg, setSvg] = useState<string | null>(null)
+
+  useEffect(() => {
+    let wanted = true
+    fetch(src)
+      .then((response) => (response.ok ? response.text() : Promise.reject(new Error(String(response.status)))))
+      .then((text) => {
+        if (wanted) setSvg(text)
+      })
+      .catch(() => {
+        // A drawing that cannot be read leaves the clip its background and its label, which is
+        // still enough to find it by.
+        if (wanted) setSvg(null)
+      })
+    return () => {
+      wanted = false
+    }
+  }, [src])
+
   return (
-    <img
-      src={src}
-      alt=""
-      className={cn(
-        'pointer-events-none h-full w-full',
-        item.kind === 'diagram' ? 'bg-[#171b22] object-contain p-1' : 'object-cover'
-      )}
+    <span
+      className="pointer-events-none block h-full w-full bg-[#171b22] p-1 [&>svg]:h-full [&>svg]:w-full"
+      {...(svg ? { dangerouslySetInnerHTML: { __html: svg } } : {})}
     />
   )
 }

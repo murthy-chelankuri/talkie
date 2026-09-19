@@ -50,6 +50,13 @@ export interface RecordingSession {
   page: Page
   markAnnotation: (annotation: 'important' | 'redo' | 'skip') => void
   stop: () => Promise<RecordingResult>
+  /**
+   * Called if the browser goes away on its own — the person closed the window, or it crashed.
+   *
+   * Nothing used to notice. The toolbar went on saying it was recording a browser that was not
+   * there, and its stop button was the only way out of a state it could no longer end.
+   */
+  onBrowserGone: (callback: () => void) => void
 }
 
 const INJECTED_LISTENER_SCRIPT = `
@@ -343,7 +350,27 @@ export async function startRecordingSession(
       return { sessionId, clips, actionLogPath, contentStartMs }
     }
 
-    return { sessionId, projectId, page, markAnnotation, stop }
+    // Fires once, and only for a browser that went away by itself: `stop` disconnects too, and
+    // a stop reporting itself as a disappearance would import the same recording twice.
+    let stopped = false
+    let onGone: (() => void) | null = null
+    browser.on('disconnected', () => {
+      if (!stopped) onGone?.()
+    })
+
+    return {
+      sessionId,
+      projectId,
+      page,
+      markAnnotation,
+      stop: async () => {
+        stopped = true
+        return stop()
+      },
+      onBrowserGone: (callback) => {
+        onGone = callback
+      }
+    }
   } catch (err) {
     if (browser) {
       await browser.close()

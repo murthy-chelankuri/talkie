@@ -99,3 +99,18 @@ export function setToolbarStatus(status: string, needsYou = false): void {
   if (!toolbarWindow || toolbarWindow.isDestroyed()) return
   toolbarWindow.webContents.send('project:capture:exploring', status, needsYou)
 }
+
+/**
+ * Put the toolbar back to where a recording can be started, and say what happened to the last
+ * one.
+ *
+ * A recording can end without the stop button being pressed — the browser closed, the import
+ * found no project to put it in. Those used to leave the window claiming to record: the clock
+ * ran on, and stop answered "no recording session is in progress", which is a dead end for
+ * anyone who can see a toolbar that says otherwise.
+ */
+export function setToolbarEnded(reason: string, failed = true): void {
+  if (!toolbarWindow || toolbarWindow.isDestroyed()) return
+  setToolbarMode('setup')
+  toolbarWindow.webContents.send('project:capture:ended', reason, failed)
+}

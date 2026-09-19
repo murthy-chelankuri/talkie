@@ -10,6 +10,8 @@ import {
 } from 'remotion'
 import type { DiagramSceneData } from '../../main/project/timeline/schema'
 import { resolveSceneTheme } from '../sceneTheme'
+import { buildableDiagram, revealedThrough } from '../buildDiagram'
+import { revealFrames, type Beat } from '../revealOnBeat'
 
 /**
  * A diagram drawn from mermaid source.
@@ -19,7 +21,7 @@ import { resolveSceneTheme } from '../sceneTheme'
  * with the preview. What is drawn is exactly the SVG the editor drew.
  */
 export function DiagramScene({ data }: { data: unknown }): JSX.Element {
-  const { src, title, style } = data as DiagramSceneData
+  const { src, title, style, beats } = data as DiagramSceneData & { beats?: Beat[] }
   const theme = resolveSceneTheme(style)
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -51,7 +53,22 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
   const drawIn = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 18 })
 
   // The SVG was normalised when it was drawn, so it already scales to whatever it is given.
-  const sized = useMemo(() => markup || null, [markup])
+  // Tagged here rather than on every frame: the markup goes into the document as one string,
+  // and what changes frame to frame is only the stylesheet that hides the rest of it.
+  const built = useMemo(() => (markup ? buildableDiagram(markup) : null), [markup])
+
+  /**
+   * How much of the diagram has been reached.
+   *
+   * A timed take says when each part is described, so the picture is drawn in the order it is
+   * explained. Without timings the whole thing is there from the first frame, which is what it
+   * always did — a diagram nobody is talking over has no order to follow.
+   */
+  const reveals = revealFrames(built?.steps ?? 0, beats ?? [], fps)
+  const reached =
+    !built || !beats?.length
+      ? (built?.steps ?? 0)
+      : reveals.filter((showAt) => frame >= showAt).length - 1
 
   return (
     <AbsoluteFill
@@ -88,11 +105,16 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
           transform: `scale(${interpolate(drawIn, [0, 1], [0.985, 1])})`
         }}
       >
-        {sized ? (
+        {built ? (
           <div
             style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            dangerouslySetInnerHTML={{ __html: sized }}
-          />
+          >
+            {beats?.length ? <style>{revealedThrough(reached)}</style> : null}
+            <div
+              style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              dangerouslySetInnerHTML={{ __html: built.svg }}
+            />
+          </div>
         ) : (
           <span style={{ fontSize: 34, color: '#6b7280' }}>
             {src ? '' : 'This diagram has not been drawn yet.'}

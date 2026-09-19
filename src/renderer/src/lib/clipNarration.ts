@@ -15,6 +15,21 @@ export function narrationTextForItem(segments: TranscriptSegment[], itemId: stri
     .join('\n\n')
 }
 
+/**
+ * The narration as the script view edits it: one timed line per beat.
+ *
+ * The timings are the words' own, so they belong in the text being edited rather than in some
+ * control beside it — written back as `[12.3] ` prefixes, which is the same shape the drafter
+ * produces and `parseBeats` reads. A take with no timings is shown as the prose it is; adding
+ * a prefix to a line is all it takes to give it one.
+ */
+export function narrationScriptForItem(segments: TranscriptSegment[], itemId: string): string {
+  const beats = segmentsForItem(segments, itemId)[0]?.beats
+  if (!beats || beats.length === 0) return narrationTextForItem(segments, itemId)
+
+  return beats.map((beat) => `[${beat.at.toFixed(1)}] ${beat.text}`).join('\n')
+}
+
 /** What the voice was before it could be chosen: `say -v Samantha` was hardcoded. */
 export const LEGACY_VOICE = 'Samantha'
 

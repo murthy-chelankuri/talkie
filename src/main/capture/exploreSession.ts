@@ -65,11 +65,19 @@ export interface ExploreProgress {
 }
 
 /** Why the walk finished, which decides whether the recording should finish with it. */
-export type ExploreEnding = 'done' | 'nowhere' | 'budget' | 'stopped' | 'waited-too-long'
+export type ExploreEnding =
+  | 'done'
+  | 'nowhere'
+  | 'budget'
+  | 'stopped'
+  | 'waited-too-long'
+  | 'model-failed'
 
 export interface ExploreResult {
   visited: string[]
   ending: ExploreEnding
+  /** Why the model could not be asked, when that is what ended the walk. */
+  reason?: string
 }
 
 export class NoExploreProviderError extends Error {
@@ -205,6 +213,14 @@ export interface ExploreOptions {
   onProgress?: (progress: ExploreProgress) => void
   /** Stops the walk early, for a user who has seen enough. */
   shouldStop?: () => boolean
+  /**
+   * Asks for the next move. Defaults to the configured provider.
+   *
+   * Injectable so the walk itself can be tested without a model behind it — the loop, the
+   * stopping conditions and the wiring are the parts that break, and they were the parts that
+   * could not be covered.
+   */
+  decide?: (prompt: string) => Promise<string>
 }
 
 /**
@@ -223,7 +239,8 @@ export async function exploreApp(
 ): Promise<ExploreResult> {
   const settings = readSettings(baseDir)
   const provider = narrationProvider(settings.narration.provider)
-  if (!provider.complete) throw new NoExploreProviderError(provider.label)
+  if (!options.decide && !provider.complete) throw new NoExploreProviderError(provider.label)
+  const decide = options.decide ?? ((prompt: string) => provider.complete!(prompt))
 
   const maxSteps = options.maxSteps ?? MAX_STEPS
   const maxSeconds = options.maxSeconds ?? MAX_SECONDS
@@ -232,7 +249,7 @@ export async function exploreApp(
 
   const project = projectFacts(projectId, baseDir)
   const visited: string[] = []
-  const done = (ending: ExploreEnding): ExploreResult => ({ visited, ending })
+  const done = (ending: ExploreEnding, reason?: string): ExploreResult => ({ visited, ending, reason })
 
   for (let step = 0; step < maxSteps; step += 1) {
     if (options.shouldStop?.()) return done('stopped')
@@ -267,15 +284,23 @@ export async function exploreApp(
 
     if (reading.candidates.length === 0) return done('nowhere')
 
-    const answer = await provider
-      .complete(
+    // A model that cannot be reached is not the same as an app with nothing left to show, and
+    // saying the second when the first happened sends someone looking in the wrong place
+    // entirely — at their own app, rather than at a CLI that is not signed in.
+    let answer: string
+    try {
+      answer = await decide(
         buildMovePrompt(reading, visited, {
           stepsLeft: maxSteps - step,
           projectName: project.name,
           context: project.context
         })
       )
-      .catch(() => 'DONE')
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      console.error('Could not ask which way to go next:', err)
+      return done('model-failed', reason)
+    }
 
     const move = parseMove(answer, reading.candidates.length)
     if (move.kind === 'done') return done('done')

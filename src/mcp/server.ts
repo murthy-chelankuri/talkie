@@ -7,19 +7,34 @@ import {
   readTimeline,
   readTranscript,
   addScene,
+  updateSceneData,
+  writeDiagramSvg,
+  openProject,
+  setProjectContext,
+  setProjectVoice,
+  importImage,
+  updateTimelineItemDuration,
   addTranscriptSegment,
   updateTranscriptSegmentText,
-  splitTimelineItem
+  splitTimelineItem,
+  moveTimelineItem,
+  deleteTimelineItem
 } from '../main/project/projectApi'
 import { withHistory } from '../main/project/history'
 import { draftNarrationForItem, draftNarrationForProject } from '../main/agent/draftNarration'
 import { narrateSegment } from '../main/transcript/narrate'
 import { renderProjectVideo } from '../main/render/renderProject'
 import { richTextToPlain } from '../main/project/timeline/richText'
+import { describeProjectContext } from '../main/project/projectContext'
 import { clipActions } from '../main/agent/clipEvidence'
-import { beatsToText, parseBeats } from '../main/transcript/narrationBeats'
+import { narrationFromText } from '../main/transcript/narrationBeats'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
+import { prepareDeck, saveSlides } from '../main/slides/importSlides'
+import { rasterisePdf } from '../main/slides/rasterisePdf'
+import { renderMermaidHeadless } from '../main/slides/renderMermaidHeadless'
+import { undo, redo } from '../main/project/history'
+import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
 import * as recording from './recordingSession'
 
@@ -50,6 +65,21 @@ function describeItem(item: TimelineItem, index: number): string {
       : ''
 
   return `${index + 1}. ${item.kind} — ${name} (${seconds}s${window}, id ${item.id})`
+}
+
+/**
+ * Draw a diagram, turning a failure into something to read rather than an exception.
+ *
+ * Mermaid's own errors name the line and what it did not understand, and the person who wrote
+ * the source is the one who can fix it — so they are passed through rather than summarised.
+ */
+async function draw(source: string): Promise<{ ok: true; svg: string } | { ok: false; reason: string }> {
+  try {
+    return { ok: true, svg: await renderMermaidHeadless(source) }
+  } catch (err) {
+    const said = err instanceof Error ? err.message.split('\n')[0] : String(err)
+    return { ok: false, reason: `That diagram could not be drawn: ${said}` }
+  }
 }
 
 /** The token this server was started with, from its own configuration. */
@@ -144,14 +174,158 @@ export function createTalkieServer(
         const segment = transcript.find((s) => s.timelineItemId === item.id)
         // Whether the take is timed to moments or read as one block is the thing that decides
         // if it keeps step with the picture, so it belongs in the listing.
-        const timing = segment?.beats?.length ? `, ${segment.beats.length} timed lines` : ', untimed'
+        // The timings themselves, not just how many: without them a beat cannot be adjusted
+        // without rewriting the whole take from memory, and an edit someone else made is
+        // invisible.
         const narration = segment
-          ? `\n   narration (${segment.status}${timing}): ${segment.text}`
+          ? segment.beats?.length
+            ? `\n   narration (${segment.status}), timed:\n` +
+              segment.beats.map((beat) => `     [${beat.at.toFixed(1)}] ${beat.text}`).join('\n')
+            : `\n   narration (${segment.status}), read straight through: ${segment.text}`
           : '\n   no narration yet'
         return describeItem(item, index) + narration
       })
 
       return text(lines.join('\n'))
+    }
+  )
+
+  tool(
+    'talkie_project',
+    {
+      title: 'Read a project',
+      description:
+        'What this project is: its name, the voice it speaks in, and what the person making it ' +
+        'said it is about. Read this before writing anything — the background, the audience and ' +
+        'the things never to say are what make narration sound like it belongs to this product ' +
+        'rather than any other.',
+      inputSchema: { projectId: z.string() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ projectId }) => {
+      const project = openProject(projectId, baseDir)
+      const context = project.context
+      const said = describeProjectContext(context)
+
+      return text(
+        [
+          `${project.name} (id ${project.id})`,
+          `Voice: ${project.voice?.trim() || 'whatever Talkie is set to'}`,
+          '',
+          said.length > 0
+            ? said.join('\n')
+            : 'Nothing recorded about what this project is for. talkie_set_context is how to say.'
+        ].join('\n')
+      )
+    }
+  )
+
+  tool(
+    'talkie_set_context',
+    {
+      title: 'Say what the project is about',
+      description:
+        'Record what this project is for, so every draft after it knows. Replaces what is there, ' +
+        'so read it with talkie_project first and send back the whole thing rather than the one ' +
+        'field being changed.',
+      inputSchema: {
+        projectId: z.string(),
+        background: z.string().describe('The product, what it does, and the words it uses for its own parts'),
+        audience: z.string().optional().describe('Who is watching, which decides what is assumed'),
+        tone: z.string().optional().describe('How it should sound'),
+        neverSay: z.array(z.string()).optional().describe('Words and claims to keep out of it')
+      }
+    },
+    async ({ projectId, background, audience, tone, neverSay }) => {
+      const context = ProjectContextSchema.parse({ background, audience, tone, neverSay })
+      withHistory(projectId, () => setProjectContext(projectId, context, baseDir), baseDir)
+      return text('Noted. Drafts from here on will be written against it.')
+    }
+  )
+
+  tool(
+    'talkie_set_voice',
+    {
+      title: 'Choose the voice',
+      description:
+        'Set the voice this project is read in, by name — one of the system voices Talkie offers. ' +
+        'Narration already recorded keeps the voice it was read in until it is voiced again.',
+      inputSchema: {
+        projectId: z.string(),
+        voice: z.string().describe('A voice name, or empty to follow whatever Talkie is set to')
+      }
+    },
+    async ({ projectId, voice }) => {
+      const project = withHistory(
+        projectId,
+        () => setProjectVoice(projectId, voice.trim() || null, baseDir),
+        baseDir
+      )
+      return text(
+        project.voice
+          ? `This project now speaks as ${project.voice}. Re-voice any clip that should change.`
+          : 'This project now follows whatever voice Talkie is set to.'
+      )
+    }
+  )
+
+  tool(
+    'talkie_set_duration',
+    {
+      title: 'How long a clip is on screen',
+      description:
+        'Set how long a clip holds, in seconds. A slide or an image is on screen for exactly as ' +
+        'long as it is told to be, so this is how one is given room to breathe or cut short. A ' +
+        'recording is different — it plays its own footage, and making it longer holds the last ' +
+        'frame rather than showing more. Voicing a clip lengthens it on its own if the words do ' +
+        'not fit, so set this after the narration rather than before.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline'),
+        seconds: z.number().positive().describe('How long it should be on screen')
+      }
+    },
+    async ({ projectId, timelineItemId, seconds }) => {
+      const frames = Math.max(1, Math.round(seconds * 30))
+      const item = withHistory(
+        projectId,
+        () => updateTimelineItemDuration(projectId, timelineItemId, frames, baseDir),
+        baseDir
+      )
+      return text(`That clip is now on screen for ${(item.duration / 30).toFixed(1)}s.`)
+    }
+  )
+
+  tool(
+    'talkie_undo',
+    {
+      title: 'Undo the last change',
+      description:
+        'Step back one change made in this session. Only your own: undo is remembered per ' +
+        'connection, so this cannot reach edits made in the Talkie window or by another agent, ' +
+        'and it steps back by whole actions rather than by write.',
+      inputSchema: { projectId: z.string() }
+    },
+    async ({ projectId }) => {
+      const state = undo(projectId, baseDir)
+      return text(
+        state.canUndo
+          ? 'Stepped back one change. There is more that can be undone.'
+          : 'Stepped back. Nothing further of yours to undo.'
+      )
+    }
+  )
+
+  tool(
+    'talkie_redo',
+    {
+      title: 'Redo what was undone',
+      description: 'Put back the change talkie_undo stepped over, if nothing has been written since.',
+      inputSchema: { projectId: z.string() }
+    },
+    async ({ projectId }) => {
+      const state = redo(projectId, baseDir)
+      return text(state.canRedo ? 'Put back. There is more that can be redone.' : 'Put back.')
     }
   )
 
@@ -356,11 +530,270 @@ export function createTalkieServer(
         () => addScene(projectId, 'scene', { title, bullets: bullets ?? [], style: style ?? {} }, baseDir),
         baseDir
       )
-      return text(`Added the slide "${title}" (clip id ${item.id}).`)
+      return text(
+        `Added the slide "${title}" at the end (clip id ${item.id}). ` +
+          'Use talkie_move_clip if it belongs somewhere else.'
+      )
+    }
+  )
+
+  tool(
+    'talkie_add_image',
+    {
+      title: 'Add a picture',
+      description:
+        'Put an image on the end of the timeline — a screenshot, a logo, a diagram drawn ' +
+        'elsewhere. The file is copied into the project, so it does not matter if the original ' +
+        'moves afterwards. Use talkie_move_clip to place it and talkie_set_duration to say how ' +
+        'long it holds.',
+      inputSchema: {
+        projectId: z.string(),
+        path: z.string().describe('An absolute path to a png, jpg, gif, webp or svg on this machine')
+      }
+    },
+    async ({ projectId, path }) => {
+      const item = withHistory(projectId, () => importImage(projectId, path, baseDir), baseDir)
+      return text(
+        `Added the picture at the end (clip id ${item.id}), on screen for ` +
+          `${(item.duration / 30).toFixed(1)}s.`
+      )
+    }
+  )
+
+  tool(
+    'talkie_import_deck',
+    {
+      title: 'Import a slide deck',
+      description:
+        'Turn a .pdf or .pptx into slides on the timeline, one clip per page, with any speaker ' +
+        'notes kept as the narration for their own slide. Notes are stored as the author\'s own ' +
+        'words, so drafting will not overwrite a script somebody already wrote in PowerPoint.\n' +
+        'A .pptx needs LibreOffice installed to be rendered; without it the notes are still ' +
+        'readable and this says so, so exporting the deck as a PDF is the way through.',
+      inputSchema: {
+        projectId: z.string(),
+        path: z.string().describe('An absolute path to a .pdf or .pptx on this machine')
+      }
+    },
+    async ({ projectId, path }) => {
+      const deck = await prepareDeck(path)
+
+      if (deck.status === 'needs-pdf') {
+        return text(
+          `${deck.reason}\n` +
+            (deck.notes.some((note) => note.trim())
+              ? 'The speaker notes were readable and will be used when the PDF is imported.'
+              : 'There were no speaker notes to read.')
+        )
+      }
+      if (deck.status !== 'ready') {
+        return text('Nothing was imported.')
+      }
+
+      const pages = await rasterisePdf(deck.pdf)
+      if (pages.length === 0) return text(`${deck.name} has no pages in it.`)
+
+      const added = withHistory(
+        projectId,
+        () => saveSlides(projectId, pages, deck.notes, baseDir),
+        baseDir
+      )
+      const withNotes = deck.notes.filter((note) => note.trim()).length
+
+      return text(
+        `Imported ${added.length} slide${added.length === 1 ? '' : 's'} from ${deck.name}` +
+          `${withNotes > 0 ? `, ${withNotes} with speaker notes as narration` : ''}.\n` +
+          'They are at the end of the timeline — use talkie_move_clip to place them, and ' +
+          'talkie_set_duration to say how long each holds.'
+      )
+    }
+  )
+
+  tool(
+    'talkie_add_diagram',
+    {
+      title: 'Add a diagram',
+      description:
+        'Add a diagram written as mermaid source — a flow, a sequence, an architecture. Better ' +
+        'than describing a structure in words over a screen recording that does not show it. ' +
+        'It is drawn straight away, so a syntax error comes back here rather than surfacing as ' +
+        'a blank clip later. The source is kept, so it stays editable.',
+      inputSchema: {
+        projectId: z.string(),
+        source: z.string().describe('mermaid source, e.g. "graph LR; A[Client] --> B[API]"'),
+        title: z.string().optional().describe('A heading above it'),
+        style: SceneStyleSchema.partial().optional().describe('Theme, font, alignment, accent colour')
+      }
+    },
+    async ({ projectId, source, title, style }) => {
+      const drawn = await draw(source)
+      if (!drawn.ok) return text(drawn.reason)
+
+      const item = withHistory(
+        projectId,
+        () =>
+          addScene(
+            projectId,
+            'diagram',
+            { source, title, style: style ?? {}, src: writeDiagramSvg(projectId, drawn.svg, baseDir) },
+            baseDir
+          ),
+        baseDir
+      )
+      return text(
+        `Added the diagram at the end (clip id ${item.id}). Use talkie_move_clip to place it.`
+      )
+    }
+  )
+
+  tool(
+    'talkie_edit_diagram',
+    {
+      title: 'Change a diagram',
+      description:
+        'Rewrite the mermaid source of a diagram already in the project. It is redrawn straight ' +
+        'away, so a syntax error comes back here rather than leaving a blank clip behind.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The diagram id, from talkie_timeline'),
+        source: z.string().describe('mermaid source'),
+        title: z.string().optional()
+      }
+    },
+    async ({ projectId, timelineItemId, source, title }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+      if (item.kind !== 'diagram') {
+        return text(`That clip is a ${item.kind}, not a diagram.`)
+      }
+
+      const drawn = await draw(source)
+      if (!drawn.ok) return text(drawn.reason)
+
+      const current = item.data as { title?: string; style?: unknown }
+      withHistory(
+        projectId,
+        () =>
+          // Drawn again rather than kept: the old picture belongs to the old source, and
+          // showing one while the project says the other is the worst of both.
+          updateSceneData(
+            projectId,
+            timelineItemId,
+            {
+              source,
+              title: title ?? current.title,
+              style: current.style ?? {},
+              src: writeDiagramSvg(projectId, drawn.svg, baseDir)
+            },
+            baseDir
+          ),
+        baseDir
+      )
+      return text('Redrawn.')
+    }
+  )
+
+  tool(
+    'talkie_edit_slide',
+    {
+      title: 'Change what a slide says',
+      description:
+        'Rewrite the words on a slide that is already in the project. This changes the picture ' +
+        'on screen, which is not the same thing as talkie_set_narration — that changes what is ' +
+        'said over it. Asked to reword an opening, you almost certainly want both. Only works ' +
+        'on a slide; a recorded clip shows whatever was recorded.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The slide id, from talkie_timeline'),
+        title: z.string(),
+        bullets: z.array(z.string()).optional().describe('A few short lines, or none at all'),
+        style: SceneStyleSchema.partial().optional().describe('Theme, font, alignment, accent colour')
+      }
+    },
+    async ({ projectId, timelineItemId, title, bullets, style }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+      if (item.kind !== 'scene') {
+        return text(
+          `That clip is a ${item.kind}, and only a slide has words that can be rewritten. ` +
+            'Use talkie_set_narration to change what is said over a recording.'
+        )
+      }
+
+      // Merged rather than replaced: leaving the bullets out should keep them, not silently
+      // empty the slide.
+      const current = item.data as { bullets?: string[]; style?: unknown }
+      withHistory(
+        projectId,
+        () =>
+          updateSceneData(
+            projectId,
+            timelineItemId,
+            {
+              title,
+              bullets: bullets ?? current.bullets ?? [],
+              style: style ?? current.style ?? {}
+            },
+            baseDir
+          ),
+        baseDir
+      )
+
+      return text(`The slide now reads "${title}".`)
     }
   )
 
   // --------------------------------------------------------------- narration
+
+  tool(
+    'talkie_move_clip',
+    {
+      title: 'Move a clip',
+      description:
+        'Put a clip at a different position in the project, counting from 1 as talkie_timeline ' +
+        'lists them; everything else shuffles along. This is how a scene gets to the front — ' +
+        'talkie_add_scene always appends, so an introduction arrives at the end and has to be ' +
+        'moved to where it belongs.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline'),
+        toPosition: z.number().int().min(1).describe('Where it should end up, counting from 1')
+      }
+    },
+    async ({ projectId, timelineItemId, toPosition }) => {
+      const moved = withHistory(
+        projectId,
+        () => moveTimelineItem(projectId, timelineItemId, toPosition, baseDir),
+        baseDir
+      )
+      return text(
+        `Moved it to position ${toPosition}. The project now runs:\n` +
+          moved.map((item, index) => describeItem(item, index)).join('\n')
+      )
+    }
+  )
+
+  tool(
+    'talkie_delete_clip',
+    {
+      title: 'Delete a clip',
+      description:
+        'Remove a clip from the project, along with the narration written for it. The recording ' +
+        'it came from stays on disk. Use it to take back something you added; think twice before ' +
+        'removing footage somebody recorded, which cannot be got back from here.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline')
+      }
+    },
+    async ({ projectId, timelineItemId }) => {
+      const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
+      if (!item) return text(`No clip found with id ${timelineItemId}.`)
+
+      withHistory(projectId, () => deleteTimelineItem(projectId, timelineItemId, baseDir), baseDir)
+      return text(`Deleted the ${item.kind} clip. ${readTimeline(projectId, baseDir).length} left.`)
+    }
+  )
 
   tool(
     'talkie_set_narration',
@@ -387,8 +820,7 @@ export function createTalkieServer(
 
       // Timings where they were given. The prose kept alongside is what the editor shows and
       // what captions are built from, so it has to be the same words without the brackets.
-      const beats = parseBeats(words)
-      const prose = beats.length > 0 ? beatsToText(beats) : words
+      const { text: prose, beats } = narrationFromText(words)
 
       const segment = withHistory(
         projectId,

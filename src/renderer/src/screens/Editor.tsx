@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
 import { Clapperboard } from 'lucide-react'
-import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
+import {
+  Group,
+  Panel as ResizablePanel,
+  Separator,
+  useDefaultLayout,
+  usePanelRef
+} from 'react-resizable-panels'
 import {
   projectClient,
   timelineClient,
@@ -14,6 +20,10 @@ import {
   type TranscriptSegment
 } from '../api/projectClient'
 import { Timeline } from '../components/Timeline'
+import { ScriptView } from '../components/ScriptView'
+import { AskTheAgent } from '../components/AskTheAgent'
+import { drawPendingDiagrams } from '../lib/drawPendingDiagrams'
+import { cn } from '../lib/cn'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
@@ -47,6 +57,11 @@ function forbiddenWarning(terms: string[]): string {
 /** Far enough in for a scene's entrance to have finished — see the seek on open below. */
 const SETTLED_FRAME = 20
 
+const PANES = [
+  { id: 'timeline', label: 'Timeline' },
+  { id: 'script', label: 'Script' }
+] as const
+
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
@@ -58,6 +73,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
   const stageLayout = useDefaultLayout({ id: 'editor-stage', storage: localStorage })
+  // The agent rail against the demo beside it. Remembered separately from the stage/timeline
+  // split, because how much room a conversation wants is not the same question.
+  const agentLayout = useDefaultLayout({ id: 'editor-agent', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
@@ -77,10 +95,17 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
   /** The scene being written or edited: an item to edit, 'new' to start one, null for neither. */
   const [sceneEditing, setSceneEditing] = useState<TimelineItem | 'new' | null>(null)
+  // Operating the timeline and writing the script are different jobs wanting different shapes
+  // of room, so the bottom pane does one at a time. See ScriptView.
+  const [bottomPane, setBottomPane] = useState<'timeline' | 'script'>('timeline')
   // Remembered, because the rail is a working preference rather than a per-session choice.
   const [sourcesCollapsed, setSourcesCollapsed] = useState(
     () => localStorage.getItem('talkie.sourcesCollapsed') === 'true'
   )
+  // Whether the rail is folded. Owned by the panel, which remembers its own width through
+  // useDefaultLayout; this only follows it so the rail knows which of itself to draw.
+  const [agentCollapsed, setAgentCollapsed] = useState(false)
+  const agentPanel = usePanelRef()
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
@@ -158,8 +183,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }, [projectId])
 
   async function refreshTimeline(): Promise<void> {
-    setTimeline(await timelineClient.read(projectId))
+    const items = await timelineClient.read(projectId)
+    setTimeline(items)
     setHistory(await projectClient.historyState(projectId))
+
+    // An agent can write mermaid source but cannot draw it — there is no browser where it
+    // runs. This is where the drawing happens, so its diagram is a picture rather than a blank
+    // clip. See drawPendingDiagrams.
+    if ((await drawPendingDiagrams(projectId, items)) > 0) {
+      setTimeline(await timelineClient.read(projectId))
+    }
   }
 
   const refreshEverything = useCallback(async (): Promise<void> => {
@@ -647,7 +680,17 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               collapsed={sourcesCollapsed}
               onToggleCollapsed={() => setSourcesCollapsed((open) => !open)}
             />
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* Drag the edge to give the conversation as much of the stage as it needs — the same
+            handle the stage and timeline already split on. The demo shrinks to suit; it is the
+            thing with a fixed shape, so it has the room to give. */}
+        <Group
+          orientation="horizontal"
+          defaultLayout={agentLayout.defaultLayout}
+          onLayoutChanged={agentLayout.onLayoutChanged}
+          className="min-w-0 flex-1"
+        >
+        <ResizablePanel id="demo" defaultSize="72" minSize="30">
+        <div className="flex h-full min-w-0 flex-col">
           <div className="flex h-full flex-col bg-bg">
             {/* The mat stops at the video. Filling the pane with near-black left a slab of it
                 either side of a 16:9 frame in a wide, short pane, which reads as waste rather
@@ -690,6 +733,44 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </div>
+        </ResizablePanel>
+        <Separator
+          className={cn(
+            'w-1 bg-border transition-colors hover:bg-accent',
+            // Nothing to drag when it is folded; the button is the way back.
+            agentCollapsed && 'pointer-events-none'
+          )}
+        />
+        {/* Collapses in place rather than being unmounted: a fold that took the conversation
+            with it would be a fold nobody dares press. */}
+        <ResizablePanel
+          id="agent"
+          collapsible
+          collapsedSize={60}
+          defaultSize="26"
+          minSize={280}
+          maxSize="70"
+          panelRef={agentPanel}
+          onResize={(size) => setAgentCollapsed(size.inPixels <= 61)}
+        >
+          <AskTheAgent
+            projectId={projectId}
+            collapsed={agentCollapsed}
+            onToggleCollapsed={() => {
+              const panel = agentPanel.current
+              if (!panel) return
+              if (panel.isCollapsed()) panel.expand()
+              else panel.collapse()
+            }}
+            onChanged={async () => {
+              // The agent wrote to the same files through a process of its own, so nothing the
+              // editor is holding can be trusted until it has been read back.
+              await refreshTimeline()
+              await refreshSegments()
+            }}
+          />
+        </ResizablePanel>
+        </Group>
         </div>
       </ResizablePanel>
       <Separator className="h-1 bg-border transition-colors hover:bg-accent" />
@@ -701,6 +782,49 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             {transcriptError && <ErrorBanner message={transcriptError} />}
           </div>
         )}
+        {/* Two ways of working on the same project rather than a filter over one, so it is
+            built as a switch between them: the tab that is on carries the material of the pane
+            it opens — graphite for the timeline, paper for the script — which is the same
+            signal the panes themselves use. */}
+        <div
+          role="tablist"
+          aria-label="Ways to work on this project"
+          className="flex shrink-0 items-end gap-0.5 border-b border-border bg-bg px-3 pt-1.5"
+        >
+          {PANES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={bottomPane === id}
+              onClick={() => setBottomPane(id)}
+              className={cn(
+                'rounded-t-md border border-b-0 px-3 py-1.5 text-[12px] transition-colors',
+                bottomPane === id
+                  ? id === 'script'
+                    ? '-mb-px border-paper-border bg-paper font-medium text-text'
+                    : '-mb-px border-border bg-surface font-medium text-text'
+                  : 'border-transparent bg-transparent text-text-muted hover:text-text'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {bottomPane === 'script' ? (
+          <ScriptView
+            timeline={timeline}
+            segments={segments}
+            activeItemId={activeItemId}
+            draftingItemId={draftingItemId}
+            narratingItemId={narratingItemId}
+            onSeek={handleSeek}
+            onSelectItem={handleSelectClip}
+            onCommit={handleNarrationCommit}
+            onDraft={handleDraft}
+            onNarrate={handleNarrate}
+          />
+        ) : (
         <Timeline
           timeline={timeline}
           segments={segments}
@@ -733,6 +857,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onUndo={handleUndo}
           onRedo={handleRedo}
         />
+        )}
         </div>
       </ResizablePanel>
       {editingContext && project && (

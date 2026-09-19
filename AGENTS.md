@@ -21,6 +21,11 @@ npm run notices      # regenerates the third-party licence data
 
 Run `npm test` and `npm run typecheck` before committing. Both are expected to pass.
 
+A test that speaks through `say`, drives a browser or runs ffmpeg gets at least 60 seconds,
+and 90 where it asks for a voice macOS has to fetch and warm up first. None of them are
+testing the clock, and a limit close to the real cost turns the suite into a report on how
+busy the machine is — which it did three times before they were all raised together.
+
 The recording tests drive a real Chromium and run it headless, so a test run does not throw
 windows in front of whatever else is on screen. `TALKIE_HEADLESS=0 npm test` shows them, which
 is worth doing when a recording test misbehaves — the app itself is always headed, because the
@@ -59,6 +64,62 @@ These each cost real time to find. None are obvious from the code.
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
   `0600`.
 
+## Writing narration
+
+Two surfaces, because they are two jobs. The timeline's `ClipNarrationBox` is sized by the
+clip's width, which is fine for a glance and hopeless for writing — it hides the words entirely
+below `NARRATION_TEXT_MIN_WIDTH`, and scene splitting made every clip narrower. `ScriptView` is
+the other one: the whole project's narration top to bottom, in a column wide enough to read a
+sentence in, because most of what is wrong with narration is only wrong in context.
+
+**Timings live in the words.** A line beginning `[12.3]` is spoken at that second of its clip,
+and `narrationFromText` reads them back on the way in — in the IPC handlers and in MCP, so every
+route stores them the same way. Before that, editing narration anywhere cleared `beats` and
+silently turned a timed take into one flat block.
+
+## Asking the agent to change a project
+
+It sits beside the video rather than in the script pane: what it changes is the project, not
+only the words, and the stage already has the sources panel down one side — this is the other,
+with the demo between them.
+
+It reads as a conversation because it is one. Each turn passes the previous turn's
+`session_id` back as `--resume`, so "make that shorter" knows what "that" was; a chat that
+forgot between messages would be a worse lie than the single instruction box it replaced. The
+conversation belongs to the project and starts again when another is opened.
+
+`projectAgent.ts` runs one instruction against a whole project — "add an introduction and a
+closing statement" — by lending the CLI provider the tools Talkie already exposes: it launches
+`claude` with Talkie's own MCP server attached and `--strict-mcp-config`, so the in-app agent
+and an outside agent are the same agent working through the same tools. There is no second
+implementation to keep in step.
+
+- **The switch still gates it.** Agent access off means the run is refused, exactly as for
+  anyone else. What is new is `mcp.runTokenHash`: a second hashed slot so a run cannot revoke
+  the token an outside agent is already holding. It is withdrawn in a `finally`.
+- **`AGENT_TOOLS` is the reach.** Reading, project context, narration, every scene kind,
+  arranging, and undo. Not recording and not exporting — both take minutes, and neither is what
+  anyone means by "add an introduction".
+- **Every kind needs all five verbs.** Create, read, modify, remove, place. Both agent bugs
+  found in use were the same shape — create exposed, modify not: `add_scene` with no way to
+  edit a slide, and no way to reorder. Adding a tool means checking the other four.
+- **Mermaid needs a browser, and the server has one.** `renderMermaidHeadless.ts` draws a
+  diagram in the same Playwright Chromium that records demos, so an agent's diagram is a
+  picture immediately and a syntax error comes back to whoever wrote it. Both drawings go
+  through `mermaidTheme.ts` — same config, same font, injected as a data URL because a headless
+  browser has no fonts and mermaid sizes every box to the text in it. `drawPendingDiagrams` in
+  the renderer is now only the net underneath.
+- **Deck import does not.** `renderPdfPages.ts` rasterises in the renderer on Chromium's own
+  canvas; `rasterisePdf.ts` does the same in Node for the MCP server, using the `@napi-rs/canvas`
+  that `pdfjs-dist` already brings with it. Two implementations of one thing, deliberately: the
+  window should not pay for a native canvas it does not need, and the server has no window. Both
+  are in `asarUnpack` — the canvas is native, and plain `node` cannot read either from inside
+  the archive.
+- **The whole run is one undo step.** The agent writes from a child process whose own history
+  dies with it, so `project:agent:instruct` wraps the run in a single `withHistory` on the app's
+  side and the editor re-reads from disk afterwards. This is the documented no-locking hazard at
+  its sharpest: nothing should write to the project while a run is going.
+
 ## Recording an app automatically
 
 `exploreSession.ts` walks an app on its own when the user ticks "Show me round it", driven by
@@ -84,6 +145,22 @@ reads as a verb, and anything that would sign it out. It never types and never s
 it is not a small change — a recording is the worst place to discover a click did something,
 because by the time anyone watches the video the record is already gone.
 
+## Narration drives the picture
+
+A timed take is a list of moments, so the visuals can follow it rather than run on a stagger of
+their own. `revealOnBeat.ts` turns beats into frames and both scene kinds use it: a slide brings
+in each line as it is spoken, and `buildDiagram.ts` tags every mermaid node so a diagram is
+drawn in the order it is explained rather than arriving whole.
+
+- **Beats reach the composition through `resolveTimelineAssetUrls`**, alongside audio and
+  captions. A clip with no timed take gets none, and both scenes fall back to what they did
+  before — lines settling on a fixed stagger, a diagram shown complete.
+- **Beats are matched to lines from the end.** A slide is nearly always introduced before its
+  first point, so counting back puts each line with the sentence about it whether or not there
+  is an opening beat.
+- **An untimed slide never starts empty.** Lines settle from 0.7 rather than arriving from
+  nothing, because the first frame of a slide is what every thumbnail shows.
+
 ## Security invariants
 
 Do not weaken these without understanding what they are for. Each has tests.
@@ -98,6 +175,11 @@ Do not weaken these without understanding what they are for. Each has tests.
 - **The asset server puts a per-run secret in every URL.** Loopback is not a boundary — any page
   in any browser can scan the ephemeral ports. CORS cannot be the control because the renderer is
   `file://` (origin `null`) and needs to sample video frames onto a canvas.
+- **Permissions are deny-by-default**, in `src/main/security/permissions.ts`. Electron's list
+  includes the camera, screen capture, the clipboard and location; this app needs the
+  microphone and fullscreen. Anything added to that list upstream arrives refused. Written as a
+  named rule rather than an inline comparison because the inline one silently cost the preview
+  its fullscreen button.
 - **No window enables `nodeIntegration`.** Navigation is confined to the app's own pages by
   `src/main/security/navigationGuards.ts`.
 - **The MCP server is off by default** and checks a hashed token on every call.

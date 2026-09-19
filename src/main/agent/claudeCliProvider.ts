@@ -61,14 +61,22 @@ async function runClaude(prompt: string): Promise<string> {
   if (!binary) throw new Error('The `claude` command was not found.')
 
   try {
-    const { stdout } = await execFileAsync(
+    const running = execFileAsync(
       binary,
       ['-p', prompt, '--output-format', 'json', '--allowedTools', 'Read'],
       { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }
     )
+
+    // Closed at once. The prompt is an argument, so nothing is ever written to stdin — but
+    // `execFile` hands the child an open pipe anyway, and the CLI waits three seconds for
+    // input that is not coming before warning and carrying on. One draft could afford that; a
+    // walk of the app asks a question per step and pays it every time.
+    running.child.stdin?.end()
+
+    const { stdout } = await running
     return extractResult(stdout)
   } catch (err) {
-    throw new Error(`The claude CLI could not answer: ${messageOf(err)}`)
+    throw new Error(`The claude CLI could not answer: ${whatWentWrong(err)}`)
   }
 }
 
@@ -98,4 +106,32 @@ function extractResult(stdout: string): string {
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
+}
+
+/**
+ * What the CLI said, rather than what was asked of it.
+ *
+ * `execFile` builds its message from the command line, and the command line here is the whole
+ * prompt — so a failure arrived as several hundred words of the question quoted back, with the
+ * reason nowhere in it. The CLI puts the reason on stderr, which is where "usage limit
+ * reached" and "not logged in" actually live.
+ */
+export function whatWentWrong(err: unknown): string {
+  const stderr = (err as { stderr?: string } | null)?.stderr?.trim()
+  if (stderr) {
+    // Its warnings are chatter; the last real line is the complaint.
+    const said = stderr
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !/^warning:/i.test(line))
+    if (said.length > 0) return said[said.length - 1]
+  }
+
+  const message = messageOf(err)
+  // Nothing useful on stderr: say the command failed without quoting the prompt back.
+  if (/^Command failed:/.test(message)) {
+    const timedOut = (err as { killed?: boolean } | null)?.killed
+    return timedOut ? 'it took too long to answer' : 'it exited without answering'
+  }
+  return message
 }

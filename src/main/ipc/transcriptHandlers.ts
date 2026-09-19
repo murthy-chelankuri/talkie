@@ -9,6 +9,7 @@ import { narrateSegment } from '../transcript/narrate'
 import { saveRecordedNarration } from '../transcript/recordNarration'
 import { ensureMicrophoneAccess } from '../transcript/microphone'
 import { narrationFidelityFor } from '../transcript/narrationFidelity'
+import { narrationFromText } from '../transcript/narrationBeats'
 import { withHistory } from '../project/history'
 
 export function registerTranscriptHandlers(ipcMain: IpcMain): void {
@@ -19,14 +20,26 @@ export function registerTranscriptHandlers(ipcMain: IpcMain): void {
     narrationFidelityFor(projectId)
   )
 
+  // Timings are read out of the words on the way in, so a take written as timed lines keeps
+  // them whatever edited it. See narrationFromText.
   ipcMain.handle(
     'project:transcript:addSegment',
-    (_event, projectId: string, input: { text: string; timelineItemId: string }) =>
-      withHistory(projectId, () => addTranscriptSegment(projectId, input))
+    (_event, projectId: string, input: { text: string; timelineItemId: string }) => {
+      const { text, beats } = narrationFromText(input.text)
+      return withHistory(projectId, () =>
+        addTranscriptSegment(projectId, { ...input, text, beats })
+      )
+    }
   )
 
-  ipcMain.handle('project:transcript:updateText', (_event, projectId: string, segmentId: string, text: string) =>
-    withHistory(projectId, () => updateTranscriptSegmentText(projectId, segmentId, text))
+  ipcMain.handle(
+    'project:transcript:updateText',
+    (_event, projectId: string, segmentId: string, written: string) => {
+      const { text, beats } = narrationFromText(written)
+      return withHistory(projectId, () =>
+        updateTranscriptSegmentText(projectId, segmentId, text, undefined, beats)
+      )
+    }
   )
 
   ipcMain.handle('project:transcript:deleteSegment', (_event, projectId: string, segmentId: string) =>

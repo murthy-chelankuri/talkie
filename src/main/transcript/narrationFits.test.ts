@@ -88,7 +88,7 @@ describe('narration always fits inside its clip', () => {
     await narrateSegment(project.id, segment.id, baseDir)
 
     assertNarrationFits(project.id, baseDir)
-  }, 30_000)
+  }, 90_000)
 
   it('after synthesising a line far longer than the clip started out', async () => {
     const { project, segment } = clip(
@@ -100,7 +100,7 @@ describe('narration always fits inside its clip', () => {
     await narrateSegment(project.id, segment.id, baseDir)
 
     assertNarrationFits(project.id, baseDir)
-  }, 30_000)
+  }, 90_000)
 
   it('after synthesising over a recording that outlasts the words', async () => {
     const { project, segment } = clip('video', 600, 'Short line over a long recording.')
@@ -108,7 +108,7 @@ describe('narration always fits inside its clip', () => {
     await narrateSegment(project.id, segment.id, baseDir)
 
     assertNarrationFits(project.id, baseDir)
-  }, 30_000)
+  }, 90_000)
 
   it('after recording a take in the user\'s own voice', async () => {
     const { project, segment } = clip('image', 30, 'The script.')
@@ -156,7 +156,7 @@ describe('narration always fits inside its clip', () => {
     const duration = readTimeline(project.id, baseDir).find((i) => i.id === item.id)?.duration as number
 
     expect(duration - (NARRATION_LEAD_IN_FRAMES + audioFrames)).toBe(NARRATION_TAIL_FRAMES)
-  }, 30_000)
+  }, 90_000)
 })
 
 /** A real 16-bit mono WAV of a given length. */

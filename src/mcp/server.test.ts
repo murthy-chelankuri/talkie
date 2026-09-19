@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -240,13 +241,309 @@ describe('Talkie over MCP', () => {
       expect(readTranscript(projectId, baseDir)[0].beats).toBeUndefined()
     })
 
-    it('says whether a clip narration is timed when listing the timeline', async () => {
+    it('lists the timings themselves, not just how many there are', async () => {
+      // A count is no use for changing one line: without the times, adjusting a beat means
+      // rewriting the whole take from memory, and an edit someone else made is invisible.
       const projectId = await newProject('Listing')
       await call('talkie_add_scene', { projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
       await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: '[0.0] One.\n[4.0] Two.' })
 
-      expect(await call('talkie_timeline', { projectId })).toContain('2 timed lines')
+      const said = await call('talkie_timeline', { projectId })
+
+      expect(said).toContain('[0.0] One.')
+      expect(said).toContain('[4.0] Two.')
+    })
+
+    it('says plainly when a take has no timings at all', async () => {
+      const projectId = await newProject('Untimed listing')
+      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      const [clip] = readTimeline(projectId, baseDir)
+      await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: 'Just words.' })
+
+      expect(await call('talkie_timeline', { projectId })).toContain('read straight through')
+    })
+  })
+
+  describe('knowing what the project is for', () => {
+    it('reads back what it was told, so drafts use the terms the project uses', async () => {
+      const projectId = await newProject('Ledger')
+
+      await call('talkie_set_context', {
+        projectId,
+        background: 'Ledger grades stock calls over time.',
+        audience: 'finance teams',
+        neverSay: ['guaranteed returns']
+      })
+
+      const said = await call('talkie_project', { projectId })
+      expect(said).toContain('Ledger grades stock calls')
+      expect(said).toContain('finance teams')
+      expect(said).toContain('guaranteed returns')
+    })
+
+    it('says plainly when nothing has been recorded, and what to use', async () => {
+      const projectId = await newProject('Blank')
+
+      const said = await call('talkie_project', { projectId })
+      expect(said).toContain('talkie_set_context')
+    })
+
+    it('sets the voice, and says re-voicing is a separate step', async () => {
+      const projectId = await newProject('Voiced')
+
+      const said = await call('talkie_set_voice', { projectId, voice: 'Daniel' })
+      expect(said).toContain('Daniel')
+      expect(said).toMatch(/re-voice/i)
+    })
+  })
+
+  describe('how long a clip holds', () => {
+    it('gives a slide the room it was asked for', async () => {
+      // A slide is on screen for exactly as long as it is told to be, and nothing else could
+      // say so — duration only ever moved as a side effect of voicing.
+      const projectId = await newProject('Timing')
+      await call('talkie_add_scene', { projectId, title: 'Hold this' })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      await call('talkie_set_duration', { projectId, timelineItemId: slide.id, seconds: 8 })
+
+      expect(readTimeline(projectId, baseDir)[0].duration).toBe(240)
+    })
+  })
+
+  describe('importing a slide deck', () => {
+    it('turns every page of a PDF into a slide, notes and all', async () => {
+      // Deck import had no tool at all because rasterising was done in the renderer. It is
+      // done here now, so an agent can build a demo out of a deck it was handed.
+      const projectId = await newProject('Deck')
+      const dir = mkdtempSync(join(tmpdir(), 'talkie-deck-mcp-'))
+      const txt = join(dir, 'deck.txt')
+      const pdf = join(dir, 'deck.pdf')
+      writeFileSync(txt, 'One\n\f\nTwo\n')
+      writeFileSync(pdf, execFileSync('/usr/sbin/cupsfilter', [txt], { maxBuffer: 16 * 1024 * 1024 }))
+
+      const said = await call('talkie_import_deck', { projectId, path: pdf })
+
+      expect(said).toContain('2 slides')
+      const timeline = readTimeline(projectId, baseDir)
+      expect(timeline).toHaveLength(2)
+      expect(timeline.every((item) => item.kind === 'image')).toBe(true)
+
+      rmSync(dir, { recursive: true, force: true })
+    }, 60_000)
+
+    it('leaves the timeline alone when there is no deck at the path', async () => {
+      // Whether a .pptx can be rendered depends on LibreOffice being installed, which is not
+      // something a test should assert either way. What must hold regardless is that a failed
+      // import adds nothing.
+      const projectId = await newProject('Missing deck')
+
+      const result = await client.callTool({
+        name: 'talkie_import_deck',
+        arguments: { projectId, path: '/tmp/there-is-no-deck-here.pdf' }
+      })
+
+      expect(result.isError).toBe(true)
+      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+    }, 60_000)
+  })
+
+  describe('pictures and diagrams', () => {
+    it('draws the diagram there and then, rather than leaving a blank clip', async () => {
+      // Mermaid needs a browser to measure text, and the server has one — the same headless
+      // Chromium that records demos. Waiting for the app to open meant an agent's diagram sat
+      // on the timeline showing nothing, which reads as broken rather than pending.
+      const projectId = await newProject('Drawn')
+
+      await call('talkie_add_diagram', {
+        projectId,
+        source: 'graph LR; A[Client] --> B[API]',
+        title: 'How it fits together'
+      })
+
+      const [item] = readTimeline(projectId, baseDir)
+      expect(item.kind).toBe('diagram')
+      const data = item.data as { source: string; src?: string }
+      expect(data.source).toBe('graph LR; A[Client] --> B[API]')
+      expect(data.src).toBeDefined()
+
+      const svg = readFileSync(data.src as string, 'utf-8')
+      expect(svg).toContain('<svg')
+      expect(svg).toContain('Client')
+    }, 120_000)
+
+    it('hands back the complaint from mermaid instead of saving a diagram that will not draw', async () => {
+      const projectId = await newProject('Broken diagram')
+
+      const said = await call('talkie_add_diagram', { projectId, source: 'graph LR; A -->' })
+
+      expect(said).toMatch(/could not be drawn/i)
+      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+    }, 120_000)
+
+    it('redraws when the source changes, so the picture and the project agree', async () => {
+      const projectId = await newProject('Redrawn')
+      await call('talkie_add_diagram', { projectId, source: 'graph LR; Alpha --> Beta' })
+      const [item] = readTimeline(projectId, baseDir)
+      const first = (item.data as { src: string }).src
+
+      await call('talkie_edit_diagram', { projectId, timelineItemId: item.id, source: 'graph TD; Gamma --> Delta' })
+
+      const data = readTimeline(projectId, baseDir)[0].data as { source: string; src: string }
+      expect(data.source).toBe('graph TD; Gamma --> Delta')
+      expect(data.src).not.toBe(first)
+      expect(readFileSync(data.src, 'utf-8')).toContain('Gamma')
+    }, 120_000)
+
+    it('refuses to treat a slide as a diagram', async () => {
+      const projectId = await newProject('Not a diagram')
+      await call('talkie_add_scene', { projectId, title: 'A slide' })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      expect(
+        await call('talkie_edit_diagram', { projectId, timelineItemId: slide.id, source: 'graph LR; A-->B' })
+      ).toContain('not a diagram')
+    })
+  })
+
+  describe('taking a change back', () => {
+    it('steps back its own last change', async () => {
+      const projectId = await newProject('Undoable')
+      await call('talkie_add_scene', { projectId, title: 'First' })
+      await call('talkie_add_scene', { projectId, title: 'Second' })
+      expect(readTimeline(projectId, baseDir)).toHaveLength(2)
+
+      await call('talkie_undo', { projectId })
+
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+    })
+
+    it('puts it back again', async () => {
+      const projectId = await newProject('Redoable')
+      await call('talkie_add_scene', { projectId, title: 'Only' })
+      await call('talkie_undo', { projectId })
+
+      await call('talkie_redo', { projectId })
+
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+    })
+  })
+
+  describe('changing what a slide says', () => {
+    it('rewrites the words on screen, not only the words said over them', async () => {
+      // The gap this closes: the agent could change narration but not the slide, so asked to
+      // reword an opening it changed the voice and left the picture — which reads as a preview
+      // that will not update, because the picture genuinely never changed.
+      const projectId = await newProject('Slide words')
+      await call('talkie_add_scene', { projectId, title: 'Old title', bullets: ['One', 'Two'] })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_edit_slide', {
+        projectId,
+        timelineItemId: slide.id,
+        title: 'New title'
+      })
+
+      expect(said).toContain('New title')
+      expect(readTimeline(projectId, baseDir)[0].data).toMatchObject({ title: 'New title' })
+    })
+
+    it('keeps the lines it was not asked about', async () => {
+      // Leaving the bullets out of a retitle should not silently empty the slide.
+      const projectId = await newProject('Keep bullets')
+      await call('talkie_add_scene', { projectId, title: 'Old', bullets: ['One', 'Two'] })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'New' })
+
+      expect(readTimeline(projectId, baseDir)[0].data).toMatchObject({ bullets: ['One', 'Two'] })
+    })
+
+    it('says a recording has no words to rewrite, and what to use instead', async () => {
+      const projectId = await newProject('Not a slide')
+      addTimelineItem(projectId, { kind: 'video', start: 0, duration: 90, data: { src: '/v.mp4' } }, baseDir)
+      const [clip] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_edit_slide', {
+        projectId,
+        timelineItemId: clip.id,
+        title: 'Nope'
+      })
+
+      expect(said).toContain('only a slide')
+      expect(said).toContain('talkie_set_narration')
+    })
+  })
+
+  describe('rearranging a project over MCP', () => {
+    it('lifts a scene added at the end to the front, where an introduction belongs', async () => {
+      // The gap this closes: talkie_add_scene only ever appends, so an agent asked to "add an
+      // introduction" produced one stranded after the whole demo and had no way to move it.
+      const projectId = await newProject('Order')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      addTimelineItem(projectId, { kind: 'image', start: 90, duration: 90, data: { src: '/b.png' } }, baseDir)
+      await call('talkie_add_scene', { projectId, title: 'Ledger' })
+      const intro = readTimeline(projectId, baseDir)[2]
+
+      const said = await call('talkie_move_clip', {
+        projectId,
+        timelineItemId: intro.id,
+        toPosition: 1
+      })
+
+      expect(said).toContain('position 1')
+      expect(readTimeline(projectId, baseDir).map((item) => item.id)[0]).toBe(intro.id)
+    })
+
+    it('closes the gaps so the project still plays end to end', async () => {
+      const projectId = await newProject('Gapless')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      addTimelineItem(projectId, { kind: 'image', start: 90, duration: 60, data: { src: '/b.png' } }, baseDir)
+      addTimelineItem(projectId, { kind: 'image', start: 150, duration: 30, data: { src: '/c.png' } }, baseDir)
+      const last = readTimeline(projectId, baseDir)[2]
+
+      await call('talkie_move_clip', { projectId, timelineItemId: last.id, toPosition: 1 })
+
+      let cursor = 0
+      for (const item of readTimeline(projectId, baseDir)) {
+        expect(item.start).toBe(cursor)
+        cursor += item.duration
+      }
+    })
+
+    it('says a position is outside the project rather than dropping the clip', async () => {
+      const projectId = await newProject('Outside')
+      addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+      const [only] = readTimeline(projectId, baseDir)
+
+      const result = await client.callTool({
+        name: 'talkie_move_clip',
+        arguments: { projectId, timelineItemId: only.id, toPosition: 9 }
+      })
+
+      expect(result.isError).toBe(true)
+      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+    })
+
+    it('takes back a scene it should not have added', async () => {
+      // Without this the agent could make a mess and not tidy it.
+      const projectId = await newProject('Undo it')
+      await call('talkie_add_scene', { projectId, title: 'Wrong' })
+      const [added] = readTimeline(projectId, baseDir)
+
+      const said = await call('talkie_delete_clip', { projectId, timelineItemId: added.id })
+
+      expect(said).toContain('Deleted')
+      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+    })
+
+    it('refuses a clip id that is not there', async () => {
+      const projectId = await newProject('Missing clip')
+
+      expect(await call('talkie_delete_clip', { projectId, timelineItemId: 'nope' })).toContain(
+        'No clip found'
+      )
     })
   })
 

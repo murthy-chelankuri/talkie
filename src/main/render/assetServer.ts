@@ -230,23 +230,30 @@ export function resolveTimelineAssetUrls(
   serverUrl: string,
   narrationAudioPaths: Map<string, NarrationAudio> = new Map(),
   /** Cues to paint into the picture, when the user has asked for them. Empty otherwise. */
-  captionsByItem: Record<string, CaptionCue[]> = {}
+  captionsByItem: Record<string, CaptionCue[]> = {},
+  /**
+   * When each thing is said over each clip, so a slide can show a line as it is spoken rather
+   * than a fixed moment after it appears. See revealOnBeat.ts.
+   */
+  beatsByItem: Record<string, { at: number; text: string }[]> = {}
 ): TimelineItem[] {
   return timeline.map((item) => {
     const narration = narrationAudioPaths.get(item.id)
     const captions = captionsByItem[item.id]
+    const beats = beatsByItem[item.id]
     const audioUrl = narration
       ? `${resolveAssetUrl(narration.path, rootDir, serverUrl)}?v=${narration.version}`
       : undefined
 
     if (!SRC_MEDIA_KINDS.has(item.kind)) {
-      return audioUrl || captions
+      return audioUrl || captions || beats
         ? {
             ...item,
             data: {
               ...(item.data as object),
               ...(audioUrl ? { audioUrl } : {}),
-              ...(captions ? { captions } : {})
+              ...(captions ? { captions } : {}),
+              ...(beats ? { beats } : {})
             }
           }
         : item
@@ -260,6 +267,7 @@ export function resolveTimelineAssetUrls(
         src: resolveAssetUrl(data.src, rootDir, serverUrl),
         ...(audioUrl ? { audioUrl } : {}),
         ...(captions ? { captions } : {}),
+        ...(beats ? { beats } : {}),
         // Where the clicks in this clip landed, so the picture can lean towards them.
         ...(item.kind === 'video'
           ? { focus: focusesFor(data.src, item, data.trimBefore ?? 0, data.trimAfter) }

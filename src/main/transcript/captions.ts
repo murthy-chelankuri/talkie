@@ -239,3 +239,18 @@ export function captionsByItem(
 
   return grouped
 }
+
+/**
+ * The moments each clip's narration is spoken at, keyed by clip.
+ *
+ * Handed to the composition so a slide can bring in a line as it is mentioned. Only takes that
+ * were timed have any: one read straight through says nothing about when anything is said, and
+ * a slide with nothing to wait for falls back to a stagger.
+ */
+export function beatsByItem(segments: TranscriptSegment[]): Record<string, { at: number; text: string }[]> {
+  const grouped: Record<string, { at: number; text: string }[]> = {}
+  for (const segment of segments) {
+    if (segment.beats && segment.beats.length > 0) grouped[segment.timelineItemId] = segment.beats
+  }
+  return grouped
+}

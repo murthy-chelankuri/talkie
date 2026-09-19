@@ -10,6 +10,12 @@ function speechOptions(overrides = {}) {
   return { voice: 'Samantha', pace: 170, sentencePauseMs: 420, clausePauseMs: 300, ...overrides }
 }
 
+/**
+ * These speak for real. `say` is fast once a voice is loaded and slow the first time macOS has
+ * to fetch and warm one up — measured at over twenty seconds for a voice not used before,
+ * against a limit that used to be thirty. What that produced was a suite reporting how busy
+ * the machine was; none of these were ever testing the clock.
+ */
 describe('sayTtsProvider (real say + afconvert)', () => {
   let dir: string
 
@@ -24,7 +30,7 @@ describe('sayTtsProvider (real say + afconvert)', () => {
     await sayTtsProvider.synthesize('This is a test narration.', outputPath, speechOptions())
 
     expect(statSync(outputPath).size).toBeGreaterThan(1000)
-  }, 30_000)
+  }, 90_000)
 })
 
 describe('voice selection', () => {
@@ -49,7 +55,7 @@ describe('voice selection', () => {
 
     expect(existsSync(outputPath)).toBe(true)
     expect(statSync(outputPath).size).toBeGreaterThan(1000)
-  }, 30_000)
+  }, 90_000)
 
   it('falls back to a working voice when the setting is blank', async () => {
     // `say` with no -v can resolve to a stub that writes near-silence, so blank must not
@@ -60,5 +66,5 @@ describe('voice selection', () => {
     await sayTtsProvider.synthesize('Testing the fallback voice.', outputPath, speechOptions())
 
     expect(statSync(outputPath).size).toBeGreaterThan(1000)
-  }, 30_000)
+  }, 90_000)
 })
