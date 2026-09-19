@@ -45,7 +45,7 @@ describe('narrateSegment (real say + afconvert)', () => {
     expect(updatedTranscript[0].status).toBe('narrated')
 
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 
   it('never shortens a video item, so narrating cannot truncate the recording', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-video-test-'))
@@ -64,7 +64,7 @@ describe('narrateSegment (real say + afconvert)', () => {
     expect(updatedItem?.duration).toBe(600)
 
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 
   it('extends a video item when the narration outlasts the recording', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-video-long-test-'))
@@ -86,9 +86,15 @@ describe('narrateSegment (real say + afconvert)', () => {
     expect(updatedItem?.duration).toBeGreaterThan(5)
 
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 })
 
+/**
+ * These speak for real, through `say`, and two of them ask for a voice the system has to fetch
+ * and warm up before it will say anything — measured at twenty-one seconds against a thirty
+ * second limit on an idle machine, which is a test of how busy the machine is rather than of
+ * the code. Ninety gives it room to be slow without giving a hang anywhere to hide.
+ */
 describe('voice', () => {
   it('records which voice read the narration', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-voice-test-'))
@@ -103,7 +109,7 @@ describe('voice', () => {
 
     expect(result.voice).toBe('Daniel')
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 
   it("uses the project's own voice ahead of the app's", async () => {
     // The point of pinning a voice to a project: new takes have to match the ones already in it,
@@ -120,7 +126,7 @@ describe('voice', () => {
 
     expect(result.voice).toBe('Daniel')
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 
   it('goes back to the app voice when the project keeps none', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-unpinned-voice-test-'))
@@ -134,7 +140,7 @@ describe('voice', () => {
 
     expect((await narrateSegment(project.id, segment.id, baseDir)).voice).toBe('Samantha')
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 
   it('re-narrating in a new voice replaces the recorded voice', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-renarrate-voice-test-'))
@@ -177,7 +183,7 @@ describe('pauses between clips', () => {
     // Without the extra frames the next clip would cut in on the last word.
     expect(duration).toBe(spokenFrames + NARRATION_LEAD_IN_FRAMES + NARRATION_TAIL_FRAMES)
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 
   it('still never shortens a recording to fit the pause', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-pause-video-test-'))
@@ -194,5 +200,5 @@ describe('pauses between clips', () => {
 
     expect(readTimeline(project.id, baseDir).find((i) => i.id === item.id)?.duration).toBe(600)
     rmSync(baseDir, { recursive: true, force: true })
-  }, 30_000)
+  }, 90_000)
 })

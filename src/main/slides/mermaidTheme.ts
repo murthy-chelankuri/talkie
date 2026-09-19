@@ -20,7 +20,15 @@ export const MERMAID_THEME = {
   fontSize: '20px'
 }
 
-/** The configuration both drawings are made with, so both come out the same shape. */
+/**
+ * The configuration both drawings are made with, so both come out the same shape.
+ *
+ * Labels stay as HTML in `<foreignObject>`, which is mermaid's default. Turning that off makes
+ * an SVG that draws anywhere, including through an `<img>` — but it was measured doing so by
+ * dropping every line after a `<br/>`, and a diagram quietly missing half its labels is worse
+ * than one that needs showing a particular way. Everything that shows a diagram puts it in the
+ * document rather than in an `<img>`; see DiagramScene and DiagramThumbnail.
+ */
 export const MERMAID_CONFIG = {
   startOnLoad: false,
   securityLevel: 'strict',
