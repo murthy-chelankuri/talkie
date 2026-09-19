@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -309,6 +310,43 @@ describe('Talkie over MCP', () => {
 
       expect(readTimeline(projectId, baseDir)[0].duration).toBe(240)
     })
+  })
+
+  describe('importing a slide deck', () => {
+    it('turns every page of a PDF into a slide, notes and all', async () => {
+      // Deck import had no tool at all because rasterising was done in the renderer. It is
+      // done here now, so an agent can build a demo out of a deck it was handed.
+      const projectId = await newProject('Deck')
+      const dir = mkdtempSync(join(tmpdir(), 'talkie-deck-mcp-'))
+      const txt = join(dir, 'deck.txt')
+      const pdf = join(dir, 'deck.pdf')
+      writeFileSync(txt, 'One\n\f\nTwo\n')
+      writeFileSync(pdf, execFileSync('/usr/sbin/cupsfilter', [txt], { maxBuffer: 16 * 1024 * 1024 }))
+
+      const said = await call('talkie_import_deck', { projectId, path: pdf })
+
+      expect(said).toContain('2 slides')
+      const timeline = readTimeline(projectId, baseDir)
+      expect(timeline).toHaveLength(2)
+      expect(timeline.every((item) => item.kind === 'image')).toBe(true)
+
+      rmSync(dir, { recursive: true, force: true })
+    }, 60_000)
+
+    it('leaves the timeline alone when there is no deck at the path', async () => {
+      // Whether a .pptx can be rendered depends on LibreOffice being installed, which is not
+      // something a test should assert either way. What must hold regardless is that a failed
+      // import adds nothing.
+      const projectId = await newProject('Missing deck')
+
+      const result = await client.callTool({
+        name: 'talkie_import_deck',
+        arguments: { projectId, path: '/tmp/there-is-no-deck-here.pdf' }
+      })
+
+      expect(result.isError).toBe(true)
+      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+    }, 60_000)
   })
 
   describe('pictures and diagrams', () => {

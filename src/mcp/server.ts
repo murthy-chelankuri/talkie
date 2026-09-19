@@ -29,6 +29,8 @@ import { clipActions } from '../main/agent/clipEvidence'
 import { narrationFromText } from '../main/transcript/narrationBeats'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
+import { prepareDeck, saveSlides } from '../main/slides/importSlides'
+import { rasterisePdf } from '../main/slides/rasterisePdf'
 import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
@@ -537,6 +539,55 @@ export function createTalkieServer(
       return text(
         `Added the picture at the end (clip id ${item.id}), on screen for ` +
           `${(item.duration / 30).toFixed(1)}s.`
+      )
+    }
+  )
+
+  tool(
+    'talkie_import_deck',
+    {
+      title: 'Import a slide deck',
+      description:
+        'Turn a .pdf or .pptx into slides on the timeline, one clip per page, with any speaker ' +
+        'notes kept as the narration for their own slide. Notes are stored as the author\'s own ' +
+        'words, so drafting will not overwrite a script somebody already wrote in PowerPoint.\n' +
+        'A .pptx needs LibreOffice installed to be rendered; without it the notes are still ' +
+        'readable and this says so, so exporting the deck as a PDF is the way through.',
+      inputSchema: {
+        projectId: z.string(),
+        path: z.string().describe('An absolute path to a .pdf or .pptx on this machine')
+      }
+    },
+    async ({ projectId, path }) => {
+      const deck = await prepareDeck(path)
+
+      if (deck.status === 'needs-pdf') {
+        return text(
+          `${deck.reason}\n` +
+            (deck.notes.some((note) => note.trim())
+              ? 'The speaker notes were readable and will be used when the PDF is imported.'
+              : 'There were no speaker notes to read.')
+        )
+      }
+      if (deck.status !== 'ready') {
+        return text('Nothing was imported.')
+      }
+
+      const pages = await rasterisePdf(deck.pdf)
+      if (pages.length === 0) return text(`${deck.name} has no pages in it.`)
+
+      const added = withHistory(
+        projectId,
+        () => saveSlides(projectId, pages, deck.notes, baseDir),
+        baseDir
+      )
+      const withNotes = deck.notes.filter((note) => note.trim()).length
+
+      return text(
+        `Imported ${added.length} slide${added.length === 1 ? '' : 's'} from ${deck.name}` +
+          `${withNotes > 0 ? `, ${withNotes} with speaker notes as narration` : ''}.\n` +
+          'They are at the end of the timeline — use talkie_move_clip to place them, and ' +
+          'talkie_set_duration to say how long each holds.'
       )
     }
   )

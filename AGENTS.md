@@ -98,10 +98,14 @@ implementation to keep in step.
 - **Every kind needs all five verbs.** Create, read, modify, remove, place. Both agent bugs
   found in use were the same shape — create exposed, modify not: `add_scene` with no way to
   edit a slide, and no way to reorder. Adding a tool means checking the other four.
-- **Two things an agent cannot do, because they need a browser.** Mermaid is drawn in the
-  renderer, so an agent writes diagram *source* and `drawPendingDiagrams` draws it when the app
-  next reads the timeline. Deck import rasterises a PDF in the renderer too, and has no MCP
-  tool at all for the same reason.
+- **Mermaid still needs a browser.** It is drawn in the renderer, so an agent writes diagram
+  *source* and `drawPendingDiagrams` draws it when the app next reads the timeline.
+- **Deck import does not.** `renderPdfPages.ts` rasterises in the renderer on Chromium's own
+  canvas; `rasterisePdf.ts` does the same in Node for the MCP server, using the `@napi-rs/canvas`
+  that `pdfjs-dist` already brings with it. Two implementations of one thing, deliberately: the
+  window should not pay for a native canvas it does not need, and the server has no window. Both
+  are in `asarUnpack` — the canvas is native, and plain `node` cannot read either from inside
+  the archive.
 - **The whole run is one undo step.** The agent writes from a child process whose own history
   dies with it, so `project:agent:instruct` wraps the run in a single `withHistory` on the app's
   side and the editor re-reads from disk afterwards. This is the documented no-locking hazard at
