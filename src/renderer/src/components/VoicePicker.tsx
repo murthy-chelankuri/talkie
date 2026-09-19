@@ -3,6 +3,7 @@ import type { Voice } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
+import { resolveVoiceName } from '../lib/voiceNames'
 
 /** What the picker reports when the choice is "no voice of its own". */
 export const FOLLOWS_DEFAULT = ''
@@ -38,7 +39,7 @@ export function VoicePicker({
     <div className={cn('flex items-center gap-2', className)}>
       <select
         aria-label={ariaLabel}
-        value={value}
+        value={resolveVoiceName(value, voices)}
         onChange={(event) => onChange(event.target.value)}
         className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
       >
