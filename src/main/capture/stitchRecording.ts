@@ -23,13 +23,27 @@ export interface RecordedClip {
 // binary comes from Remotion's own bundled ffmpeg, so this adds no dependency.
 const KEYFRAME_INTERVAL_FRAMES = '30'
 
+/**
+ * VideoToolbox rather than libx264, which is the encoder that decides whether this app can ever
+ * be distributed. x264 is GPL, and it is what makes Remotion's ffmpeg a GPL binary: shipping a
+ * build means offering its corresponding source to every recipient, and it is the reason the
+ * Mac App Store is closed to it. Talkie needs nothing x264 offers that the hardware encoder on
+ * every machine it supports does not, so it asks for the one that carries no licence with it.
+ *
+ * Choosing it here does not make the shipped ffmpeg any less GPL — that was settled when the
+ * binary was linked. What it removes is the dependency, so a future non-GPL build of ffmpeg is
+ * a substitution rather than a rewrite.
+ *
+ * `-q:v` replaces `-crf`, which VideoToolbox does not accept, and there is no `-preset` because
+ * the encoder is fixed-function. 65 is a little richer than the crf 23 it replaces, deliberately:
+ * this file is the source the final render reads, so its losses are inherited, and a hardware
+ * encode is cheap enough that the extra bits cost nothing worth counting.
+ */
 const ENCODE_ARGS = [
   '-c:v',
-  'libx264',
-  '-preset',
-  'veryfast',
-  '-crf',
-  '23',
+  'h264_videotoolbox',
+  '-q:v',
+  '65',
   '-g',
   KEYFRAME_INTERVAL_FRAMES,
   '-pix_fmt',

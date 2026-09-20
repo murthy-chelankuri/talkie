@@ -95,6 +95,22 @@ function copyrightFrom(text) {
   return line ?? null
 }
 
+/**
+ * Who to credit when a package ships no licence file at all.
+ *
+ * MIT and the BSDs ask for the copyright notice to be reproduced, not for the licence to be
+ * named â€” so recording only "MIT" against a package leaves the one duty it actually imposes
+ * unmet. A dozen packages here state their licence in the manifest and nowhere else. The
+ * manifest's author is the best available answer, and is marked as derived so nobody mistakes
+ * it for a notice quoted from the package itself.
+ */
+function attributionFrom(pkg) {
+  const from = pkg.author ?? (Array.isArray(pkg.contributors) ? pkg.contributors[0] : null)
+  const name = typeof from === 'string' ? from : from?.name
+  if (!name) return null
+  return `Copyright (c) ${name.replace(/\s*<[^>]*>/, '').trim()} (from package.json; the package ships no licence file)`
+}
+
 function normaliseLicense(pkg) {
   const raw = pkg.license ?? pkg.licenses
   if (typeof raw === 'string') return raw
@@ -156,7 +172,7 @@ for (const name of productionPackages()) {
     version: pkg.version ?? '',
     license: license ?? 'Unstated',
     homepage: pkg.homepage ?? (typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url) ?? null,
-    copyright: copyrightFrom(text),
+    copyright: copyrightFrom(text) ?? attributionFrom(pkg),
     // Kept whole for the licences that require the text itself to travel with the software.
     text: text && text.length <= 24000 ? text : null
   })
@@ -175,5 +191,13 @@ console.log(`${packages.length} packages + ${BUNDLED.length} bundled binaries â†
 for (const [license, count] of Object.entries(counts).sort((a, b) => b[1] - a[1])) {
   console.log(`  ${String(count).padStart(4)}  ${license}`)
 }
-const noText = packages.filter((p) => !p.text).length
-if (noText > 0) console.log(`\n  ${noText} package(s) ship no licence file; their SPDX id is recorded instead.`)
+const noText = packages.filter((p) => !p.text)
+if (noText.length > 0) {
+  const unattributed = noText.filter((p) => !p.copyright)
+  console.log(`\n  ${noText.length} package(s) ship no licence file; their SPDX id is recorded instead.`)
+  if (unattributed.length > 0) {
+    // MIT and BSD want a copyright line reproduced, and for these there is nothing to reproduce
+    // and nobody named to credit. Worth seeing rather than counting silently.
+    console.log(`  ${unattributed.length} of those name no author either: ${unattributed.map((p) => p.name).join(', ')}`)
+  }
+}

@@ -58,16 +58,55 @@ This matters when binaries are distributed, not when source is:
     corresponding source of FFmpeg and its GPL dependencies to every recipient,
     and imposing no further restrictions on the rights the GPL grants them.
 
+Which version of the GPL applies, and what a source offer has to be
+---------------------------------------------------------------------
+
+These binaries are "GPL-2.0-or-later", so a distributor may elect version 3.
+Anyone distributing a build of Talkie should elect GPL-3.0-or-later and say so,
+because only version 3 accepts a network location as the way to provide source.
+GPLv2 section 3 does not: it wants the source to accompany the binary, or a
+written offer valid for three years. A URL alone does not satisfy it.
+
+The links below are upstream release pages, not corresponding source. The GPL
+asks for the source of the binary actually shipped -- FFmpeg n7.1 as Remotion
+configured and built it, with its exact flags -- so a distributor has to publish
+that tree, or a tarball of it, beside the download. `ffmpeg -buildconf` on the
+binary in @remotion/compositor-darwin-arm64 prints the configuration it was
+built with.
+
 FFmpeg source:  https://ffmpeg.org/download.html
 x264 source:    https://www.videolan.org/developers/x264.html
 x265 source:    https://www.videolan.org/developers/x265.html
+
+Talkie itself does not use the GPL encoders. Recording and export both ask for
+h264_videotoolbox, the hardware encoder built into every Mac it runs on. That
+does not make the shipped binary any less GPL -- it was linked with x264 and
+x265 and stays covered however it is invoked -- but it means no feature depends
+on them, and a build of FFmpeg without --enable-gpl would serve Talkie equally.
+
+Two things worth settling with Remotion before distributing any build:
+
+  * Their FFmpeg is configured --enable-gpl together with --enable-libfdk-aac.
+    fdk-aac's licence is not GPL-compatible, and FFmpeg's own build rules
+    require --enable-nonfree for that combination, which produces a binary
+    marked as not redistributable. The buildconf shows no --enable-nonfree.
+
+  * Whether a build without --enable-gpl, --enable-libx264 and --enable-libx265
+    is available, which would remove this section's obligations entirely.
 
 --------------------------------------------------------------------------------
 Other notable licences
 --------------------------------------------------------------------------------
 
-  * MPL-2.0 and EPL-2.0 (file-level copyleft): source for the covered files must
-    be made available. Affects dompurify, elkjs and a small number of others.
+  * MPL-2.0 (file-level copyleft): source for the covered files must be made
+    available. Affects mediabunny and its @mediabunny/aac-encoder,
+    @mediabunny/flac-encoder and @mediabunny/mp3-encoder packages, which arrive
+    with Remotion. Unmodified, this is satisfied by pointing at upstream.
+
+  * EPL-2.0 (file-level copyleft): the same duty, and affects elkjs.
+
+  * dompurify is "(MPL-2.0 OR Apache-2.0)" -- a choice, not a requirement.
+    Talkie elects Apache-2.0, under which nothing further is owed.
   * OFL-1.1: the Geist and Newsreader fonts are embedded in the app. They may
     not be sold on their own, and their copyright notices must travel with them.
 

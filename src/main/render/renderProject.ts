@@ -71,6 +71,11 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },
     serveUrl: bundleLocation,
     codec: 'h264',
+    // The hardware encoder, for the licensing reason set out in stitchRecording.ts: libx264 is
+    // what makes the bundled ffmpeg GPL, and nothing here needs it. `if-possible` rather than
+    // `required` because a failed export is a worse outcome than a fallback — though on Apple
+    // Silicon, which is the only hardware this app supports, the fallback cannot be reached.
+    hardwareAcceleration: 'if-possible',
     // Tagged as high-definition colour, which is what it is. Left to itself the file came out
     // marked bt470bg — the colour space of PAL television — with its transfer and primaries
     // unset, so any player that honoured the tag showed the wrong colours for a 1080p video.
