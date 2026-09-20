@@ -51,6 +51,39 @@ describe('noticing that an app wants a person', () => {
     expect(wall?.kind).toBe('second-factor')
   })
 
+  it('lets a signed-in page through even when its title still says the login page did', () => {
+    // The shape that cost a whole recording: the person signs in, the app routes without
+    // reloading so <title> still reads "Sign in", the dashboard has a search box, and nothing on
+    // it is something the allowlist would click. Read as a wall, the walk waited five minutes
+    // for a sign-in that had already happened and then reported that nobody ever signed in.
+    const wall = authWall(
+      page({
+        title: 'Acme — Sign in',
+        heading: 'Dashboard',
+        text: 'Welcome back. Your portfolio is up 3% today.',
+        fields: [{ type: 'text', name: 'q' }],
+        candidates: []
+      })
+    )
+
+    expect(wall).toBeNull()
+  })
+
+  it('still stops when the only field is one a person is identified by', () => {
+    // The same page shape, and the difference that matters: an email box rather than a search
+    // box means this is the first half of a sign-in, not the far side of one.
+    const wall = authWall(
+      page({
+        title: 'Acme — Sign in',
+        heading: 'Sign in',
+        fields: [{ type: 'email', name: 'email' }],
+        candidates: []
+      })
+    )
+
+    expect(wall?.kind).toBe('sign-in')
+  })
+
   it('stops at a single-sign-on page that has no field of its own yet', () => {
     // Email-first forms and "continue with" buttons ask on the next screen. There is nowhere
     // safe to go from here either, so waiting is still the right move.

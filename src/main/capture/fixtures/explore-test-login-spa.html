@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Acme — Sign in</title></head>
+<body>
+  <h1>Sign in</h1>
+  <form>
+    <input id="email" type="email" name="email" placeholder="Email" />
+    <input id="password" type="password" name="password" placeholder="Password" />
+    <button type="submit">Sign in</button>
+  </form>
+  <script>
+    // Standing in for an app whose dashboard is driven by script rather than links: the sign-in
+    // succeeds and the app is plainly there, but nothing on it is safe to click.
+    document.querySelector('form').addEventListener('submit', (event) => {
+      event.preventDefault()
+      document.body.innerHTML =
+        '<h1>Dashboard</h1><p>Welcome back. Your portfolio is up 3% today.</p>' +
+        '<form><input id="q" name="q" placeholder="Search" /></form>'
+    })
+  </script>
+</body>
+</html>
