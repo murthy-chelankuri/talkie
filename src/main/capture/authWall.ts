@@ -29,6 +29,30 @@ export interface WallReading {
 
 export type Wall = { kind: 'sign-in' | 'second-factor'; asking: string } | null
 
+/** How a page names the field it wants a person identified by. */
+const IDENTIFIER_NAMES = /email|user|login|account|phone|mobile/i
+
+/**
+ * Whether this field is the half of a sign-in that is not the secret.
+ *
+ * The wall below it has no password on it yet — an email-first form, a "continue with" screen —
+ * so the identifier is the only thing left to recognise it by. Asking merely whether the page
+ * has *any* field was too little: a signed-in dashboard with a search box and nothing the
+ * allowlist would click read as a wall, and because a stale <title> is ordinary in an app that
+ * routes without reloading, the words that confirmed it were often still the login page's own.
+ * The walk then held at a wall that was no longer there until its five minutes ran out, and
+ * reported an app nobody had signed in to.
+ */
+function couldIdentifySomeone(field: CapturedField): boolean {
+  const type = (field.type ?? '').toLowerCase()
+  if (type === 'email' || type === 'tel') return true
+
+  const autocomplete = (field.autocomplete ?? '').toLowerCase()
+  if (autocomplete === 'username' || autocomplete === 'email' || autocomplete === 'tel') return true
+
+  return IDENTIFIER_NAMES.test(`${field.name ?? ''} ${field.id ?? ''}`)
+}
+
 /**
  * Whether this page is asking a person for something only they have.
  *
@@ -56,7 +80,11 @@ export function authWall(reading: WallReading): Wall {
 
   // A wall with no field of its own yet: the single-sign-on button, or an email-first form that
   // asks for the password on the next screen. There is nowhere safe to go from here either.
-  if (reading.candidates.length === 0 && fields.length > 0 && SIGN_IN_WORDS.some((word) => words.includes(word))) {
+  if (
+    reading.candidates.length === 0 &&
+    fields.some(couldIdentifySomeone) &&
+    SIGN_IN_WORDS.some((word) => words.includes(word))
+  ) {
     return { kind: 'sign-in', asking: 'your sign-in details' }
   }
 

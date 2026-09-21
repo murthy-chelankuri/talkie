@@ -194,3 +194,64 @@ describe('walking the app from start to finish', () => {
     expect(result.ending).toBe('budget')
   }, 60_000)
 })
+
+describe('an app whose dashboard has nothing safe to click', () => {
+  it('carries on once the wall is gone, rather than holding as if nobody signed in', async () => {
+    // The wall going is the signal that the person is through. Requiring somewhere to go next as
+    // well conflates two questions: an app can be signed into and still offer the walk nothing
+    // it is allowed to click — a dashboard driven by script, or one whose only controls sit
+    // inside a form. Holding there spends the whole five minutes and then reports that nobody
+    // ever signed in, and the recording stops at the login screen.
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-explore-login-spa-'))
+    const project = createProject('Login SPA', baseDir)
+    const url = `file://${join(__dirname, 'fixtures', 'explore-test-login-spa.html')}`
+
+    const session = await startRecordingSession(project.id, url, baseDir)
+    const reading = await readPage(session.page)
+    expect(authWall(reading)?.kind).toBe('sign-in')
+
+    const waiting = waitForSignIn(session.page, authWall(reading), { waitMs: 15_000 })
+    await session.page.fill('#email', 'someone@acme.test')
+    await session.page.fill('#password', 'hunter2')
+    await session.page.click('button[type=submit]')
+
+    const past = await waiting
+    expect(past).not.toBeNull()
+    expect(past!.heading).toContain('Dashboard')
+
+    await session.stop()
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 60_000)
+})
+
+describe('what the walk reports after someone has signed in', () => {
+  it('says there was nowhere to go, not that nobody ever signed in', async () => {
+    // The two endings mean opposite things to the person reading them. "Waited too long" says
+    // the sign-in never happened and the walk gave up on them; "nowhere" says they are in, and
+    // the app simply offers nothing the allowlist will click — carry on by hand. Reporting the
+    // first for the second sent people back to a login they had already been through.
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-explore-ending-'))
+    const project = createProject('Ending', baseDir)
+    const url = `file://${join(__dirname, 'fixtures', 'explore-test-login-spa.html')}`
+
+    const session = await startRecordingSession(project.id, url, baseDir)
+
+    const walking = exploreApp(
+      session.page,
+      project.id,
+      { maxSteps: 4, dwellMs: 50, decide: async () => 'DONE' },
+      baseDir
+    )
+
+    // The person signs in while the walk holds, which is the whole point of holding.
+    await session.page.fill('#email', 'someone@acme.test')
+    await session.page.fill('#password', 'hunter2')
+    await session.page.click('button[type=submit]')
+
+    const result = await walking
+    expect(result.ending).toBe('nowhere')
+
+    await session.stop()
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 60_000)
+})

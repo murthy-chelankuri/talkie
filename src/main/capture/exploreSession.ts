@@ -117,6 +117,29 @@ export async function readPage(page: Page): Promise<PageReading> {
  *
  * Returns the reading on the other side, or null if the person never came back.
  */
+/**
+ * Whether the page has drawn anything yet.
+ *
+ * Signing in is a navigation, and a navigation has a moment where the document is empty: no
+ * wall, because there is nothing to read, and nothing else either. Returning then would hand the
+ * walk a blank page and call it the app. Anything on the page at all is enough to say the next
+ * one has arrived.
+ *
+ * Deliberately not "is there anywhere to go next" — that is the walk's own question, asked
+ * immediately after this returns, and answered by ending with `nowhere`. Asking it here as well
+ * meant an app that is signed into but offers nothing the allowlist permits — a dashboard drawn
+ * by script, controls that sit inside forms, links that all lead off the origin — was held at
+ * the wall for the full five minutes and then reported as one nobody ever signed in to.
+ */
+function hasRendered(reading: PageReading): boolean {
+  return (
+    reading.candidates.length > 0 ||
+    reading.fields.length > 0 ||
+    Boolean(reading.heading.trim()) ||
+    Boolean(reading.text.trim())
+  )
+}
+
 export async function waitForSignIn(
   page: Page,
   wall: Wall,
@@ -140,7 +163,7 @@ export async function waitForSignIn(
 
     try {
       const reading = await readPage(page)
-      if (!authWall(reading) && reading.candidates.length > 0) return reading
+      if (!authWall(reading) && hasRendered(reading)) return reading
     } catch {
       // Mid-navigation, which is what signing in looks like. Look again shortly.
     }
