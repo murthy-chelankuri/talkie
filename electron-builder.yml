@@ -7,6 +7,12 @@ directories:
 files:
   - out/**
   - package.json
+  # Apache-2.0 section 4(d) asks anyone redistributing this to carry the NOTICE with it, and
+  # nobody can carry what was never in the bundle. The in-app Licences screen covers the
+  # dependencies; these two are Talkie's own terms, and the GPL obligations that come with
+  # shipping a build at all.
+  - LICENSE
+  - NOTICE
 
 # Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
 # ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver

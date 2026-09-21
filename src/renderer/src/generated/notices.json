@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13",
+  "generatedAt": "2026-09-20",
   "bundled": [
     {
       "name": "FFmpeg",
@@ -341,7 +341,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://remotion.dev/docs/captions/api",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -349,7 +349,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://www.remotion.dev/docs/licensing",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -397,7 +397,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://www.remotion.dev/docs/studio/api",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -405,7 +405,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://github.com/remotion-dev/remotion/tree/main/packages/studio-codemods",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -421,7 +421,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://github.com/remotion-dev/remotion/tree/main/packages/studio-shared",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -429,7 +429,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://github.com/remotion-dev/remotion/tree/main/packages/timeline-utils",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -445,7 +445,7 @@
       "version": "4.0.522",
       "license": "MIT",
       "homepage": "https://www.remotion.dev/docs/zod-types",
-      "copyright": null,
+      "copyright": "Copyright (c) Jonny Burger (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -877,7 +877,7 @@
       "version": "3.0.0",
       "license": "MIT",
       "homepage": "https://mths.be/cssesc",
-      "copyright": null,
+      "copyright": "Copyright (c) Mathias Bynens (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -1245,7 +1245,7 @@
       "version": "4.0.1",
       "license": "BSD-2-Clause",
       "homepage": "http://esprima.org",
-      "copyright": null,
+      "copyright": "Copyright (c) Ariya Hidayat (from package.json; the package ships no licence file)",
       "text": null
     },
     {
@@ -1621,7 +1621,7 @@
       "version": "7.1.6",
       "license": "MIT",
       "homepage": "https://github.com/postcss/postcss-selector-parser",
-      "copyright": null,
+      "copyright": "Copyright (c) Maxime Thirouin (from package.json; the package ships no licence file)",
       "text": null
     },
     {
