@@ -277,6 +277,20 @@ export async function startRecordingSession(
         const current = watched[watched.length - 1]
         if (current?.page === opened && current.toMs === undefined) {
           current.toMs = now()
+
+          // Attention goes back to whatever was underneath, and nothing will say so. A window
+          // closing does not hide the one it was covering — it was never hidden — so no
+          // visibilitychange fires, and a page that redraws in place never navigates either, so
+          // the init script does not run again. Both are the ways a page reports itself shown.
+          //
+          // This is the shape of signing in through a provider: a window opens, the person signs
+          // in, it closes itself, and the app carries on in the tab that opened it. Without this
+          // the session ended at the close and everything after the sign-in — the demo — was
+          // recorded to a file that no clip ever pointed at.
+          const underneath = [...watched]
+            .reverse()
+            .find((stretch) => stretch.page !== opened && !stretch.page.isClosed())
+          if (underneath) watch(underneath.page)
         }
       })
     })

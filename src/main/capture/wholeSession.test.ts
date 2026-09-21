@@ -116,3 +116,54 @@ describe('a recording of a session that moves between tabs', () => {
     rmSync(baseDir, { recursive: true, force: true })
   }, 120_000)
 })
+
+describe('a recording of a sign-in that happens in its own window', () => {
+  it('keeps the app the person went back to after the provider window closed', async () => {
+    // Signing in through a provider is a window that opens, is used, and closes itself. The tab
+    // underneath was never hidden, so nothing reports it shown again: a window closing does not
+    // fire visibilitychange on the one it covered, and an app that redraws in place — which is
+    // what a single-page app does with the token it was handed — never navigates, so the init
+    // script does not run again either. The session used to end at that close, and the demo the
+    // person then gave was recorded to a file no clip ever pointed at.
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-session-sso-'))
+    const project = createProject('Provider', baseDir)
+
+    writeFileSync(
+      join(baseDir, 'sso.html'),
+      `<!doctype html><body style="margin:0;font:48px sans-serif;background:#00b"><div>provider</div>
+       <input id="p" type="password" autocomplete="current-password">${TICKER}</body>`
+    )
+    writeFileSync(
+      join(baseDir, 'start.html'),
+      `<!doctype html><body style="margin:0;font:48px sans-serif"><div>start</div>
+       <button id="sso" onclick="window.open('sso.html', '_blank', 'width=600,height=700')">Sign in</button>${TICKER}</body>`
+    )
+
+    const session = await startRecordingSession(project.id, `file://${join(baseDir, 'start.html')}`, baseDir)
+    await session.page.waitForTimeout(1500)
+
+    const context = session.page.context()
+    const [provider] = await Promise.all([context.waitForEvent('page'), session.page.click('#sso')])
+    await provider.waitForLoadState()
+    await provider.bringToFront()
+    await provider.fill('#p', 'hunter2')
+    await provider.waitForTimeout(1500)
+
+    // Nothing brings the original tab forward: the person was already looking at it.
+    await provider.close()
+    await session.page.evaluate(() => {
+      document.body.firstElementChild!.textContent = 'signed in'
+    })
+    await session.page.waitForTimeout(5000)
+
+    const recording = await session.stop()
+
+    const afterSignIn = recording.clips
+      .filter((clip) => clip.fromSessionMs > 3000)
+      .reduce((total, clip) => total + clip.durationMs, 0)
+
+    expect(afterSignIn).toBeGreaterThan(4000)
+
+    rmSync(baseDir, { recursive: true, force: true })
+  }, 120_000)
+})
