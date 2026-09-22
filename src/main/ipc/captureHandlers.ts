@@ -96,7 +96,9 @@ async function walkTheApp(session: RecordingSession, getWindow: () => BrowserWin
   let result: Awaited<ReturnType<typeof exploreApp>> | undefined
   try {
     setToolbarStatus('Looking around…')
-    result = await exploreApp(session.page, session.projectId, {
+    // Its own accessor rather than the page it started on: a sign-in can end in the window it
+    // opened or a tab beside it, and the walk should be looking at whatever the video is.
+    result = await exploreApp(session.watchedPage, session.projectId, {
       // The walk stops the moment the session does, so pressing stop is not waiting on it.
       shouldStop: () => activeSession !== session,
       onProgress: ({ doing, needsYou }) => setToolbarStatus(doing, needsYou)

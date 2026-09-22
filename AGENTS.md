@@ -138,12 +138,32 @@ walk then waits, up to five minutes, with the browser on screen for the person t
 carries on when the wall goes. Without that it finds nothing safe to click, concludes the app is
 finished, and leaves a recording of a login screen with no explanation.
 
+**The walk follows the page the recording is watching, not the one it started on.** That is the
+whole of `session.watchedPage`, and `exploreSession.ts` takes it rather than a `Page` for the
+same reason the video is cut by it: signing in is the one moment in a demo when the page being
+looked at stops being the page that was there before. A provider window that does not close
+itself leaves the app inside it; the walk that stayed pinned to the tab underneath read a login
+screen nobody was standing at, held there for its full five minutes, and reported an app nobody
+had signed in to. There is one answer to "which page is in front" and both sides ask for it.
+
+A step reads and clicks the same page, resolved together at the top of the loop. A sign-in
+therefore ends its step rather than carrying its reading on into a click — a selector is a mark
+stamped on one page, and used against another it clicks whatever happens to hold that mark.
+`signInResume.test.ts` drives the shapes end to end, as `signInRecording.test.ts` does for the
+footage; they are separate files because the two broke separately and look identical from
+outside, as a video that ends at a login screen.
+
 **`safeToClick.ts` is the whole safety boundary, and it is an allowlist.** This runs unattended
 against what may well be production: it may follow links that stay on the origin, tabs and menu
 items, and buttons that are not inside a form; it refuses everything else, anything whose label
-reads as a verb, and anything that would sign it out. It never types and never submits. Widening
-it is not a small change — a recording is the worst place to discover a click did something,
-because by the time anyone watches the video the record is already gone.
+reads as a verb, and anything that would sign it out or sign it in. It never types and never
+submits. Widening it is not a small change — a recording is the worst place to discover a click
+did something, because by the time anyone watches the video the record is already gone.
+
+Refusing the way *in* is what makes a wall a wall. "Continue with Google" opens a window the walk
+cannot type into; `authWall.ts` calls a page a sign-in only when it asks for an identifier and
+has nowhere to go, so one such button used to be enough for the page to count as somewhere to
+get on to. It was never a wall, nobody was ever waited for, and the walk clicked the button.
 
 ## Narration drives the picture
 

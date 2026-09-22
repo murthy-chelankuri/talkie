@@ -186,6 +186,6 @@ function normaliseUrl(url: string): string {
  * still has talkie_click and talkie_type, where a person is approving each call.
  */
 export async function exploreActiveRecording(baseDir: string): Promise<{ visited: string[]; ending: string }> {
-  const { page, projectId } = activeRecording()
-  return exploreApp(page, projectId, {}, baseDir)
+  const { watchedPage, projectId } = activeRecording()
+  return exploreApp(watchedPage, projectId, {}, baseDir)
 }
