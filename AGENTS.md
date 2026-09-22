@@ -44,6 +44,18 @@ These each cost real time to find. None are obvious from the code.
 - **Test the packaged build, not only `npm run dev`.** They differ in ways that have already
   caused silent failures. `process.cwd()` in particular is *not* the app directory once packaged —
   it is wherever the app was launched from, which is `/` from Finder. Use `__dirname`.
+- **Anything that shells out has to be told where the binaries are**, through `ffOptions()` or
+  `binariesDirectory()`. Remotion looks beside its own package, which once packaged is inside the
+  asar archive where nothing can be executed. Every `callFf` call passed it; the two
+  `getVideoMetadata` calls did not, so measuring a recording threw, the import's three-second
+  placeholder stood in for the real length, and every packaged recording arrived on the timeline
+  as three seconds of its opening. `packagedBinaries.test.ts` reads these off the source, because
+  running them in the suite only ever exercises the checkout layout — the case that always worked.
+- **The composition is bundled at build time**, by `scripts/bundleRemotion.mjs` into `out/remotion`,
+  and resolved from `__dirname` by `remotionBundle.ts`. Export used to bundle it on demand from
+  `process.cwd()` + `src/`, and a packaged build has neither. The bundle is unpacked from the
+  archive for the same reason mermaid is: a headless browser fetches those files, and only Node
+  can read out of an asar.
 - **Native binaries cannot load from inside asar.** Remotion's compositor, Playwright, and the
   MCP entry point are all in `asarUnpack`.
 - **Renderer entries are declared explicitly** in `electron.vite.config.ts` — the editor window
