@@ -48,6 +48,16 @@ export interface RecordingSession {
   sessionId: string
   projectId: string
   page: Page
+  /**
+   * The page the recording currently counts as being on screen.
+   *
+   * The session already has to know this to cut the video, and it is the same question the walk
+   * needs answered: a sign-in can finish somewhere other than where it started — the window it
+   * opened, a second tab — and a walk still driving the page it began on holds at a login
+   * nobody is looking at any more. Handed out rather than worked out again so the two cannot
+   * disagree about which page the demo is on.
+   */
+  watchedPage: () => Page
   markAnnotation: (annotation: 'important' | 'redo' | 'skip') => void
   stop: () => Promise<RecordingResult>
   /**
@@ -310,6 +320,11 @@ export async function startRecordingSession(
     // import trim it instead of playing a white screen between clips.
     const contentStartMs = now()
 
+    function watchedPage(): Page {
+      const current = watched[watched.length - 1]
+      return current && !current.page.isClosed() ? current.page : page
+    }
+
     function markAnnotation(annotation: 'important' | 'redo' | 'skip'): void {
       appendActionLogEntry(actionLogPath, { t: now(), type: 'annotation', annotation })
     }
@@ -376,6 +391,7 @@ export async function startRecordingSession(
       sessionId,
       projectId,
       page,
+      watchedPage,
       markAnnotation,
       stop: async () => {
         stopped = true

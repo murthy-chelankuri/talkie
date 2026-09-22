@@ -47,6 +47,23 @@ export const WAIT_FOR_USER_MS = 5 * 60 * 1000
 /** How often to look at the page while waiting, which only has to beat human reaction time. */
 const CHECK_EVERY_MS = 1500
 
+/**
+ * Where the walk is looking.
+ *
+ * One page is the whole story for an app that stays in the tab it started in. A recording
+ * session hands its own accessor instead, and that is what makes a sign-in survivable: signing
+ * in can finish somewhere else entirely — the window the provider opened, a second tab — and a
+ * walk still driving the page it began on reads a login screen nobody is looking at any more,
+ * holds there for its full five minutes, and then reports an app nobody signed in to. The
+ * session already knows which page is on screen because the video is cut by it, so the walk
+ * asks it rather than working the answer out a second way and disagreeing.
+ */
+export type Watching = Page | (() => Page)
+
+function onScreen(watching: Watching): Page {
+  return typeof watching === 'function' ? watching() : watching
+}
+
 /** What the model may ask for next. */
 export type Move = { kind: 'click'; index: number } | { kind: 'scroll' } | { kind: 'done' }
 
@@ -141,7 +158,7 @@ function hasRendered(reading: PageReading): boolean {
 }
 
 export async function waitForSignIn(
-  page: Page,
+  watching: Watching,
   wall: Wall,
   options: { waitMs?: number; onProgress?: (progress: ExploreProgress) => void; shouldStop?: () => boolean } = {}
 ): Promise<PageReading | null> {
@@ -151,6 +168,9 @@ export async function waitForSignIn(
   while (Date.now() < until) {
     if (options.shouldStop?.()) return null
 
+    // Asked for again every time round, because a sign-in is the likeliest moment for the answer
+    // to change: the page being looked at at the end of one is often not the page that started it.
+    const page = onScreen(watching)
     const left = Math.ceil((until - Date.now()) / 60000)
     const doing = `Waiting for you to enter ${wall?.asking ?? 'your details'} — ${left} min left`
     // Re-sent only when the wording changes, so the toolbar is not rewritten twice a second.
@@ -255,7 +275,7 @@ export interface ExploreOptions {
  * leaves a usable recording rather than an exception.
  */
 export async function exploreApp(
-  page: Page,
+  watching: Watching,
   projectId: string,
   options: ExploreOptions = {},
   baseDir: string = homedir()
@@ -278,6 +298,8 @@ export async function exploreApp(
     if (options.shouldStop?.()) return done('stopped')
     if (Date.now() > until) return done('budget')
 
+    const page = onScreen(watching)
+
     // Whatever the last move did, let the screen settle and give the narration something to
     // talk over before deciding again.
     await page.waitForTimeout(dwellMs).catch(() => undefined)
@@ -296,13 +318,21 @@ export async function exploreApp(
     // app was finished, and leave a recording of a login screen with no explanation.
     const wall = authWall(reading)
     if (wall) {
-      const past = await waitForSignIn(page, wall, {
+      const past = await waitForSignIn(watching, wall, {
         onProgress: options.onProgress,
         shouldStop: options.shouldStop
       })
       if (!past) return done(options.shouldStop?.() ? 'stopped' : 'waited-too-long')
-      reading = past
-      options.onProgress?.({ step, url: reading.url, doing: 'Signed in — carrying on' })
+      options.onProgress?.({ step, url: past.url, doing: 'Signed in — carrying on' })
+
+      // Start the step again rather than carrying this reading on into a click. The page that
+      // answered is often not the one the wall was on — a provider window, the tab beside it —
+      // and a selector only means anything on the page it was stamped on. Using them together
+      // clicked whatever happened to hold that mark on the old page, which put the login back in
+      // front and sent the walk round to wait at a wall nobody was standing at for another five
+      // minutes. Reading and clicking now always come from the same page, resolved together at
+      // the top of the loop; the cost is one dwell, after a wait measured in minutes.
+      continue
     }
 
     if (reading.candidates.length === 0) return done('nowhere')

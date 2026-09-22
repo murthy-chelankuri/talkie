@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { safeCandidates, safeToClick, looksLikeActing, staysInApp, type Candidate } from './safeToClick'
+import {
+  safeCandidates,
+  safeToClick,
+  looksLikeActing,
+  leadsToSignIn,
+  staysInApp,
+  type Candidate
+} from './safeToClick'
 
 const ORIGIN = 'https://app.example.com'
 
@@ -112,5 +119,50 @@ describe('what an unattended recorder may click', () => {
   it('treats a relative href as this app without needing to parse it', () => {
     expect(staysInApp('reports/2024', ORIGIN)).toBe(true)
     expect(staysInApp(undefined, ORIGIN)).toBe(false)
+  })
+})
+
+describe('the way into an app, which is not a way round it', () => {
+  it('leaves a provider button alone, however inviting it looks', () => {
+    // Clicking it opens a window the walk cannot type into, and leaves the demo standing at
+    // someone else's login. The person has to do this part; the walk waits for them.
+    for (const label of ['Continue with Google', 'Sign in with Apple', 'Single sign-on']) {
+      expect(safeToClick(candidate({ label, tag: 'button', href: undefined }), ORIGIN)).toBe(false)
+    }
+  })
+
+  it('leaves alone the rest of what a login screen offers', () => {
+    // None of these is the app: registering makes an account, and a forgotten password is an
+    // email nobody asked this to send.
+    for (const label of ['Sign up', 'Create an account', 'Register', 'Forgot password?']) {
+      expect(leadsToSignIn(label)).toBe(true)
+      expect(safeToClick(candidate({ label, href: '/x' }), ORIGIN)).toBe(false)
+    }
+  })
+
+  it('leaves a sign-in screen with nowhere to go, which is what makes it a wall', () => {
+    // authWall.ts calls a page a sign-in when it asks for an identifier and there is nowhere on
+    // it to go. One provider button used to be enough to count as somewhere, so the wall was
+    // never recognised, nobody was waited for, and the walk clicked the button.
+    const screen = [
+      candidate({ label: 'Continue with Acme', tag: 'button', href: undefined }),
+      candidate({ label: 'Create an account', href: '/signup' }),
+      candidate({ label: 'Email', tag: 'input', href: undefined })
+    ]
+
+    expect(safeCandidates(screen, ORIGIN)).toEqual([])
+  })
+
+  it('still opens the parts of an app that only read like a sign-in', () => {
+    // The words have to mean the control leads to signing in. A page about who has signed in is
+    // an ordinary screen and one worth showing.
+    expect(leadsToSignIn('Members')).toBe(false)
+    expect(safeToClick(candidate({ label: 'Members', href: '/members' }), ORIGIN)).toBe(true)
+    expect(safeToClick(candidate({ label: 'Sessions', href: '/sessions' }), ORIGIN)).toBe(true)
+  })
+
+  it('does not confuse signing in with signing out, which is refused for its own reason', () => {
+    expect(looksLikeActing('Sign out')).toBe(true)
+    expect(leadsToSignIn('Sign out')).toBe(false)
   })
 })
