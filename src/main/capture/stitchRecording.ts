@@ -1,5 +1,6 @@
 import { RenderInternals } from '@remotion/renderer'
 import { ffOptions } from '../render/binaries'
+import { logFailure } from '../diagnostics/log'
 
 /** A stretch of one page's video: where the person was looking, and for how long. */
 export interface RecordedClip {
@@ -104,7 +105,16 @@ export async function stitchRecording(clips: RecordedClip[], outputPath: string)
   } catch (err) {
     // The raw captures are already safely on disk, so a failed stitch must not lose the
     // recording — fall back to the first page's file and accept the slower playback.
-    console.error(`Could not stitch the recording into ${outputPath}:`, err)
+    //
+    // Written down rather than only printed, because of what this fallback looks like from the
+    // outside: the first page's footage alone, which for an app behind a login is the login and
+    // nothing after it. Reported as a broken recording, and indistinguishable from one, with the
+    // reason on a console a packaged app has not got.
+    logFailure(
+      `Could not stitch ${clips.length} clips into ${outputPath} — falling back to the first ` +
+        `page alone, so everything recorded after it will be missing`,
+      err
+    )
     return clips[0].videoPath
   }
 }
