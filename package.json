@@ -13,13 +13,14 @@
   "main": "./out/main/index.cjs",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build && npm run build:mcp",
+    "build": "electron-vite build && npm run build:mcp && npm run build:remotion",
     "notices": "node scripts/generateNotices.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "package": "npm run notices && npm run build && electron-builder --mac",
     "package:dir": "npm run build && electron-builder --mac --dir",
-    "build:mcp": "vite build --config vite.mcp.config.ts"
+    "build:mcp": "vite build --config vite.mcp.config.ts",
+    "build:remotion": "node scripts/bundleRemotion.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

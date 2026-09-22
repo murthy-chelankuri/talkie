@@ -1,6 +1,5 @@
 import { homedir } from 'os'
 import { join } from 'path'
-import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
 import { writeFileSync } from 'fs'
 import {
@@ -19,6 +18,7 @@ import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { binariesDirectory } from './binaries'
+import { remotionBundleLocation } from './remotionBundle'
 import { COMPOSITION_ID } from '../../remotion/constants'
 
 /** `checkout-demo-2026-09-11` — the project, and when it was rendered. */
@@ -57,7 +57,12 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     beatsByItem(readTranscript(id, baseDir))
   )
 
-  const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
+  // The bundle shipped with this build, or one made from source when there is none — never
+  // through process.cwd(), which is `/` for an app opened from Finder. The source path is
+  // relative to this file rather than to the working directory for the same reason; in a
+  // packaged build the shipped bundle answers first and it is never reached. See
+  // remotionBundle.ts.
+  const bundleLocation = await remotionBundleLocation(join(__dirname, '../../remotion/index.tsx'))
   const composition = await selectComposition({
     binariesDirectory: binariesDirectory(),
     serveUrl: bundleLocation,
