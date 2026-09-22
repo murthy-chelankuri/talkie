@@ -1,5 +1,6 @@
 import { existsSync, renameSync, rmSync } from 'fs'
 import { getVideoMetadata } from '@remotion/renderer'
+import { binariesDirectory } from '../render/binaries'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 import type { SpeechOptions } from '../tts/ttsProvider'
@@ -81,7 +82,8 @@ export async function footageFrames(item: TimelineItem | undefined): Promise<num
   if (!src || !existsSync(src)) return null
 
   try {
-    const { durationInSeconds } = await getVideoMetadata(src)
+    // See binaries.ts: a packaged build cannot run these from inside the asar archive.
+    const { durationInSeconds } = await getVideoMetadata(src, { binariesDirectory: binariesDirectory() })
     if (!durationInSeconds || durationInSeconds <= 0) return null
     const lastFrame = Math.min(Math.round(durationInSeconds * FPS), trimAfter ?? Infinity)
     return Math.max(1, lastFrame - (trimBefore ?? 0))

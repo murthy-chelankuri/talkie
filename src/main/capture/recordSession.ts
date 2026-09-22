@@ -10,6 +10,7 @@ import { resolveBrowser, LAUNCH_ARGS, NO_BROWSER_MESSAGE } from './resolveBrowse
 import { HEIGHT, WIDTH } from '../../remotion/constants'
 import { highlightScript } from './highlightScript'
 import { readSettings } from '../settings/settingsStore'
+import { logFailure } from '../diagnostics/log'
 import type { RecordedClip } from './stitchRecording'
 
 /**
@@ -357,8 +358,9 @@ export async function startRecordingSession(
           if (actualPath !== wanted) renameSync(actualPath, wanted)
           paths.set(watchedPage, wanted)
         } catch (err) {
-          // One page's recording failing to land must not cost the others.
-          console.error('Could not keep the recording of one of the pages:', err)
+          // One page's recording failing to land must not cost the others — but it does cost
+          // every stretch that was watched on it, which is silent unless it is written down.
+          logFailure(`Could not keep the recording of page ${n} (${wanted})`, err)
         }
       }
 

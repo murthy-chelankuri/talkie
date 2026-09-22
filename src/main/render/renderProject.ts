@@ -18,6 +18,7 @@ import { computeTimelineDuration } from '../../remotion/timelineDuration'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
+import { binariesDirectory } from './binaries'
 import { COMPOSITION_ID } from '../../remotion/constants'
 
 /** `checkout-demo-2026-09-11` — the project, and when it was rendered. */
@@ -58,6 +59,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
 
   const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
   const composition = await selectComposition({
+    binariesDirectory: binariesDirectory(),
     serveUrl: bundleLocation,
     id: COMPOSITION_ID,
     inputProps: { timeline }
@@ -68,6 +70,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   const outputPath = join(dir, 'renders', `${exportFileName(openProject(id, baseDir).name)}.mp4`)
 
   await renderMedia({
+    binariesDirectory: binariesDirectory(),
     composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },
     serveUrl: bundleLocation,
     codec: 'h264',
