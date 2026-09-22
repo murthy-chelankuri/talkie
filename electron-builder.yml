@@ -33,6 +33,10 @@ asarUnpack:
   # Drawing a diagram means reading mermaid's own files off disk and serving them to a headless
   # page, which cannot be done from inside the archive.
   - node_modules/mermaid/**
+  # The composition is served to a headless page the same way, so it cannot live in the archive
+  # either. Built by scripts/bundleRemotion.mjs — see remotionBundle.ts for why it is shipped
+  # rather than made on demand.
+  - out/remotion/**
 
 mac:
   icon: build/icon.icns
