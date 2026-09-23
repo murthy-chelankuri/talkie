@@ -12,7 +12,7 @@
   "type": "module",
   "main": "./out/main/index.cjs",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/ensureElectron.mjs && electron-vite dev",
     "build": "electron-vite build && npm run build:mcp && npm run build:remotion",
     "notices": "node scripts/generateNotices.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",

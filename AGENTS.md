@@ -41,6 +41,13 @@ These each cost real time to find. None are obvious from the code.
   for both.
 - **`react` is a runtime dependency, not a dev one.** `@remotion/renderer` requires it in the
   main process.
+- **Electron's binary is fetched by a postinstall, and `npm run dev` checks for it first.**
+  The package is a stub; without the download it throws "Electron failed to install correctly",
+  which reads as a broken app rather than an unfinished install. `scripts/ensureElectron.mjs`
+  fetches it and, failing that, names the three causes — `ignore-scripts` set globally, a
+  github.com download a proxy refused, `ELECTRON_SKIP_BINARY_DOWNLOAD`. It is called from inside
+  the `dev` script rather than as a `predev` hook on purpose: `ignore-scripts` skips pre and post
+  hooks too, so the commonest cause would also disable the check for it.
 - **Test the packaged build, not only `npm run dev`.** They differ in ways that have already
   caused silent failures. `process.cwd()` in particular is *not* the app directory once packaged —
   it is wherever the app was launched from, which is `/` from Finder. Use `__dirname`.
