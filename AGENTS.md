@@ -58,6 +58,13 @@ These each cost real time to find. None are obvious from the code.
   placeholder stood in for the real length, and every packaged recording arrived on the timeline
   as three seconds of its opening. `packagedBinaries.test.ts` reads these off the source, because
   running them in the suite only ever exercises the checkout layout — the case that always worked.
+- **Remotion is handed a browser too**, through `browserExecutablePath()`. Left to find its own
+  it works out where to download one by walking up from the working directory looking for a
+  package.json — from `/` there is none, so it settles on `/.remotion` and export dies with
+  `ENOENT: mkdir '/.remotion'`. Both `selectComposition` and `renderMedia` need it; missing
+  either fails in a packaged build and nowhere else. `exportFromAnywhere.test.ts` moves the
+  working directory to `/` on purpose, because running from the checkout is the case that has
+  always worked.
 - **The composition is bundled at build time**, by `scripts/bundleRemotion.mjs` into `out/remotion`,
   and resolved from `__dirname` by `remotionBundle.ts`. Export used to bundle it on demand from
   `process.cwd()` + `src/`, and a packaged build has neither. The bundle is unpacked from the
