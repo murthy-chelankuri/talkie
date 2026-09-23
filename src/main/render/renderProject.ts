@@ -18,6 +18,7 @@ import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { binariesDirectory } from './binaries'
+import { browserExecutablePath } from '../capture/resolveBrowser'
 import { remotionBundleLocation } from './remotionBundle'
 import { COMPOSITION_ID } from '../../remotion/constants'
 
@@ -63,8 +64,13 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   // packaged build the shipped bundle answers first and it is never reached. See
   // remotionBundle.ts.
   const bundleLocation = await remotionBundleLocation(join(__dirname, '../../remotion/index.tsx'))
+  // Both calls are given a browser for the same reason they are given the binaries: left to
+  // find their own, they derive the place to put it from the working directory, which is `/`
+  // for an app opened from Finder. See browserExecutablePath.
+  const browserExecutable = browserExecutablePath()
   const composition = await selectComposition({
     binariesDirectory: binariesDirectory(),
+    browserExecutable,
     serveUrl: bundleLocation,
     id: COMPOSITION_ID,
     inputProps: { timeline }
@@ -76,6 +82,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
 
   await renderMedia({
     binariesDirectory: binariesDirectory(),
+    browserExecutable,
     composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },
     serveUrl: bundleLocation,
     codec: 'h264',

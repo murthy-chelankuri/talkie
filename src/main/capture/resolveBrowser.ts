@@ -20,12 +20,24 @@ interface InstalledBrowser {
   channel: 'chrome' | 'msedge'
   label: string
   appPath: string
+  /** The binary inside the bundle, for things that want a path rather than a channel. */
+  executable: string
 }
 
 /** Chromium-based browsers Playwright can drive directly, most common first. */
 const INSTALLED_BROWSERS: InstalledBrowser[] = [
-  { channel: 'chrome', label: 'Google Chrome', appPath: '/Applications/Google Chrome.app' },
-  { channel: 'msedge', label: 'Microsoft Edge', appPath: '/Applications/Microsoft Edge.app' }
+  {
+    channel: 'chrome',
+    label: 'Google Chrome',
+    appPath: '/Applications/Google Chrome.app',
+    executable: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  },
+  {
+    channel: 'msedge',
+    label: 'Microsoft Edge',
+    appPath: '/Applications/Microsoft Edge.app',
+    executable: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+  }
 ]
 
 export function findInstalledBrowser(): BrowserChoice | null {
@@ -59,6 +71,28 @@ export const LAUNCH_ARGS = [
   '--hide-crash-restore-bubble',
   '--disable-features=ChromeWhatsNewUI'
 ]
+
+/**
+ * A browser for Remotion to render with, as a path rather than a channel.
+ *
+ * Handed over so it never goes looking for one of its own. Left to itself it works out where to
+ * download a browser to by walking up from the current directory until it finds a package.json —
+ * and an app opened from Finder is started in `/`, where there is none and nothing may be
+ * written. Export failed there with `ENOENT: mkdir '/.remotion'`, which names the symptom and
+ * nothing else. The same browser that records the demo renders it, which is one fewer thing to
+ * install and one fewer thing to differ.
+ */
+export function browserExecutablePath(): string | null {
+  const installed = INSTALLED_BROWSERS.find((browser) => existsSync(browser.executable))
+  if (installed) return installed.executable
+
+  try {
+    const bundled = chromium.executablePath()
+    return existsSync(bundled) ? bundled : null
+  } catch {
+    return null
+  }
+}
 
 export const NO_BROWSER_MESSAGE =
   'Recording needs a Chromium-based browser. Install Google Chrome, or run `npx playwright install chromium` to fetch one.'
