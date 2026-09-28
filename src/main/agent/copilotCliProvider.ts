@@ -8,13 +8,14 @@ import {
   type NarrationRequest,
   type ProviderAvailability
 } from './narrationProvider'
+import { readSettings } from '../settings/settingsStore'
 
 const execFileAsync = promisify(execFile)
 
 /** A draft is one short answer; anything longer than this has gone wrong. */
 const TIMEOUT_MS = 180_000
 
-const INSTALL_HINT =
+export const INSTALL_HINT =
   'The `copilot` command was not found. Install it with `npm install -g @github/copilot` (Node 22 or later), then run `copilot` once and sign in with /login.'
 
 /**
@@ -61,6 +62,8 @@ async function runCopilot(prompt: string, framePaths: string[]): Promise<string>
   const binary = await findCli('copilot')
   if (!binary) throw new Error(INSTALL_HINT)
 
+  const model = readSettings().narration.copilotCli.model
+
   const args = [
     '-p',
     prompt,
@@ -69,7 +72,8 @@ async function runCopilot(prompt: string, framePaths: string[]): Promise<string>
     // Nothing is watching this run, so a question would hang until the timeout.
     '--no-ask-user',
     '--deny-tool=shell',
-    '--deny-tool=write'
+    '--deny-tool=write',
+    ...(model ? ['--model', model] : [])
   ]
 
   // Reading is needed only when there are frames on disk to look at.

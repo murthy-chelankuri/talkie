@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync } from 'fs'
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { AGENT_TOOLS, buildAgentPrompt, runProjectAgent } from './projectAgent'
@@ -9,6 +9,24 @@ import { checkMcpAccess, grantRunToken } from '../settings/mcpAccess'
 
 function fresh(): string {
   return mkdtempSync(join(tmpdir(), 'talkie-agent-'))
+}
+
+/**
+ * Tested against a stand-in `copilot`, not the real CLI — a machine that happens to have the
+ * genuine one installed (as this one does) would otherwise make "not found" unwritable, and a
+ * real run needs a subscription and a network. Same double `copilotCliProvider.test.ts` uses.
+ */
+let binDir: string
+const originalPath = process.env.PATH
+
+function installFakeCopilot(script: string): void {
+  writeFileSync(join(binDir, 'copilot'), `#!/bin/sh\n${script}\n`)
+  chmodSync(join(binDir, 'copilot'), 0o755)
+}
+
+function recordedArgs(): string[] {
+  const path = join(binDir, 'args.txt')
+  return existsSync(path) ? readFileSync(path, 'utf8').split('\0').filter(Boolean) : []
 }
 
 describe('what the project agent is allowed to do', () => {
@@ -110,6 +128,144 @@ describe('asking the agent to change a project', () => {
     expect(outcome.status === 'failed' && outcome.reason).toContain('Claude CLI')
 
     rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  describe('with Copilot chosen as the provider', () => {
+    // Against a stand-in `copilot`, not the real CLI: this machine has the genuine one
+    // installed, which would make the fix invisible if the test only checked "not found", and a
+    // real run needs a subscription and a network besides.
+    beforeEach(() => {
+      binDir = mkdtempSync(join(tmpdir(), 'talkie-agent-copilot-'))
+    })
+
+    afterEach(() => {
+      process.env.PATH = originalPath
+      rmSync(binDir, { recursive: true, force: true })
+    })
+
+    it('calls the Copilot CLI, not Claude, and shapes the run the way Copilot expects', async () => {
+      // This used to always shell out to `claude` regardless of the setting, so a Copilot user
+      // asking Talkie to change a project ran nothing at all.
+      installFakeCopilot(
+        `printf '%s\\0' "$@" > "${join(binDir, 'args.txt')}"\necho "Added an introduction."`
+      )
+      process.env.PATH = binDir
+
+      const baseDir = fresh()
+      const project = createProject('Copilot', baseDir)
+      updateSettings(
+        { mcp: { enabled: true, tokenHash: 'a'.repeat(64) }, narration: { provider: 'copilot-cli' } },
+        baseDir
+      )
+
+      const outcome = await runProjectAgent(
+        { projectId: project.id, instruction: 'add an introduction', serverPath: '/tmp/fake.mjs' },
+        baseDir
+      )
+
+      expect(outcome).toMatchObject({ status: 'done', say: 'Added an introduction.' })
+      expect(outcome.status === 'done' && outcome.sessionId).toBeTruthy()
+
+      const args = recordedArgs()
+      // Nothing is watching this run, and Copilot's own tools are not what was asked for.
+      expect(args).toContain('--no-ask-user')
+      expect(args).toContain('--disable-builtin-mcps')
+      // A session id set up front, since Copilot does not hand one back on stdout the way
+      // Claude does — resuming a later turn depends on Talkie having minted this itself.
+      expect(args).toContain('--session-id')
+      // The two flags that gate which tools reach the model disagree on how to name one.
+      expect(args).toContain('talkie-talkie_set_narration')
+      expect(args).toContain('talkie(talkie_set_narration)')
+      // Never the Claude-shaped flags.
+      expect(args).not.toContain('--allowedTools')
+      expect(args).not.toContain('--strict-mcp-config')
+
+      rmSync(baseDir, { recursive: true, force: true })
+    })
+
+    it('resumes the same session on the next turn instead of starting fresh', async () => {
+      installFakeCopilot(
+        `printf '%s\\0' "$@" > "${join(binDir, 'args.txt')}"\necho "Made it shorter."`
+      )
+      process.env.PATH = binDir
+
+      const baseDir = fresh()
+      const project = createProject('Copilot', baseDir)
+      updateSettings(
+        { mcp: { enabled: true, tokenHash: 'a'.repeat(64) }, narration: { provider: 'copilot-cli' } },
+        baseDir
+      )
+
+      await runProjectAgent(
+        { projectId: project.id, instruction: 'add an introduction', serverPath: '/tmp/fake.mjs' },
+        baseDir
+      )
+      const firstTurnArgs = recordedArgs()
+      const sessionId = firstTurnArgs[firstTurnArgs.indexOf('--session-id') + 1]
+
+      await runProjectAgent(
+        {
+          projectId: project.id,
+          instruction: 'make that shorter',
+          serverPath: '/tmp/fake.mjs',
+          resumeSessionId: sessionId
+        },
+        baseDir
+      )
+
+      const secondTurnArgs = recordedArgs()
+      expect(secondTurnArgs).toContain('--resume')
+      expect(secondTurnArgs[secondTurnArgs.indexOf('--resume') + 1]).toBe(sessionId)
+      expect(secondTurnArgs).not.toContain('--session-id')
+
+      rmSync(baseDir, { recursive: true, force: true })
+    })
+  })
+
+  describe('with Claude chosen as the provider and a model set', () => {
+    // Against a stand-in `claude` for the same reason as the Copilot block above: this machine
+    // has the genuine CLI installed too, and PATH takes priority over findCli's fallback
+    // directories, so pointing PATH at the fake is enough to keep this off the real one.
+    beforeEach(() => {
+      binDir = mkdtempSync(join(tmpdir(), 'talkie-agent-claude-'))
+      process.env.PATH = binDir
+    })
+
+    afterEach(() => {
+      process.env.PATH = originalPath
+      rmSync(binDir, { recursive: true, force: true })
+    })
+
+    it('passes the chosen alias as --model', async () => {
+      writeFileSync(
+        join(binDir, 'claude'),
+        `#!/bin/sh\nprintf '%s\\0' "$@" > "${join(binDir, 'args.txt')}"\necho '{"result":"Added an introduction."}'\n`
+      )
+      chmodSync(join(binDir, 'claude'), 0o755)
+
+      const baseDir = fresh()
+      const project = createProject('Claude with model', baseDir)
+      updateSettings(
+        {
+          mcp: { enabled: true, tokenHash: 'a'.repeat(64) },
+          narration: { provider: 'claude-cli', claudeCli: { model: 'haiku' } }
+        },
+        baseDir
+      )
+
+      const outcome = await runProjectAgent(
+        { projectId: project.id, instruction: 'add an introduction', serverPath: '/tmp/fake.mjs' },
+        baseDir
+      )
+
+      expect(outcome).toMatchObject({ status: 'done', say: 'Added an introduction.' })
+
+      const args = recordedArgs()
+      expect(args).toContain('--model')
+      expect(args[args.indexOf('--model') + 1]).toBe('haiku')
+
+      rmSync(baseDir, { recursive: true, force: true })
+    })
   })
 
   it('leaves no run token behind when the run fails', async () => {

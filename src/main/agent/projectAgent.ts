@@ -1,7 +1,9 @@
 import { execFile } from 'child_process'
+import { randomUUID } from 'crypto'
 import { homedir } from 'os'
 import { promisify } from 'util'
 import { findCli } from './findCli'
+import { INSTALL_HINT as COPILOT_INSTALL_HINT } from './copilotCliProvider'
 import { grantRunToken } from '../settings/mcpAccess'
 import { readSettings } from '../settings/settingsStore'
 import { openProject } from '../project/projectApi'
@@ -150,11 +152,22 @@ export async function runProjectAgent(
 
   // Only the CLI providers bring an agent that can call tools. The others answer one question
   // at a time, which is not enough to work out what a project needs and then change it.
-  const binary = narration.provider === 'claude-cli' ? await findCli('claude') : null
+  if (narration.provider !== 'claude-cli' && narration.provider !== 'copilot-cli') {
+    return {
+      status: 'failed',
+      reason:
+        'This needs the Claude CLI or the GitHub Copilot CLI. Choose one under Settings → Narration, and make sure it is installed and signed in.'
+    }
+  }
+
+  const binary = await findCli(narration.provider === 'claude-cli' ? 'claude' : 'copilot')
   if (!binary) {
     return {
       status: 'failed',
-      reason: 'This needs the Claude CLI. Choose it under Settings → Narration, and make sure `claude` is installed and signed in.'
+      reason:
+        narration.provider === 'claude-cli'
+          ? 'This needs the Claude CLI. Choose it under Settings → Narration, and make sure `claude` is installed and signed in.'
+          : COPILOT_INSTALL_HINT
     }
   }
 
@@ -162,46 +175,25 @@ export async function runProjectAgent(
   const { token, withdraw } = grantRunToken(baseDir)
   // A turn that carries on says only what is new; the first one has to set the scene.
   const carryingOn = Boolean(request.resumeSessionId)
+  const prompt = carryingOn
+    ? request.instruction
+    : buildAgentPrompt(request.projectId, request.instruction, project)
+  const mcpServers = {
+    talkie: {
+      command: 'node',
+      args: [request.serverPath],
+      // An environment variable rather than an argument: arguments are visible to anything that
+      // can list processes.
+      env: { TALKIE_MCP_TOKEN: token, TALKIE_HOME: baseDir }
+    }
+  }
 
   try {
-    const mcpConfig = JSON.stringify({
-      mcpServers: {
-        talkie: {
-          command: 'node',
-          args: [request.serverPath],
-          // An environment variable rather than an argument: arguments are visible to anything
-          // that can list processes.
-          env: { TALKIE_MCP_TOKEN: token, TALKIE_HOME: baseDir }
-        }
-      }
-    })
+    const { said, sessionId, costUsd } =
+      narration.provider === 'claude-cli'
+        ? await runClaude(binary, prompt, mcpServers, request.resumeSessionId, narration.claudeCli.model)
+        : await runCopilot(binary, prompt, mcpServers, request.resumeSessionId, narration.copilotCli.model)
 
-    const running = execFileAsync(
-      binary,
-      [
-        '-p',
-        carryingOn
-          ? request.instruction
-          : buildAgentPrompt(request.projectId, request.instruction, project),
-        ...(request.resumeSessionId ? ['--resume', request.resumeSessionId] : []),
-        '--output-format',
-        'json',
-        '--mcp-config',
-        mcpConfig,
-        // Talkie's tools and nothing else: whatever else this machine has configured is not
-        // part of what the person asked for.
-        '--strict-mcp-config',
-        '--allowedTools',
-        AGENT_TOOLS.map((tool) => `mcp__talkie__${tool}`).join(',')
-      ],
-      { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 }
-    )
-
-    // Closed at once, or the CLI waits three seconds for input that is never coming.
-    running.child.stdin?.end()
-
-    const { stdout } = await running
-    const { said, sessionId, costUsd } = readResult(stdout)
     return said.trim()
       ? { status: 'done', say: said.trim(), sessionId, costUsd }
       : { status: 'failed', reason: 'The agent finished without saying what it did.' }
@@ -210,6 +202,91 @@ export async function runProjectAgent(
   } finally {
     withdraw()
   }
+}
+
+type McpServers = Record<string, { command: string; args: string[]; env: Record<string, string> }>
+
+async function runClaude(
+  binary: string,
+  prompt: string,
+  mcpServers: McpServers,
+  resumeSessionId?: string,
+  model?: string
+): Promise<AgentSaid> {
+  const running = execFileAsync(
+    binary,
+    [
+      '-p',
+      prompt,
+      ...(resumeSessionId ? ['--resume', resumeSessionId] : []),
+      ...(model ? ['--model', model] : []),
+      '--output-format',
+      'json',
+      '--mcp-config',
+      JSON.stringify({ mcpServers }),
+      // Talkie's tools and nothing else: whatever else this machine has configured is not part
+      // of what the person asked for.
+      '--strict-mcp-config',
+      '--allowedTools',
+      AGENT_TOOLS.map((tool) => `mcp__talkie__${tool}`).join(',')
+    ],
+    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 }
+  )
+
+  // Closed at once, or the CLI waits three seconds for input that is never coming.
+  running.child.stdin?.end()
+  const { stdout } = await running
+  return readResult(stdout)
+}
+
+/**
+ * Copilot CLI speaks differently to Claude in ways only found by running it against a throwaway
+ * MCP server, since none of this is documented:
+ *
+ * - `--session-id` lets a run set its own id up front rather than only being handed one back, so
+ *   resume works the same way as Claude despite Copilot not yet putting a session id on stdout
+ *   in `-s` mode (github/copilot-cli#807) — Talkie mints the id itself and reuses it.
+ * - Restricting the toolset takes two flags that disagree on how to name a tool. Copilot's own
+ *   built-ins (bash, edit, web_fetch...) are there unless `--available-tools` lists everything
+ *   that should exist instead, addressed as `server-tool`; `--allow-tool` only stops it asking
+ *   permission for what's already on that list, addressed as `server(tool)`. Both are needed —
+ *   the first tried alone still asks for permission and hangs, since nothing here can answer.
+ * - `--disable-builtin-mcps` drops the GitHub MCP server Copilot otherwise attaches by default,
+ *   which is no part of what anyone asked "Ask Talkie" to do.
+ */
+async function runCopilot(
+  binary: string,
+  prompt: string,
+  mcpServers: McpServers,
+  resumeSessionId?: string,
+  model?: string
+): Promise<AgentSaid> {
+  const sessionId = resumeSessionId ?? randomUUID()
+
+  const running = execFileAsync(
+    binary,
+    [
+      '-p',
+      prompt,
+      resumeSessionId ? '--resume' : '--session-id',
+      sessionId,
+      // Only the answer, with none of the session banner a person would read.
+      '-s',
+      // Nothing is watching this run, so a question would hang until the timeout.
+      '--no-ask-user',
+      '--additional-mcp-config',
+      JSON.stringify({ mcpServers }),
+      '--disable-builtin-mcps',
+      ...(model ? ['--model', model] : []),
+      ...AGENT_TOOLS.flatMap((tool) => ['--available-tools', `talkie-${tool}`]),
+      ...AGENT_TOOLS.flatMap((tool) => ['--allow-tool', `talkie(${tool})`])
+    ],
+    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 }
+  )
+
+  running.child.stdin?.end()
+  const { stdout } = await running
+  return { said: stdout.trim(), sessionId }
 }
 
 interface AgentSaid {

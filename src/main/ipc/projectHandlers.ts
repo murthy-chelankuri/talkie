@@ -21,6 +21,7 @@ import { mcpConnection } from '../setup/mcpConnection'
 import { createMcpToken, revokeMcpToken } from '../settings/mcpAccess'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
+import { listCopilotModels } from '../agent/copilotModels'
 import { previewVoice } from '../tts/listVoices'
 import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
@@ -73,6 +74,7 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:update', (_event, patch: unknown) => updateSettings(patch as never))
   ipcMain.handle('settings:providers', () => describeProviders())
   ipcMain.handle('settings:localServer', () => findLocalServer())
+  ipcMain.handle('settings:copilotModels', () => listCopilotModels())
   ipcMain.handle('settings:resetSpeech', () => resetSpeechSettings())
   ipcMain.handle('settings:readiness', () => checkReadiness())
   ipcMain.handle('settings:mcpConnection', () => mcpConnection())

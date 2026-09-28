@@ -1,9 +1,19 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, chmodSync, readFileSync, existsSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { copilotCliProvider } from './copilotCliProvider'
+import { findCli } from './findCli'
 import type { NarrationRequest } from './narrationProvider'
+
+// findCli falls back to Homebrew's directories when PATH has nothing, so on a machine that has
+// the real CLI installed there — as testing the fix for projectAgent.ts requires — "nowhere on
+// the machine" cannot be staged through PATH alone. Only that one test overrides the mock; every
+// other call here forwards to the real implementation, which is what finds the fakes below.
+vi.mock('./findCli', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./findCli')>()
+  return { findCli: vi.fn(actual.findCli) }
+})
 
 /**
  * Tested against a stand-in binary rather than the real CLI, which needs a Copilot subscription
@@ -54,6 +64,8 @@ describe('the Copilot CLI provider', () => {
   })
 
   it('reports what to install when the command is nowhere on the machine', async () => {
+    vi.mocked(findCli).mockResolvedValueOnce(null)
+
     const availability = await copilotCliProvider.isAvailable()
 
     expect(availability.available).toBe(false)

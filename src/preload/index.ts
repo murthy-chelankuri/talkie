@@ -44,6 +44,7 @@ const settingsApi = {
   update: (patch: unknown): Promise<Settings> => ipcRenderer.invoke('settings:update', patch),
   providers: (): Promise<ProviderDescription[]> => ipcRenderer.invoke('settings:providers'),
   localServer: (): Promise<LocalServer | null> => ipcRenderer.invoke('settings:localServer'),
+  copilotModels: (): Promise<string[]> => ipcRenderer.invoke('settings:copilotModels'),
   resetSpeech: (): Promise<Settings> => ipcRenderer.invoke('settings:resetSpeech'),
   readiness: (): Promise<ReadinessCheck[]> => ipcRenderer.invoke('settings:readiness'),
   mcpConnection: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpConnection'),
