@@ -61,8 +61,20 @@ function isWholeArc(arc: PitchArc): boolean {
 
 /** The slice of the fall belonging to piece `index` of `total`. */
 export function arcFor(index: number, total: number): PitchArc {
-  if (total <= 1) return WHOLE_ARC
-  const at = (step: number): number => PITCH_TOP + (PITCH_BOTTOM - PITCH_TOP) * (step / total)
+  return pitchArcFor(index, total, WHOLE_ARC)
+}
+
+/**
+ * The slice of `whole` belonging to piece `index` of `total` — `arcFor` generalised to a range
+ * other than the take's own top-to-bottom fall.
+ *
+ * Needed when a piece being synthesised is itself already a slice of the whole take (a beat), and
+ * is being split further into clauses for a voice that cannot be trusted with `[[slnc]]`: each
+ * clause needs its place in the beat's own slice of the fall, not a fresh fall of its own.
+ */
+export function pitchArcFor(index: number, total: number, whole: PitchArc): PitchArc {
+  if (total <= 1) return whole
+  const at = (step: number): number => whole.from + (whole.to - whole.from) * (step / total)
   return { from: at(index), to: at(index + 1) }
 }
 
@@ -122,6 +134,60 @@ function pitchFor(index: number, total: number, arc: PitchArc): number {
 }
 
 function withClausePauses(sentence: string, pauseMs: number): string {
+  return splitClauses(sentence).join(`[[slnc ${Math.round(pauseMs)}]]`)
+}
+
+/** A sentence broken at the punctuation a speaker draws breath at, keeping it with the clause. */
+export function splitClauses(sentence: string): string[] {
   // A speaker pauses after the comma, not before it.
-  return sentence.replace(/([,;:—–])\s+/g, `$1[[slnc ${Math.round(pauseMs)}]]`)
+  return sentence
+    .split(/(?<=[,;:—–])\s+/)
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0)
+}
+
+export interface SpokenPiece {
+  text: string
+  /** Silence that follows this piece, before the next. Zero for the take's last piece. */
+  pauseAfterMs: number
+  /** This piece's own slice of the pitch fall — pass straight to `toSpokenMarkup`. */
+  arc: PitchArc
+}
+
+/**
+ * The same breakdown `toSpokenMarkup` embeds as `[[slnc]]` commands, handed back as separate
+ * pieces instead of one string.
+ *
+ * For a voice that does not reliably honour embedded commands, the only pause left is real
+ * silence spliced between separate recordings — see `voicePauseSupport.ts` for why some voices
+ * need this and `sayTtsProvider.ts` for where these pieces are turned into one file again.
+ */
+export function toSpokenPieces(
+  text: string,
+  settings: ProsodySettings = DEFAULT_PROSODY,
+  arc: PitchArc = WHOLE_ARC
+): SpokenPiece[] {
+  const sentences = splitSentences(sanitize(text))
+  const clausesBySentence = sentences.map(splitClauses)
+  const total = clausesBySentence.reduce((sum, clauses) => sum + clauses.length, 0)
+  if (total === 0) return []
+
+  const pieces: SpokenPiece[] = []
+  let index = 0
+  clausesBySentence.forEach((clauses, sentenceIndex) => {
+    clauses.forEach((clauseText, clauseIndex) => {
+      const isLastClauseOfSentence = clauseIndex === clauses.length - 1
+      const isLastSentence = sentenceIndex === clausesBySentence.length - 1
+      const pauseAfterMs =
+        isLastClauseOfSentence && isLastSentence
+          ? 0
+          : isLastClauseOfSentence
+            ? settings.sentencePauseMs
+            : settings.clausePauseMs
+
+      pieces.push({ text: clauseText, pauseAfterMs, arc: pitchArcFor(index, total, arc) })
+      index += 1
+    })
+  })
+  return pieces
 }

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_PROSODY, WHOLE_ARC, arcFor, splitSentences, toSpokenMarkup } from './prosody'
+import {
+  DEFAULT_PROSODY,
+  WHOLE_ARC,
+  arcFor,
+  pitchArcFor,
+  splitClauses,
+  splitSentences,
+  toSpokenMarkup,
+  toSpokenPieces
+} from './prosody'
 
 describe('toSpokenMarkup', () => {
   it('sets the pace once, at the front', () => {
@@ -70,6 +79,79 @@ describe('splitSentences', () => {
 
   it('handles narration with no terminator at all', () => {
     expect(splitSentences('no full stop here')).toEqual(['no full stop here'])
+  })
+})
+
+describe('splitClauses', () => {
+  it('keeps the punctuation with the clause it ends, dropping the space after it', () => {
+    expect(splitClauses('Dig in, and the page narrows.')).toEqual(['Dig in,', 'and the page narrows.'])
+  })
+
+  it('splits on semicolons, colons and dashes as well as commas', () => {
+    expect(splitClauses('First; second: third—fourth.')).toEqual(['First;', 'second:', 'third—fourth.'])
+  })
+
+  it('returns the whole sentence as one clause when there is nothing to pause at', () => {
+    expect(splitClauses('No pause here.')).toEqual(['No pause here.'])
+  })
+})
+
+describe('pitchArcFor', () => {
+  it('generalises arcFor to a range other than the whole take', () => {
+    // A slice of a slice: the same maths arcFor uses, against an arbitrary starting range.
+    expect(pitchArcFor(0, 2, { from: 10, to: 0 })).toEqual({ from: 10, to: 5 })
+    expect(pitchArcFor(1, 2, { from: 10, to: 0 })).toEqual({ from: 5, to: 0 })
+  })
+
+  it('agrees with arcFor when the range is the whole take', () => {
+    expect(pitchArcFor(1, 4, WHOLE_ARC)).toEqual(arcFor(1, 4))
+  })
+
+  it('hands back the whole range untouched for a single piece', () => {
+    const arc = { from: 7, to: -2 }
+    expect(pitchArcFor(0, 1, arc)).toEqual(arc)
+  })
+})
+
+describe('toSpokenPieces', () => {
+  it('breaks text into the same clauses toSpokenMarkup would embed pauses between', () => {
+    const pieces = toSpokenPieces('Dig in, and the page narrows. It settles from there.')
+
+    expect(pieces.map((piece) => piece.text)).toEqual([
+      'Dig in,',
+      'and the page narrows.',
+      'It settles from there.'
+    ])
+  })
+
+  it('sizes the gap between pieces by what kind of boundary it is', () => {
+    const pieces = toSpokenPieces('Dig in, and the page narrows. It settles from there.')
+
+    // Clause boundary, then sentence boundary, then the take's last piece.
+    expect(pieces[0].pauseAfterMs).toBe(DEFAULT_PROSODY.clausePauseMs)
+    expect(pieces[1].pauseAfterMs).toBe(DEFAULT_PROSODY.sentencePauseMs)
+    expect(pieces[2].pauseAfterMs).toBe(0)
+  })
+
+  it('gives every piece its own place in the pitch fall, first highest and last lowest', () => {
+    const pieces = toSpokenPieces('One, two, three.')
+
+    expect(pieces[0].arc.from).toBeGreaterThan(pieces[pieces.length - 1].arc.from)
+  })
+
+  it('fits within a caller-supplied arc rather than always falling the whole way', () => {
+    // As when a beat that is itself one slice of a longer take is split further into clauses.
+    const beatArc = { from: 1, to: 0 }
+    const pieces = toSpokenPieces('One, two.', DEFAULT_PROSODY, beatArc)
+
+    for (const piece of pieces) {
+      expect(piece.arc.from).toBeLessThanOrEqual(beatArc.from)
+      expect(piece.arc.to).toBeGreaterThanOrEqual(beatArc.to)
+    }
+  })
+
+  it('gives back nothing for empty narration, the same as toSpokenMarkup', () => {
+    expect(toSpokenPieces('   ')).toEqual([])
   })
 })
 
