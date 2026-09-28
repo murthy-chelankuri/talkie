@@ -8,6 +8,7 @@ import {
   type NarrationRequest,
   type ProviderAvailability
 } from './narrationProvider'
+import { readSettings } from '../settings/settingsStore'
 
 const execFileAsync = promisify(execFile)
 
@@ -60,10 +61,20 @@ async function runClaude(prompt: string): Promise<string> {
   const binary = await findCli('claude')
   if (!binary) throw new Error('The `claude` command was not found.')
 
+  const model = readSettings().narration.claudeCli.model
+
   try {
     const running = execFileAsync(
       binary,
-      ['-p', prompt, '--output-format', 'json', '--allowedTools', 'Read'],
+      [
+        '-p',
+        prompt,
+        '--output-format',
+        'json',
+        '--allowedTools',
+        'Read',
+        ...(model ? ['--model', model] : [])
+      ],
       { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }
     )
 

@@ -72,6 +72,7 @@ export const settingsClient = {
   update: (patch: unknown) => window.api.settings.update(patch),
   providers: () => window.api.settings.providers(),
   localServer: () => window.api.settings.localServer(),
+  copilotModels: () => window.api.settings.copilotModels(),
   resetSpeech: () => window.api.settings.resetSpeech(),
   readiness: () => window.api.settings.readiness(),
   mcpConnection: () => window.api.settings.mcpConnection(),

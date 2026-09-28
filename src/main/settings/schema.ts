@@ -30,6 +30,27 @@ export const AnthropicSettingsSchema = z.object({
   model: z.string().default('claude-sonnet-5')
 })
 
+/**
+ * The Claude CLI resolves these itself; there is no API to ask it what a full model name is, so
+ * only the account-independent aliases it documents are offered. Empty means "let the CLI and
+ * account decide", which is what every build did before this setting existed.
+ */
+export const CLAUDE_CLI_MODEL_IDS = ['', 'sonnet', 'opus', 'haiku', 'fable'] as const
+
+export const ClaudeCliSettingsSchema = z.object({
+  model: z.enum(CLAUDE_CLI_MODEL_IDS).default('')
+})
+
+/**
+ * Copilot CLI's catalogue is read live off the CLI itself (see copilotModels.ts) rather than
+ * fixed here, since it changes as GitHub adds and retires models — so this is a plain string,
+ * not an enum. Empty means "auto", which is also the only choice guaranteed to work on every
+ * plan.
+ */
+export const CopilotCliSettingsSchema = z.object({
+  model: z.string().default('')
+})
+
 export const NarrationSettingsSchema = z.object({
   /** Draft narration by itself when a clip lands on the timeline. */
   autoDraft: z.boolean().default(true),
@@ -38,7 +59,9 @@ export const NarrationSettingsSchema = z.object({
     .preprocess((value) => (value === 'ollama' ? 'local' : value), z.enum(NARRATION_PROVIDER_IDS))
     .default('template'),
   local: LocalModelSettingsSchema.default({}),
-  anthropic: AnthropicSettingsSchema.default({})
+  anthropic: AnthropicSettingsSchema.default({}),
+  claudeCli: ClaudeCliSettingsSchema.default({}),
+  copilotCli: CopilotCliSettingsSchema.default({})
 })
 
 export const OpenAiSpeechSchema = z.object({
@@ -139,6 +162,7 @@ export const SettingsSchema = z.object({
 })
 
 export type NarrationProviderId = (typeof NARRATION_PROVIDER_IDS)[number]
+export type ClaudeCliModelId = (typeof CLAUDE_CLI_MODEL_IDS)[number]
 export type McpSettings = z.infer<typeof McpSettingsSchema>
 export type RecordingSettings = z.infer<typeof RecordingSettingsSchema>
 export type ExportSettings = z.infer<typeof ExportSettingsSchema>

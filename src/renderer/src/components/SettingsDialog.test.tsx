@@ -12,6 +12,7 @@ vi.mock('../api/projectClient', () => ({
     voices: vi.fn(),
     speechEngines: vi.fn(),
     localServer: vi.fn(),
+    copilotModels: vi.fn(),
     readiness: vi.fn(),
     resetSpeech: vi.fn(),
     previewVoice: vi.fn(),
@@ -26,7 +27,9 @@ const defaults = {
     autoDraft: true,
     provider: 'template' as const,
     local: { baseUrl: '', model: '' },
-    anthropic: { apiKey: '', model: 'claude-sonnet-5' }
+    anthropic: { apiKey: '', model: 'claude-sonnet-5' },
+    claudeCli: { model: '' },
+    copilotCli: { model: '' }
   },
   export: { burnCaptions: false },
   speech: {
@@ -60,6 +63,7 @@ beforeEach(() => {
     { name: 'Samantha', locale: 'en_US', sample: 'Hello.', novelty: false }
   ] as never)
   vi.mocked(settingsClient.localServer).mockResolvedValue(null as never)
+  vi.mocked(settingsClient.copilotModels).mockResolvedValue([] as never)
   vi.mocked(settingsClient.readiness).mockResolvedValue([check()] as never)
   vi.mocked(settingsClient.mcpConnection).mockResolvedValue({
     serverPath: '/tmp/talkie-mcp.mjs',
@@ -78,14 +82,11 @@ describe('SettingsDialog', () => {
     expect(await screen.findByRole('switch', { name: 'Draft narration automatically' })).toBeInTheDocument()
   })
 
-  it('keeps the voice controls out of the way until asked for', async () => {
-    const user = userEvent.setup()
+  it('shows who speaks it on the same page as who writes it', async () => {
+    // Writing and speaking are different jobs, but they are the two halves of one thing — a
+    // separate sidebar entry for each read as though they were unrelated settings.
     render(<SettingsDialog onClose={vi.fn()} />)
     await screen.findByRole('switch', { name: 'Draft narration automatically' })
-
-    expect(screen.queryByRole('combobox', { name: 'Narration voice' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /^Voice/ }))
 
     expect(await screen.findByRole('combobox', { name: 'Narration voice' })).toBeInTheDocument()
   })
@@ -138,7 +139,6 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog onClose={vi.fn()} />)
     await screen.findByRole('switch', { name: 'Draft narration automatically' })
 
-    await user.click(screen.getByRole('button', { name: /^Voice/ }))
     await user.click(await screen.findByRole('button', { name: /Reset to defaults/ }))
 
     await waitFor(() => expect(settingsClient.resetSpeech).toHaveBeenCalled())
