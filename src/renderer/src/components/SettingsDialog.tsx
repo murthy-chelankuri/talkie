@@ -14,7 +14,6 @@ import {
   Subtitles,
   TriangleAlert,
   Video,
-  Volume2,
   Wrench,
   X
 } from 'lucide-react'
@@ -44,11 +43,10 @@ import { VoicePicker } from './VoicePicker'
  */
 const LicencesSection = lazy(async () => ({ default: (await import('./LicencesSection')).LicencesSection }))
 
-type SectionId = 'narration' | 'voice' | 'recording' | 'export' | 'system' | 'licences'
+type SectionId = 'narration' | 'recording' | 'export' | 'system' | 'licences'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: string }> = [
-  { id: 'narration', label: 'Narration', icon: <Sparkles size={15} />, blurb: 'Who writes the words' },
-  { id: 'voice', label: 'Voice', icon: <Volume2 size={15} />, blurb: 'How they are spoken' },
+  { id: 'narration', label: 'AI', icon: <Sparkles size={15} />, blurb: 'Who writes it, who speaks it' },
   { id: 'recording', label: 'Recording', icon: <Video size={15} />, blurb: 'What a capture shows' },
   { id: 'export', label: 'Export', icon: <Download size={15} />, blurb: 'What the file carries' },
   { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' },
@@ -77,6 +75,7 @@ export function SettingsDialog({
   const [voices, setVoices] = useState<Voice[]>([])
   const [engines, setEngines] = useState<SpeechEngineDescription[]>([])
   const [localServer, setLocalServer] = useState<LocalServer | null>(null)
+  const [copilotModels, setCopilotModels] = useState<string[]>([])
   const [readiness, setReadiness] = useState<ReadinessCheck[]>([])
   const [previewing, setPreviewing] = useState(false)
 
@@ -86,6 +85,7 @@ export function SettingsDialog({
     settingsClient.voices().then(setVoices)
     settingsClient.speechEngines().then(setEngines)
     settingsClient.localServer().then(setLocalServer)
+    settingsClient.copilotModels().then(setCopilotModels)
     settingsClient.readiness().then(setReadiness)
   }, [])
 
@@ -178,33 +178,40 @@ export function SettingsDialog({
                 <Spinner size="md" label="Loading settings" />
               </div>
             ) : section === 'narration' ? (
-              <NarrationSection
-                settings={settings}
-                providers={providers}
-                localServer={localServer}
-                onPatch={patchNarration}
-              />
-            ) : section === 'voice' ? (
-              <VoiceSection
-                settings={settings}
-                voices={voices}
-                engines={engines}
-                previewing={previewing}
-                onPatch={patchSpeech}
-                onPreview={async () => {
-                  setPreviewing(true)
-                  try {
-                    const chosen = voices.find((voice) => voice.name === settings.speech.voice)
-                    await settingsClient.previewVoice(
-                      settings.speech.voice,
-                      chosen?.sample ?? 'This is how your narration will sound.'
-                    )
-                  } finally {
-                    setPreviewing(false)
-                  }
-                }}
-                onReset={() => apply(settingsClient.resetSpeech())}
-              />
+              <div className="flex flex-col gap-8">
+                <NarrationSection
+                  settings={settings}
+                  providers={providers}
+                  localServer={localServer}
+                  copilotModels={copilotModels}
+                  onPatch={patchNarration}
+                />
+                {/* One page for both: writing and speaking are different jobs — no provider here
+                    does both — but they used to sit behind separate sidebar entries as if they
+                    were unrelated settings rather than the two halves of "how does this project
+                    talk". A rule marks the join; each half still carries its own heading. */}
+                <div className="border-t border-border" />
+                <VoiceSection
+                  settings={settings}
+                  voices={voices}
+                  engines={engines}
+                  previewing={previewing}
+                  onPatch={patchSpeech}
+                  onPreview={async () => {
+                    setPreviewing(true)
+                    try {
+                      const chosen = voices.find((voice) => voice.name === settings.speech.voice)
+                      await settingsClient.previewVoice(
+                        settings.speech.voice,
+                        chosen?.sample ?? 'This is how your narration will sound.'
+                      )
+                    } finally {
+                      setPreviewing(false)
+                    }
+                  }}
+                  onReset={() => apply(settingsClient.resetSpeech())}
+                />
+              </div>
             ) : section === 'recording' ? (
               <RecordingSection settings={settings} onPatch={patchRecording} />
             ) : section === 'export' ? (
@@ -274,11 +281,13 @@ function NarrationSection({
   settings,
   providers,
   localServer,
+  copilotModels,
   onPatch
 }: {
   settings: Settings
   providers: ProviderDescription[]
   localServer: LocalServer | null
+  copilotModels: string[]
   onPatch: (next: Partial<Settings['narration']>) => Promise<void>
 }): JSX.Element {
   const selected = settings.narration.provider
@@ -350,6 +359,57 @@ function NarrationSection({
             {/* Underneath the provider it belongs to, and only while that one is chosen. Shown at
                 the foot of the whole list, these settings sat a scroll away from the thing they
                 configure, with nothing to say which one they were for. */}
+            {selected === provider.id && provider.id === 'claude-cli' && (
+              <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
+                <p className="text-[11px] leading-relaxed text-text-muted">
+                  Left on Default, the CLI picks whatever your account normally uses. The CLI
+                  resolves these itself, so there is no live list to check them against — a
+                  choice unavailable on your plan fails when it is used, not here.
+                </p>
+                <select
+                  aria-label="Claude CLI model"
+                  value={settings.narration.claudeCli.model}
+                  onChange={(event) =>
+                    onPatch({
+                      claudeCli: { ...settings.narration.claudeCli, model: event.target.value as typeof settings.narration.claudeCli.model }
+                    })
+                  }
+                  className="rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+                >
+                  <option value="">Default</option>
+                  <option value="sonnet">Sonnet</option>
+                  <option value="opus">Opus</option>
+                  <option value="haiku">Haiku</option>
+                  <option value="fable">Fable</option>
+                </select>
+              </div>
+            )}
+
+            {selected === provider.id && provider.id === 'copilot-cli' && (
+              <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
+                <p className="text-[11px] leading-relaxed text-text-muted">
+                  {copilotModels.length > 0
+                    ? 'Read from the CLI itself, so this list is whatever your installed version knows about — not whether your plan can use any of them. Auto is the only choice guaranteed to work on every plan; anything else fails at the point it is used if your plan does not include it.'
+                    : 'No model list found. Auto is used until the Copilot CLI is installed where Talkie can read one from.'}
+                </p>
+                <select
+                  aria-label="Copilot CLI model"
+                  value={settings.narration.copilotCli.model}
+                  onChange={(event) =>
+                    onPatch({ copilotCli: { ...settings.narration.copilotCli, model: event.target.value } })
+                  }
+                  className="rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+                >
+                  <option value="">Auto</option>
+                  {copilotModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {selected === provider.id && provider.id === 'local' && (
               <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
                 <p className="text-[11px] leading-relaxed text-text-muted">
