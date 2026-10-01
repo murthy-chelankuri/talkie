@@ -66,4 +66,5 @@
   "bin": {
     "talkie-mcp": "./out/mcp/talkie-mcp.mjs"
   }
+
 }
