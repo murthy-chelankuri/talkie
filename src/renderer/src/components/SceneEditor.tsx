@@ -3,7 +3,8 @@ import { LayoutTemplate, Share2, Sparkles, TriangleAlert, X } from 'lucide-react
 import { sceneClient, type TimelineItem } from '../api/projectClient'
 import { RichTextField } from './RichTextField'
 import { plainToRichText, richTextToPlain } from '../../../main/project/timeline/richText'
-import { resolveSceneTheme } from '../../../remotion/sceneTheme'
+import { VARIANT_FOR, resolveSceneTheme } from '../../../remotion/sceneTheme'
+import type { RenderTheme } from '../../../remotion/renderTheme'
 import type { SceneStyle } from '../../../main/project/timeline/schema'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -22,7 +23,7 @@ export interface SceneDraft {
 }
 
 const DEFAULT_STYLE: SceneStyle = {
-  theme: 'graphite',
+  theme: 'dark',
   font: 'serif',
   align: 'left',
   size: 'regular',
@@ -62,6 +63,7 @@ export function SceneEditor({
   projectId,
   projectName,
   item,
+  theme = null,
   onClose,
   onSaved
 }: {
@@ -69,6 +71,8 @@ export function SceneEditor({
   projectName: string
   /** The scene being edited, or null when writing a new one. */
   item: TimelineItem | null
+  /** The project's theme, which the preview and the choice of look follow. */
+  theme?: RenderTheme | null
   onClose: () => void
   onSaved: () => void | Promise<void>
 }): JSX.Element {
@@ -328,6 +332,7 @@ export function SceneEditor({
               style={draft.style}
               onChange={(style) => setDraft((d) => ({ ...d, style: { ...d.style, ...style } }))}
               showTypography={kind === 'scene'}
+              theme={theme}
             />
 
             <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-bg p-3">
@@ -354,7 +359,7 @@ export function SceneEditor({
           </div>
 
           <div className="flex min-w-0 flex-1 items-center justify-center bg-bg p-4">
-            <ScenePreview kind={kind} draft={draft} svg={svg} />
+            <ScenePreview kind={kind} draft={draft} svg={svg} theme={theme} />
           </div>
         </div>
 
@@ -374,23 +379,31 @@ export function SceneEditor({
   )
 }
 
-const THEME_CHOICES: Array<{ id: SceneStyle['theme']; label: string; swatch: string }> = [
-  { id: 'graphite', label: 'Graphite', swatch: 'linear-gradient(135deg,#232833,#101318)' },
-  { id: 'ink', label: 'Ink', swatch: 'linear-gradient(135deg,#14171d,#0b0d11)' },
-  { id: 'paper', label: 'Paper', swatch: 'linear-gradient(135deg,#fdfbf6,#f2ede2)' },
-  { id: 'brass', label: 'Brass', swatch: 'linear-gradient(135deg,#3a2c10,#23190a)' }
+/**
+ * The three variants of the project's theme — or, in a project without one, the palettes they
+ * stand for. Older slides may still carry a palette name; they show as the variant it maps to.
+ */
+const VARIANT_CHOICES: Array<{ id: 'brand' | 'light' | 'dark'; label: string }> = [
+  { id: 'brand', label: 'Brand' },
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' }
 ]
 
 /** How the scene looks, as a small set of decisions rather than a stylesheet. */
 function SceneStyleControls({
   style,
   onChange,
-  showTypography
+  showTypography,
+  theme
 }: {
   style: SceneStyle
   onChange: (next: Partial<SceneStyle>) => void
   showTypography: boolean
+  /** The project's theme. With one, colour and font are its to decide, so those controls go. */
+  theme: RenderTheme | null
 }): JSX.Element {
+  const current = VARIANT_FOR[style.theme] ?? 'dark'
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-3">
       <span className="text-[13px] font-medium text-text">Look</span>
@@ -398,62 +411,67 @@ function SceneStyleControls({
       <div className="flex flex-col gap-1.5">
         <span className="text-[11px] text-text-muted">Background</span>
         <div className="flex gap-1.5">
-          {THEME_CHOICES.map((choice) => (
+          {VARIANT_CHOICES.map((choice) => (
             <button
               key={choice.id}
               type="button"
               aria-label={choice.label}
-              aria-pressed={style.theme === choice.id}
+              aria-pressed={current === choice.id}
               title={choice.label}
               onClick={() => onChange({ theme: choice.id })}
               className={cn(
                 'h-7 flex-1 rounded-md border p-0 transition-colors',
-                style.theme === choice.id ? 'border-accent ring-1 ring-accent' : 'border-border'
+                current === choice.id ? 'border-accent ring-1 ring-accent' : 'border-border'
               )}
-              style={{ background: choice.swatch }}
+              style={{ background: resolveSceneTheme({ ...style, theme: choice.id }, theme).background }}
             />
           ))}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] text-text-muted">Accent</span>
-        <div className="flex items-center gap-1.5">
-          {['#7ab5f0', '#5eead4', '#c4b5fd', '#f87171', '#ffffff'].map((colour) => (
-            <button
-              key={colour}
-              type="button"
-              aria-label={`Accent ${colour}`}
-              aria-pressed={style.accent === colour}
-              onClick={() => onChange({ accent: colour })}
-              className={cn(
-                'h-5 w-5 rounded-full border p-0',
-                style.accent === colour ? 'border-accent ring-1 ring-accent' : 'border-border'
-              )}
-              style={{ background: colour }}
+      {/* A theme sets the accent; a slide choosing its own is how it goes off-brand. */}
+      {!theme && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] text-text-muted">Accent</span>
+          <div className="flex items-center gap-1.5">
+            {['#7ab5f0', '#5eead4', '#c4b5fd', '#f87171', '#ffffff'].map((colour) => (
+              <button
+                key={colour}
+                type="button"
+                aria-label={`Accent ${colour}`}
+                aria-pressed={style.accent === colour}
+                onClick={() => onChange({ accent: colour })}
+                className={cn(
+                  'h-5 w-5 rounded-full border p-0',
+                  style.accent === colour ? 'border-accent ring-1 ring-accent' : 'border-border'
+                )}
+                style={{ background: colour }}
+              />
+            ))}
+            <input
+              type="color"
+              aria-label="Pick an accent colour"
+              value={style.accent}
+              onChange={(event) => onChange({ accent: event.target.value })}
+              className="h-6 w-8 cursor-pointer rounded border border-border bg-transparent p-0"
             />
-          ))}
-          <input
-            type="color"
-            aria-label="Pick an accent colour"
-            value={style.accent}
-            onChange={(event) => onChange({ accent: event.target.value })}
-            className="h-6 w-8 cursor-pointer rounded border border-border bg-transparent p-0"
-          />
+          </div>
         </div>
-      </div>
+      )}
 
       {showTypography && (
-        <div className="grid grid-cols-3 gap-2">
-          <Choice
-            label="Font"
-            value={style.font}
-            options={[
-              { id: 'serif', label: 'Serif' },
-              { id: 'sans', label: 'Sans' }
-            ]}
-            onChange={(font) => onChange({ font: font as SceneStyle['font'] })}
-          />
+        <div className={cn('grid gap-2', theme ? 'grid-cols-2' : 'grid-cols-3')}>
+          {!theme && (
+            <Choice
+              label="Font"
+              value={style.font}
+              options={[
+                { id: 'serif', label: 'Serif' },
+                { id: 'sans', label: 'Sans' }
+              ]}
+              onChange={(font) => onChange({ font: font as SceneStyle['font'] })}
+            />
+          )}
           <Choice
             label="Align"
             value={style.align}
@@ -512,34 +530,36 @@ function Choice({
 function ScenePreview({
   kind,
   draft,
-  svg
+  svg,
+  theme
 }: {
   kind: SceneKind
   draft: SceneDraft
   svg: string | null
+  theme: RenderTheme | null
 }): JSX.Element {
   // Drawn from the same theme the composition uses, so the preview is not a second opinion.
-  const theme = resolveSceneTheme(draft.style)
-  const centred = theme.align === 'center'
+  const look = resolveSceneTheme(draft.style, theme)
+  const centred = look.align === 'center'
 
   return (
     <div
       className="aspect-video max-h-full w-full overflow-hidden rounded-lg shadow-lg ring-1 ring-border"
-      style={{ background: theme.background }}
+      style={{ background: look.background }}
     >
       {kind === 'scene' ? (
         <div
           className="flex h-full flex-col justify-center px-[9%]"
-          style={{ textAlign: theme.align, alignItems: centred ? 'center' : 'stretch' }}
+          style={{ textAlign: look.align, alignItems: centred ? 'center' : 'stretch' }}
         >
           <h3
             className="text-[clamp(18px,3.4vw,42px)] leading-tight"
-            style={{ fontFamily: theme.headingFont, color: theme.heading }}
+            style={{ fontFamily: look.headingFont, color: look.heading }}
             dangerouslySetInnerHTML={{ __html: draft.title || 'Your title' }}
           />
           <div
             className="mt-3 h-[3px] w-14 rounded"
-            style={{ background: theme.accent, marginLeft: centred ? 'auto' : undefined, marginRight: centred ? 'auto' : undefined }}
+            style={{ background: look.accent, marginLeft: centred ? 'auto' : undefined, marginRight: centred ? 'auto' : undefined }}
           />
           <ul className="mt-5 flex flex-col gap-2">
             {draft.bullets
@@ -550,10 +570,10 @@ function ScenePreview({
                   className="flex items-baseline gap-2.5"
                   style={{ justifyContent: centred ? 'center' : 'flex-start' }}
                 >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: theme.accent }} />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: look.accent }} />
                   <span
                     className="text-[clamp(10px,1.7vw,21px)] leading-snug"
-                    style={{ color: theme.body }}
+                    style={{ color: look.body }}
                     dangerouslySetInnerHTML={{ __html: line }}
                   />
                 </li>
@@ -565,7 +585,7 @@ function ScenePreview({
           {richTextToPlain(draft.title).trim() && (
             <h3
               className="mb-3 text-[clamp(14px,2.4vw,30px)]"
-              style={{ fontFamily: theme.headingFont, color: theme.heading }}
+              style={{ fontFamily: look.headingFont, color: look.heading }}
               dangerouslySetInnerHTML={{ __html: draft.title }}
             />
           )}

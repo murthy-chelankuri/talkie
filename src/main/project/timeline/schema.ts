@@ -30,7 +30,12 @@ export const VideoItemDataSchema = z.object({
  * cover what anyone actually reaches for.
  */
 export const SceneStyleSchema = z.object({
-  theme: z.enum(['graphite', 'ink', 'paper', 'brass']).default('graphite'),
+  /**
+   * Which variant of the project's theme the slide is drawn in. The four older names are still
+   * read, so a slide made before themes renders exactly as it did; with a theme they are taken
+   * as the variant nearest them. See sceneTheme.ts.
+   */
+  theme: z.enum(['brand', 'light', 'dark', 'graphite', 'ink', 'paper', 'brass']).default('dark'),
   font: z.enum(['serif', 'sans']).default('serif'),
   align: z.enum(['left', 'center']).default('left'),
   size: z.enum(['regular', 'large']).default('regular'),
@@ -41,6 +46,11 @@ export const SceneStyleSchema = z.object({
 export const TextSceneDataSchema = z.object({
   /** May contain a little formatting; see richText.ts for what is allowed. */
   title: z.string(),
+  /**
+   * An ordinary slide, or one of the cards a theme adds: an opening card with the logo large and
+   * the company named, or a closing one with the tagline and website.
+   */
+  layout: z.enum(['standard', 'title', 'closing']).default('standard'),
   bullets: z.array(z.string()).default([]),
   style: SceneStyleSchema.default({})
 })
