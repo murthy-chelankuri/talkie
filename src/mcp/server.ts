@@ -1,4 +1,6 @@
+import { readFileSync } from 'fs'
 import { homedir } from 'os'
+import { basename, isAbsolute } from 'path'
 import { z } from 'zod'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
@@ -33,8 +35,21 @@ import type { TimelineItem } from '../main/project/timeline/schema'
 import { prepareDeck, saveSlides } from '../main/slides/importSlides'
 import { rasterisePdf } from '../main/slides/rasterisePdf'
 import { drawDiagramForProject } from '../main/themes/projectDiagrams'
-import { createTheme, deleteTheme, listThemes, projectsUsingTheme, readTheme, updateTheme } from '../main/themes/themeApi'
-import { ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type Theme } from '../main/themes/schema'
+import {
+  createTheme,
+  deleteTheme,
+  duplicateTheme,
+  listThemes,
+  projectsUsingTheme,
+  readTheme,
+  updateTheme,
+  writeThemeAsset
+} from '../main/themes/themeApi'
+import { isBuiltinThemeId } from '../main/themes/builtinThemes'
+import { BUILTIN_FONTS, LOGO_CORNERS, ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type FontChoice, type Theme } from '../main/themes/schema'
+import { resolveFonts } from '../main/themes/generate/resolveFonts'
+import { readSettings } from '../main/settings/settingsStore'
+import { speechEngine } from '../main/tts/engineRegistry'
 import { fixContrast } from '../main/themes/contrast'
 import { setProjectTheme } from '../main/themes/applyTheme'
 import { generateTheme, saveGeneratedTheme } from '../main/themes/generate/generateTheme'
@@ -78,6 +93,25 @@ function describeItem(item: TimelineItem, index: number): string {
  * Mermaid's own errors name the line and what it did not understand, and the person who wrote
  * the source is the one who can fix it — so they are passed through rather than summarised.
  */
+/**
+ * What `style` means, said once. "theme" is the one that changed meaning: in a themed project its
+ * three values are the theme's own variants, and accent and font give way to the theme's.
+ */
+const STYLE_HELP =
+  'Look: theme "dark", "light" or "brand" — in a project with a theme these are that theme\'s three ' +
+  'variants (brand opens a section, light explains, dark sets a scene). font (serif/sans) and accent ' +
+  'only apply to a project without a theme. align left/center; size regular/large.'
+
+const LayoutInput = z
+  .enum(['standard', 'title', 'closing'])
+  .describe('"title" and "closing" draw the large opening and closing cards, with the theme\'s logo; "standard" is an ordinary slide')
+
+/** A file the agent names, read only if it is plainly a path on this machine. */
+function readLocalFile(path: string): { bytes: Buffer; fileName: string } {
+  if (!isAbsolute(path)) throw new Error(`"${path}" is not an absolute path.`)
+  return { bytes: readFileSync(path), fileName: basename(path) }
+}
+
 async function draw(
   projectId: string,
   source: string,
@@ -223,6 +257,7 @@ export function createTalkieServer(
         [
           `${project.name} (id ${project.id})`,
           `Voice: ${project.voice?.trim() || 'whatever Talkie is set to'}`,
+          `Theme: ${themeLabel(project.themeId)}`,
           '',
           said.length > 0
             ? said.join('\n')
@@ -271,11 +306,38 @@ export function createTalkieServer(
   )
 
   tool(
+    'talkie_list_voices',
+    {
+      title: 'List voices',
+      description:
+        'The voices a project can be read in, for whichever speech engine Talkie is set to — the ' +
+        'Mac\'s own voices, or Kokoro, the built-in voice that sounds close to a person. The engine ' +
+        'is chosen by the person in Settings, not here.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () => {
+      const { engine: engineId, voice: appVoice } = readSettings(baseDir).speech
+      const engine = speechEngine(engineId)
+      const [voices, availability] = await Promise.all([engine.voices(), engine.isAvailable()])
+      return text(
+        [
+          `Engine: ${engine.label}${availability.available ? '' : ` — not ready: ${availability.reason ?? 'unavailable'}`}`,
+          `Talkie's own voice: ${appVoice || 'the default'}`,
+          '',
+          ...voices.map((voice) => `${voice.name}${voice.locale ? ` (${voice.locale})` : ''}`)
+        ].join('\n')
+      )
+    }
+  )
+
+  tool(
     'talkie_set_voice',
     {
       title: 'Choose the voice',
       description:
-        'Set the voice this project is read in, by name — one of the system voices Talkie offers. ' +
+        'Set the voice this project is read in, by name — one from talkie_list_voices, for the engine ' +
+          'Talkie is set to. ' +
         'Narration already recorded keeps the voice it was read in until it is voiced again.',
       inputSchema: {
         projectId: z.string(),
@@ -283,6 +345,17 @@ export function createTalkieServer(
       }
     },
     async ({ projectId, voice }) => {
+      // A name the engine does not have is read in its default voice, silently — so it is refused
+      // here, where whoever chose it can still choose again.
+      const wanted = voice.trim()
+      if (wanted) {
+        const voices = await speechEngine(readSettings(baseDir).speech.engine).voices().catch(() => [])
+        // The Mac lists "Daniel (English (UK))" and answers to "Daniel", so either is a match.
+        const known = voices.some((v) => [v.name, v.name.split(' (')[0]].some((name) => name.toLowerCase() === wanted.toLowerCase()))
+        if (voices.length > 0 && !known) {
+          return text(`Talkie has no voice called ${wanted} with its current engine. talkie_list_voices names the ones it has.`)
+        }
+      }
       const project = withHistory(
         projectId,
         () => setProjectVoice(projectId, voice.trim() || null, baseDir),
@@ -296,11 +369,59 @@ export function createTalkieServer(
     }
   )
 
+  /** A project's theme by name, or why there is none — a theme deleted from under it included. */
+  const themeLabel = (themeId: string | undefined): string => {
+    if (!themeId) return "none — Talkie's own look (talkie_apply_theme sets one)"
+    try {
+      return `${readTheme(themeId, baseDir).name} (theme id ${themeId})`
+    } catch {
+      return "none — its theme was deleted, so it draws in Talkie's own look"
+    }
+  }
+
   // Themes: what a company's videos look like, kept once in a library and chosen per project.
   // All five verbs, as for every other kind — see AGENTS.md.
   const VariantInput = z
     .object({ background: z.string(), heading: z.string(), body: z.string(), accent: z.string() })
     .partial()
+  const FontInput = z.object({
+    family: z.string(),
+    files: z.array(z.string()).optional().describe('Absolute paths to the person\'s own woff2, woff, ttf or otf files')
+  })
+  const FONT_HELP =
+    `"${BUILTIN_FONTS.sans}" and "${BUILTIN_FONTS.serif}" are Talkie's own. Any other family is fetched ` +
+    'from Google Fonts if it is open there; otherwise give the files.'
+
+  /**
+   * A font for a theme, as the editor would make it: Talkie's own by name, the person's files as
+   * given, or an open family fetched from Google Fonts — and Talkie's own, said so, if none of those.
+   */
+  const chooseFont = async (
+    themeId: string,
+    role: 'heading' | 'body',
+    wanted: z.infer<typeof FontInput>,
+    notes: string[]
+  ): Promise<FontChoice> => {
+    if ((Object.values(BUILTIN_FONTS) as string[]).includes(wanted.family)) {
+      return { family: wanted.family, source: 'builtin', files: [] }
+    }
+    if (wanted.files?.length) {
+      const files = wanted.files.map((path) => {
+        const { fileName, bytes } = readLocalFile(path)
+        return writeThemeAsset(themeId, 'font', fileName, bytes, baseDir)
+      })
+      return { family: wanted.family, source: 'user', files }
+    }
+    const probe = defaultThemeDraft('font')
+    probe.fonts[role] = { family: wanted.family, source: 'google', files: [] }
+    const resolved = await resolveFonts(probe, {})
+    for (const file of resolved.files.filter((f) => f.role === role)) {
+      writeThemeAsset(themeId, 'font', basename(file.fileName), file.bytes, baseDir)
+    }
+    notes.push(...resolved.notes)
+    return resolved.draft.fonts[role]
+  }
+
   const describeTheme = (theme: Theme): string =>
     [
       `${theme.name} (theme id ${theme.id})`,
@@ -332,7 +453,9 @@ export function createTalkieServer(
       return text(
         themes.length === 0
           ? 'No themes yet. talkie_create_theme makes one, from a website if you have one.'
-          : themes.map((t) => `${t.name}${t.company ? ` — ${t.company}` : ''} (theme id ${t.id})`).join('\n')
+          : themes
+              .map((t) => `${t.name}${t.company ? ` — ${t.company}` : ''} (${isBuiltinThemeId(t.id) ? 'built in, ' : ''}theme id ${t.id})`)
+              .join('\n')
       )
     }
   )
@@ -357,22 +480,31 @@ export function createTalkieServer(
       title: 'Make a theme',
       description:
         'Make a theme for a company. Give a website (its real colours, fonts and logo are read from ' +
-        'it) or a description, and the theme is designed from that — this can take half a minute. ' +
+        'it), a logo or brand-guide file, or a description, and the theme is designed from that — ' +
+        'this can take half a minute. Talkie also comes with built-in themes (talkie_list_themes) ' +
+        'that can be applied as they are, or copied with talkie_duplicate_theme. ' +
         'Give neither and it starts from Talkie\'s own look with whatever fields are given. Colours ' +
         'are checked for readability either way.',
       inputSchema: {
         name: z.string(),
         url: z.string().optional().describe('The company\'s website'),
         description: z.string().optional().describe('What the company is and how it should feel'),
+        file: z
+          .string()
+          .optional()
+          .describe('An absolute path to the company\'s logo (svg, png, jpg, webp) or a PDF of its brand guidelines'),
         company: z.string().optional(),
         tagline: z.string().optional(),
         website: z.string().optional()
       }
     },
-    async ({ name, url, description, company, tagline, website }) => {
+    async ({ name, url, description, file, company, tagline, website }) => {
       let theme: Theme
-      if (url || description) {
-        const { draft, stagingDir } = await generateTheme({ name, url, description }, { baseDir })
+      if (url || description || file) {
+        const { draft, stagingDir } = await generateTheme(
+          { name, url, description, ...(file ? { file: readLocalFile(file) } : {}) },
+          { baseDir }
+        )
         theme = saveGeneratedTheme(
           { ...draft, ...(company ? { company } : {}), ...(tagline ? { tagline } : {}), ...(website ? { website } : {}) },
           stagingDir,
@@ -390,7 +522,8 @@ export function createTalkieServer(
     {
       title: 'Change a theme',
       description:
-        'Change some of a theme. Only what is given changes. Every project using the theme follows ' +
+        'Change some of a theme — colours, fonts, logo, words, overlays. Only what is given changes. ' +
+          'Built-in themes cannot be changed; duplicate one first. Every project using the theme follows ' +
         'the change; colours are checked for readability and adjusted if they would be hard to read.',
       inputSchema: {
         themeId: z.string(),
@@ -402,12 +535,52 @@ export function createTalkieServer(
         light: VariantInput.optional(),
         dark: VariantInput.optional(),
         highlight: z.string().optional().describe('Click highlight colour for new recordings'),
-        caption: z.enum(VARIANT_IDS).optional().describe('Which variant the caption bar is drawn in')
+        caption: z.enum(VARIANT_IDS).optional().describe('Which variant the caption bar is drawn in'),
+        headingFont: FontInput.optional().describe('The family for titles. ' + FONT_HELP),
+        bodyFont: FontInput.optional().describe('The family for text. ' + FONT_HELP),
+        logo: z
+          .object({
+            path: z.string().optional().describe('An absolute path to an svg, png, jpg or webp, under 2 MB'),
+            corner: z.enum(LOGO_CORNERS).optional(),
+            onRecordings: z.boolean().optional(),
+            onSlides: z.boolean().optional(),
+            remove: z.boolean().optional().describe('Take the logo off the theme')
+          })
+          .optional()
       }
     },
-    async ({ themeId, name, company, tagline, website, brand, light, dark, highlight, caption }) => {
+    async ({ themeId, name, company, tagline, website, brand, light, dark, highlight, caption, headingFont, bodyFont, logo }) => {
       const current = readTheme(themeId, baseDir)
-      const { draft, notes } = fixContrast(
+      if (isBuiltinThemeId(themeId)) {
+        return text(`${current.name} is built into Talkie and cannot be changed. talkie_duplicate_theme makes a copy that can.`)
+      }
+      const notes: string[] = []
+
+      // Files first, so a refusal — a built-in theme, a file that is not a picture — leaves the
+      // theme as it was rather than half-changed.
+      const fonts = { ...current.fonts }
+      for (const [role, wanted] of [['heading', headingFont], ['body', bodyFont]] as const) {
+        if (!wanted) continue
+        const chosen = await chooseFont(themeId, role, wanted, notes)
+        fonts[role] = chosen
+      }
+      let nextLogo = current.logo
+      if (logo?.remove) nextLogo = undefined
+      else if (logo) {
+        const picked = logo.path ? readLocalFile(logo.path) : undefined
+        const file = picked ? writeThemeAsset(themeId, 'logo', picked.fileName, picked.bytes, baseDir) : current.logo?.file
+        if (!file) return text('That theme has no logo yet, so give a path to one.')
+        nextLogo = {
+          file,
+          corner: logo.corner ?? current.logo?.corner ?? 'bottom-right',
+          showOn: {
+            recordings: logo.onRecordings ?? current.logo?.showOn.recordings ?? true,
+            slides: logo.onSlides ?? current.logo?.showOn.slides ?? true
+          }
+        }
+      }
+
+      const fixed = fixContrast(
         ThemeDraftSchema.parse({
           ...current,
           ...(name !== undefined ? { name } : {}),
@@ -422,11 +595,30 @@ export function createTalkieServer(
           overlays: {
             highlight: highlight ?? current.overlays.highlight,
             caption: caption ?? current.overlays.caption
-          }
+          },
+          fonts,
+          logo: nextLogo
         })
       )
-      const theme = updateTheme(themeId, draft, baseDir)
+      notes.push(...fixed.notes)
+      const theme = updateTheme(themeId, fixed.draft, baseDir)
       return text(`Changed.${notes.length ? `\n${notes.join('\n')}` : ''}\n${describeTheme(theme)}`)
+    }
+  )
+
+  tool(
+    'talkie_duplicate_theme',
+    {
+      title: 'Copy a theme',
+      description:
+        'Make an editable copy of a theme, logo and fonts included — how a built-in theme is made ' +
+        'into a company\'s own, or one company\'s theme becomes the start of another\'s.',
+      inputSchema: { themeId: z.string(), name: z.string().optional().describe('A name for the copy') }
+    },
+    async ({ themeId, name }) => {
+      let theme = duplicateTheme(themeId, baseDir)
+      if (name?.trim()) theme = updateTheme(theme.id, { ...theme, name: name.trim() }, baseDir)
+      return text(`Copied.\n${describeTheme(theme)}\n\ntalkie_update_theme changes it; talkie_apply_theme puts it on a project.`)
     }
   )
 
@@ -725,13 +917,14 @@ export function createTalkieServer(
         projectId: z.string(),
         title: z.string(),
         bullets: z.array(z.string()).optional().describe('A few short lines, or none at all'),
-        style: SceneStyleSchema.partial().optional().describe('Theme, font, alignment, accent colour')
+        style: SceneStyleSchema.partial().optional().describe(STYLE_HELP),
+        layout: LayoutInput.optional()
       }
     },
-    async ({ projectId, title, bullets, style }) => {
+    async ({ projectId, title, bullets, style, layout }) => {
       const item = withHistory(
         projectId,
-        () => addScene(projectId, 'scene', { title, bullets: bullets ?? [], style: style ?? {} }, baseDir),
+        () => addScene(projectId, 'scene', { title, bullets: bullets ?? [], style: style ?? {}, ...(layout ? { layout } : {}) }, baseDir),
         baseDir
       )
       return text(
@@ -826,7 +1019,7 @@ export function createTalkieServer(
         projectId: z.string(),
         source: z.string().describe('mermaid source, e.g. "graph LR; A[Client] --> B[API]"'),
         title: z.string().optional().describe('A heading above it'),
-        style: SceneStyleSchema.partial().optional().describe('Theme, font, alignment, accent colour')
+        style: SceneStyleSchema.partial().optional().describe(STYLE_HELP)
       }
     },
     async ({ projectId, source, title, style }) => {
@@ -867,20 +1060,23 @@ export function createTalkieServer(
         projectId: z.string(),
         timelineItemId: z.string().describe('The diagram id, from talkie_timeline'),
         source: z.string().describe('mermaid source'),
-        title: z.string().optional()
+        title: z.string().optional(),
+        style: SceneStyleSchema.partial().optional().describe(STYLE_HELP)
       }
     },
-    async ({ projectId, timelineItemId, source, title }) => {
+    async ({ projectId, timelineItemId, source, title, style }) => {
       const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
       if (!item) return text(`No clip found with id ${timelineItemId}.`)
       if (item.kind !== 'diagram') {
         return text(`That clip is a ${item.kind}, not a diagram.`)
       }
 
-      const drawn = await draw(projectId, source, item.data, baseDir)
+      const current = item.data as { title?: string; style?: object }
+      // A diagram's colours are in its picture, so a new look is a new drawing.
+      const nextStyle = { ...current.style, ...style }
+      const drawn = await draw(projectId, source, { ...current, style: nextStyle }, baseDir)
       if (!drawn.ok) return text(drawn.reason)
 
-      const current = item.data as { title?: string; style?: unknown }
       withHistory(
         projectId,
         () =>
@@ -892,7 +1088,7 @@ export function createTalkieServer(
             {
               source,
               title: title ?? current.title,
-              style: current.style ?? {},
+              style: nextStyle,
               src: writeDiagramSvg(projectId, drawn.svg, baseDir),
               ...(drawn.themeStamp ? { themeStamp: drawn.themeStamp } : {})
             },
@@ -918,10 +1114,11 @@ export function createTalkieServer(
         timelineItemId: z.string().describe('The slide id, from talkie_timeline'),
         title: z.string(),
         bullets: z.array(z.string()).optional().describe('A few short lines, or none at all'),
-        style: SceneStyleSchema.partial().optional().describe('Theme, font, alignment, accent colour')
+        style: SceneStyleSchema.partial().optional().describe(STYLE_HELP),
+        layout: LayoutInput.optional()
       }
     },
-    async ({ projectId, timelineItemId, title, bullets, style }) => {
+    async ({ projectId, timelineItemId, title, bullets, style, layout }) => {
       const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
       if (!item) return text(`No clip found with id ${timelineItemId}.`)
       if (item.kind !== 'scene') {
@@ -932,8 +1129,8 @@ export function createTalkieServer(
       }
 
       // Merged rather than replaced: leaving the bullets out should keep them, not silently
-      // empty the slide.
-      const current = item.data as { bullets?: string[]; style?: unknown }
+      // empty the slide — and leaving the layout out should not turn an opening card into a slide.
+      const current = item.data as Record<string, unknown> & { bullets?: string[]; style?: object }
       withHistory(
         projectId,
         () =>
@@ -941,9 +1138,11 @@ export function createTalkieServer(
             projectId,
             timelineItemId,
             {
+              ...current,
               title,
               bullets: bullets ?? current.bullets ?? [],
-              style: style ?? current.style ?? {}
+              style: { ...current.style, ...style },
+              ...(layout ? { layout } : {})
             },
             baseDir
           ),

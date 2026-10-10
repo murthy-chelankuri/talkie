@@ -234,6 +234,21 @@ colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `
 - **Diagrams carry their colours**, so each records a `themeStamp`; stale ones are redrawn when
   the project opens and before export (`redrawStaleDiagrams`).
 - **The first theme adds opening and closing cards, once** (`bookendsAdded`).
+- **Built-in themes live in code** (`builtinThemes.ts`, ids `builtin-*`), not in the library folder,
+  so they cannot be deleted or edited — `themeApi` refuses, and Duplicate gives an editable copy.
+  They use only Geist and Newsreader, the fonts every render already has, so they work offline and
+  bring no new licences; a test holds every colour to the contrast floors.
+- **Agents reach all of it over MCP**: list, read, create (from a site, a logo or guide file, or a
+  description), update — colours, fonts, logo — duplicate, delete, apply. A slide's `layout` and
+  every scene's look (brand/light/dark) are settable, and `talkie_list_voices` names the voices of
+  whichever engine Talkie is set to, since `talkie_set_voice` refuses one it does not have.
+- **A diagram is painted on its look's own background.** `diagramStamp` carries a drawing version;
+  raise it when how a themed diagram is drawn changes, or ones already drawn keep the old look.
+- **Logos are drawn still, and plated where they would vanish.** Brand sites often serve animated
+  SVG logos; CSS animation runs on the clock and Remotion renders frames out of order, so
+  `stillLogo.ts` settles every animation into its end state when the theme is drawn (the file stays
+  as published). `LogoMark` reads the logo's colours in the browser and, on a slide or card whose
+  background would hide too much of it, puts it on a plate in the theme's light or dark colour.
 - **No theme means the old look, exactly** — the old palette names still render as they did.
 - **AI themes**: `generate/` reads the site headless (one page, no clicks), the narration
   provider chooses (rules if not), fonts come only from Google Fonts' `ofl/`/`apache/`, contrast
