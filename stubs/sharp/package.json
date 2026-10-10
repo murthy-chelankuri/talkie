@@ -1,0 +1,11 @@
+{
+  "name": "sharp",
+  "version": "0.34.5-talkie-stub",
+  "description": "Stands in for sharp so libvips is never installed or shipped. See README.md.",
+  "license": "Apache-2.0",
+  "main": "index.cjs",
+  "exports": {
+    "import": "./index.mjs",
+    "require": "./index.cjs"
+  }
+}

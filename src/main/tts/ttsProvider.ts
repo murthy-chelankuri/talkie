@@ -21,6 +21,8 @@ export interface SpeechOptions {
 export interface TTSProvider {
   readonly id: string
   readonly label: string
+  /** One line on what choosing it means, shown under its name. */
+  readonly description: string
   synthesize: (text: string, outputPath: string, options: SpeechOptions) => Promise<void>
   /** The voices this engine can use. */
   voices: () => Promise<Voice[]>

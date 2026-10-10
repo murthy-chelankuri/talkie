@@ -5,6 +5,10 @@ import { readTranscript } from '../project/projectApi'
 import { RECORDED_VOICE } from './schema'
 import { readWavFormat } from '../tts/wavDuration'
 import { summariseFidelity, type NarrationFidelity } from '../tts/voiceFidelity'
+import { isKokoroVoiceName } from '../tts/kokoroTtsProvider'
+
+/** OpenAI's voices, which an earlier build could narrate in. Only here so old takes are judged fairly. */
+const EARLIER_CLOUD_VOICES = new Set(['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'])
 
 /**
  * What is limiting the sound of this project, read from the takes themselves.
@@ -27,6 +31,10 @@ export function narrationFidelityFor(
       // A take the user recorded themselves is their own microphone, not a voice they can swap
       // for a better download — telling them to visit Manage Voices would be no help at all.
       .filter((segment) => segment.voice !== RECORDED_VOICE)
+      // Nor is a take from a model voice. Kokoro delivers 24 kHz, which is simply what it is;
+      // there is no better download of it behind a macOS settings pane. Takes from the OpenAI
+      // voices an earlier build offered are the same, and can still be sitting in a project.
+      .filter((segment) => !segment.voice || !(isKokoroVoiceName(segment.voice) || EARLIER_CLOUD_VOICES.has(segment.voice)))
       .map((segment) => {
         try {
           const { sampleRate } = readWavFormat(join(dir, 'audio', segment.audioFile as string))

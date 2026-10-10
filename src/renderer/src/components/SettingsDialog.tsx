@@ -25,7 +25,8 @@ import {
   type Voice,
   type ReadinessCheck,
   type McpConnection,
-  type SpeechEngineDescription
+  type SpeechEngineDescription,
+  type KokoroDownload
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -107,8 +108,13 @@ export function SettingsDialog({
 
   const patchNarration = (next: Partial<Settings['narration']>): Promise<void> =>
     apply(settingsClient.update({ narration: next }))
-  const patchSpeech = (next: Partial<Settings['speech']>): Promise<void> =>
-    apply(settingsClient.update({ speech: next }))
+  const patchSpeech = async (next: Partial<Settings['speech']>): Promise<void> => {
+    await apply(settingsClient.update({ speech: next }))
+    // Both depend on what was just changed: which engine's voices to list, and whether a key that
+    // was just pasted in has made an engine usable.
+    setVoices(await settingsClient.voices())
+    setEngines(await settingsClient.speechEngines())
+  }
   const patchRecording = (next: Partial<Settings['recording']>): Promise<void> =>
     apply(settingsClient.update({ recording: next }))
   const patchExport = (next: Partial<Settings['export']>): Promise<void> =>
@@ -210,6 +216,10 @@ export function SettingsDialog({
                     }
                   }}
                   onReset={() => apply(settingsClient.resetSpeech())}
+                  onEnginesChanged={async () => {
+                    setEngines(await settingsClient.speechEngines())
+                    setVoices(await settingsClient.voices())
+                  }}
                 />
               </div>
             ) : section === 'recording' ? (
@@ -478,7 +488,8 @@ function VoiceSection({
   previewing,
   onPatch,
   onPreview,
-  onReset
+  onReset,
+  onEnginesChanged
 }: {
   settings: Settings
   voices: Voice[]
@@ -487,68 +498,48 @@ function VoiceSection({
   onPatch: (next: Partial<Settings['speech']>) => Promise<void>
   onPreview: () => void | Promise<void>
   onReset: () => void | Promise<void>
+  onEnginesChanged: () => void | Promise<void>
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
-      <Field label="Which voice reads it" hint="">
+      <Field label="Which voice reads it" hint="Both run on this Mac. Narration never leaves it.">
         <div className="flex flex-col gap-1.5">
-          {engines.map((engine) => (
-            <div
-              key={engine.id}
-              className={cn(
-                'rounded-lg border transition-colors',
-                settings.speech.engine === engine.id
-                  ? 'border-accent bg-bg'
-                  : 'border-border hover:border-text-muted/40'
-              )}
-            >
-              <label className="flex cursor-pointer items-start gap-3 px-3.5 py-3">
-                <input
-                  type="radio"
-                  name="speech-engine"
-                  className="mt-1 accent-accent"
-                  checked={settings.speech.engine === engine.id}
-                  onChange={() => void onPatch({ engine: engine.id })}
-                />
-                <span className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          {engines.map((engine) => {
+            // Kokoro's only missing piece is its download, which is offered rather than reported.
+            const needsDownload = engine.id === 'kokoro' && !engine.available
+            return (
+              <div
+                key={engine.id}
+                className={cn(
+                  'rounded-lg border transition-colors',
+                  settings.speech.engine === engine.id
+                    ? 'border-accent bg-bg'
+                    : 'border-border hover:border-text-muted/40'
+                )}
+              >
+                <label className="flex cursor-pointer items-start gap-3 px-3.5 py-3">
+                  <input
+                    type="radio"
+                    name="speech-engine"
+                    className="mt-1 accent-accent"
+                    checked={settings.speech.engine === engine.id}
+                    onChange={() => void onPatch({ engine: engine.id })}
+                  />
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="text-[13px] text-text">{engine.label}</span>
-                    <span className="flex items-center gap-1 text-[11px] text-text-muted">
-                      {engine.id === 'system' ? <Laptop size={11} /> : <Cloud size={11} />}
-                      {engine.id === 'system' ? 'Stays on this machine' : 'Sends the words out'}
-                    </span>
+                    <span className="text-[11px] leading-relaxed text-text-muted">{engine.description}</span>
+                    {!engine.available && engine.reason && !needsDownload && (
+                      <span className="flex items-start gap-1.5 text-[11px] leading-relaxed text-danger">
+                        <TriangleAlert size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
+                        {engine.reason}
+                      </span>
+                    )}
                   </span>
-                  {!engine.available && engine.reason && (
-                    <span className="flex items-start gap-1.5 text-[11px] leading-relaxed text-danger">
-                      <TriangleAlert size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
-                      {engine.reason}
-                    </span>
-                  )}
-                </span>
-              </label>
-
-              {settings.speech.engine === engine.id && engine.id === 'openai' && (
-                <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
-                  <Input
-                    type="password"
-                    aria-label="OpenAI API key"
-                    placeholder="sk-…"
-                    defaultValue={settings.speech.openai.apiKey}
-                    onBlur={(event) =>
-                      void onPatch({ openai: { ...settings.speech.openai, apiKey: event.target.value } })
-                    }
-                  />
-                  <Input
-                    aria-label="OpenAI speech model"
-                    defaultValue={settings.speech.openai.model}
-                    onBlur={(event) =>
-                      void onPatch({ openai: { ...settings.speech.openai, model: event.target.value } })
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+                </label>
+                {needsDownload && <KokoroDownloadRow reason={engine.reason} onReady={onEnginesChanged} />}
+              </div>
+            )
+          })}
         </div>
       </Field>
 
@@ -606,6 +597,83 @@ function VoiceSection({
           Reset to defaults
         </Button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Kokoro's one-time download, offered where it is chosen.
+ *
+ * The progress is asked for every half second while it runs rather than pushed: a bar a moment
+ * behind costs nothing, and it is one channel rather than a channel and a listener to tear down.
+ */
+function KokoroDownloadRow({
+  reason,
+  onReady
+}: {
+  reason?: string
+  onReady: () => void | Promise<void>
+}): JSX.Element {
+  const [status, setStatus] = useState<KokoroDownload | null>(null)
+
+  useEffect(() => {
+    void settingsClient.kokoroStatus().then(setStatus)
+  }, [])
+
+  useEffect(() => {
+    if (!status?.downloading) return
+    const timer = setInterval(() => void settingsClient.kokoroStatus().then(setStatus), 500)
+    return () => clearInterval(timer)
+  }, [status?.downloading])
+
+  async function start(): Promise<void> {
+    setStatus((current) => ({ downloaded: false, loaded: 0, total: 0, ...current, downloading: true, error: undefined }))
+    try {
+      await settingsClient.kokoroDownload()
+    } catch {
+      // The reason is in the status, which is read next and shown.
+    }
+    const next = await settingsClient.kokoroStatus()
+    setStatus(next)
+    if (next.downloaded) await onReady()
+  }
+
+  const megabytes = (bytes: number): number => Math.round(bytes / 1_000_000)
+  const share = status && status.total > 0 ? status.loaded / status.total : 0
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border px-3.5 py-3">
+      {status?.downloading ? (
+        <>
+          <div
+            role="progressbar"
+            aria-label="Downloading the Kokoro voice"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(share * 100)}
+            className="h-1.5 overflow-hidden rounded-full bg-border"
+          >
+            <div className="h-full bg-accent transition-[width]" style={{ width: `${share * 100}%` }} />
+          </div>
+          <span className="text-[11px] text-text-muted">
+            {status.total > 0
+              ? `Downloading the voice — ${megabytes(status.loaded)} of ${megabytes(status.total)} MB`
+              : 'Starting the download…'}
+          </span>
+        </>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={cn('text-[11px] leading-relaxed', status?.error ? 'text-danger' : 'text-text-muted')}
+          >
+            {status?.error ?? reason}
+          </span>
+          <Button onClick={() => void start()} className="shrink-0">
+            <Download size={14} />
+            {status?.error ? 'Try again' : 'Download voice'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

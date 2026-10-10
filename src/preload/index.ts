@@ -4,6 +4,7 @@ import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
+import type { KokoroDownload } from '../main/tts/kokoro/kokoroProcess'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
 import type { AgentOutcome } from '../main/agent/projectAgent'
@@ -54,7 +55,9 @@ const settingsApi = {
   voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
   speechEngines: (): Promise<SpeechEngineDescription[]> => ipcRenderer.invoke('settings:speechEngines'),
   previewVoice: (voice: string, text: string): Promise<void> =>
-    ipcRenderer.invoke('settings:previewVoice', voice, text)
+    ipcRenderer.invoke('settings:previewVoice', voice, text),
+  kokoroDownload: (): Promise<void> => ipcRenderer.invoke('settings:kokoroDownload'),
+  kokoroStatus: (): Promise<KokoroDownload> => ipcRenderer.invoke('settings:kokoroStatus')
 }
 
 const agentApi = {

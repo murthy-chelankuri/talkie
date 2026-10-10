@@ -12,9 +12,12 @@ import { speechEngine } from '../tts/engineRegistry'
 import { readSettings } from '../settings/settingsStore'
 import { DEFAULT_VOICE } from '../settings/schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
+import { levelTake } from '../render/loudness'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 import { footageFrames, readFaster } from './fitToFootage'
 import { readTimedTake } from './readTimedTake'
+import { toSpokenForm } from '../project/projectContext'
+import type { SpeechOptions } from '../tts/ttsProvider'
 import type { TranscriptSegment } from './schema'
 
 export async function narrateSegment(
@@ -39,8 +42,13 @@ export async function narrateSegment(
   const audioPath = join(dir, 'audio', audioFileName)
   // The project's own voice wins over the app's, so a project keeps sounding like itself.
   const speech = readSettings(baseDir).speech
-  const voice = openProject(projectId, baseDir).voice?.trim() || speech.voice.trim() || DEFAULT_VOICE
+  const project = openProject(projectId, baseDir)
+  const voice = project.voice?.trim() || speech.voice.trim() || DEFAULT_VOICE
   const engine = speechEngine(speech.engine)
+  // The voice is handed the words as they should be heard; everything else keeps them as they are
+  // written. Every route to the engine below goes through this one. See toSpokenForm.
+  const speak = (text: string, outputPath: string, options: SpeechOptions): Promise<void> =>
+    engine.synthesize(toSpokenForm(text, project.context?.pronunciations), outputPath, options)
   const delivery = {
     voice,
     pace: speech.pace,
@@ -67,10 +75,10 @@ export async function narrateSegment(
       audioPath,
       footageFrames: footage,
       delivery,
-      synthesize: (text, outputPath, options) => engine.synthesize(text, outputPath, options)
+      synthesize: speak
     })
   } else {
-    await engine.synthesize(segment.text, audioPath, delivery)
+    await speak(segment.text, audioPath, delivery)
     durationSeconds = getWavDurationSeconds(audioPath)
 
     if (footage !== null) {
@@ -80,11 +88,15 @@ export async function narrateSegment(
         spokenSeconds: durationSeconds,
         footageFrames: footage,
         delivery,
-        synthesize: (text, outputPath, options) => engine.synthesize(text, outputPath, options)
+        synthesize: speak
       })
       if (fitted !== null) durationSeconds = fitted
     }
   }
+
+  // Every engine comes out at a level of its own; a project that mixes them should not jump in
+  // volume at the cut between one clip and the next. Loudness only, so the timing above stands.
+  await levelTake(audioPath)
 
   // The clip has to hold the silence either side of the words as well as the words themselves,
   // or the pause would simply be cut off by the next clip starting.

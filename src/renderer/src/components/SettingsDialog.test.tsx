@@ -18,7 +18,9 @@ vi.mock('../api/projectClient', () => ({
     previewVoice: vi.fn(),
     mcpConnection: vi.fn(),
     mcpCreateToken: vi.fn(),
-    mcpRevokeToken: vi.fn()
+    mcpRevokeToken: vi.fn(),
+    kokoroDownload: vi.fn(),
+    kokoroStatus: vi.fn()
   }
 }))
 
@@ -35,7 +37,6 @@ const defaults = {
   speech: {
     engine: 'system' as const,
     voice: 'Samantha',
-    openai: { apiKey: '', model: 'gpt-4o-mini-tts' },
     pace: 170,
     sentencePauseMs: 420,
     clausePauseMs: 300
@@ -56,8 +57,8 @@ beforeEach(() => {
   vi.mocked(settingsClient.resetSpeech).mockResolvedValue(defaults as never)
   vi.mocked(settingsClient.providers).mockResolvedValue([provider()] as never)
   vi.mocked(settingsClient.speechEngines).mockResolvedValue([
-    { id: 'system', label: "macOS's built-in voices", available: true },
-    { id: 'openai', label: 'OpenAI voices', available: false, reason: 'Add an OpenAI API key.' }
+    { id: 'system', label: 'macOS voices', description: 'Nothing to install or start.', available: true },
+    { id: 'kokoro', label: 'Kokoro', description: 'Sounds close to a person.', available: false, reason: 'Download the voice first — about 163 MB, once.' }
   ] as never)
   vi.mocked(settingsClient.voices).mockResolvedValue([
     { name: 'Samantha', locale: 'en_US', sample: 'Hello.', novelty: false }
@@ -65,6 +66,8 @@ beforeEach(() => {
   vi.mocked(settingsClient.localServer).mockResolvedValue(null as never)
   vi.mocked(settingsClient.copilotModels).mockResolvedValue([] as never)
   vi.mocked(settingsClient.readiness).mockResolvedValue([check()] as never)
+  vi.mocked(settingsClient.kokoroStatus).mockResolvedValue({ downloaded: false, downloading: false, loaded: 0, total: 0 } as never)
+  vi.mocked(settingsClient.kokoroDownload).mockResolvedValue(undefined as never)
   vi.mocked(settingsClient.mcpConnection).mockResolvedValue({
     serverPath: '/tmp/talkie-mcp.mjs',
     enabled: false,
@@ -76,6 +79,64 @@ beforeEach(() => {
 })
 
 describe('SettingsDialog', () => {
+  it('offers only the two voices that run on this Mac, and says what each is', async () => {
+    render(<SettingsDialog onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('radio', { name: /macOS voices/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Kokoro/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('radio', { name: /voices|Kokoro/ }).filter((r) => r.getAttribute('name') === 'speech-engine')).toHaveLength(2)
+    expect(screen.getByText('Sounds close to a person.')).toBeInTheDocument()
+  })
+
+  it('offers the Kokoro download where Kokoro is chosen, saying how big it is', async () => {
+    render(<SettingsDialog onClose={vi.fn()} />)
+
+    expect(await screen.findByText('Download the voice first — about 163 MB, once.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Download voice/ })).toBeInTheDocument()
+  })
+
+  it('starts the download when asked, and shows how far it has got', async () => {
+    render(<SettingsDialog onClose={vi.fn()} />)
+    const download = await screen.findByRole('button', { name: /Download voice/ })
+    vi.mocked(settingsClient.kokoroStatus).mockResolvedValue({
+      downloaded: false,
+      downloading: true,
+      loaded: 54_000_000,
+      total: 163_000_000
+    } as never)
+    vi.mocked(settingsClient.kokoroDownload).mockReturnValue(new Promise(() => {}) as never)
+
+    await userEvent.click(download)
+
+    expect(settingsClient.kokoroDownload).toHaveBeenCalled()
+    expect(await screen.findByRole('progressbar', { name: 'Downloading the Kokoro voice' })).toBeInTheDocument()
+    expect(await screen.findByText('Downloading the voice — 54 of 163 MB')).toBeInTheDocument()
+  })
+
+  it('says why a download failed, and offers to try again', async () => {
+    vi.mocked(settingsClient.kokoroStatus).mockResolvedValue({
+      downloaded: false,
+      downloading: false,
+      loaded: 0,
+      total: 0,
+      error: 'Could not reach Hugging Face to download the voice. Check the connection and try again.'
+    } as never)
+    render(<SettingsDialog onClose={vi.fn()} />)
+
+    expect(await screen.findByText(/Could not reach Hugging Face/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument()
+  })
+
+  it('lists the voices of the engine just chosen, not the one before it', async () => {
+    render(<SettingsDialog onClose={vi.fn()} />)
+    await screen.findByRole('combobox', { name: 'Narration voice' })
+    vi.mocked(settingsClient.voices).mockClear()
+
+    await userEvent.click(screen.getByRole('radio', { name: /Kokoro/ }))
+
+    await vi.waitFor(() => expect(settingsClient.voices).toHaveBeenCalled())
+  })
+
   it('opens on the section most people came to change', async () => {
     render(<SettingsDialog onClose={vi.fn()} />)
 

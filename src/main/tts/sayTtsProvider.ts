@@ -13,7 +13,8 @@ const execFileAsync = promisify(execFile)
 
 export const sayTtsProvider: TTSProvider = {
   id: 'system',
-  label: "macOS's built-in voices",
+  label: 'macOS voices',
+  description: 'Nothing to install or start. Clear, but plainly synthetic.',
 
   async voices() {
     return listVoices()

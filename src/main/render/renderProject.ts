@@ -18,6 +18,7 @@ import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
 import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { binariesDirectory } from './binaries'
+import { levelExport } from './loudness'
 import { browserExecutablePath } from '../capture/resolveBrowser'
 import { remotionBundleLocation } from './remotionBundle'
 import { COMPOSITION_ID } from '../../remotion/constants'
@@ -98,6 +99,10 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     outputLocation: outputPath,
     inputProps: { timeline }
   })
+
+  // The soundtrack brought to the level spoken video is delivered at, once the whole of it
+  // exists to be measured. See loudness.ts.
+  await levelExport(outputPath)
 
   writeCaptionsBeside(outputPath, id, baseDir)
 

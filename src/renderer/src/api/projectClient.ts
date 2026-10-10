@@ -62,6 +62,7 @@ export type { NarrationFidelity }
 export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { ProjectContext }
 export type { SpeechEngineDescription } from '../../../main/tts/engineRegistry'
+export type { KokoroDownload } from '../../../main/tts/kokoro/kokoroProcess'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
 export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'
@@ -80,7 +81,9 @@ export const settingsClient = {
   mcpRevokeToken: () => window.api.settings.mcpRevokeToken(),
   voices: () => window.api.settings.voices(),
   speechEngines: () => window.api.settings.speechEngines(),
-  previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text)
+  previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text),
+  kokoroDownload: () => window.api.settings.kokoroDownload(),
+  kokoroStatus: () => window.api.settings.kokoroStatus()
 }
 
 export const agentClient = {

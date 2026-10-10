@@ -60,3 +60,26 @@ describe('getWavDurationSeconds', () => {
     expect(() => getWavDurationSeconds(filePath)).toThrow()
   })
 })
+
+describe('a wav that was streamed', () => {
+  /** As a streaming server sends it: both lengths left at 0xFFFFFFFF, meaning "until the end". */
+  function streamed(sampleRate: number, numSamples: number): Buffer {
+    const wav = makeTestWavBuffer(sampleRate, numSamples)
+    wav.writeUInt32LE(0xffffffff, 4)
+    wav.writeUInt32LE(0xffffffff, 40)
+    return wav
+  }
+
+  it('is timed by what the file holds, not by the placeholder in its header', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'talkie-streamed-wav-'))
+    try {
+      const path = join(dir, 'take.wav')
+      writeFileSync(path, streamed(24000, 48000))
+
+      expect(getWavDurationSeconds(path)).toBeCloseTo(2, 5)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+})
