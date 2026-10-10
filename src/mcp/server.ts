@@ -33,6 +33,11 @@ import type { TimelineItem } from '../main/project/timeline/schema'
 import { prepareDeck, saveSlides } from '../main/slides/importSlides'
 import { rasterisePdf } from '../main/slides/rasterisePdf'
 import { drawDiagramForProject } from '../main/themes/projectDiagrams'
+import { createTheme, deleteTheme, listThemes, projectsUsingTheme, readTheme, updateTheme } from '../main/themes/themeApi'
+import { ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type Theme } from '../main/themes/schema'
+import { fixContrast } from '../main/themes/contrast'
+import { setProjectTheme } from '../main/themes/applyTheme'
+import { generateTheme, saveGeneratedTheme } from '../main/themes/generate/generateTheme'
 import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
@@ -287,6 +292,183 @@ export function createTalkieServer(
         project.voice
           ? `This project now speaks as ${project.voice}. Re-voice any clip that should change.`
           : 'This project now follows whatever voice Talkie is set to.'
+      )
+    }
+  )
+
+  // Themes: what a company's videos look like, kept once in a library and chosen per project.
+  // All five verbs, as for every other kind — see AGENTS.md.
+  const VariantInput = z
+    .object({ background: z.string(), heading: z.string(), body: z.string(), accent: z.string() })
+    .partial()
+  const describeTheme = (theme: Theme): string =>
+    [
+      `${theme.name} (theme id ${theme.id})`,
+      theme.company && `Company: ${theme.company}`,
+      theme.tagline && `Tagline: ${theme.tagline}`,
+      theme.website && `Website: ${theme.website}`,
+      ...VARIANT_IDS.map((id) => {
+        const v = theme.variants[id]
+        return `${id}: background ${v.background}, heading ${v.heading}, body ${v.body}, accent ${v.accent}`
+      }),
+      `Fonts: ${theme.fonts.heading.family} for headings, ${theme.fonts.body.family} for text`,
+      `Logo: ${theme.logo ? `${theme.logo.file}, ${theme.logo.corner}` : 'none'}`,
+      `Click highlight ${theme.overlays.highlight}; captions in the ${theme.overlays.caption} variant`,
+      ...(theme.provenance?.notes.length ? ['Notes from when it was made:', ...theme.provenance.notes.map((n) => `  - ${n}`)] : [])
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+  tool(
+    'talkie_list_themes',
+    {
+      title: 'List themes',
+      description: 'The themes in the library — each a company\'s colours, fonts and logo for its videos.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () => {
+      const themes = listThemes(baseDir)
+      return text(
+        themes.length === 0
+          ? 'No themes yet. talkie_create_theme makes one, from a website if you have one.'
+          : themes.map((t) => `${t.name}${t.company ? ` — ${t.company}` : ''} (theme id ${t.id})`).join('\n')
+      )
+    }
+  )
+
+  tool(
+    'talkie_theme',
+    {
+      title: 'Read a theme',
+      description: 'Everything a theme sets, and which projects use it.',
+      inputSchema: { themeId: z.string() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ themeId }) => {
+      const using = projectsUsingTheme(themeId, baseDir).map((p) => p.name)
+      return text(`${describeTheme(readTheme(themeId, baseDir))}\nUsed by: ${using.join(', ') || 'no project'}`)
+    }
+  )
+
+  tool(
+    'talkie_create_theme',
+    {
+      title: 'Make a theme',
+      description:
+        'Make a theme for a company. Give a website (its real colours, fonts and logo are read from ' +
+        'it) or a description, and the theme is designed from that — this can take half a minute. ' +
+        'Give neither and it starts from Talkie\'s own look with whatever fields are given. Colours ' +
+        'are checked for readability either way.',
+      inputSchema: {
+        name: z.string(),
+        url: z.string().optional().describe('The company\'s website'),
+        description: z.string().optional().describe('What the company is and how it should feel'),
+        company: z.string().optional(),
+        tagline: z.string().optional(),
+        website: z.string().optional()
+      }
+    },
+    async ({ name, url, description, company, tagline, website }) => {
+      let theme: Theme
+      if (url || description) {
+        const { draft, stagingDir } = await generateTheme({ name, url, description }, { baseDir })
+        theme = saveGeneratedTheme(
+          { ...draft, ...(company ? { company } : {}), ...(tagline ? { tagline } : {}), ...(website ? { website } : {}) },
+          stagingDir,
+          baseDir
+        )
+      } else {
+        theme = createTheme({ ...defaultThemeDraft(name), company: company ?? name, tagline: tagline ?? '', website: website ?? '' }, baseDir)
+      }
+      return text(`Made it.\n${describeTheme(theme)}\n\ntalkie_apply_theme puts it on a project.`)
+    }
+  )
+
+  tool(
+    'talkie_update_theme',
+    {
+      title: 'Change a theme',
+      description:
+        'Change some of a theme. Only what is given changes. Every project using the theme follows ' +
+        'the change; colours are checked for readability and adjusted if they would be hard to read.',
+      inputSchema: {
+        themeId: z.string(),
+        name: z.string().optional(),
+        company: z.string().optional(),
+        tagline: z.string().optional(),
+        website: z.string().optional(),
+        brand: VariantInput.optional().describe('Colours of the brand variant, as #rrggbb'),
+        light: VariantInput.optional(),
+        dark: VariantInput.optional(),
+        highlight: z.string().optional().describe('Click highlight colour for new recordings'),
+        caption: z.enum(VARIANT_IDS).optional().describe('Which variant the caption bar is drawn in')
+      }
+    },
+    async ({ themeId, name, company, tagline, website, brand, light, dark, highlight, caption }) => {
+      const current = readTheme(themeId, baseDir)
+      const { draft, notes } = fixContrast(
+        ThemeDraftSchema.parse({
+          ...current,
+          ...(name !== undefined ? { name } : {}),
+          ...(company !== undefined ? { company } : {}),
+          ...(tagline !== undefined ? { tagline } : {}),
+          ...(website !== undefined ? { website } : {}),
+          variants: {
+            brand: { ...current.variants.brand, ...brand },
+            light: { ...current.variants.light, ...light },
+            dark: { ...current.variants.dark, ...dark }
+          },
+          overlays: {
+            highlight: highlight ?? current.overlays.highlight,
+            caption: caption ?? current.overlays.caption
+          }
+        })
+      )
+      const theme = updateTheme(themeId, draft, baseDir)
+      return text(`Changed.${notes.length ? `\n${notes.join('\n')}` : ''}\n${describeTheme(theme)}`)
+    }
+  )
+
+  tool(
+    'talkie_delete_theme',
+    {
+      title: 'Delete a theme',
+      description:
+        'Remove a theme from the library for good. Projects using it go back to Talkie\'s own look; ' +
+        'their opening and closing cards stay. This cannot be undone.',
+      inputSchema: { themeId: z.string() },
+      annotations: { destructiveHint: true }
+    },
+    async ({ themeId }) => {
+      const theme = readTheme(themeId, baseDir)
+      const using = projectsUsingTheme(themeId, baseDir)
+      deleteTheme(themeId, baseDir)
+      return text(
+        `Deleted ${theme.name}.` +
+          (using.length ? ` ${using.map((p) => p.name).join(', ')} went back to Talkie's own look.` : '')
+      )
+    }
+  )
+
+  tool(
+    'talkie_apply_theme',
+    {
+      title: 'Use a theme for a project',
+      description:
+        'Draw a project\'s video in a theme, or pass no themeId to go back to Talkie\'s own look. ' +
+        'The first theme a project gets also adds an opening card and a closing card — ordinary ' +
+        'slides, at the start and the end — and never again after that.',
+      inputSchema: { projectId: z.string(), themeId: z.string().optional() }
+    },
+    async ({ projectId, themeId }) => {
+      const before = readTimeline(projectId, baseDir).length
+      withHistory(projectId, () => setProjectTheme(projectId, themeId ?? null, baseDir), baseDir)
+      const added = readTimeline(projectId, baseDir).length - before
+      return text(
+        themeId
+          ? `The project now follows ${readTheme(themeId, baseDir).name}.${added ? ' Added an opening card and a closing card.' : ''} Diagrams are redrawn in its colours when the project is next opened or exported.`
+          : 'The project is back to Talkie\'s own look.'
       )
     }
   )

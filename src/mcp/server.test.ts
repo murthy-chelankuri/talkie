@@ -265,6 +265,57 @@ describe('Talkie over MCP', () => {
     })
   })
 
+  describe('themes', () => {
+    const themeIdIn = (said: string): string => /theme id ([\w-]+)/.exec(said)?.[1] ?? ''
+
+    it('makes a theme from fields alone, and lists it', async () => {
+      const made = await call('talkie_create_theme', { name: 'Acme', tagline: 'Payments, simply' })
+
+      expect(made).toContain('Payments, simply')
+      expect(await call('talkie_list_themes')).toContain(`Acme (theme id ${themeIdIn(made)})`)
+    })
+
+    it('reads a theme back, with the projects using it', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const projectId = await newProject('Launch video')
+      await call('talkie_apply_theme', { projectId, themeId })
+
+      const said = await call('talkie_theme', { themeId })
+
+      expect(said).toMatch(/brand: background #[0-9a-f]{6}/)
+      expect(said).toContain('Used by: Launch video')
+    })
+
+    it('changes only what it is given, and keeps it readable', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+
+      const said = await call('talkie_update_theme', { themeId, tagline: 'New line', light: { background: '#ffffff', body: '#eeeeee' } })
+
+      expect(said).toContain('Tagline: New line')
+      expect(said).toMatch(/light body: #eeeeee was hard to read/)
+      expect(said).toContain('Acme (theme id')
+    })
+
+    it('puts a theme on a project with its opening and closing cards, once', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const projectId = await newProject('Launch video')
+
+      expect(await call('talkie_apply_theme', { projectId, themeId })).toContain('Added an opening card and a closing card')
+      expect(await call('talkie_apply_theme', { projectId, themeId })).not.toContain('Added')
+      expect(readTimeline(projectId, baseDir)).toHaveLength(2)
+      expect(await call('talkie_apply_theme', { projectId })).toContain('back to Talkie')
+    })
+
+    it('says which projects lose a theme when it is deleted', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const projectId = await newProject('Launch video')
+      await call('talkie_apply_theme', { projectId, themeId })
+
+      expect(await call('talkie_delete_theme', { themeId })).toContain('Launch video went back')
+      expect(await call('talkie_list_themes')).toContain('No themes yet')
+    })
+  })
+
   describe('knowing what the project is for', () => {
     it('reads back what it was told, so drafts use the terms the project uses', async () => {
       const projectId = await newProject('Ledger')
