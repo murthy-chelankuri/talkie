@@ -67,10 +67,13 @@ or a logo / brand guide.
 
 ## 2. Rendering
 
-- **Theme travels with the timeline.** `resolveTimelineAssetUrls` gains a `theme` argument: the
-  project's theme with logo and font paths turned into asset-server URLs (the same per-run
-  secret as every other file). The composition receives `{ timeline, theme }`; a
-  `ThemeContext` provides it to every item. Preview and export use the same path.
+- **Theme travels with the timeline.** The composition receives `{ timeline, theme }`, where
+  `theme` is a `RenderTheme`: the project's theme with its logo and font files embedded as data
+  URLs (logo ≤ 2 MB, fonts ≤ 3 MB in all). Not asset-server URLs: that server is rooted at the
+  projects folder, and widening it to `~/Talkie` would put `settings.json` — API keys — in reach
+  of anything holding a URL. A `ThemeContext` provides it to every item. The preview gets it
+  over `project:theme:render`; the export builds it the same way. One function, `toRenderTheme`,
+  makes it for both.
 - **`resolveSceneTheme(style, theme)`** returns the variant's colours and the theme's fonts, or
   today's palettes when `theme` is absent.
 - **Fonts.** A `ThemeFonts` component injects `@font-face` rules for the theme's files and holds
@@ -168,8 +171,7 @@ IPC (`settings:*` for the library, `project:*` for applying): `settings:themes:l
   project without a theme renders as before; a stale `themeStamp` triggers a redraw.
 - `ThemeEditor`, `CreateThemeDialog`, the Settings section, the About-project picker.
 - MCP: every theme tool, like the context tools.
-- Packaged build: theme fonts and logo load through the asset server with the app launched from
-  `/`.
+- Packaged build: theme fonts and logo render in an export with the app launched from `/`.
 
 ## Out of scope
 
