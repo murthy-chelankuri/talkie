@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { ProjectContext } from '../api/projectClient'
+import type { Pronunciation } from '../../../main/project/projectContext'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 import { Input } from './ui/Input'
@@ -29,6 +30,14 @@ export function AboutProjectDialog({
   const [saving, setSaving] = useState(false)
 
   const rules = draft.neverSay
+  const pronunciations = draft.pronunciations ?? []
+
+  function setPronunciation(index: number, change: Partial<Pronunciation>): void {
+    setDraft((d) => ({
+      ...d,
+      pronunciations: (d.pronunciations ?? []).map((entry, i) => (i === index ? { ...entry, ...change } : entry))
+    }))
+  }
 
   function setRule(index: number, value: string): void {
     setDraft((d) => ({ ...d, neverSay: d.neverSay.map((rule, i) => (i === index ? value : rule)) }))
@@ -38,7 +47,13 @@ export function AboutProjectDialog({
     setSaving(true)
     try {
       // Blank rows are how a list like this is left, not something to store and match against.
-      await onSave({ ...draft, neverSay: draft.neverSay.map((r) => r.trim()).filter(Boolean) })
+      await onSave({
+        ...draft,
+        neverSay: draft.neverSay.map((r) => r.trim()).filter(Boolean),
+        pronunciations: pronunciations
+          .map((entry) => ({ written: entry.written.trim(), spoken: entry.spoken.trim() }))
+          .filter((entry) => entry.written && entry.spoken)
+      })
       onClose()
     } finally {
       setSaving(false)
@@ -130,6 +145,61 @@ export function AboutProjectDialog({
               >
                 <Plus size={11} />
                 {rules.length === 0 ? 'Add something it must never say' : 'Add another'}
+              </button>
+            </div>
+          </Field>
+
+          {/* Beside the rules rather than in a settings screen: how a product's names are said is
+              as much a fact about the project as what it is called, and it travels with it. */}
+          <Field
+            label="Say it like this"
+            hint="For names the voice gets wrong. Only the voice hears the second spelling — captions and the script keep the first."
+          >
+            <div className="flex flex-col gap-2">
+              {pronunciations.map((entry, index) => (
+                <div key={index} className="flex items-center gap-1.5">
+                  <Input
+                    aria-label={`Written ${index + 1}`}
+                    value={entry.written}
+                    onChange={(event) => setPronunciation(index, { written: event.target.value })}
+                    placeholder="SecOps"
+                    className="flex-1"
+                  />
+                  <span className="text-[11px] text-text-muted" aria-hidden="true">
+                    said as
+                  </span>
+                  <Input
+                    aria-label={`Said as ${index + 1}`}
+                    value={entry.spoken}
+                    onChange={(event) => setPronunciation(index, { spoken: event.target.value })}
+                    placeholder="Seck-ops"
+                    className="flex-1"
+                  />
+                  <IconButton
+                    aria-label={`Remove pronunciation ${index + 1}`}
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        pronunciations: (d.pronunciations ?? []).filter((_, i) => i !== index)
+                      }))
+                    }
+                  >
+                    <X size={13} />
+                  </IconButton>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    pronunciations: [...(d.pronunciations ?? []), { written: '', spoken: '' }]
+                  }))
+                }
+                className="flex items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
+              >
+                <Plus size={11} />
+                {pronunciations.length === 0 ? 'Add a word the voice says wrong' : 'Add another'}
               </button>
             </div>
           </Field>

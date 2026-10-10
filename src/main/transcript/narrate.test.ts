@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, statSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -8,8 +8,11 @@ import {
   addTranscriptSegment,
   readTranscript,
   readTimeline,
-  setProjectVoice
+  setProjectVoice,
+  setProjectContext
 } from '../project/projectApi'
+import { EMPTY_CONTEXT } from '../project/projectContext'
+import { sayTtsProvider } from '../tts/sayTtsProvider'
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
 import { updateSettings } from '../settings/settingsStore'
@@ -200,5 +203,34 @@ describe('pauses between clips', () => {
 
     expect(readTimeline(project.id, baseDir).find((i) => i.id === item.id)?.duration).toBe(600)
     rmSync(baseDir, { recursive: true, force: true })
+  }, 90_000)
+})
+
+describe('pronunciation', () => {
+  it('says a listed word the way it should be heard, and keeps the script as written', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-pronounce-test-'))
+    const project = createProject('Pronounce Test', baseDir)
+    setProjectContext(
+      project.id,
+      { ...EMPTY_CONTEXT, pronunciations: [{ written: 'SecOps', spoken: 'Seck-ops' }] },
+      baseDir
+    )
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(
+      project.id,
+      { text: 'SecOps flags the change.', timelineItemId: item.id },
+      baseDir
+    )
+    const heard = vi.spyOn(sayTtsProvider, 'synthesize')
+
+    try {
+      await narrateSegment(project.id, segment.id, baseDir)
+
+      expect(heard.mock.calls.map(([text]) => text).join(' ')).toContain('Seck-ops flags the change.')
+      expect(readTranscript(project.id, baseDir)[0].text).toBe('SecOps flags the change.')
+    } finally {
+      heard.mockRestore()
+      rmSync(baseDir, { recursive: true, force: true })
+    }
   }, 90_000)
 })

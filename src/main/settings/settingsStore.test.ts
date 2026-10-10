@@ -39,6 +39,26 @@ describe('settings store', () => {
     expect(readSettings(baseDir).narration.provider).toBe('local')
   })
 
+  it('moves a voice from an engine that is gone onto the built-in voices, keeping everything else', () => {
+    // OpenAI and Azure voices were offered by an earlier build. A file still naming one must not
+    // be thrown out whole, which is what an invalid file is.
+    mkdirSync(join(baseDir, 'Talkie'), { recursive: true })
+    writeFileSync(
+      settingsPath(baseDir),
+      JSON.stringify({
+        narration: { provider: 'claude-cli' },
+        speech: { engine: 'openai', voice: 'nova', pace: 150, openai: { apiKey: 'sk-old', model: 'x' } }
+      })
+    )
+
+    const settings = readSettings(baseDir)
+
+    expect(settings.speech.engine).toBe('system')
+    expect(settings.speech.voice).toBe('Samantha')
+    expect(settings.speech.pace).toBe(150)
+    expect(settings.narration.provider).toBe('claude-cli')
+  })
+
   it('leaves untouched settings at their defaults when one changes', () => {
     updateSettings({ narration: { provider: 'claude-cli' } }, baseDir)
 

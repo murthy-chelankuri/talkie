@@ -46,7 +46,8 @@ describe('shelling out from a packaged build', () => {
       'capture/stitchRecording.ts',
       'transcript/recordNarration.ts',
       'setup/readiness.ts',
-      'agent/clipEvidence.ts'
+      'agent/clipEvidence.ts',
+      'render/loudness.ts'
     ]) {
       const source = readFileSync(join(MAIN, file), 'utf-8')
       const calls = source.split('RenderInternals.callFf(').length - 1

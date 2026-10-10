@@ -13,6 +13,16 @@ files:
   # shipping a build at all.
   - LICENSE
   - NOTICE
+  # ONNX Runtime ships a build for every platform, ~35 MB each. Talkie runs on Apple Silicon only,
+  # so the other five are left behind rather than shipped and never loaded.
+  - '!node_modules/onnxruntime-node/bin/napi-v3/{linux,win32}/**'
+  - '!node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/**'
+
+# Licence texts no package carries — the GPL for FFmpeg and eSpeak NG, and ONNX Runtime's notices.
+# Installed at Contents/Resources/licences/, outside the archive, where a person can open them.
+extraResources:
+  - from: licences
+    to: licences
 
 # Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
 # ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver
@@ -37,6 +47,15 @@ asarUnpack:
   # either. Built by scripts/bundleRemotion.mjs — see remotionBundle.ts for why it is shipped
   # rather than made on demand.
   - out/remotion/**
+  # Kokoro runs in a forked worker (out/main/kokoroWorker.cjs). ONNX Runtime is a native library,
+  # which cannot load from inside the archive; kokoro-js reads its voice files off disk beside its
+  # own code; and the rest are what those load. `sharp` is the stub in stubs/sharp — plain
+  # JavaScript, so it stays in the archive. See kokoroWorker.ts and stubs/sharp/README.md.
+  - node_modules/kokoro-js/**
+  - node_modules/phonemizer/**
+  - node_modules/@huggingface/**
+  - node_modules/onnxruntime-node/**
+  - node_modules/onnxruntime-common/**
 
 mac:
   icon: build/icon.icns

@@ -3,7 +3,8 @@ import {
   EMPTY_CONTEXT,
   describeProjectContext,
   findForbiddenTerms,
-  hasProjectContext
+  hasProjectContext,
+  toSpokenForm
 } from './projectContext'
 
 function context(overrides = {}): Parameters<typeof describeProjectContext>[0] {
@@ -103,5 +104,55 @@ describe('checking a draft against the rules', () => {
 
   it('has nothing to say when no rules were given', () => {
     expect(findForbiddenTerms('Anything at all.', [])).toEqual([])
+  })
+})
+
+describe('saying a word the way it should be heard', () => {
+  const secops = [{ written: 'SecOps', spoken: 'Seck-ops' }]
+
+  it('hands the voice the spoken form', () => {
+    expect(toSpokenForm('SecOps flags the change.', secops)).toBe('Seck-ops flags the change.')
+  })
+
+  it('replaces it wherever it appears, next to punctuation included', () => {
+    expect(toSpokenForm('SecOps, then SecOps.', secops)).toBe('Seck-ops, then Seck-ops.')
+  })
+
+  it('keeps to the capitals it was given, so a name never rewrites the ordinary word', () => {
+    const or = [{ written: 'OR', spoken: 'OpsRamp' }]
+    expect(toSpokenForm('Open OR or the console.', or)).toBe('Open OpsRamp or the console.')
+  })
+
+  it('does not reach into the middle of a longer word', () => {
+    const ai = [{ written: 'AI', spoken: 'A I' }]
+    expect(toSpokenForm('AI helps; AIM does not.', ai)).toBe('A I helps; AIM does not.')
+  })
+
+  it('lets a longer entry win over a shorter one inside it', () => {
+    const both = [
+      { written: 'SecOps', spoken: 'Seck-ops' },
+      { written: 'SecOps Cloud', spoken: 'Seck-ops Cloud service' }
+    ]
+    expect(toSpokenForm('SecOps Cloud and SecOps.', both)).toBe('Seck-ops Cloud service and Seck-ops.')
+  })
+
+  it('never rewrites a spoken form with another entry', () => {
+    const chain = [
+      { written: 'ITOM', spoken: 'eye tom' },
+      { written: 'tom', spoken: 'Thomas' }
+    ]
+    expect(toSpokenForm('ITOM', chain)).toBe('eye tom')
+  })
+
+  it('ignores a half-filled row rather than speaking a blank', () => {
+    expect(toSpokenForm('SecOps.', [{ written: 'SecOps', spoken: '  ' }])).toBe('SecOps.')
+  })
+
+  it('leaves the words alone when nothing is listed', () => {
+    expect(toSpokenForm('SecOps.', undefined)).toBe('SecOps.')
+  })
+
+  it('counts a demo with only pronunciations as having context', () => {
+    expect(hasProjectContext(context({ pronunciations: secops }))).toBe(true)
   })
 })

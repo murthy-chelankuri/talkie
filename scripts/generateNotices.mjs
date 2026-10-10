@@ -33,6 +33,7 @@ const BUNDLED = [
     name: 'FFmpeg',
     version: 'n7.1',
     license: 'GPL-2.0-or-later',
+    textFile: 'licences/GPL-2.0.txt',
     note:
       'Shipped inside Remotion\'s compositor and used for transcoding, frame sampling and audio ' +
       'conversion. Built with --enable-gpl, --enable-libx264 and --enable-libx265, which places ' +
@@ -43,6 +44,7 @@ const BUNDLED = [
     name: 'x264',
     version: 'bundled with FFmpeg n7.1',
     license: 'GPL-2.0-or-later',
+    textFile: 'licences/GPL-2.0.txt',
     note: 'H.264 encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x264.html',
     homepage: 'https://www.videolan.org/developers/x264.html'
   },
@@ -50,10 +52,50 @@ const BUNDLED = [
     name: 'x265',
     version: 'bundled with FFmpeg n7.1',
     license: 'GPL-2.0-or-later',
+    textFile: 'licences/GPL-2.0.txt',
     note: 'HEVC encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x265.html',
     homepage: 'https://www.videolan.org/developers/x265.html'
+  },
+  {
+    name: 'eSpeak NG',
+    version: 'as compiled into phonemizer 1.2.1',
+    license: 'GPL-3.0-or-later',
+    textFile: 'licences/GPL-3.0.txt',
+    note:
+      'Turns text into phonemes for the Kokoro voice. Compiled to WebAssembly inside the phonemizer ' +
+      'package, whose own Apache-2.0 licence field does not cover it. Runs only in Kokoro\'s ' +
+      'separate worker process, never inside Talkie itself. Source: https://github.com/espeak-ng/espeak-ng',
+    homepage: 'https://github.com/espeak-ng/espeak-ng'
   }
 ]
+
+/**
+ * Licence texts for packages that ship none, kept in licences/ and installed beside the app.
+ *
+ * MIT asks for one thing — that the notice travels with every copy — and onnxruntime-node's npm
+ * package carries no copy to travel. Taken from the tag matching the installed version; see
+ * licences/README.md.
+ */
+const ONNXRUNTIME_TEXT = () =>
+  `${readFileSync(join(root, 'licences/onnxruntime/LICENSE'), 'utf8').trim()}\n\n` +
+  'The native library also contains third-party components, whose notices are in ' +
+  'ThirdPartyNotices.txt, installed with Talkie at Talkie.app/Contents/Resources/licences/onnxruntime/.'
+const VENDORED_TEXT = {
+  'onnxruntime-node': ONNXRUNTIME_TEXT,
+  'onnxruntime-common': ONNXRUNTIME_TEXT
+}
+
+/**
+ * Packages whose manifest states less than they contain.
+ *
+ * phonemizer says Apache-2.0, which is true of its own JavaScript. It also carries eSpeak NG
+ * compiled to WebAssembly, which is GPL-3.0-or-later — listed in BUNDLED above. Shown as its
+ * manifest has it, this package would read as permissive while shipping the one GPL-3.0 component
+ * in the app.
+ */
+const RELABELLED = {
+  phonemizer: 'Apache-2.0 AND GPL-3.0-or-later'
+}
 
 function productionPackages() {
   const json = execFileSync('npm', ['ls', '--omit=dev', '--all', '--json'], {
@@ -149,8 +191,11 @@ for (const name of productionPackages()) {
     continue
   }
 
-  let text = licenceTextFor(dir)
-  let license = normaliseLicense(pkg)
+  // Talkie's own stand-in for sharp (stubs/sharp), not a third-party package — see its README.
+  if (String(pkg.version).endsWith('-talkie-stub')) continue
+
+  let text = licenceTextFor(dir) ?? VENDORED_TEXT[name]?.() ?? null
+  let license = RELABELLED[name] ?? normaliseLicense(pkg)
 
   // "SEE LICENSE IN ..." names a file rather than a licence; the file is already read above.
   const namesAFile = license && /^SEE LICEN[CS]E/i.test(license)
@@ -180,7 +225,9 @@ for (const name of productionPackages()) {
 
 const notices = {
   generatedAt: new Date().toISOString().slice(0, 10),
-  bundled: BUNDLED,
+  // The GPL asks for a copy of itself with the binary, so its whole text is carried — longer than
+  // the limit applied to package texts below, and not optional.
+  bundled: BUNDLED.map(({ textFile, ...item }) => ({ ...item, text: readFileSync(join(root, textFile), 'utf8') })),
   packages
 }
 

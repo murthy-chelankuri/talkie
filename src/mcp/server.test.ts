@@ -282,6 +282,33 @@ describe('Talkie over MCP', () => {
       expect(said).toContain('guaranteed returns')
     })
 
+    it('reads back how a name is said, so it can be corrected', async () => {
+      const projectId = await newProject('Spoken')
+
+      await call('talkie_set_context', {
+        projectId,
+        background: 'A security product.',
+        pronunciations: [{ written: 'SecOps', spoken: 'Seck-ops' }]
+      })
+
+      expect(await call('talkie_project', { projectId })).toContain('SecOps → Seck-ops')
+    })
+
+    it('keeps the pronunciations when the context is sent back without them', async () => {
+      const projectId = await newProject('Kept')
+      await call('talkie_set_context', {
+        projectId,
+        background: 'First.',
+        pronunciations: [{ written: 'ITOM', spoken: 'eye tom' }]
+      })
+
+      await call('talkie_set_context', { projectId, background: 'Second.' })
+
+      const said = await call('talkie_project', { projectId })
+      expect(said).toContain('Second.')
+      expect(said).toContain('ITOM → eye tom')
+    })
+
     it('says plainly when nothing has been recorded, and what to use', async () => {
       const projectId = await newProject('Blank')
 

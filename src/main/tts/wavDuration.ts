@@ -1,4 +1,4 @@
-import { closeSync, openSync, readFileSync, readSync } from 'fs'
+import { closeSync, openSync, readFileSync, readSync, statSync } from 'fs'
 
 /** What the header says about a take: enough to time it and to judge it. */
 export interface WavFormat {
@@ -48,7 +48,11 @@ export function readWavFormat(filePath: string): WavFormat {
   const channels = buffer.readUInt16LE(22)
   const bitsPerSample = buffer.readUInt16LE(34)
   const dataChunkOffset = findDataChunkOffset(buffer)
-  const dataSize = buffer.readUInt32LE(dataChunkOffset + 4)
+  // Never more than the file holds. A server that streams its wav writes the header before it
+  // knows the length and fills it with 0xFFFFFFFF — read as written, that is a take a day long,
+  // and the clip is stretched to hold it.
+  const available = statSync(filePath).size - (dataChunkOffset + 8)
+  const dataSize = Math.min(buffer.readUInt32LE(dataChunkOffset + 4), Math.max(0, available))
   const bytesPerSample = bitsPerSample / 8
   const totalSamples = dataSize / (bytesPerSample * channels)
 
@@ -58,3 +62,4 @@ export function readWavFormat(filePath: string): WavFormat {
 export function getWavDurationSeconds(filePath: string): number {
   return readWavFormat(filePath).seconds
 }
+

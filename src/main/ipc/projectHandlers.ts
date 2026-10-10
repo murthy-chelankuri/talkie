@@ -24,6 +24,7 @@ import { findLocalServer } from '../agent/localProvider'
 import { listCopilotModels } from '../agent/copilotModels'
 import { previewVoice } from '../tts/listVoices'
 import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
+import { downloadKokoro, kokoroDownloadStatus } from '../tts/kokoro/kokoroProcess'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 import { runProjectAgent } from '../agent/projectAgent'
 
@@ -90,10 +91,13 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     revokeMcpToken()
     return mcpConnection()
   })
-  // Whichever engine is chosen — a list of macOS voices is no use to someone using OpenAI.
+  // Whichever engine is chosen — a list of macOS voices is no use to someone using Kokoro.
   ipcMain.handle('settings:voices', () => speechEngine(readSettings().speech.engine).voices())
   ipcMain.handle('settings:speechEngines', () => describeSpeechEngines())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
+  // Resolves when the download is done; Settings asks for the status meanwhile to draw progress.
+  ipcMain.handle('settings:kokoroDownload', () => downloadKokoro())
+  ipcMain.handle('settings:kokoroStatus', () => kokoroDownloadStatus())
 
   // Drafted narration is an ordinary edit as far as undo is concerned.
   ipcMain.handle('project:agent:draftItem', (_event, projectId: string, itemId: string, force: boolean) =>

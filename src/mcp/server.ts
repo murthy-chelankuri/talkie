@@ -206,6 +206,7 @@ export function createTalkieServer(
       const project = openProject(projectId, baseDir)
       const context = project.context
       const said = describeProjectContext(context)
+      const sayings = (context?.pronunciations ?? []).map((entry) => `  - ${entry.written} → ${entry.spoken}`)
 
       return text(
         [
@@ -214,7 +215,11 @@ export function createTalkieServer(
           '',
           said.length > 0
             ? said.join('\n')
-            : 'Nothing recorded about what this project is for. talkie_set_context is how to say.'
+            : 'Nothing recorded about what this project is for. talkie_set_context is how to say.',
+          // Kept out of describeProjectContext: drafting should write the name as it is spelled,
+          // and only the voice hears the respelling. An agent setting context still needs to see
+          // them, or sending the context back would be the way they were lost.
+          ...(sayings.length > 0 ? ['', 'Said differently from how they are written (voice only):', ...sayings] : [])
         ].join('\n')
       )
     }
@@ -233,11 +238,22 @@ export function createTalkieServer(
         background: z.string().describe('The product, what it does, and the words it uses for its own parts'),
         audience: z.string().optional().describe('Who is watching, which decides what is assumed'),
         tone: z.string().optional().describe('How it should sound'),
-        neverSay: z.array(z.string()).optional().describe('Words and claims to keep out of it')
+        neverSay: z.array(z.string()).optional().describe('Words and claims to keep out of it'),
+        pronunciations: z
+          .array(z.object({ written: z.string(), spoken: z.string() }))
+          .optional()
+          .describe(
+            'Names the voice says wrong, each with a spelling it says right — "SecOps" as "Seck-ops". ' +
+              'Only the voice hears the second; captions and the script keep the first. Left out, ' +
+              'the ones already there are kept.'
+          )
       }
     },
-    async ({ projectId, background, audience, tone, neverSay }) => {
-      const context = ProjectContextSchema.parse({ background, audience, tone, neverSay })
+    async ({ projectId, background, audience, tone, neverSay, pronunciations }) => {
+      // Kept when not sent: this field arrived after the tool did, and an agent written before it
+      // sends back "the whole thing" without it — which would otherwise quietly erase them.
+      const kept = pronunciations ?? openProject(projectId, baseDir).context?.pronunciations ?? []
+      const context = ProjectContextSchema.parse({ background, audience, tone, neverSay, pronunciations: kept })
       withHistory(projectId, () => setProjectContext(projectId, context, baseDir), baseDir)
       return text('Noted. Drafts from here on will be written against it.')
     }

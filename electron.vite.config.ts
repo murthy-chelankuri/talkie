@@ -15,7 +15,20 @@ const commonJsOutput = {
 }
 
 export default defineConfig({
-  main: { plugins: [externalizeDepsPlugin()], ...commonJsOutput },
+  main: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          // Kokoro runs as a separate program the main process forks, never inside it — eSpeak NG,
+          // inside its phonemizer, is GPL-3.0. See src/main/tts/kokoro/kokoroWorker.ts.
+          kokoroWorker: resolve('src/main/tts/kokoro/kokoroWorker.ts')
+        },
+        output: commonJsOutput.build.rollupOptions.output
+      }
+    }
+  },
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {

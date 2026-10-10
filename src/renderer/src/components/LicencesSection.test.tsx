@@ -68,6 +68,8 @@ describe('the generated notices themselves', () => {
     const names = notices.bundled.map((item) => item.name)
 
     expect(names).toContain('FFmpeg')
+    // Compiled into phonemizer, whose own manifest says Apache-2.0 — see NOTICE.
+    expect(names).toContain('eSpeak NG')
     expect(notices.bundled.every((item) => item.license.startsWith('GPL'))).toBe(true)
   })
 
@@ -83,5 +85,42 @@ describe('the generated notices themselves', () => {
     const withText = notices.packages.filter((pkg) => pkg.text)
 
     expect(withText.length).toBeGreaterThan(notices.packages.length * 0.9)
+  })
+
+  it('carries the GPL itself for every bundled GPL component, as the GPL asks', () => {
+    for (const item of notices.bundled) {
+      const version = item.license.startsWith('GPL-3') ? 'Version 3' : 'Version 2'
+      expect(item.text, item.name).toContain('GNU GENERAL PUBLIC LICENSE')
+      expect(item.text, item.name).toContain(version)
+    }
+  })
+
+  it('says phonemizer carries GPL code, rather than repeating its Apache-only manifest', () => {
+    const phonemizer = notices.packages.find((pkg) => pkg.name === 'phonemizer')
+
+    expect(phonemizer?.license).toBe('Apache-2.0 AND GPL-3.0-or-later')
+  })
+
+  it('reproduces the ONNX Runtime notice, which its package does not carry', () => {
+    const runtime = notices.packages.find((pkg) => pkg.name === 'onnxruntime-node')
+
+    expect(runtime?.text).toContain('Copyright (c) Microsoft Corporation')
+    expect(runtime?.text).toContain('ThirdPartyNotices.txt')
+  })
+
+  it('ships no libvips — sharp is Talkie’s own stand-in, not the library', () => {
+    const names = notices.packages.map((pkg) => pkg.name)
+
+    expect(names.filter((name) => name.startsWith('@img/') || name === 'sharp')).toEqual([])
+  })
+
+  it('shows the licence text of a bundled GPL component when asked for it', async () => {
+    const user = userEvent.setup()
+    render(<LicencesSection />)
+
+    const [first] = screen.getAllByText('Licence text')
+    await user.click(first)
+
+    expect(screen.getAllByText(/GNU GENERAL PUBLIC LICENSE/).length).toBeGreaterThan(0)
   })
 })

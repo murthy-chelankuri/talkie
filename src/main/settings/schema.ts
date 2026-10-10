@@ -64,30 +64,44 @@ export const NarrationSettingsSchema = z.object({
   copilotCli: CopilotCliSettingsSchema.default({})
 })
 
-export const OpenAiSpeechSchema = z.object({
-  apiKey: z.string().default(''),
-  model: z.string().default('gpt-4o-mini-tts')
-})
+/**
+ * Engines that can read narration aloud, both on this machine. `system` needs nothing installed;
+ * `kokoro` needs its server running and sounds much closer to a person.
+ */
+export const SPEECH_ENGINE_IDS = ['system', 'kokoro'] as const
 
-/** Engines that can read narration aloud. `system` needs nothing installed. */
-export const SPEECH_ENGINE_IDS = ['system', 'openai'] as const
+/**
+ * Earlier builds could also speak through OpenAI and Azure. A settings file that still names one
+ * would otherwise fail to parse — and an invalid file is replaced wholesale with defaults, which
+ * would quietly cost someone every other setting they had. So the engine falls back to the
+ * built-in voices, and the voice with it: "nova" means nothing to `say`.
+ */
+function withoutRemovedEngines(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value
+  const speech = value as Record<string, unknown>
+  // Only the engines that existed: anything else is still an invalid setting, not a migration.
+  if (speech.engine !== 'openai' && speech.engine !== 'azure') return value
+  return { ...speech, engine: 'system', voice: DEFAULT_VOICE }
+}
 
 /** The voice that reads the narration, and the engine it comes from. */
-export const SpeechSettingsSchema = z.object({
-  /**
-   * Which engine speaks. The built-in voices are enough to hear whether the words work; a
-   * published video usually wants better, which is what the other one is for.
-   */
-  engine: z.enum(SPEECH_ENGINE_IDS).default('system'),
-  voice: z.string().default(DEFAULT_VOICE),
-  openai: OpenAiSpeechSchema.default({}),
-  /** Words per minute. Lower sounds like explaining; higher like reading out. */
-  pace: z.number().min(90).max(300).default(DEFAULT_PACE),
-  /** Silence at a full stop, in milliseconds. */
-  sentencePauseMs: z.number().min(0).max(2000).default(420),
-  /** Silence at a comma or dash, in milliseconds. */
-  clausePauseMs: z.number().min(0).max(1000).default(300)
-})
+export const SpeechSettingsSchema = z.preprocess(
+  withoutRemovedEngines,
+  z.object({
+    /**
+     * Which engine speaks. The built-in voices are enough to hear whether the words work; a
+     * published video usually wants Kokoro.
+     */
+    engine: z.enum(SPEECH_ENGINE_IDS).default('system'),
+    voice: z.string().default(DEFAULT_VOICE),
+    /** Words per minute. Lower sounds like explaining; higher like reading out. */
+    pace: z.number().min(90).max(300).default(DEFAULT_PACE),
+    /** Silence at a full stop, in milliseconds. */
+    sentencePauseMs: z.number().min(0).max(2000).default(420),
+    /** Silence at a comma or dash, in milliseconds. */
+    clausePauseMs: z.number().min(0).max(1000).default(300)
+  })
+)
 
 /**
  * Letting an outside agent drive Talkie.

@@ -12,6 +12,14 @@ import { z } from 'zod'
  * rather than per clip: a project has one subject, one audience and one voice, and fifty-three
  * clips that should sound like they came from the same person.
  */
+/** One word as it is written, and as it should be heard. */
+export const PronunciationSchema = z.object({
+  written: z.string(),
+  spoken: z.string()
+})
+
+export type Pronunciation = z.infer<typeof PronunciationSchema>
+
 export const ProjectContextSchema = z.object({
   /** The product, what it does, and the words it uses for its own parts. */
   background: z.string().default(''),
@@ -20,7 +28,15 @@ export const ProjectContextSchema = z.object({
   /** How it should sound. */
   tone: z.string().default(''),
   /** Things never to say. Rules rather than flavour, so they are kept apart. */
-  neverSay: z.array(z.string()).default([])
+  neverSay: z.array(z.string()).default([]),
+  /**
+   * How the voice should say a word the written form gets wrong.
+   *
+   * Not for the model: it writes the name as the product spells it, and captions, slides and
+   * the script all keep that spelling. Only what is sent to the voice changes. See
+   * `toSpokenForm`.
+   */
+  pronunciations: z.array(PronunciationSchema).default([])
 })
 
 export type ProjectContext = z.infer<typeof ProjectContextSchema>
@@ -33,7 +49,8 @@ export function hasProjectContext(context: ProjectContext | undefined): boolean 
     context.background.trim() ||
       context.audience.trim() ||
       context.tone.trim() ||
-      context.neverSay.some((rule) => rule.trim())
+      context.neverSay.some((rule) => rule.trim()) ||
+      context.pronunciations.some((entry) => entry.written.trim() && entry.spoken.trim())
   )
 }
 
@@ -102,4 +119,33 @@ export function findForbiddenTerms(text: string, neverSay: string[]): string[] {
 
 function escapeForRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * The narration as the voice should be given it: every listed word replaced by how it is said.
+ *
+ * A voice reads what it is handed, and handed "SecOps" one was heard to say "Secretary Ops";
+ * "ITOM" comes out as a word nobody uses. Respelling the narration itself would fix the sound and
+ * break everything that reads the words — captions, the script, the slide that names the
+ * product — so the respelling happens here, on the way to the voice, and nowhere else.
+ *
+ * Case matters, unlike `findForbiddenTerms`: a pronunciation is for a name, and "OR" the product
+ * is not "or" the word. Whole words only, so a short entry cannot rewrite the middle of a longer
+ * one, and the longest entries go first so "SecOps Cloud" can be said differently from "SecOps".
+ */
+export function toSpokenForm(text: string, pronunciations: Pronunciation[] | undefined): string {
+  const entries = (pronunciations ?? [])
+    .map((entry) => ({ written: entry.written.trim(), spoken: entry.spoken.trim() }))
+    .filter((entry) => entry.written && entry.spoken)
+    .sort((a, b) => b.written.length - a.written.length)
+  if (entries.length === 0) return text
+
+  const bySpelling = new Map(entries.map((entry) => [entry.written, entry.spoken]))
+  // One pass over the text for all of them, so a spoken form is never itself rewritten by a
+  // later entry that happens to match it.
+  const pattern = new RegExp(
+    `(?<![\\p{L}\\p{N}])(?:${entries.map((entry) => escapeForRegExp(entry.written)).join('|')})(?![\\p{L}\\p{N}])`,
+    'gu'
+  )
+  return text.replace(pattern, (match) => bySpelling.get(match) ?? match)
 }

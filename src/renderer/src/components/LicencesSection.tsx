@@ -19,6 +19,8 @@ interface Bundled {
   license: string
   note: string
   homepage: string
+  /** The licence itself: the GPL asks for a copy of it to travel with the binary. */
+  text: string
 }
 
 /**
@@ -29,6 +31,10 @@ interface Bundled {
  * they are said plainly rather than left for someone to infer from an SPDX identifier.
  */
 const OBLIGATIONS: Record<string, string> = {
+  'GPL-3.0-or-later':
+    'Copyleft. The source must be offered to anyone who receives the binary, with no further restrictions on their rights.',
+  'Apache-2.0 AND GPL-3.0-or-later':
+    'The package’s own code is Apache-2.0; the eSpeak NG compiled into it is GPL-3.0-or-later. It runs only in the Kokoro voice’s own process, apart from the rest of the app.',
   'GPL-2.0-or-later':
     'Copyleft. The source must be offered to anyone who receives the binary, and no further restrictions may be placed on their rights — which is the clause that has historically conflicted with app store terms.',
   'MPL-2.0':
@@ -44,7 +50,16 @@ const OBLIGATIONS: Record<string, string> = {
 }
 
 /** Ordered so the ones that constrain distribution are read first, not found by scrolling. */
-const PROMINENCE = ['GPL-2.0-or-later', 'Remotion License', 'EPL-2.0', 'MPL-2.0', '(MPL-2.0 OR Apache-2.0)', 'OFL-1.1']
+const PROMINENCE = [
+  'GPL-2.0-or-later',
+  'GPL-3.0-or-later',
+  'Apache-2.0 AND GPL-3.0-or-later',
+  'Remotion License',
+  'EPL-2.0',
+  'MPL-2.0',
+  '(MPL-2.0 OR Apache-2.0)',
+  'OFL-1.1'
+]
 
 function rank(license: string): number {
   const at = PROMINENCE.indexOf(license)
@@ -90,14 +105,16 @@ export function LicencesSection(): JSX.Element {
   return (
     <div className="flex flex-col gap-5">
       <p className="text-xs leading-relaxed text-text-muted">
-        Talkie is built on {packages.length} open-source packages and three bundled binaries. The
-        ones below carry obligations that apply when the app is distributed.
+        Talkie is built on {packages.length} open-source packages and {bundled.length} bundled
+        components no package manifest declares. The ones below carry obligations that apply when
+        the app is distributed. Their licence texts are also installed with the app, in
+        Talkie.app/Contents/Resources/licences.
       </p>
 
       {/* First, because these are the ones that decide how this app may be shipped at all. */}
       <div className="flex flex-col gap-2">
         <h3 className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
-          Bundled binaries
+          Bundled GPL components
         </h3>
         {bundled.map((item) => (
           <div key={item.name} className="rounded-lg border border-danger/35 bg-danger/[0.06] p-3.5">
@@ -109,6 +126,12 @@ export function LicencesSection(): JSX.Element {
               </span>
             </span>
             <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">{item.note}</p>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-[11px] text-accent">Licence text</summary>
+              <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-surface p-2.5 font-mono text-[10px] leading-relaxed text-text-muted">
+                {item.text}
+              </pre>
+            </details>
           </div>
         ))}
         <p className="flex items-start gap-2 text-[11px] leading-relaxed text-text-muted">
