@@ -4,6 +4,7 @@ import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
+import type { RenderTheme } from '../remotion/renderTheme'
 import type { KokoroDownload } from '../main/tts/kokoro/kokoroProcess'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
@@ -31,6 +32,9 @@ const projectApi = {
     ipcRenderer.invoke('project:setVoice', id, voice),
   setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
     ipcRenderer.invoke('project:setContext', id, context),
+  setTheme: (id: string, themeId: string | null): Promise<ProjectMetadata> =>
+    ipcRenderer.invoke('project:setTheme', id, themeId),
+  renderTheme: (id: string): Promise<RenderTheme | null> => ipcRenderer.invoke('project:theme:render', id),
   historyState: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:state', id),
   undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),

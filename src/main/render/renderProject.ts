@@ -20,6 +20,7 @@ import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { binariesDirectory } from './binaries'
 import { levelExport } from './loudness'
 import { redrawStaleDiagrams } from '../themes/projectDiagrams'
+import { toRenderTheme } from '../themes/toRenderTheme'
 import { browserExecutablePath } from '../capture/resolveBrowser'
 import { remotionBundleLocation } from './remotionBundle'
 import { COMPOSITION_ID } from '../../remotion/constants'
@@ -74,12 +75,14 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   // find their own, they derive the place to put it from the working directory, which is `/`
   // for an app opened from Finder. See browserExecutablePath.
   const browserExecutable = browserExecutablePath()
+  // The same theme the preview draws with, built the same way. See toRenderTheme.
+  const theme = toRenderTheme(openProject(id, baseDir).themeId, baseDir)
   const composition = await selectComposition({
     binariesDirectory: binariesDirectory(),
     browserExecutable,
     serveUrl: bundleLocation,
     id: COMPOSITION_ID,
-    inputProps: { timeline }
+    inputProps: { timeline, theme }
   })
 
   // Named for the project and the day it was made, because this is the file the user hands to
@@ -102,7 +105,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
     // unset, so any player that honoured the tag showed the wrong colours for a 1080p video.
     colorSpace: 'bt709',
     outputLocation: outputPath,
-    inputProps: { timeline }
+    inputProps: { timeline, theme }
   })
 
   // The soundtrack brought to the level spoken video is delivered at, once the whole of it

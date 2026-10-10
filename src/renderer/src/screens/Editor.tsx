@@ -27,6 +27,7 @@ import { cn } from '../lib/cn'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
+import type { RenderTheme } from '../../../remotion/renderTheme'
 import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
@@ -136,6 +137,26 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     openedAtFrame.current = false
   }, [projectId])
 
+  // The project's theme, as the composition draws it. Read again whenever the project says it has
+  // a different one; null for a project without, which draws as it always did.
+  const [renderTheme, setRenderTheme] = useState<RenderTheme | null>(null)
+  const renderThemeRef = useRef<RenderTheme | null>(null)
+  renderThemeRef.current = renderTheme
+  useEffect(() => {
+    let cancelled = false
+    projectClient
+      .renderTheme(projectId)
+      .then((theme) => {
+        if (!cancelled) setRenderTheme(theme)
+      })
+      .catch(() => {
+        if (!cancelled) setRenderTheme(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, project?.themeId])
+
   useEffect(() => {
     Promise.all([
       projectClient.open(projectId),
@@ -190,7 +211,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     // An agent can write mermaid source but cannot draw it — there is no browser where it
     // runs. This is where the drawing happens, so its diagram is a picture rather than a blank
     // clip. See drawPendingDiagrams.
-    if ((await drawPendingDiagrams(projectId, items)) > 0) {
+    if ((await drawPendingDiagrams(projectId, items, renderThemeRef.current)) > 0) {
       setTimeline(await timelineClient.read(projectId))
     }
   }
@@ -705,7 +726,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                   <Player
                     ref={playerRef}
                     component={DemoComposition}
-                    inputProps={{ timeline: remotionTimeline }}
+                    inputProps={{ timeline: remotionTimeline, theme: renderTheme }}
                     durationInFrames={computeTimelineDuration(remotionTimeline)}
                     fps={FPS}
                     compositionWidth={WIDTH}
@@ -874,6 +895,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           projectId={projectId}
           projectName={project.name}
           item={sceneEditing === 'new' ? null : sceneEditing}
+          theme={renderTheme}
           onClose={() => setSceneEditing(null)}
           onSaved={async () => {
             await refreshTimeline()

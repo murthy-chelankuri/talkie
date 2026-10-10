@@ -9,6 +9,7 @@ import { shouldRedactInputValue } from './redact'
 import { resolveBrowser, LAUNCH_ARGS, NO_BROWSER_MESSAGE } from './resolveBrowser'
 import { HEIGHT, WIDTH } from '../../remotion/constants'
 import { highlightScript } from './highlightScript'
+import { themeHighlight } from '../themes/applyTheme'
 import { readSettings } from '../settings/settingsStore'
 import { logFailure } from '../diagnostics/log'
 import type { RecordedClip } from './stitchRecording'
@@ -266,7 +267,11 @@ export async function startRecordingSession(
     // back after every navigation — a highlight that only worked on the first page would be
     // worse than none.
     if (recording.highlight) {
-      await context.addInitScript(highlightScript({ accent: recording.highlightColour }))
+      // The project's theme decides the ring's colour when it has one. Drawn into the page, so it
+      // is part of the footage: a theme chosen later cannot recolour what was already recorded.
+      await context.addInitScript(
+        highlightScript({ accent: themeHighlight(projectId, baseDir) ?? recording.highlightColour })
+      )
     }
 
     // Every page, not only the one the recording started on: a link that opens a tab is an

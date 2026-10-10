@@ -18,6 +18,8 @@ export interface ProjectMetadata extends ProjectSummary {
   voice?: string
   /** What the demo is about, given to everything that writes words for it. */
   context?: ProjectContext
+  /** The theme the video follows, from the library. Absent means the look projects always had. */
+  themeId?: string
 }
 
 export interface HistoryState {
@@ -45,6 +47,8 @@ export const projectClient = {
     window.api.project.setVoice(id, voice),
   setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
     window.api.project.setContext(id, context),
+  setTheme: (id: string, themeId: string | null): Promise<ProjectMetadata> => window.api.project.setTheme(id, themeId),
+  renderTheme: (id: string) => window.api.project.renderTheme(id),
   historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),

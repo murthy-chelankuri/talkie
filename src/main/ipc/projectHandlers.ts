@@ -27,6 +27,8 @@ import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { downloadKokoro, kokoroDownloadStatus } from '../tts/kokoro/kokoroProcess'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 import { runProjectAgent } from '../agent/projectAgent'
+import { setProjectTheme } from '../themes/applyTheme'
+import { toRenderTheme } from '../themes/toRenderTheme'
 
 export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:create', (_event, name: string, context?: unknown) =>
@@ -57,6 +59,13 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     return project
   })
 
+  // One undo step: the theme and, the first time, the opening and closing cards it adds.
+  ipcMain.handle('project:setTheme', (_event, projectId: string, themeId: string | null) =>
+    withHistory(projectId, () => setProjectTheme(projectId, themeId))
+  )
+  ipcMain.handle('project:theme:render', (_event, projectId: string) =>
+    toRenderTheme(openProject(projectId).themeId)
+  )
   ipcMain.handle('project:setVoice', (_event, projectId: string, voice: string | null) =>
     setProjectVoice(projectId, voice)
   )
