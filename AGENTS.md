@@ -223,6 +223,22 @@ drawn in the order it is explained rather than arriving whole.
 - **An untimed slide never starts empty.** Lines settle from 0.7 rather than arriving from
   nothing, because the first frame of a slide is what every thumbnail shows.
 
+## Themes
+
+A theme is a company's look — three variants (brand, light, dark), fonts, logo, caption and click
+colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `src/main/themes/`.
+
+- **The composition gets a `RenderTheme`, with logo and fonts as data URLs.** Not asset-server
+  URLs: that server is rooted at the projects folder, and widening it would put `settings.json`
+  in reach. `toRenderTheme` builds it for the preview and the export alike.
+- **Diagrams carry their colours**, so each records a `themeStamp`; stale ones are redrawn when
+  the project opens and before export (`redrawStaleDiagrams`).
+- **The first theme adds opening and closing cards, once** (`bookendsAdded`).
+- **No theme means the old look, exactly** — the old palette names still render as they did.
+- **AI themes**: `generate/` reads the site headless (one page, no clicks), the narration
+  provider chooses (rules if not), fonts come only from Google Fonts' `ofl/`/`apache/`, contrast
+  is fixed, and the result waits in `Themes/.drafts` until saved.
+
 ## Security invariants
 
 Do not weaken these without understanding what they are for. Each has tests.
