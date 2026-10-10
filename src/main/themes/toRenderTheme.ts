@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
-import { extname, join, normalize, sep } from 'path'
+import { basename, extname, join, normalize, sep } from 'path'
 import { findThemeDir, readTheme } from './themeApi'
 import { BUILTIN_FONTS, type FontChoice, type ThemeDraft } from './schema'
 import { themeStamp, type RenderTheme } from '../../remotion/renderTheme'
@@ -36,8 +36,15 @@ function readInside(dir: string, relative: string): Buffer | null {
   }
 }
 
+/**
+ * A file as a data URL. A font also carries its own name, because a family arrives as several
+ * files — regular, semibold — and the name ("Inter-600") is the only place its weight is written.
+ */
 function dataUrl(bytes: Buffer, file: string): string {
-  return `data:${MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'};base64,${bytes.toString('base64')}`
+  const extension = extname(file).toLowerCase()
+  const type = MIME[extension] ?? 'application/octet-stream'
+  const name = type.startsWith('font/') ? `;name=${basename(file, extname(file)).replace(/[^\w-]/g, '')}` : ''
+  return `data:${type}${name};base64,${bytes.toString('base64')}`
 }
 
 /** A theme that has not been saved yet — the editor's draft — renders from wherever its files are. */

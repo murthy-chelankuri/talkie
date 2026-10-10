@@ -11,7 +11,7 @@ function RemotionRoot(): JSX.Element {
       fps={FPS}
       width={WIDTH}
       height={HEIGHT}
-      defaultProps={{ timeline: [] }}
+      defaultProps={{ timeline: [], theme: null }}
     />
   )
 }

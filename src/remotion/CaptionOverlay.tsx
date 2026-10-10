@@ -1,4 +1,5 @@
 import { useCurrentFrame } from 'remotion'
+import { useRenderTheme, type RenderTheme } from './renderTheme'
 // The same shape the captions are built in; a second definition would be one to keep in step.
 import type { Caption as CaptionCue } from '../main/transcript/captions'
 
@@ -14,8 +15,29 @@ export type { CaptionCue }
  * Styled to stay readable over anything: a screen recording can be white here and black there,
  * so the words carry their own dark ground rather than relying on what is behind them.
  */
+/**
+ * How the bar looks: its own near-black without a theme, or the theme's chosen variant —
+ * nearly opaque, because it sits over a recording that can be any colour behind it.
+ */
+export function captionLook(theme: RenderTheme | null): { background: string; color: string; fontFamily: string } {
+  if (!theme) {
+    return {
+      background: 'rgba(10, 12, 16, 0.78)',
+      color: '#ffffff',
+      fontFamily: '"Geist Variable", ui-sans-serif, system-ui, sans-serif'
+    }
+  }
+  const variant = theme.variants[theme.caption]
+  return {
+    background: `${variant.background}e6`,
+    color: variant.heading,
+    fontFamily: `"${theme.fonts.body.family.replace(/"/g, '')}", "Geist Variable", ui-sans-serif, system-ui, sans-serif`
+  }
+}
+
 export function CaptionOverlay({ cues }: { cues: CaptionCue[] }): JSX.Element | null {
   const frame = useCurrentFrame()
+  const look = captionLook(useRenderTheme())
   const current = cues.find((cue) => frame >= cue.startFrame && frame < cue.endFrame)
   if (!current) return null
 
@@ -37,9 +59,7 @@ export function CaptionOverlay({ cues }: { cues: CaptionCue[] }): JSX.Element | 
       <span
         style={{
           maxWidth: '84%',
-          background: 'rgba(10, 12, 16, 0.78)',
-          color: '#ffffff',
-          fontFamily: '"Geist Variable", ui-sans-serif, system-ui, sans-serif',
+          ...look,
           fontSize: 42,
           lineHeight: 1.32,
           fontWeight: 500,

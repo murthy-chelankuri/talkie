@@ -1,7 +1,8 @@
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
 import { revealFrames, type Beat } from '../revealOnBeat'
 import type { TextSceneData } from '../../main/project/timeline/schema'
-import { resolveSceneTheme } from '../sceneTheme'
+import { resolveSceneTheme, type ResolvedSceneTheme } from '../sceneTheme'
+import { useRenderTheme, type RenderTheme } from '../renderTheme'
 
 /**
  * A slide written in the app.
@@ -14,10 +15,15 @@ import { resolveSceneTheme } from '../sceneTheme'
  * each one waits for the sentence about it — see revealOnBeat.ts.
  */
 export function TextScene({ data }: { data: unknown }): JSX.Element {
-  const { title, bullets, style, beats } = data as TextSceneData & { beats?: Beat[] }
-  const theme = resolveSceneTheme(style)
+  const { title, bullets, style, beats, layout } = data as TextSceneData & { beats?: Beat[] }
+  const project = useRenderTheme()
+  const theme = resolveSceneTheme(style, project)
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
+
+  if (layout === 'title' || layout === 'closing') {
+    return <Card layout={layout} title={title} look={theme} project={project} frame={frame} fps={fps} />
+  }
 
   /**
    * A settle, not an entrance.
@@ -126,6 +132,64 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
             )
           })}
         </ul>
+      )}
+    </AbsoluteFill>
+  )
+}
+
+/**
+ * The cards a theme puts at either end of a video: the logo large, and who it is from.
+ *
+ * Opening: the company, then the video's own title. Closing: the title — usually a thank-you or
+ * the tagline — then the tagline and where to find them. Without a theme there is no company to
+ * name, so a card is just its title, centred.
+ */
+function Card({
+  layout,
+  title,
+  look,
+  project,
+  frame,
+  fps
+}: {
+  layout: 'title' | 'closing'
+  title: string
+  look: ResolvedSceneTheme
+  project: RenderTheme | null
+  frame: number
+  fps: number
+}): JSX.Element {
+  const settle = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 14 })
+  const tagline = project?.tagline && project.tagline !== title ? project.tagline : ''
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: look.background,
+        padding: '9% 11%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        textAlign: 'center',
+        fontFamily: look.bodyFont,
+        gap: 36,
+        opacity: interpolate(settle, [0, 1], [0.82, 1])
+      }}
+    >
+      {project?.logo && (
+        <Img src={project.logo.url} alt="" style={{ height: '18%', maxWidth: '50%', objectFit: 'contain' }} />
+      )}
+      {layout === 'title' && project?.company && (
+        <span style={{ fontSize: 34, letterSpacing: 4, textTransform: 'uppercase', color: look.accent }}>
+          {project.company}
+        </span>
+      )}
+      <h1
+        style={{ margin: 0, fontFamily: look.headingFont, fontSize: 104, lineHeight: 1.08, fontWeight: 500, color: look.heading }}
+        dangerouslySetInnerHTML={{ __html: title }}
+      />
+      {layout === 'closing' && tagline && <p style={{ margin: 0, fontSize: 46, color: look.body }}>{tagline}</p>}
+      {layout === 'closing' && project?.website && (
+        <span style={{ fontSize: 38, color: look.accent }}>{project.website}</span>
       )}
     </AbsoluteFill>
   )

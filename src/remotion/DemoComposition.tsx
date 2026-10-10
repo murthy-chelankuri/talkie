@@ -3,10 +3,21 @@ import { CaptionOverlay, type CaptionCue } from './CaptionOverlay'
 import type { TimelineItem } from './types'
 import { ITEM_REGISTRY } from './itemRegistry'
 import { NARRATION_LEAD_IN_FRAMES } from './constants'
+import { ThemeContext, type RenderTheme } from './renderTheme'
+import { ThemeFonts } from './ThemeFonts'
+import { LogoOverlay } from './LogoOverlay'
 
-export function DemoComposition({ timeline }: { timeline: TimelineItem[] }): JSX.Element {
+export function DemoComposition({
+  timeline,
+  theme = null
+}: {
+  timeline: TimelineItem[]
+  /** The project's theme, or null — in which case everything draws as it did before themes. */
+  theme?: RenderTheme | null
+}): JSX.Element {
   return (
-    <>
+    <ThemeContext.Provider value={theme}>
+      {theme && <ThemeFonts theme={theme} />}
       {timeline.map((item) => {
         const Component = ITEM_REGISTRY[item.kind]
         if (!Component) return null
@@ -17,6 +28,7 @@ export function DemoComposition({ timeline }: { timeline: TimelineItem[] }): JSX
         return (
           <Sequence key={item.id} from={item.start} durationInFrames={item.duration}>
             <Component data={item.data} />
+            <LogoOverlay kind={item.kind} data={item.data} />
             {/* Held back a beat so the clip is seen before it is spoken over. Nested Sequence
                 offsets are relative to the clip, so this is a delay within it. */}
             {/* Inside the clip's Sequence, so the cue's frames are the clip's own. */}
@@ -29,6 +41,6 @@ export function DemoComposition({ timeline }: { timeline: TimelineItem[] }): JSX
           </Sequence>
         )
       })}
-    </>
+    </ThemeContext.Provider>
   )
 }

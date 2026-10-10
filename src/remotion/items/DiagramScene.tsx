@@ -10,6 +10,7 @@ import {
 } from 'remotion'
 import type { DiagramSceneData } from '../../main/project/timeline/schema'
 import { resolveSceneTheme } from '../sceneTheme'
+import { useRenderTheme } from '../renderTheme'
 import { buildableDiagram, revealedThrough } from '../buildDiagram'
 import { revealFrames, type Beat } from '../revealOnBeat'
 
@@ -22,7 +23,7 @@ import { revealFrames, type Beat } from '../revealOnBeat'
  */
 export function DiagramScene({ data }: { data: unknown }): JSX.Element {
   const { src, title, style, beats } = data as DiagramSceneData & { beats?: Beat[] }
-  const theme = resolveSceneTheme(style)
+  const theme = resolveSceneTheme(style, useRenderTheme())
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const [markup, setMarkup] = useState<string | null>(null)

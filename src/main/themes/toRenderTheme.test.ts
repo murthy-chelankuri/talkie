@@ -46,7 +46,7 @@ describe('a theme as the video receives it', () => {
     const rendered = toRenderTheme(theme.id, baseDir)
 
     expect(rendered?.fonts.heading.family).toBe('Inter')
-    expect(rendered?.fonts.heading.urls).toEqual([`data:font/woff2;base64,${Buffer.from('font').toString('base64')}`])
+    expect(rendered?.fonts.heading.urls).toEqual([`data:font/woff2;name=Inter;base64,${Buffer.from('font').toString('base64')}`])
   })
 
   it('draws without a logo whose file has gone, rather than failing the video', () => {
