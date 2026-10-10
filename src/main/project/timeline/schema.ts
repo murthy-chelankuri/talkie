@@ -65,6 +65,11 @@ export const DiagramSceneDataSchema = z.object({
   style: SceneStyleSchema.default({}),
   /** Path to the rendered SVG. Absent until it has been drawn once. */
   src: z.string().optional(),
+  /**
+   * The theme and variant the SVG was drawn in, since its colours are inside it. A diagram whose
+   * stamp no longer matches its project is drawn again — see src/main/themes/diagrams.ts.
+   */
+  themeStamp: z.string().optional(),
   title: z.string().optional()
 })
 

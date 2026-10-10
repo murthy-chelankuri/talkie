@@ -5,6 +5,7 @@ import { RichTextField } from './RichTextField'
 import { plainToRichText, richTextToPlain } from '../../../main/project/timeline/richText'
 import { VARIANT_FOR, resolveSceneTheme } from '../../../remotion/sceneTheme'
 import type { RenderTheme } from '../../../remotion/renderTheme'
+import { diagramStamp } from '../../../main/themes/diagrams'
 import type { SceneStyle } from '../../../main/project/timeline/schema'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -101,7 +102,7 @@ export function SceneEditor({
     const timer = setTimeout(async () => {
       try {
         const { renderMermaid } = await import('../lib/renderMermaid')
-        const { svg: drawn } = await renderMermaid(draft.source)
+        const { svg: drawn } = await renderMermaid(draft.source, theme, VARIANT_FOR[draft.style.theme] ?? 'dark')
         if (!cancelled) {
           setSvg(drawn)
           setDiagramError(null)
@@ -115,7 +116,7 @@ export function SceneEditor({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [kind, draft.source])
+  }, [kind, draft.source, draft.style.theme, theme])
 
   async function askTheModel(): Promise<void> {
     if (!instruction.trim()) return
@@ -173,10 +174,12 @@ export function SceneEditor({
         }
         // The drawn SVG is stored so the export never has to run mermaid itself.
         const src = await sceneClient.saveSvg(projectId, svg)
+        const variant = VARIANT_FOR[draft.style.theme] ?? 'dark'
         data = {
           source: draft.source,
           src,
           style: draft.style,
+          ...(theme ? { themeStamp: diagramStamp(theme, variant) } : {}),
           ...(richTextToPlain(draft.title).trim() ? { title: draft.title.trim() } : {})
         }
       }

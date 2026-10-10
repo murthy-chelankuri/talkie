@@ -19,6 +19,7 @@ import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { binariesDirectory } from './binaries'
 import { levelExport } from './loudness'
+import { redrawStaleDiagrams } from '../themes/projectDiagrams'
 import { browserExecutablePath } from '../capture/resolveBrowser'
 import { remotionBundleLocation } from './remotionBundle'
 import { COMPOSITION_ID } from '../../remotion/constants'
@@ -39,6 +40,10 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   if (!dir) {
     throw new Error(`No project found with id ${id}`)
   }
+
+  // Before anything is read: a theme changed since the project was last open leaves diagrams
+  // drawn in the old colours, and the video should show the theme as it is now.
+  await redrawStaleDiagrams(id, baseDir)
 
   const rootDir = projectsRootDir(baseDir)
   // Cast: project/timeline/schema.ts's zod-inferred TimelineItem treats `data` as optional

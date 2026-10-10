@@ -1,32 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { continueRender, delayRender } from 'remotion'
-import type { RenderTheme } from './renderTheme'
+import { fontFaceCss, type RenderTheme } from './renderTheme'
 
-/** "Inter-600" → 600; a file whose name says nothing covers every weight. */
-function weightOf(url: string): string {
-  const name = /;name=([\w-]+)/.exec(url)?.[1] ?? ''
-  const weight = /(?:^|[-_])([1-9]00)(?:$|[-_])/.exec(name)?.[1]
-  return weight ?? '100 900'
-}
-
-/** The @font-face rules for the families a theme brings files for. Empty when it brings none. */
-export function fontFaceCss(theme: RenderTheme): string {
-  const families = [theme.fonts.heading, theme.fonts.body]
-  const seen = new Set<string>()
-  const rules: string[] = []
-
-  for (const { family, urls } of families) {
-    for (const url of urls) {
-      const key = `${family}|${url}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      rules.push(
-        `@font-face{font-family:"${family.replace(/"/g, '')}";src:url(${url});font-weight:${weightOf(url)};font-style:normal;font-display:block}`
-      )
-    }
-  }
-  return rules.join('\n')
-}
+export { fontFaceCss }
 
 /**
  * The theme's own type, loaded before a frame is drawn.

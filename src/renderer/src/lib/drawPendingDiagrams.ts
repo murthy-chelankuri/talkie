@@ -1,6 +1,8 @@
 import { renderMermaid } from './renderMermaid'
 import { sceneClient } from '../api/projectClient'
 import type { TimelineItem } from '../api/projectClient'
+import type { RenderTheme } from '../../../remotion/renderTheme'
+import { diagramStamp, diagramVariant, staleDiagrams } from '../../../main/themes/diagrams'
 
 /**
  * Draw any diagram that arrived without a drawing.
@@ -19,21 +21,23 @@ import type { TimelineItem } from '../api/projectClient'
  */
 export async function drawPendingDiagrams(
   projectId: string,
-  timeline: TimelineItem[]
+  timeline: TimelineItem[],
+  // Also redraws any diagram drawn in a theme other than the project's — see diagrams.ts.
+  theme: RenderTheme | null = null
 ): Promise<number> {
-  const waiting = timeline.filter((item) => {
-    if (item.kind !== 'diagram') return false
-    const data = item.data as { source?: string; src?: string } | null
-    return Boolean(data?.source?.trim()) && !data?.src
-  })
-
   let drawn = 0
-  for (const item of waiting) {
-    const data = item.data as { source: string; title?: string; style?: unknown }
+  for (const item of staleDiagrams(timeline, theme)) {
+    const data = item.data as { source: string; title?: string; style?: unknown; themeStamp?: string }
+    const variant = diagramVariant(data)
     try {
-      const { svg } = await renderMermaid(data.source)
+      const { svg } = await renderMermaid(data.source, theme, variant)
       const src = await sceneClient.saveSvg(projectId, svg)
-      await sceneClient.update(projectId, item.id, { ...data, src })
+      const { themeStamp: _old, ...rest } = data
+      await sceneClient.update(projectId, item.id, {
+        ...rest,
+        src,
+        ...(theme ? { themeStamp: diagramStamp(theme, variant) } : {})
+      })
       drawn += 1
     } catch (err) {
       // Left as it is, source and all. Whoever wrote it can see what they wrote and fix it.

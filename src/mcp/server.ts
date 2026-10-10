@@ -32,7 +32,7 @@ import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { prepareDeck, saveSlides } from '../main/slides/importSlides'
 import { rasterisePdf } from '../main/slides/rasterisePdf'
-import { renderMermaidHeadless } from '../main/slides/renderMermaidHeadless'
+import { drawDiagramForProject } from '../main/themes/projectDiagrams'
 import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
@@ -73,9 +73,15 @@ function describeItem(item: TimelineItem, index: number): string {
  * Mermaid's own errors name the line and what it did not understand, and the person who wrote
  * the source is the one who can fix it — so they are passed through rather than summarised.
  */
-async function draw(source: string): Promise<{ ok: true; svg: string } | { ok: false; reason: string }> {
+async function draw(
+  projectId: string,
+  source: string,
+  data: unknown,
+  baseDir: string
+): Promise<{ ok: true; svg: string; themeStamp?: string } | { ok: false; reason: string }> {
   try {
-    return { ok: true, svg: await renderMermaidHeadless(source) }
+    // In the project's theme, so an agent's diagram arrives in the colours of the slides around it.
+    return { ok: true, ...(await drawDiagramForProject(projectId, source, data, baseDir)) }
   } catch (err) {
     const said = err instanceof Error ? err.message.split('\n')[0] : String(err)
     return { ok: false, reason: `That diagram could not be drawn: ${said}` }
@@ -642,7 +648,7 @@ export function createTalkieServer(
       }
     },
     async ({ projectId, source, title, style }) => {
-      const drawn = await draw(source)
+      const drawn = await draw(projectId, source, { style }, baseDir)
       if (!drawn.ok) return text(drawn.reason)
 
       const item = withHistory(
@@ -651,7 +657,13 @@ export function createTalkieServer(
           addScene(
             projectId,
             'diagram',
-            { source, title, style: style ?? {}, src: writeDiagramSvg(projectId, drawn.svg, baseDir) },
+            {
+              source,
+              title,
+              style: style ?? {},
+              src: writeDiagramSvg(projectId, drawn.svg, baseDir),
+              ...(drawn.themeStamp ? { themeStamp: drawn.themeStamp } : {})
+            },
             baseDir
           ),
         baseDir
@@ -683,7 +695,7 @@ export function createTalkieServer(
         return text(`That clip is a ${item.kind}, not a diagram.`)
       }
 
-      const drawn = await draw(source)
+      const drawn = await draw(projectId, source, item.data, baseDir)
       if (!drawn.ok) return text(drawn.reason)
 
       const current = item.data as { title?: string; style?: unknown }
@@ -699,7 +711,8 @@ export function createTalkieServer(
               source,
               title: title ?? current.title,
               style: current.style ?? {},
-              src: writeDiagramSvg(projectId, drawn.svg, baseDir)
+              src: writeDiagramSvg(projectId, drawn.svg, baseDir),
+              ...(drawn.themeStamp ? { themeStamp: drawn.themeStamp } : {})
             },
             baseDir
           ),
