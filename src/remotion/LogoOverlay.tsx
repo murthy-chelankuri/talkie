@@ -1,6 +1,9 @@
 import type { CSSProperties } from 'react'
-import { Img } from 'remotion'
+import { useVideoConfig } from 'remotion'
 import { useRenderTheme, type RenderTheme } from './renderTheme'
+import { resolveSceneTheme } from './sceneTheme'
+import { LogoMark } from './LogoMark'
+import type { SceneStyle } from '../main/project/timeline/schema'
 
 const INSET = '4%'
 
@@ -24,27 +27,20 @@ export function logoPlacement(kind: string, data: unknown, theme: RenderTheme | 
   return { [vertical]: INSET, [horizontal]: INSET }
 }
 
-/**
- * The logo, drawn as an image and never as inline SVG: a logo can come from a company's website,
- * and an image element does not run whatever script that markup might carry.
- */
+/** The logo in its corner. See LogoMark for how it is drawn, and when it gets a plate. */
 export function LogoOverlay({ kind, data }: { kind: string; data: unknown }): JSX.Element | null {
   const theme = useRenderTheme()
+  const { width, height } = useVideoConfig()
   const placement = logoPlacement(kind, data, theme)
   if (!placement || !theme?.logo) return null
 
+  // A slide's ground is known; a recording's is whatever was on screen, so it is left alone.
+  const isSlide = kind === 'scene' || kind === 'diagram'
+  const background = isSlide ? resolveSceneTheme((data as { style?: SceneStyle } | null)?.style, theme).background : undefined
+
   return (
-    <Img
-      src={theme.logo.url}
-      alt=""
-      style={{
-        position: 'absolute',
-        ...placement,
-        height: '6%',
-        maxWidth: '18%',
-        objectFit: 'contain',
-        pointerEvents: 'none'
-      }}
-    />
+    <div style={{ position: 'absolute', ...placement, pointerEvents: 'none' }}>
+      <LogoMark theme={{ ...theme, logo: theme.logo }} height={Math.round(height * 0.06)} maxWidth={Math.round(width * 0.18)} background={background} />
+    </div>
   )
 }

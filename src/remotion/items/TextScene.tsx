@@ -1,4 +1,5 @@
-import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { LogoMark } from '../LogoMark'
 import { revealFrames, type Beat } from '../revealOnBeat'
 import type { TextSceneData } from '../../main/project/timeline/schema'
 import { resolveSceneTheme, type ResolvedSceneTheme } from '../sceneTheme'
@@ -160,6 +161,7 @@ function Card({
   fps: number
 }): JSX.Element {
   const settle = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 14 })
+  const { width: videoWidth, height: videoHeight } = useVideoConfig()
   const tagline = project?.tagline && project.tagline !== title ? project.tagline : ''
 
   return (
@@ -176,7 +178,12 @@ function Card({
       }}
     >
       {project?.logo && (
-        <Img src={project.logo.url} alt="" style={{ height: '18%', maxWidth: '50%', objectFit: 'contain' }} />
+        <LogoMark
+          theme={{ ...project, logo: project.logo }}
+          height={Math.round(videoHeight * 0.18)}
+          maxWidth={Math.round(videoWidth * 0.5)}
+          background={look.background}
+        />
       )}
       {layout === 'title' && project?.company && (
         <span style={{ fontSize: 34, letterSpacing: 4, textTransform: 'uppercase', color: look.accent }}>

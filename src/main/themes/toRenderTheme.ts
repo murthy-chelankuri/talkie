@@ -4,6 +4,7 @@ import { basename, extname, join, normalize, sep } from 'path'
 import { findThemeDir, readTheme } from './themeApi'
 import { BUILTIN_FONTS, type FontChoice, type ThemeDraft } from './schema'
 import { themeStamp, type RenderTheme } from '../../remotion/renderTheme'
+import { stillLogo } from './stillLogo'
 
 /**
  * A theme as the video needs it: colours as they are, and its logo and fonts read off disk into
@@ -62,7 +63,13 @@ export function renderThemeFrom(draft: ThemeDraft, dir: string | undefined): Ren
     return { family: choice.family, urls: files.map(({ file, bytes }) => dataUrl(bytes as Buffer, file)) }
   }
 
-  const logoBytes = draft.logo && dir ? readInside(dir, draft.logo.file) : null
+  const stored = draft.logo && dir ? readInside(dir, draft.logo.file) : null
+  // Settled here rather than when saved, so logos already in the library are fixed too, and the
+  // file itself stays exactly as the brand published it.
+  const logoBytes =
+    stored && draft.logo && extname(draft.logo.file).toLowerCase() === '.svg'
+      ? Buffer.from(stillLogo(stored.toString('utf-8')))
+      : stored
 
   return {
     stamp: themeStamp(draft),
