@@ -84,7 +84,15 @@ export function mermaidConfigFor(theme: RenderTheme | null | undefined, variant:
  * white background — including when the file itself is opened. Both are fixed once here rather
  * than worked around by everything that displays it.
  */
-export function normaliseSvg(svg: string): string {
+/**
+ * What a diagram is painted on: the background of the look it was drawn in. Talkie's own grey
+ * under a theme's colours put a theme's light diagram — dark text — on a dark ground.
+ */
+export function diagramBackground(theme: RenderTheme | null | undefined, variant: VariantId = 'dark'): string {
+  return theme ? theme.variants[variant].background : MERMAID_THEME.background
+}
+
+export function normaliseSvg(svg: string, background: string = MERMAID_THEME.background): string {
   // Only the opening <svg> tag is touched. Stripping width and height everywhere also strips
   // them from the rects that draw the nodes, which leaves a diagram of arrows pointing at
   // nothing — the shapes are sized by those attributes.
@@ -96,7 +104,7 @@ export function normaliseSvg(svg: string): string {
 
     return (
       `${cleaned} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">` +
-      `<rect width="100%" height="100%" fill="${MERMAID_THEME.background}"/>`
+      `<rect width="100%" height="100%" fill="${background}"/>`
     )
   })
 }

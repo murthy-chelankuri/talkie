@@ -46,6 +46,14 @@ describe('which diagrams need drawing again', () => {
     expect(staleDiagrams([other, variant], theme).map((d) => d.id)).toEqual(['a', 'b'])
   })
 
+  it('includes one drawn in this theme before the way diagrams are drawn changed', () => {
+    // Themed diagrams were once all painted on Talkie's dark grey; those carry the stamp of the
+    // theme they are in and would never have been drawn again.
+    const earlier = diagram('a', { src: '/a.svg', style: { theme: 'light' }, themeStamp: 'abc:light' })
+
+    expect(staleDiagrams([earlier], theme).map((d) => d.id)).toEqual(['a'])
+  })
+
   it('leaves alone one drawn in the theme it is in now', () => {
     const current = diagram('a', { src: '/a.svg', style: { theme: 'dark' }, themeStamp: diagramStamp(theme, 'dark') })
 
@@ -53,7 +61,7 @@ describe('which diagrams need drawing again', () => {
   })
 
   it('redraws one in a theme the project no longer has, but never one drawn before themes', () => {
-    const themed = diagram('a', { src: '/a.svg', themeStamp: 'abc:dark' })
+    const themed = diagram('a', { src: '/a.svg', themeStamp: diagramStamp(theme, 'dark') })
     const plain = diagram('b', { src: '/b.svg' })
 
     expect(staleDiagrams([themed, plain], null).map((d) => d.id)).toEqual(['a'])

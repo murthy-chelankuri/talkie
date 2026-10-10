@@ -3,6 +3,13 @@ import type { RenderTheme } from '../../remotion/renderTheme'
 import { VARIANT_FOR } from '../../remotion/sceneTheme'
 
 /**
+ * Raised when the way a themed diagram is drawn changes, so every one drawn the old way is drawn
+ * again. 2: painted on its look's own background rather than always on Talkie's dark grey, which
+ * left a light diagram as dark text on a dark ground.
+ */
+const DRAWING_VERSION = 2
+
+/**
  * Which theme a diagram was drawn in.
  *
  * Mermaid writes colours into the SVG, so a drawn diagram is a picture of one theme — and of one
@@ -10,7 +17,7 @@ import { VARIANT_FOR } from '../../remotion/sceneTheme'
  * asks this when it opens a project as well as main before an export.
  */
 export function diagramStamp(theme: RenderTheme, variant: VariantId): string {
-  return `${theme.stamp}:${variant}`
+  return `${theme.stamp}:${variant}:${DRAWING_VERSION}`
 }
 
 interface DiagramLike {

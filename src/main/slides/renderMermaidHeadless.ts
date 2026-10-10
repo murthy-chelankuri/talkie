@@ -3,7 +3,7 @@ import { dirname, resolve } from 'path'
 import { createRequire } from 'module'
 import { chromium } from 'playwright'
 import { resolveBrowser } from '../capture/resolveBrowser'
-import { mermaidConfigFor, normaliseSvg } from './mermaidTheme'
+import { diagramBackground, mermaidConfigFor, normaliseSvg } from './mermaidTheme'
 import { fontFaceCss, type RenderTheme } from '../../remotion/renderTheme'
 import type { VariantId } from '../themes/schema'
 
@@ -123,7 +123,7 @@ export async function renderMermaidHeadless(
       { config: mermaidConfigFor(theme, variant), diagram: trimmed }
     )
 
-    return normaliseSvg(svg)
+    return normaliseSvg(svg, diagramBackground(theme, variant))
   } finally {
     await browser.close()
   }

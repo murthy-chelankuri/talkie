@@ -1,4 +1,4 @@
-import { mermaidConfigFor, normaliseSvg } from '../../../main/slides/mermaidTheme'
+import { diagramBackground, mermaidConfigFor, normaliseSvg } from '../../../main/slides/mermaidTheme'
 import { fontFaceCss, type RenderTheme } from '../../../remotion/renderTheme'
 import type { VariantId } from '../../../main/themes/schema'
 
@@ -56,7 +56,7 @@ export async function renderMermaid(
   const id = `talkie-diagram-${Math.random().toString(36).slice(2)}`
   const { svg } = await mermaid.render(id, trimmed)
 
-  return { svg: normaliseSvg(svg) }
+  return { svg: normaliseSvg(svg, diagramBackground(theme, variant)) }
 }
 
 /** Whether mermaid can parse this at all, for telling the user before they wait on a render. */
