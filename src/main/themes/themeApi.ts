@@ -52,7 +52,8 @@ export function listThemes(baseDir: string = homedir()): Theme[] {
 
   const themes: Theme[] = []
   for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
+    // Dot-folders hold drafts not yet saved — see generateTheme.ts.
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue
     try {
       themes.push(ThemeSchema.parse(JSON.parse(readFileSync(join(root, entry.name, 'theme.json'), 'utf-8'))))
     } catch (err) {
@@ -110,7 +111,12 @@ export function writeThemeAsset(
   bytes: Buffer,
   baseDir: string = homedir()
 ): string {
-  const dir = themeDirOrThrow(id, baseDir)
+  return writeAssetInto(themeDirOrThrow(id, baseDir), kind, fileName, bytes)
+}
+
+/** The same, into any folder — a saved theme's, or a draft's that has not been saved yet. */
+export function writeAssetInto(dir: string, kind: 'logo' | 'font', fileName: string, bytes: Buffer): string {
+  mkdirSync(dir, { recursive: true })
   const extension = extname(fileName).toLowerCase()
 
   if (kind === 'logo') {

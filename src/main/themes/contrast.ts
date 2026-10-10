@@ -29,7 +29,7 @@ function toHex(rgb: Rgb): string {
 const toLinear = (c: number): number => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
 const fromLinear = (c: number): number => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055)
 
-function luminance(hex: string): number {
+export function luminance(hex: string): number {
   const [r, g, b] = toRgb(hex).map(toLinear)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
@@ -100,4 +100,20 @@ export function fixContrast(draft: ThemeDraft): { draft: ThemeDraft; notes: stri
   }
 
   return notes.length === 0 ? { draft, notes } : { draft: { ...draft, variants }, notes }
+}
+
+/** How far a colour is from grey, 0 to 1 — HSL saturation, enough to tell a brand colour from a neutral. */
+export function saturation(hex: string): number {
+  const [r, g, b] = toRgb(hex)
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  if (max === min) return 0
+  const lightness = (max + min) / 2
+  return (max - min) / (1 - Math.abs(2 * lightness - 1))
+}
+
+/** `a` moved `amount` of the way towards `b`. */
+export function mix(a: string, b: string, amount: number): string {
+  const [x, y] = [toRgb(a), toRgb(b)]
+  return toHex([0, 1, 2].map((i) => x[i] + (y[i] - x[i]) * amount) as Rgb)
 }
