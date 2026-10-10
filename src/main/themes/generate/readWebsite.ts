@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { chromium, type APIRequestContext } from 'playwright'
+import { chromium, type APIRequestContext, type Browser } from 'playwright'
 import { resolveBrowser } from '../../capture/resolveBrowser'
 import { authWall } from '../../capture/authWall'
 import type { CapturedField } from '../../capture/redact'
@@ -161,6 +161,22 @@ async function downloadLogo(
 }
 
 /**
+ * The browser's own user agent, less the word "Headless".
+ *
+ * Bot protection on large corporate sites refuses a browser that announces itself as headless —
+ * some reset the connection, which Chromium reports as an HTTP/2 protocol error and the
+ * person saw as "could not open". It is the same Chrome either way; only the label differs.
+ */
+async function ordinaryUserAgent(browser: Browser): Promise<string> {
+  const probe = await browser.newPage()
+  try {
+    return (await probe.evaluate(() => navigator.userAgent)).replace(/HeadlessChrome/g, 'Chrome')
+  } finally {
+    await probe.close()
+  }
+}
+
+/**
  * Read a company's colours, fonts and logo off its website.
  *
  * In the headless browser recordings already use. It loads the one page and stays there: any
@@ -182,7 +198,11 @@ export async function readWebsite(url: string, opts: { allowFileUrls?: boolean }
 
   const browser = await chromium.launch({ headless: true, channel: resolveBrowser()?.channel })
   try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: false })
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      acceptDownloads: false,
+      userAgent: await ordinaryUserAgent(browser)
+    })
     const page = await context.newPage()
     page.setDefaultTimeout(TIMEOUT_MS)
 

@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
+import { createServer } from 'http'
+import type { AddressInfo } from 'net'
 import { readWebsite } from './readWebsite'
 import { readLogo } from './readLogo'
 import { readBrandGuide } from './readBrandGuide'
@@ -77,6 +79,27 @@ describe('reading a brand off its website', () => {
     const facts = await readWebsite(url, { allowFileUrls: true })
 
     expect(facts.problems.join(' ')).toMatch(/sign-in/i)
+  }, 60_000)
+
+  it('opens a site that turns away browsers announcing themselves as headless', async () => {
+    // Large corporate sites do exactly this, and the reader used to report them as unreachable.
+    const server = createServer((req, res) => {
+      if (/headless/i.test(req.headers['user-agent'] ?? '')) {
+        req.socket.destroy()
+        return
+      }
+      res.setHeader('content-type', 'text/html')
+      res.end(BRAND_SITE)
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const facts = await readWebsite(`http://127.0.0.1:${(server.address() as AddressInfo).port}/`)
+
+      expect(facts.problems).toEqual([])
+      expect(facts.colours.map((c) => c.hex)).toContain('#635bff')
+    } finally {
+      server.close()
+    }
   }, 60_000)
 
   it('will only read a web address', async () => {
