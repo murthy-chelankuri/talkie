@@ -27,7 +27,7 @@ import { cn } from '../lib/cn'
 import { SourcesPanel } from '../components/SourcesPanel'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
-import type { RenderTheme } from '../../../remotion/renderTheme'
+import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
 import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { TransportBar } from '../components/TransportBar'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
@@ -146,16 +146,22 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   renderThemeRef.current = renderTheme
   useEffect(() => {
     let cancelled = false
-    projectClient
-      .renderTheme(projectId)
-      .then((theme) => {
-        if (!cancelled) setRenderTheme(theme)
-      })
-      .catch(() => {
-        if (!cancelled) setRenderTheme(null)
-      })
+    const load = (): void => {
+      projectClient
+        .renderTheme(projectId)
+        .then((theme) => {
+          if (!cancelled) setRenderTheme(theme)
+        })
+        .catch(() => {
+          if (!cancelled) setRenderTheme(null)
+        })
+    }
+    load()
+    // The theme itself can be edited in Settings with this project open behind it.
+    const stopListening = onSettingsChanged(load)
     return () => {
       cancelled = true
+      stopListening()
     }
   }, [projectId, project?.themeId])
 
@@ -851,6 +857,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             </button>
           ))}
         </div>
+        {/* Thumbnails draw slides and diagrams in the project's theme, as the video does. */}
+        <ThemeContext.Provider value={renderTheme ?? null}>
         {bottomPane === 'script' ? (
           <ScriptView
             timeline={timeline}
@@ -898,6 +906,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onRedo={handleRedo}
         />
         )}
+        </ThemeContext.Provider>
         </div>
       </ResizablePanel>
       {editingContext && project && (

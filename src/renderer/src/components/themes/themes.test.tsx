@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemesSection } from './ThemesSection'
 import { ThemeEditor } from './ThemeEditor'
@@ -7,6 +7,7 @@ import { CreateThemeDialog } from './CreateThemeDialog'
 import { ThemePicker } from './ThemePicker'
 import { defaultThemeDraft } from '../../../../main/themes/schema'
 import { themeClient } from '../../api/projectClient'
+import { BUILTIN_THEMES } from '../../../../main/themes/builtinThemes'
 
 vi.mock('./ThemePreview', () => ({ ThemePreview: () => <div data-testid="preview" /> }))
 vi.mock('../../api/projectClient', () => ({
@@ -15,6 +16,7 @@ vi.mock('../../api/projectClient', () => ({
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
+    duplicate: vi.fn(),
     usage: vi.fn(),
     generate: vi.fn(),
     generateStatus: vi.fn(),
@@ -23,6 +25,7 @@ vi.mock('../../api/projectClient', () => ({
   }
 }))
 
+const midnight = BUILTIN_THEMES.find((theme) => theme.id === 'builtin-midnight')!
 const acme = { ...defaultThemeDraft('Acme'), id: 't1', createdAt: '2026-10-09', schemaVersion: 1, company: 'Acme' }
 
 beforeEach(() => {
@@ -41,11 +44,40 @@ describe('the theme library', () => {
     expect(screen.getByRole('button', { name: /New theme/ })).toBeInTheDocument()
   })
 
-  it('says how to start when there are none', async () => {
-    vi.mocked(themeClient.list).mockResolvedValue([] as never)
+  it('says how to start when the person has none of their own', async () => {
+    vi.mocked(themeClient.list).mockResolvedValue([midnight] as never)
     render(<ThemesSection />)
 
     expect(await screen.findByText('No themes yet')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Built into Talkie' })).getByText('Midnight')).toBeInTheDocument()
+  })
+
+  it('keeps the built-in themes apart from the person’s own', async () => {
+    vi.mocked(themeClient.list).mockResolvedValue([acme, midnight] as never)
+    render(<ThemesSection />)
+
+    expect(within(await screen.findByRole('region', { name: 'Your themes' })).getByText('Acme')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Built into Talkie' })).getByText('Midnight')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Built into Talkie' })).queryByText('Acme')).toBeNull()
+  })
+
+  it('opens a built-in theme to look at, and duplicating it opens the copy to change', async () => {
+    vi.mocked(themeClient.list).mockResolvedValue([midnight] as never)
+    vi.mocked(themeClient.duplicate).mockResolvedValue({ ...midnight, id: 't9', name: 'Midnight copy' } as never)
+    render(<ThemesSection />)
+
+    await userEvent.click(await screen.findByText('Midnight'))
+
+    expect(screen.getByRole('textbox', { name: 'Theme name' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /Delete theme/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Save theme/ })).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: /Duplicate/ }))
+
+    expect(themeClient.duplicate).toHaveBeenCalledWith('builtin-midnight')
+    expect(screen.getByRole('textbox', { name: 'Theme name' })).toHaveValue('Midnight copy')
+    expect(screen.getByRole('textbox', { name: 'Theme name' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Delete theme/ })).toBeInTheDocument()
   })
 
   it('opens a theme to edit it', async () => {

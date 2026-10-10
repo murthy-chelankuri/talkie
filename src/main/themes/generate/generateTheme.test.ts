@@ -6,6 +6,7 @@ import type { NarrationProvider } from '../../agent/narrationProvider'
 import type { BrandFacts } from './facts'
 import { generateStatus, generateTheme, saveGeneratedTheme } from './generateTheme'
 import { findThemeDir, listThemes } from '../themeApi'
+import { isBuiltinThemeId } from '../builtinThemes'
 
 let baseDir: string
 
@@ -51,7 +52,7 @@ describe('making a theme', () => {
     expect(draft.variants.brand.background).toBe('#635bff')
     expect(draft.logo?.file).toBe('logo.svg')
     expect(existsSync(join(stagingDir, 'logo.svg'))).toBe(true)
-    expect(listThemes(baseDir)).toEqual([])
+    expect(ownThemes(baseDir)).toEqual([])
   })
 
   it('records what it was made from, and anything it had to work around', async () => {
@@ -100,8 +101,13 @@ describe('saving a made theme', () => {
 
     const theme = saveGeneratedTheme(draft, stagingDir, baseDir)
 
-    expect(listThemes(baseDir).map((t) => t.id)).toEqual([theme.id])
+    expect(ownThemes(baseDir).map((t) => t.id)).toEqual([theme.id])
     expect(readdirSync(findThemeDir(theme.id, baseDir) as string)).toContain('logo.svg')
     expect(existsSync(stagingDir)).toBe(false)
   })
 })
+
+/** The library less the themes Talkie comes with, which are always there. */
+function ownThemes(baseDir: string) {
+  return listThemes(baseDir).filter((theme) => !isBuiltinThemeId(theme.id))
+}

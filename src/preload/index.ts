@@ -81,6 +81,7 @@ const themesApi = {
     ipcRenderer.invoke('settings:themes:create', draft, stagingDir),
   update: (id: string, draft: ThemeDraft): Promise<Theme> => ipcRenderer.invoke('settings:themes:update', id, draft),
   remove: (id: string): Promise<void> => ipcRenderer.invoke('settings:themes:delete', id),
+  duplicate: (id: string): Promise<Theme> => ipcRenderer.invoke('settings:themes:duplicate', id),
   usage: (id: string): Promise<{ id: string; name: string }[]> => ipcRenderer.invoke('settings:themes:usage', id),
   generate: (request: GenerateThemeRequest): Promise<GeneratedTheme> => ipcRenderer.invoke('settings:themes:generate', request),
   generateStatus: (): Promise<GenerateStatus> => ipcRenderer.invoke('settings:themes:generateStatus'),

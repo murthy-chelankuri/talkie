@@ -28,6 +28,9 @@ import {
 } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { cn } from '../lib/cn'
+import { useRenderTheme } from '../../../remotion/renderTheme'
+import { resolveSceneTheme } from '../../../remotion/sceneTheme'
+import type { SceneStyle } from '../../../main/project/timeline/schema'
 import { hasVisibleContent } from '../lib/frameContent'
 import { chooseTickIntervalSeconds, formatTimecode, frameAtOffset, offsetAtFrame } from '../lib/timelineLayout'
 import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../remotion/constants'
@@ -136,9 +139,12 @@ function VideoThumbnail({ src, startSeconds }: { src: string; startSeconds: numb
 
 export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
   const data = item.data as
-    | { src?: string; trimBefore?: number; title?: string; bullets?: string[] }
+    | { src?: string; trimBefore?: number; title?: string; bullets?: string[]; style?: SceneStyle }
     | null
     | undefined
+  // The same colours and type the slide is drawn in, so a thumbnail follows the project's theme
+  // rather than showing every slide in the dark palette slides had before there were themes.
+  const look = resolveSceneTheme(data?.style, useRenderTheme())
 
   // A slide has no picture to show, so it shows what it says.
   if (item.kind === 'scene') {
@@ -146,15 +152,18 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
       <div
         // Bottom padding keeps the slide's own words clear of the kind chip in the corner.
         className="pointer-events-none flex h-full flex-col justify-center gap-1 overflow-hidden px-2.5 pb-5"
-        style={{ background: 'linear-gradient(150deg, #232833 0%, #171b22 100%)' }}
+        style={{ background: look.background }}
       >
         {/* Strictly the words: a slide's text carries markup, and a label this small has no
             room to honour it — but every reason not to show the tags. */}
-        <span className="truncate font-serif text-[13px] leading-tight text-[#f4f6f9]">
+        <span
+          className="truncate text-[13px] leading-tight"
+          style={{ color: look.heading, fontFamily: look.headingFont }}
+        >
           {richTextToPlain(data?.title ?? '') || 'Untitled slide'}
         </span>
         {(data?.bullets ?? []).length > 0 && (
-          <span className="truncate text-[10px] text-[#9aa3b4]">
+          <span className="truncate text-[10px]" style={{ color: look.body, fontFamily: look.bodyFont }}>
             {(data?.bullets ?? []).map(richTextToPlain).join(' · ')}
           </span>
         )}
@@ -174,14 +183,14 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
   // through an `<img>` it came out as empty boxes, so it goes into the document instead —
   // which is what the player does with the same file.
   if (item.kind === 'diagram') {
-    return <DiagramThumbnail src={src} />
+    return <DiagramThumbnail src={src} background={look.background} />
   }
 
   return <img src={src} alt="" className="pointer-events-none h-full w-full object-cover" />
 }
 
 /** The diagram's own SVG, put in the document so the labels inside it draw. */
-function DiagramThumbnail({ src }: { src: string }): JSX.Element {
+function DiagramThumbnail({ src, background }: { src: string; background: string }): JSX.Element {
   const [svg, setSvg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -203,7 +212,8 @@ function DiagramThumbnail({ src }: { src: string }): JSX.Element {
 
   return (
     <span
-      className="pointer-events-none block h-full w-full bg-[#171b22] p-1 [&>svg]:h-full [&>svg]:w-full"
+      className="pointer-events-none block h-full w-full p-1 [&>svg]:h-full [&>svg]:w-full"
+      style={{ background }}
       {...(svg ? { dangerouslySetInnerHTML: { __html: svg } } : {})}
     />
   )

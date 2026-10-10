@@ -3,6 +3,7 @@ import { homedir } from 'os'
 import { join, normalize, sep } from 'path'
 import {
   deleteTheme,
+  duplicateTheme,
   findThemeDir,
   listThemes,
   projectsUsingTheme,
@@ -36,6 +37,7 @@ export function registerThemeHandlers(ipcMain: IpcMain): void {
   )
   ipcMain.handle('settings:themes:update', (_event, id: string, draft: unknown) => updateTheme(id, ThemeDraftSchema.parse(draft)))
   ipcMain.handle('settings:themes:delete', (_event, id: string) => deleteTheme(id))
+  ipcMain.handle('settings:themes:duplicate', (_event, id: string) => duplicateTheme(id))
   ipcMain.handle('settings:themes:usage', (_event, id: string) => projectsUsingTheme(id))
   ipcMain.handle(
     'settings:themes:generate',

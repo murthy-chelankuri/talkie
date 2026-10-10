@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { basename, extname, join } from 'path'
 import { writeJsonAtomic } from '../project/atomicWrite'
 import { slugify } from '../project/slug'
 import { ROOT_NAME } from '../project/migrateStorageRoot'
 import { listProjects, openProject } from '../project/projectApi'
+import { BUILTIN_THEMES, builtinTheme, isBuiltinThemeId } from './builtinThemes'
 import { THEME_SCHEMA_VERSION, ThemeDraftSchema, ThemeSchema, type Theme, type ThemeDraft } from './schema'
 
 /**
@@ -25,7 +26,9 @@ export function themesRootDir(baseDir: string = homedir()): string {
   return join(baseDir, ROOT_NAME, 'Themes')
 }
 
+/** Never for a built-in theme, which has no folder — and so nowhere a file could be written. */
 export function findThemeDir(id: string, baseDir: string = homedir()): string | undefined {
+  if (isBuiltinThemeId(id)) return undefined
   const root = themesRootDir(baseDir)
   if (!existsSync(root)) return undefined
   const match = readdirSync(root, { withFileTypes: true }).find(
@@ -35,20 +38,26 @@ export function findThemeDir(id: string, baseDir: string = homedir()): string | 
 }
 
 function themeDirOrThrow(id: string, baseDir: string): string {
+  if (isBuiltinThemeId(id)) throw new Error('Built-in themes cannot be changed or deleted. Duplicate it to make your own.')
   const dir = findThemeDir(id, baseDir)
   if (!dir) throw new Error(`No theme found with id ${id}`)
   return dir
 }
 
 export function readTheme(id: string, baseDir: string = homedir()): Theme {
+  const builtIn = builtinTheme(id)
+  if (builtIn) return builtIn
   const dir = themeDirOrThrow(id, baseDir)
   return ThemeSchema.parse(JSON.parse(readFileSync(join(dir, 'theme.json'), 'utf-8')))
 }
 
-/** Newest first. A folder that cannot be read is left out rather than taking the list down. */
+/**
+ * The person's own, newest first, then the built-in ones. A folder that cannot be read is left out
+ * rather than taking the list down.
+ */
 export function listThemes(baseDir: string = homedir()): Theme[] {
   const root = themesRootDir(baseDir)
-  if (!existsSync(root)) return []
+  if (!existsSync(root)) return [...BUILTIN_THEMES]
 
   const themes: Theme[] = []
   for (const entry of readdirSync(root, { withFileTypes: true })) {
@@ -60,7 +69,8 @@ export function listThemes(baseDir: string = homedir()): Theme[] {
       console.error(`Skipping the theme in ${entry.name}, which could not be read:`, err)
     }
   }
-  return themes.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+  themes.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+  return [...themes, ...BUILTIN_THEMES]
 }
 
 export function createTheme(draft: ThemeDraft, baseDir: string = homedir()): Theme {
@@ -89,6 +99,23 @@ export function updateTheme(id: string, draft: ThemeDraft, baseDir: string = hom
   })
   writeJsonAtomic(join(dir, 'theme.json'), theme)
   return theme
+}
+
+/**
+ * A copy to change: how a built-in theme is made someone's own, and how one company's theme starts
+ * another's. Its logo and fonts come with it, since the theme records them by path inside its folder.
+ */
+export function duplicateTheme(id: string, baseDir: string = homedir()): Theme {
+  const source = readTheme(id, baseDir)
+  const copy = createTheme({ ...source, name: `${source.name} copy` }, baseDir)
+  const from = isBuiltinThemeId(id) ? undefined : findThemeDir(id, baseDir)
+  const to = findThemeDir(copy.id, baseDir)
+  if (from && to) {
+    for (const entry of readdirSync(from)) {
+      if (entry !== 'theme.json') cpSync(join(from, entry), join(to, entry), { recursive: true })
+    }
+  }
+  return copy
 }
 
 /** The caller is expected to have shown projectsUsingTheme first — there is no undo for this. */

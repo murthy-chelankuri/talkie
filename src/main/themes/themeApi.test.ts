@@ -13,6 +13,7 @@ import {
   updateTheme,
   writeThemeAsset
 } from './themeApi'
+import { isBuiltinThemeId } from './builtinThemes'
 import { defaultThemeDraft } from './schema'
 import { createProject } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
@@ -37,7 +38,7 @@ describe('the theme library', () => {
 
     expect(basename(findThemeDir(theme.id, baseDir) as string)).toBe(`${theme.id}-acme-corp`)
     expect(readTheme(theme.id, baseDir)).toEqual(theme)
-    expect(listThemes(baseDir).map((t) => t.id)).toEqual([theme.id])
+    expect(ownThemes(baseDir).map((t) => t.id)).toEqual([theme.id])
   })
 
   it('lists the newest first, and passes over a folder it cannot read', () => {
@@ -46,7 +47,7 @@ describe('the theme library', () => {
     writeFileSync(join(findThemeDir(first.id, baseDir) as string, '..', 'broken.json'), 'not a theme')
     writeFileSync(join(findThemeDir(first.id, baseDir) as string, 'theme.json'), '{ not json')
 
-    expect(listThemes(baseDir).map((t) => t.id)).toEqual([second.id])
+    expect(ownThemes(baseDir).map((t) => t.id)).toEqual([second.id])
   })
 
   it('keeps a theme its id and its date when it is edited', () => {
@@ -111,3 +112,8 @@ describe('the theme library', () => {
     expect(projectsUsingTheme(theme.id, baseDir)).toEqual([{ id: using.id, name: 'Launch video' }])
   })
 })
+
+/** The library less the themes Talkie comes with, which are always there. */
+function ownThemes(baseDir: string) {
+  return listThemes(baseDir).filter((theme) => !isBuiltinThemeId(theme.id))
+}

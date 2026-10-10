@@ -1,4 +1,5 @@
 import type { TimelineItem } from '../../../main/project/timeline/schema'
+import { notifySettingsChanged } from '../lib/settingsChanged'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
 import type { ProjectContext } from '../../../main/project/projectContext'
 import type { NarrationFidelity } from '../../../main/tts/voiceFidelity'
@@ -157,14 +158,26 @@ export type { ThemeTarget } from '../../../main/ipc/themeHandlers'
 export type { GenerateThemeRequest } from '../../../preload/index'
 export type { RenderTheme } from '../../../remotion/renderTheme'
 
+/**
+ * Themes are edited in Settings while a project stays open behind it, and the project re-read its
+ * theme only when it chose a different one — so an edited colour waited until the project was next
+ * opened, in the preview and the thumbnails both.
+ */
+async function announcing<T>(change: Promise<T>): Promise<T> {
+  const result = await change
+  notifySettingsChanged()
+  return result
+}
+
 export const themeClient = {
   list: () => window.api.themes.list(),
-  create: (...args: Parameters<Window['api']['themes']['create']>) => window.api.themes.create(...args),
-  update: (...args: Parameters<Window['api']['themes']['update']>) => window.api.themes.update(...args),
-  remove: (id: string) => window.api.themes.remove(id),
+  create: (...args: Parameters<Window['api']['themes']['create']>) => announcing(window.api.themes.create(...args)),
+  update: (...args: Parameters<Window['api']['themes']['update']>) => announcing(window.api.themes.update(...args)),
+  remove: (id: string) => announcing(window.api.themes.remove(id)),
+  duplicate: (id: string) => window.api.themes.duplicate(id),
   usage: (id: string) => window.api.themes.usage(id),
   generate: (...args: Parameters<Window['api']['themes']['generate']>) => window.api.themes.generate(...args),
   generateStatus: () => window.api.themes.generateStatus(),
-  addAsset: (...args: Parameters<Window['api']['themes']['addAsset']>) => window.api.themes.addAsset(...args),
+  addAsset: (...args: Parameters<Window['api']['themes']['addAsset']>) => announcing(window.api.themes.addAsset(...args)),
   render: (...args: Parameters<Window['api']['themes']['render']>) => window.api.themes.render(...args)
 }

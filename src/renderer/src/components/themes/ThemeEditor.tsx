@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Check, ImageUp, Trash2, TriangleAlert, Upload } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ImageUp, Trash2, TriangleAlert, Upload } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { cn } from '../../lib/cn'
 import { contrastRatio } from '../../../../main/themes/contrast'
 import { ThemePreview } from './ThemePreview'
-import { themeClient, type ThemeDraft, type ThemeTarget, type VariantId } from '../../api/projectClient'
+import { themeClient, type Theme, type ThemeDraft, type ThemeTarget, type VariantId } from '../../api/projectClient'
+import { isBuiltinThemeId } from '../../../../main/themes/builtinThemes'
 
 const VARIANTS: Array<{ id: VariantId; label: string; hint: string }> = [
   { id: 'brand', label: 'Brand', hint: 'Opening and section slides, on the brand colour' },
@@ -27,7 +28,8 @@ export function ThemeEditor({
   initial,
   themeId,
   stagingDir,
-  onDone
+  onDone,
+  onDuplicate
 }: {
   initial: ThemeDraft
   /** A saved theme being changed. */
@@ -35,7 +37,10 @@ export function ThemeEditor({
   /** A theme made by AI, not yet saved, whose files wait here. */
   stagingDir?: string
   onDone: () => void | Promise<void>
+  /** Opens the copy, which is the only way to change a built-in theme. */
+  onDuplicate?: (copy: Theme) => void
 }): JSX.Element {
+  const builtIn = themeId !== undefined && isBuiltinThemeId(themeId)
   const [draft, setDraft] = useState<ThemeDraft>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,6 +83,16 @@ export function ThemeEditor({
     }
   }
 
+  async function duplicate(): Promise<void> {
+    if (!themeId || !onDuplicate) return
+    setError(null)
+    try {
+      onDuplicate(await themeClient.duplicate(themeId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   async function remove(): Promise<void> {
     if (!themeId) return
     if (confirmingDelete === null) {
@@ -95,7 +110,13 @@ export function ThemeEditor({
           <ArrowLeft size={14} />
           Themes
         </Button>
-        <span className="truncate text-[13px] text-text-muted">{themeId ? 'Editing' : 'New theme — not saved yet'}</span>
+        <span className="truncate text-[13px] text-text-muted">
+          {builtIn
+            ? 'Built into Talkie — it cannot be changed or deleted. Duplicate it to make it your own.'
+            : themeId
+              ? 'Editing'
+              : 'New theme — not saved yet'}
+        </span>
       </div>
 
       <ThemePreview draft={draft} target={target} />
@@ -113,6 +134,9 @@ export function ThemeEditor({
         </section>
       )}
 
+      {/* Shown rather than hidden for a built-in theme: what it is made of is worth seeing before
+          copying it, and a read-only form says so better than a different screen would. */}
+      <fieldset disabled={builtIn} className="contents">
       <Group title="Who it is for">
         <div className="grid grid-cols-2 gap-2">
           <Labelled label="Theme name">
@@ -232,6 +256,8 @@ export function ThemeEditor({
         </div>
       </Group>
 
+      </fieldset>
+
       {error && (
         <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
           <TriangleAlert size={13} className="mt-0.5 shrink-0" />
@@ -248,7 +274,7 @@ export function ThemeEditor({
       )}
 
       <div className="flex items-center gap-2 border-t border-border pt-4">
-        {themeId && (
+        {themeId && !builtIn && (
           <Button variant="ghost" onClick={() => void remove()} className="text-danger">
             <Trash2 size={14} />
             {confirmingDelete ? 'Yes, delete it' : 'Delete theme'}
@@ -256,12 +282,20 @@ export function ThemeEditor({
         )}
         <span className="flex-1" />
         <Button variant="ghost" onClick={() => void onDone()}>
-          Cancel
+          {builtIn ? 'Back' : 'Cancel'}
         </Button>
-        <Button disabled={saving || !draft.name.trim()} onClick={() => void save()}>
-          <Check size={14} />
-          {saving ? 'Saving…' : 'Save theme'}
-        </Button>
+        {themeId && onDuplicate && (
+          <Button variant={builtIn ? 'primary' : 'ghost'} onClick={() => void duplicate()}>
+            <Copy size={14} />
+            Duplicate
+          </Button>
+        )}
+        {!builtIn && (
+          <Button disabled={saving || !draft.name.trim()} onClick={() => void save()}>
+            <Check size={14} />
+            {saving ? 'Saving…' : 'Save theme'}
+          </Button>
+        )}
       </div>
     </div>
   )
