@@ -139,8 +139,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
 
   // The project's theme, as the composition draws it. Read again whenever the project says it has
   // a different one; null for a project without, which draws as it always did.
-  const [renderTheme, setRenderTheme] = useState<RenderTheme | null>(null)
-  const renderThemeRef = useRef<RenderTheme | null>(null)
+  // Undefined until it has been asked for, which is not the same as having none: drawing diagrams
+  // before then would draw a themed project's diagrams plain, and then again in its colours.
+  const [renderTheme, setRenderTheme] = useState<RenderTheme | null | undefined>(undefined)
+  const renderThemeRef = useRef<RenderTheme | null | undefined>(undefined)
   renderThemeRef.current = renderTheme
   useEffect(() => {
     let cancelled = false
@@ -156,6 +158,22 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       cancelled = true
     }
   }, [projectId, project?.themeId])
+
+  // Diagrams carry their colours in their pictures, so a theme that arrives or changes — on
+  // opening the project, or on choosing another — means drawing them again. See diagrams.ts.
+  useEffect(() => {
+    if (renderTheme === undefined) return
+    let cancelled = false
+    void timelineClient.read(projectId).then(async (items) => {
+      if (cancelled) return
+      if ((await drawPendingDiagrams(projectId, items, renderTheme)) > 0 && !cancelled) {
+        setTimeline(await timelineClient.read(projectId))
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, renderTheme?.stamp])
 
   useEffect(() => {
     Promise.all([
@@ -211,7 +229,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     // An agent can write mermaid source but cannot draw it — there is no browser where it
     // runs. This is where the drawing happens, so its diagram is a picture rather than a blank
     // clip. See drawPendingDiagrams.
-    if ((await drawPendingDiagrams(projectId, items, renderThemeRef.current)) > 0) {
+    const theme = renderThemeRef.current
+    if (theme !== undefined && (await drawPendingDiagrams(projectId, items, theme)) > 0) {
       setTimeline(await timelineClient.read(projectId))
     }
   }
@@ -726,7 +745,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                   <Player
                     ref={playerRef}
                     component={DemoComposition}
-                    inputProps={{ timeline: remotionTimeline, theme: renderTheme }}
+                    inputProps={{ timeline: remotionTimeline, theme: renderTheme ?? null }}
                     durationInFrames={computeTimelineDuration(remotionTimeline)}
                     fps={FPS}
                     compositionWidth={WIDTH}
@@ -885,6 +904,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <AboutProjectDialog
           projectName={project.name}
           context={project.context ?? EMPTY_CONTEXT}
+          themeId={project.themeId}
+          onThemeChange={async (themeId) => {
+            setProject(await projectClient.setTheme(projectId, themeId))
+            // The first theme adds opening and closing cards, and every diagram is drawn anew.
+            await refreshTimeline()
+          }}
           onClose={() => setEditingContext(false)}
           onSave={async (context) => setProject(await projectClient.setContext(projectId, context))}
         />
@@ -895,7 +920,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           projectId={projectId}
           projectName={project.name}
           item={sceneEditing === 'new' ? null : sceneEditing}
-          theme={renderTheme}
+          theme={renderTheme ?? null}
           onClose={() => setSceneEditing(null)}
           onSaved={async () => {
             await refreshTimeline()

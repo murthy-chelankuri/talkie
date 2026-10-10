@@ -6,6 +6,7 @@ import {
   Cloud,
   Copy,
   Laptop,
+  Palette,
   Plug,
   RotateCcw,
   Download,
@@ -35,6 +36,7 @@ import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import { VoicePicker } from './VoicePicker'
+import { ThemesSection } from './themes/ThemesSection'
 /**
  * Loaded when the section is first opened, not when the app starts.
  *
@@ -44,10 +46,11 @@ import { VoicePicker } from './VoicePicker'
  */
 const LicencesSection = lazy(async () => ({ default: (await import('./LicencesSection')).LicencesSection }))
 
-type SectionId = 'narration' | 'recording' | 'export' | 'system' | 'licences'
+type SectionId = 'narration' | 'themes' | 'recording' | 'export' | 'system' | 'licences'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: ReactNode; blurb: string }> = [
   { id: 'narration', label: 'AI', icon: <Sparkles size={15} />, blurb: 'Who writes it, who speaks it' },
+  { id: 'themes', label: 'Themes', icon: <Palette size={15} />, blurb: 'How each company’s videos look' },
   { id: 'recording', label: 'Recording', icon: <Video size={15} />, blurb: 'What a capture shows' },
   { id: 'export', label: 'Export', icon: <Download size={15} />, blurb: 'What the file carries' },
   { id: 'system', label: 'System', icon: <Wrench size={15} />, blurb: 'What this machine can do' },
@@ -222,6 +225,8 @@ export function SettingsDialog({
                   }}
                 />
               </div>
+            ) : section === 'themes' ? (
+              <ThemesSection />
             ) : section === 'recording' ? (
               <RecordingSection settings={settings} onPatch={patchRecording} />
             ) : section === 'export' ? (

@@ -150,3 +150,21 @@ export const transcriptClient = {
     window.api.transcript.saveRecording(projectId, segmentId, audio),
   requestMicrophone: () => window.api.transcript.requestMicrophone()
 }
+
+export type { Theme, ThemeDraft, Variant, VariantId } from '../../../main/themes/schema'
+export type { GeneratedTheme, GenerateStatus } from '../../../main/themes/generate/generateTheme'
+export type { ThemeTarget } from '../../../main/ipc/themeHandlers'
+export type { GenerateThemeRequest } from '../../../preload/index'
+export type { RenderTheme } from '../../../remotion/renderTheme'
+
+export const themeClient = {
+  list: () => window.api.themes.list(),
+  create: (...args: Parameters<Window['api']['themes']['create']>) => window.api.themes.create(...args),
+  update: (...args: Parameters<Window['api']['themes']['update']>) => window.api.themes.update(...args),
+  remove: (id: string) => window.api.themes.remove(id),
+  usage: (id: string) => window.api.themes.usage(id),
+  generate: (...args: Parameters<Window['api']['themes']['generate']>) => window.api.themes.generate(...args),
+  generateStatus: () => window.api.themes.generateStatus(),
+  addAsset: (...args: Parameters<Window['api']['themes']['addAsset']>) => window.api.themes.addAsset(...args),
+  render: (...args: Parameters<Window['api']['themes']['render']>) => window.api.themes.render(...args)
+}
