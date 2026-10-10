@@ -8,6 +8,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { createTalkieServer } from './server'
 import { addTimelineItem, readTimeline, readTranscript } from '../main/project/projectApi'
 import { createMcpToken } from '../main/settings/mcpAccess'
+import { bandedPng } from '../main/themes/generate/testImages'
+import { readTheme } from '../main/themes/themeApi'
 import { updateSettings } from '../main/settings/settingsStore'
 
 /**
@@ -265,6 +267,118 @@ describe('Talkie over MCP', () => {
     })
   })
 
+  describe('themes', () => {
+    const themeIdIn = (said: string): string => /theme id ([\w-]+)/.exec(said)?.[1] ?? ''
+
+    it('makes a theme from fields alone, and lists it', async () => {
+      const made = await call('talkie_create_theme', { name: 'Acme', tagline: 'Payments, simply' })
+
+      expect(made).toContain('Payments, simply')
+      expect(await call('talkie_list_themes')).toContain(`Acme (theme id ${themeIdIn(made)})`)
+    })
+
+    it('reads a theme back, with the projects using it', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const projectId = await newProject('Launch video')
+      await call('talkie_apply_theme', { projectId, themeId })
+
+      const said = await call('talkie_theme', { themeId })
+
+      expect(said).toMatch(/brand: background #[0-9a-f]{6}/)
+      expect(said).toContain('Used by: Launch video')
+    })
+
+    it('changes only what it is given, and keeps it readable', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+
+      const said = await call('talkie_update_theme', { themeId, tagline: 'New line', light: { background: '#ffffff', body: '#eeeeee' } })
+
+      expect(said).toContain('Tagline: New line')
+      expect(said).toMatch(/light body: #eeeeee was hard to read/)
+      expect(said).toContain('Acme (theme id')
+    })
+
+    it('puts a theme on a project with its opening and closing cards, once', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const projectId = await newProject('Launch video')
+
+      expect(await call('talkie_apply_theme', { projectId, themeId })).toContain('Added an opening card and a closing card')
+      expect(await call('talkie_apply_theme', { projectId, themeId })).not.toContain('Added')
+      expect(readTimeline(projectId, baseDir)).toHaveLength(2)
+      expect(await call('talkie_apply_theme', { projectId })).toContain('back to Talkie')
+    })
+
+    it('says which projects lose a theme when it is deleted', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const projectId = await newProject('Launch video')
+      await call('talkie_apply_theme', { projectId, themeId })
+
+      expect(await call('talkie_delete_theme', { themeId })).toContain('Launch video went back')
+      expect(await call('talkie_list_themes')).not.toContain(themeId)
+    })
+
+    it('copies a built-in theme into one that can be changed', async () => {
+      const copied = await call('talkie_duplicate_theme', { themeId: 'builtin-sand', name: 'Acme' })
+      const themeId = themeIdIn(copied)
+
+      expect(copied).toContain(`Acme (theme id ${themeId})`)
+      expect(await call('talkie_update_theme', { themeId, tagline: 'Payments, simply' })).toContain('Tagline: Payments, simply')
+      expect(await call('talkie_update_theme', { themeId: 'builtin-sand', tagline: 'x' })).toMatch(/built into Talkie and cannot be changed/)
+    })
+
+    it('gives a theme a logo, and moves or removes it', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const logo = join(baseDir, 'acme.png')
+      writeFileSync(logo, bandedPng(['#e4572e']))
+
+      expect(await call('talkie_update_theme', { themeId, logo: { path: logo, corner: 'top-left' } })).toContain('Logo: logo.png, top-left')
+      expect(await call('talkie_update_theme', { themeId, logo: { onRecordings: false } })).toContain('Logo: logo.png, top-left')
+      expect(readTheme(themeId, baseDir).logo?.showOn).toEqual({ recordings: false, slides: true })
+      expect(await call('talkie_update_theme', { themeId, logo: { remove: true } })).toContain('Logo: none')
+    })
+
+    it('will only read a logo from an absolute path', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+
+      expect(await call('talkie_update_theme', { themeId, logo: { path: 'acme.png' } })).toMatch(/not an absolute path/)
+    })
+
+    it('sets a theme’s type, from Talkie’s own fonts or the person’s files', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const font = join(baseDir, 'AcmeSans-400.woff2')
+      writeFileSync(font, 'not really a font')
+
+      const said = await call('talkie_update_theme', {
+        themeId,
+        headingFont: { family: 'Geist Variable' },
+        bodyFont: { family: 'Acme Sans', files: [font] }
+      })
+
+      expect(said).toContain('Fonts: Geist Variable for headings, Acme Sans for text')
+      expect(readTheme(themeId, baseDir).fonts.body).toEqual({ family: 'Acme Sans', source: 'user', files: ['fonts/AcmeSans-400.woff2'] })
+    })
+
+    it('makes a theme from a logo file', async () => {
+      const logo = join(baseDir, 'acme.png')
+      writeFileSync(logo, bandedPng(['#0a6e4f', '#0a6e4f', '#ffffff']))
+
+      const said = await call('talkie_create_theme', { name: 'Acme', file: logo })
+
+      expect(said).toContain('Made it.')
+      expect(said).toMatch(/Logo: logo\.png/)
+    }, 120_000)
+
+    it('offers the built-in themes, and will not change or delete them', async () => {
+      const listed = await call('talkie_list_themes')
+      const projectId = await newProject('Launch video')
+
+      expect(listed).toContain('Midnight (built in, theme id builtin-midnight)')
+      expect(await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })).toContain('Added an opening card')
+      expect(await call('talkie_delete_theme', { themeId: 'builtin-midnight' })).toMatch(/cannot be changed or deleted/)
+      expect(await call('talkie_list_themes')).toContain('builtin-midnight')
+    })
+  })
+
   describe('knowing what the project is for', () => {
     it('reads back what it was told, so drafts use the terms the project uses', async () => {
       const projectId = await newProject('Ledger')
@@ -316,12 +430,70 @@ describe('Talkie over MCP', () => {
       expect(said).toContain('talkie_set_context')
     })
 
+    it('names the voices there are, and which engine they belong to', async () => {
+      const said = await call('talkie_list_voices')
+
+      expect(said).toMatch(/^Engine: /)
+      expect(said).toContain('Daniel')
+    }, 60_000)
+
+    it('will not set a voice the engine does not have, since it would quietly read in another', async () => {
+      const projectId = await newProject('Voiced')
+
+      const said = await call('talkie_set_voice', { projectId, voice: 'af_heart' })
+
+      expect(said).toMatch(/no voice called af_heart/)
+      expect(await call('talkie_project', { projectId })).toContain('Voice: whatever Talkie is set to')
+    }, 60_000)
+
+    it('says which theme the project is drawn in', async () => {
+      const projectId = await newProject('Themed')
+      expect(await call('talkie_project', { projectId })).toContain("Theme: none — Talkie's own look")
+
+      await call('talkie_apply_theme', { projectId, themeId: 'builtin-forest' })
+
+      expect(await call('talkie_project', { projectId })).toContain('Theme: Forest (theme id builtin-forest)')
+    })
+
     it('sets the voice, and says re-voicing is a separate step', async () => {
       const projectId = await newProject('Voiced')
 
       const said = await call('talkie_set_voice', { projectId, voice: 'Daniel' })
       expect(said).toContain('Daniel')
       expect(said).toMatch(/re-voice/i)
+    })
+  })
+
+  describe('slides and cards', () => {
+    it('adds an opening card when asked for one', async () => {
+      const projectId = await newProject('Cards')
+
+      await call('talkie_add_scene', { projectId, title: 'Acme', layout: 'title' })
+
+      expect((readTimeline(projectId, baseDir)[0].data as { layout: string }).layout).toBe('title')
+    })
+
+    it('keeps an opening card a card when its words are rewritten', async () => {
+      // The cards a theme adds are slides with a layout; an edit that rebuilt the slide from its
+      // words alone turned the opening card into an ordinary slide.
+      const projectId = await newProject('Launch video')
+      await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })
+      const card = readTimeline(projectId, baseDir).find((item) => (item.data as { layout?: string }).layout === 'title')!
+
+      await call('talkie_edit_slide', { projectId, timelineItemId: card.id, title: 'Welcome to Acme' })
+
+      const data = readTimeline(projectId, baseDir).find((item) => item.id === card.id)!.data as { title: string; layout: string; style: { theme: string; align: string } }
+      expect(data).toMatchObject({ title: 'Welcome to Acme', layout: 'title', style: { theme: 'brand', align: 'center' } })
+    })
+
+    it('changes one thing about a slide’s look without losing the rest', async () => {
+      const projectId = await newProject('Look')
+      await call('talkie_add_scene', { projectId, title: 'Hi', style: { theme: 'light', align: 'center' } })
+      const [slide] = readTimeline(projectId, baseDir)
+
+      await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'Hi', style: { size: 'large' } })
+
+      expect((readTimeline(projectId, baseDir)[0].data as { style: object }).style).toMatchObject({ theme: 'light', align: 'center', size: 'large' })
     })
   })
 
@@ -421,6 +593,20 @@ describe('Talkie over MCP', () => {
       expect(data.source).toBe('graph TD; Gamma --> Delta')
       expect(data.src).not.toBe(first)
       expect(readFileSync(data.src, 'utf-8')).toContain('Gamma')
+    }, 120_000)
+
+    it('redraws a diagram in another of the theme’s looks when asked', async () => {
+      const projectId = await newProject('Looks')
+      await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })
+      await call('talkie_add_diagram', { projectId, source: 'graph LR; Alpha --> Beta' })
+      const diagram = readTimeline(projectId, baseDir).find((item) => item.kind === 'diagram')!
+
+      await call('talkie_edit_diagram', { projectId, timelineItemId: diagram.id, source: 'graph LR; Alpha --> Beta', style: { theme: 'light' } })
+
+      const data = readTimeline(projectId, baseDir).find((item) => item.id === diagram.id)!.data as { style: { theme: string }; src: string; themeStamp: string }
+      expect(data.style.theme).toBe('light')
+      expect(data.themeStamp).toMatch(/light/)
+      expect(readFileSync(data.src, 'utf-8')).toContain('#f5f8fc')
     }, 120_000)
 
     it('refuses to treat a slide as a diagram', async () => {

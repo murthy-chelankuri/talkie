@@ -46,7 +46,16 @@ export const AGENT_TOOLS = [
   'talkie_clip_actions',
   // Saying what the project is
   'talkie_set_context',
+  'talkie_list_voices',
   'talkie_set_voice',
+  // How it looks. Deleting a theme is left out: the library is shared by every project, and a
+  // run is one undo step for this one — there is no taking back a theme gone from all of them.
+  'talkie_list_themes',
+  'talkie_theme',
+  'talkie_create_theme',
+  'talkie_update_theme',
+  'talkie_duplicate_theme',
+  'talkie_apply_theme',
   // Making
   'talkie_add_scene',
   'talkie_add_diagram',

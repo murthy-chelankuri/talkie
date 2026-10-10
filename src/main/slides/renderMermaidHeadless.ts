@@ -3,7 +3,9 @@ import { dirname, resolve } from 'path'
 import { createRequire } from 'module'
 import { chromium } from 'playwright'
 import { resolveBrowser } from '../capture/resolveBrowser'
-import { MERMAID_CONFIG, normaliseSvg } from './mermaidTheme'
+import { diagramBackground, mermaidConfigFor, normaliseSvg } from './mermaidTheme'
+import { fontFaceCss, type RenderTheme } from '../../remotion/renderTheme'
+import type { VariantId } from '../themes/schema'
 
 const require = createRequire(import.meta.url)
 
@@ -62,7 +64,11 @@ function geistFontCss(): string {
  */
 const ORIGIN = 'http://mermaid.talkie.invalid'
 
-export async function renderMermaidHeadless(source: string): Promise<string> {
+export async function renderMermaidHeadless(
+  source: string,
+  theme: RenderTheme | null = null,
+  variant: VariantId = 'dark'
+): Promise<string> {
   const trimmed = source.trim()
   if (!trimmed) throw new Error('There is no diagram to draw yet.')
 
@@ -83,7 +89,9 @@ export async function renderMermaidHeadless(source: string): Promise<string> {
         return route.fulfill({
           contentType: 'text/html',
           body:
-            `<!doctype html><style>${geistFontCss()}</style><body></body>` +
+            // The theme's own faces beside Talkie's: mermaid sizes each box to its text, so it has to
+            // measure in the font the diagram will be shown in.
+            `<!doctype html><style>${geistFontCss()}${theme ? fontFaceCss(theme) : ''}</style><body></body>` +
             `<script type="module">import m from './mermaid.esm.min.mjs'; window.__mermaid = m</script>`
         })
       }
@@ -112,10 +120,10 @@ export async function renderMermaidHeadless(source: string): Promise<string> {
         const { svg } = await mermaid.render('talkie-diagram', diagram)
         return svg
       },
-      { config: MERMAID_CONFIG, diagram: trimmed }
+      { config: mermaidConfigFor(theme, variant), diagram: trimmed }
     )
 
-    return normaliseSvg(svg)
+    return normaliseSvg(svg, diagramBackground(theme, variant))
   } finally {
     await browser.close()
   }

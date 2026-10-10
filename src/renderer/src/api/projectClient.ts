@@ -1,4 +1,5 @@
 import type { TimelineItem } from '../../../main/project/timeline/schema'
+import { notifySettingsChanged } from '../lib/settingsChanged'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
 import type { ProjectContext } from '../../../main/project/projectContext'
 import type { NarrationFidelity } from '../../../main/tts/voiceFidelity'
@@ -18,6 +19,8 @@ export interface ProjectMetadata extends ProjectSummary {
   voice?: string
   /** What the demo is about, given to everything that writes words for it. */
   context?: ProjectContext
+  /** The theme the video follows, from the library. Absent means the look projects always had. */
+  themeId?: string
 }
 
 export interface HistoryState {
@@ -45,6 +48,8 @@ export const projectClient = {
     window.api.project.setVoice(id, voice),
   setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
     window.api.project.setContext(id, context),
+  setTheme: (id: string, themeId: string | null): Promise<ProjectMetadata> => window.api.project.setTheme(id, themeId),
+  renderTheme: (id: string) => window.api.project.renderTheme(id),
   historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
@@ -145,4 +150,34 @@ export const transcriptClient = {
   saveRecording: (projectId: string, segmentId: string, audio: Uint8Array): Promise<TranscriptSegment> =>
     window.api.transcript.saveRecording(projectId, segmentId, audio),
   requestMicrophone: () => window.api.transcript.requestMicrophone()
+}
+
+export type { Theme, ThemeDraft, Variant, VariantId } from '../../../main/themes/schema'
+export type { GeneratedTheme, GenerateStatus } from '../../../main/themes/generate/generateTheme'
+export type { ThemeTarget } from '../../../main/ipc/themeHandlers'
+export type { GenerateThemeRequest } from '../../../preload/index'
+export type { RenderTheme } from '../../../remotion/renderTheme'
+
+/**
+ * Themes are edited in Settings while a project stays open behind it, and the project re-read its
+ * theme only when it chose a different one — so an edited colour waited until the project was next
+ * opened, in the preview and the thumbnails both.
+ */
+async function announcing<T>(change: Promise<T>): Promise<T> {
+  const result = await change
+  notifySettingsChanged()
+  return result
+}
+
+export const themeClient = {
+  list: () => window.api.themes.list(),
+  create: (...args: Parameters<Window['api']['themes']['create']>) => announcing(window.api.themes.create(...args)),
+  update: (...args: Parameters<Window['api']['themes']['update']>) => announcing(window.api.themes.update(...args)),
+  remove: (id: string) => announcing(window.api.themes.remove(id)),
+  duplicate: (id: string) => window.api.themes.duplicate(id),
+  usage: (id: string) => window.api.themes.usage(id),
+  generate: (...args: Parameters<Window['api']['themes']['generate']>) => window.api.themes.generate(...args),
+  generateStatus: () => window.api.themes.generateStatus(),
+  addAsset: (...args: Parameters<Window['api']['themes']['addAsset']>) => announcing(window.api.themes.addAsset(...args)),
+  render: (...args: Parameters<Window['api']['themes']['render']>) => window.api.themes.render(...args)
 }

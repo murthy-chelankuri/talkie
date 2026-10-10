@@ -4,6 +4,18 @@ import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
+import type { RenderTheme } from '../remotion/renderTheme'
+import type { Theme, ThemeDraft } from '../main/themes/schema'
+import type { GeneratedTheme, GenerateStatus } from '../main/themes/generate/generateTheme'
+import type { ThemeTarget } from '../main/ipc/themeHandlers'
+
+/** A file goes over IPC as its bytes, since the window has no path the main process could open. */
+export interface GenerateThemeRequest {
+  name: string
+  url?: string
+  description?: string
+  file?: { bytes: Uint8Array; fileName: string }
+}
 import type { KokoroDownload } from '../main/tts/kokoro/kokoroProcess'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
@@ -31,6 +43,9 @@ const projectApi = {
     ipcRenderer.invoke('project:setVoice', id, voice),
   setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
     ipcRenderer.invoke('project:setContext', id, context),
+  setTheme: (id: string, themeId: string | null): Promise<ProjectMetadata> =>
+    ipcRenderer.invoke('project:setTheme', id, themeId),
+  renderTheme: (id: string): Promise<RenderTheme | null> => ipcRenderer.invoke('project:theme:render', id),
   historyState: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:state', id),
   undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),
@@ -58,6 +73,22 @@ const settingsApi = {
     ipcRenderer.invoke('settings:previewVoice', voice, text),
   kokoroDownload: (): Promise<void> => ipcRenderer.invoke('settings:kokoroDownload'),
   kokoroStatus: (): Promise<KokoroDownload> => ipcRenderer.invoke('settings:kokoroStatus')
+}
+
+const themesApi = {
+  list: (): Promise<Theme[]> => ipcRenderer.invoke('settings:themes:list'),
+  create: (draft: ThemeDraft, stagingDir?: string): Promise<Theme> =>
+    ipcRenderer.invoke('settings:themes:create', draft, stagingDir),
+  update: (id: string, draft: ThemeDraft): Promise<Theme> => ipcRenderer.invoke('settings:themes:update', id, draft),
+  remove: (id: string): Promise<void> => ipcRenderer.invoke('settings:themes:delete', id),
+  duplicate: (id: string): Promise<Theme> => ipcRenderer.invoke('settings:themes:duplicate', id),
+  usage: (id: string): Promise<{ id: string; name: string }[]> => ipcRenderer.invoke('settings:themes:usage', id),
+  generate: (request: GenerateThemeRequest): Promise<GeneratedTheme> => ipcRenderer.invoke('settings:themes:generate', request),
+  generateStatus: (): Promise<GenerateStatus> => ipcRenderer.invoke('settings:themes:generateStatus'),
+  addAsset: (target: ThemeTarget, kind: 'logo' | 'font', fileName: string, bytes: Uint8Array): Promise<string> =>
+    ipcRenderer.invoke('settings:themes:addAsset', target, kind, fileName, bytes),
+  render: (draft: ThemeDraft, target: ThemeTarget): Promise<RenderTheme> =>
+    ipcRenderer.invoke('settings:themes:render', draft, target)
 }
 
 const agentApi = {
@@ -149,6 +180,7 @@ const menuApi = {
 contextBridge.exposeInMainWorld('api', {
   menu: menuApi,
   settings: settingsApi,
+  themes: themesApi,
   agent: agentApi,
   project: projectApi,
   scene: sceneApi,
@@ -160,6 +192,7 @@ contextBridge.exposeInMainWorld('api', {
 
 export type MenuApi = typeof menuApi
 export type SettingsApi = typeof settingsApi
+export type ThemesApi = typeof themesApi
 export type AgentApi = typeof agentApi
 export type SceneApi = typeof sceneApi
 export type ProjectApi = typeof projectApi

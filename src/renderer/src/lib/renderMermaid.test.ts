@@ -32,6 +32,10 @@ describe('normaliseSvg', () => {
     expect(normaliseSvg(MERMAID_OUTPUT)).toContain('<rect width="100%" height="100%" fill="#171b22"/>')
   })
 
+  it('paints the background of the look the diagram was drawn in', () => {
+    expect(normaliseSvg(MERMAID_OUTPUT, '#f5f8fc')).toContain('<rect width="100%" height="100%" fill="#f5f8fc"/>')
+  })
+
   it('leaves the shapes inside the diagram exactly as they were', () => {
     // Stripping width and height everywhere leaves a diagram of arrows pointing at nothing.
     const svg = normaliseSvg(MERMAID_OUTPUT)

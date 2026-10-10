@@ -18,7 +18,17 @@ export const ProjectMetadataSchema = z.object({
    */
   voice: z.string().optional(),
   /** What the project is about, for everything that writes words for it. See projectContext.ts. */
-  context: ProjectContextSchema.optional()
+  context: ProjectContextSchema.optional(),
+  /**
+   * The theme this project's video follows, from the library in ~/Talkie/Themes. Absent means the
+   * look every project had before themes existed. See src/main/themes.
+   */
+  themeId: z.string().optional(),
+  /**
+   * Whether the opening and closing cards were added, which happens the first time a project
+   * gets a theme and never again — a later change of theme restyles them rather than adding more.
+   */
+  bookendsAdded: z.boolean().optional()
 })
 
 export type ProjectMetadata = z.infer<typeof ProjectMetadataSchema>

@@ -5,6 +5,7 @@ import type {
   CaptureApi,
   TranscriptApi,
   SettingsApi,
+  ThemesApi,
   AgentApi,
   SceneApi,
   MenuApi
@@ -15,6 +16,7 @@ declare global {
     api: {
       menu: MenuApi
       settings: SettingsApi
+      themes: ThemesApi
       agent: AgentApi
       project: ProjectApi
       scene: SceneApi

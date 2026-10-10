@@ -9,10 +9,11 @@ import type { TimelineItem } from './types'
  * the element tree the composition builds — which is where the audio offset lives.
  */
 function audioSequenceFor(item: TimelineItem): Record<string, unknown> | null {
+  // The clips sit inside the theme's provider, after the slot its fonts would take.
   const tree = DemoComposition({ timeline: [item] }) as unknown as {
-    props: { children: Array<{ props: { children: unknown[] } }> }
+    props: { children: [unknown, Array<{ props: { children: unknown[] } }>] }
   }
-  const clip = tree.props.children[0]
+  const clip = tree.props.children[1][0]
   const audioWrapper = clip.props.children.find(
     (child) => (child as { type?: unknown })?.type === Sequence
   ) as { props: Record<string, unknown> } | undefined

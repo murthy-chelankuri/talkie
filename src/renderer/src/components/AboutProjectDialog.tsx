@@ -6,6 +6,7 @@ import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
+import { ThemePicker } from './themes/ThemePicker'
 
 /**
  * What the model knows about this project before it writes a word of it.
@@ -18,11 +19,16 @@ import { Textarea } from './ui/Textarea'
 export function AboutProjectDialog({
   projectName,
   context,
+  themeId,
+  onThemeChange,
   onSave,
   onClose
 }: {
   projectName: string
   context: ProjectContext
+  /** The project's theme, and how to change it — applied at once, not with Save. */
+  themeId?: string
+  onThemeChange?: (themeId: string | null) => Promise<void> | void
   onSave: (context: ProjectContext) => Promise<void> | void
   onClose: () => void
 }): JSX.Element {
@@ -95,6 +101,15 @@ export function AboutProjectDialog({
               className="min-h-[7rem] resize-y leading-relaxed"
             />
           </Field>
+
+          {onThemeChange && (
+            <Field
+              label="Theme"
+              hint="Colours, type and logo for the whole video. The first theme also adds an opening and a closing card."
+            >
+              <ThemePicker themeId={themeId} onChange={onThemeChange} />
+            </Field>
+          )}
 
           <Field label="Who is watching" hint="Decides what can be assumed and what has to be explained.">
             <Input

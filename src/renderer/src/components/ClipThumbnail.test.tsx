@@ -4,6 +4,21 @@ import { render, screen, waitFor } from '@testing-library/react'
 afterEach(() => vi.unstubAllGlobals())
 import { ClipThumbnail } from './Timeline'
 import type { TimelineItem } from '../api/projectClient'
+import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
+
+const acme: RenderTheme = {
+  stamp: 'abc',
+  company: 'Acme',
+  tagline: '',
+  website: '',
+  variants: {
+    brand: { background: '#0a2540', heading: '#ffffff', body: '#d6e2f0', accent: '#635bff' },
+    light: { background: '#fafafa', heading: '#0a2540', body: '#425466', accent: '#635bff' },
+    dark: { background: '#06111f', heading: '#f6f9fc', body: '#adbdcc', accent: '#80e9ff' }
+  },
+  fonts: { heading: { family: 'Sohne', urls: [] }, body: { family: 'Inter', urls: [] } },
+  caption: 'dark'
+}
 
 function scene(data: Record<string, unknown>): TimelineItem {
   return { id: 'a', kind: 'scene', start: 0, duration: 150, data } as TimelineItem
@@ -75,5 +90,56 @@ describe('the diagram on a clip in the timeline', () => {
     const { container } = render(<ClipThumbnail item={undrawn} />)
 
     expect(container.firstChild).toBeNull()
+  })
+})
+
+describe('thumbnails in a themed project', () => {
+  it('draws a slide in the theme’s colours and type for the look the slide chose', () => {
+    const { container } = render(
+      <ThemeContext.Provider value={acme}>
+        <ClipThumbnail item={scene({ title: 'Checkout', bullets: ['Fast'], style: { theme: 'light' } })} />
+      </ThemeContext.Provider>
+    )
+
+    expect(container.firstElementChild).toHaveStyle({ background: '#fafafa' })
+    expect(screen.getByText('Checkout')).toHaveStyle({ color: '#0a2540' })
+    expect(screen.getByText('Checkout').style.fontFamily).toContain('Sohne')
+    expect(screen.getByText('Fast')).toHaveStyle({ color: '#425466' })
+  })
+
+  it('follows the theme when it changes, without the slide being touched', () => {
+    const item = scene({ title: 'Checkout', bullets: [], style: { theme: 'brand' } })
+    const { container, rerender } = render(
+      <ThemeContext.Provider value={acme}>
+        <ClipThumbnail item={item} />
+      </ThemeContext.Provider>
+    )
+    const edited = { ...acme, variants: { ...acme.variants, brand: { ...acme.variants.brand, background: '#01a982' } } }
+    rerender(
+      <ThemeContext.Provider value={edited}>
+        <ClipThumbnail item={item} />
+      </ThemeContext.Provider>
+    )
+
+    expect(container.firstElementChild).toHaveStyle({ background: '#01a982' })
+  })
+
+  it('puts a diagram on its theme background rather than a fixed dark one', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => '<svg/>' }))
+    const item = { id: 'd', kind: 'diagram', start: 0, duration: 150, data: { source: 'graph LR; A-->B', src: 'http://assets/d.svg', style: { theme: 'light' } } } as TimelineItem
+
+    const { container } = render(
+      <ThemeContext.Provider value={acme}>
+        <ClipThumbnail item={item} />
+      </ThemeContext.Provider>
+    )
+
+    expect(container.firstElementChild).toHaveStyle({ background: '#fafafa' })
+  })
+
+  it('keeps the dark slide it always showed when the project has no theme', () => {
+    const { container } = render(<ClipThumbnail item={scene({ title: 'T', bullets: [] })} />)
+
+    expect((container.firstElementChild as HTMLElement).style.background).toContain('linear-gradient')
   })
 })

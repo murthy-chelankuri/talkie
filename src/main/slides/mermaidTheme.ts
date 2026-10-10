@@ -7,6 +7,9 @@
  * depending on who asked for it is worse than one that cannot be drawn at all.
  */
 
+import type { RenderTheme } from '../../remotion/renderTheme'
+import type { VariantId } from '../themes/schema'
+
 /** Colours taken from the app's own palette, so a diagram looks made by Talkie. */
 export const MERMAID_THEME = {
   background: '#171b22',
@@ -37,6 +40,41 @@ export const MERMAID_CONFIG = {
   flowchart: { curve: 'basis', padding: 18 }
 } as const
 
+/** `a` moved `amount` of the way towards `b`, for node fills a shade off the slide behind them. */
+function mix(a: string, b: string, amount: number): string {
+  const channel = (hex: string, at: number): number => parseInt(hex.slice(1 + at * 2, 3 + at * 2), 16)
+  return `#${[0, 1, 2]
+    .map((at) => Math.round(channel(a, at) + (channel(b, at) - channel(a, at)) * amount).toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
+/**
+ * The configuration for a diagram on a slide of this variant of the theme — or Talkie's own,
+ * without one.
+ *
+ * Nodes are filled a shade off the slide's background rather than in the brand colour: a diagram
+ * is read box by box, and boxes in a saturated brand colour are loud and hard to read on. The
+ * brand comes in through the borders, in the accent, and through the type.
+ */
+export function mermaidConfigFor(theme: RenderTheme | null | undefined, variant: VariantId = 'dark') {
+  if (!theme) return MERMAID_CONFIG
+  const { background, heading, body, accent } = theme.variants[variant]
+  return {
+    ...MERMAID_CONFIG,
+    themeVariables: {
+      background,
+      primaryColor: mix(background, heading, 0.1),
+      primaryTextColor: heading,
+      primaryBorderColor: accent,
+      lineColor: body,
+      secondaryColor: mix(background, heading, 0.16),
+      tertiaryColor: mix(background, heading, 0.05),
+      fontFamily: `"${theme.fonts.body.family.replace(/"/g, '')}", Geist Variable, ui-sans-serif, system-ui, sans-serif`,
+      fontSize: MERMAID_THEME.fontSize
+    }
+  }
+}
+
 /**
  * Make the SVG ready to be shown large, and to be shown anywhere.
  *
@@ -46,7 +84,15 @@ export const MERMAID_CONFIG = {
  * white background — including when the file itself is opened. Both are fixed once here rather
  * than worked around by everything that displays it.
  */
-export function normaliseSvg(svg: string): string {
+/**
+ * What a diagram is painted on: the background of the look it was drawn in. Talkie's own grey
+ * under a theme's colours put a theme's light diagram — dark text — on a dark ground.
+ */
+export function diagramBackground(theme: RenderTheme | null | undefined, variant: VariantId = 'dark'): string {
+  return theme ? theme.variants[variant].background : MERMAID_THEME.background
+}
+
+export function normaliseSvg(svg: string, background: string = MERMAID_THEME.background): string {
   // Only the opening <svg> tag is touched. Stripping width and height everywhere also strips
   // them from the rects that draw the nodes, which leaves a diagram of arrows pointing at
   // nothing — the shapes are sized by those attributes.
@@ -58,7 +104,7 @@ export function normaliseSvg(svg: string): string {
 
     return (
       `${cleaned} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">` +
-      `<rect width="100%" height="100%" fill="${MERMAID_THEME.background}"/>`
+      `<rect width="100%" height="100%" fill="${background}"/>`
     )
   })
 }
