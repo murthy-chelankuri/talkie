@@ -23,7 +23,7 @@ export function ExportControl({
 }): JSX.Element {
   return (
     <div className="relative">
-      <Button variant="gradient" size="sm" onClick={onExport} disabled={exporting} aria-label={exporting ? 'Exporting video' : 'Export video'}>
+      <Button size="sm" onClick={onExport} disabled={exporting} aria-label={exporting ? 'Exporting video' : 'Export video'}>
         {exporting ? <Spinner size="sm" /> : <Download size={14} />}
         {exporting ? 'Exporting video' : 'Export video'}
       </Button>

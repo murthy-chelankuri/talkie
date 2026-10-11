@@ -357,9 +357,10 @@ the app stays the only writer.
 - **British spelling in user-facing text and in names** — colour, licence, sanitise.
 - **Design tokens only**, from `src/renderer/src/styles/index.css` — the Studio look: depth from
   three surfaces (`bg`, `surface`, `raised`) rather than outlines, which are only for dividers
-  inside a panel. The accent is a violet→cyan gradient on what is acted on, and a solid violet for
-  text and outlines (`#a99fff` dark, `#4b37d0` light), used as text at 10–11px. **Text on the
-  gradient is near-black (`#0e0f13`)** — white falls to 2:1 at its cyan end. Floors: 5.8:1 for
+  inside a panel. The accent is one solid blue: `accent-fill` (`#2563eb`, white text) on what is
+  acted on, `accent-soft` (a tint of it) on AI and voice actions, and `accent` for text and
+  outlines (`#79a8ff` dark, `#1a4bb8` light), used as text at 10–11px. It replaced a violet→cyan
+  gradient that read as decoration; leave the colour to the video. Floors: 5.8:1 for
   accent text, 4.5:1 for body and muted text, on every surface; `contrast.test.ts` holds both
   themes to them. Dark is the default; red is only for recording and the playhead.
 - **The editor is a rail, one side panel, the stage, an inspector and the timeline.** The agent

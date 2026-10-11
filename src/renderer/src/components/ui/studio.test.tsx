@@ -10,9 +10,9 @@ import { Rail } from './Rail'
 import { SidePanel } from './SidePanel'
 
 describe('Studio buttons', () => {
-  it('draws the main action on the gradient, in dark ink', () => {
+  it('fills the main action with the accent, in white', () => {
     render(<Button>Export</Button>)
-    expect(screen.getByRole('button', { name: 'Export' })).toHaveClass('bg-accent-gradient', 'text-on-gradient')
+    expect(screen.getByRole('button', { name: 'Export' })).toHaveClass('bg-accent-fill', 'text-on-accent')
   })
 
   it('tints an AI action with the accent rather than filling it', () => {

@@ -40,7 +40,7 @@ describe.each([[':root', 'light'], ["[data-theme='dark']", 'dark']])('the %s (%s
   })
 })
 
-it('sets text on the gradient readable at both of its ends', () => {
-  const ink = block(':root')['color-on-gradient']
-  for (const end of ['#7c6cff', '#4fc3ff']) expect(ratio(ink, end), end).toBeGreaterThanOrEqual(4.5)
+it.each([[':root'], [":root[data-theme='dark']"]])('sets text on the filled accent readable in %s', (selector) => {
+  const t = block(selector)
+  expect(ratio(t['color-on-accent'], t['color-accent-fill'])).toBeGreaterThanOrEqual(4.5)
 })

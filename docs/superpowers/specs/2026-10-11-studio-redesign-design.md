@@ -199,3 +199,6 @@ any feature does.
 - **The Project panel has no sources list.** None exists today; adding one would be new behaviour.
 - **"Continue where you left off" uses the last project opened in this window**, remembered in
   `localStorage`, falling back to the newest. Projects record no last-changed time.
+- **Accent changed to one solid blue after review.** The violet→cyan gradient looked like decoration
+  rather than a professional tool. `accent-fill` `#2563eb` with white text replaces the gradient;
+  `accent` text is `#79a8ff` dark and `#1a4bb8` light; `accent-soft` is the same blue as a tint.

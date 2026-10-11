@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
-export type ButtonVariant = 'primary' | 'gradient' | 'soft' | 'secondary' | 'ghost' | 'icon' | 'danger'
+export type ButtonVariant = 'primary' | 'soft' | 'secondary' | 'ghost' | 'icon' | 'danger'
 export type ButtonSize = 'sm' | 'md'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -10,14 +10,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Studio: no outlines. The main action sits on the accent gradient in dark ink — white falls to
- * 2:1 at its cyan end — and AI actions are tinted with it rather than filled, so there is only
- * ever one loud thing on screen. 'primary' is the gradient, so no call site had to change.
+ * Studio: no outlines. The main action is filled with the accent blue in white, and AI actions
+ * are tinted with it rather than filled, so there is only ever one loud thing on screen.
  */
-const GRADIENT = 'bg-accent-gradient text-on-gradient hover:brightness-110'
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: GRADIENT,
-  gradient: GRADIENT,
+  primary: 'bg-accent-fill text-on-accent hover:brightness-110',
   soft: 'bg-accent-soft text-accent ring-1 ring-inset ring-accent/35 hover:brightness-125',
   secondary: 'bg-raised text-text hover:bg-surface-hover',
   ghost: 'bg-transparent text-text hover:bg-raised',

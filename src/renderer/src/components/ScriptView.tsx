@@ -272,7 +272,7 @@ function Scene({
         aria-hidden="true"
         className={cn(
           'absolute -left-5 bottom-6 top-6 w-0.5 rounded-full transition-opacity',
-          playing ? 'bg-accent-gradient opacity-100' : 'opacity-0'
+          playing ? 'bg-accent-fill opacity-100' : 'opacity-0'
         )}
       />
 

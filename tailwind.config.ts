@@ -25,11 +25,6 @@ export default {
         sans: ['Geist Variable', 'system-ui', 'sans-serif'],
         serif: ['Newsreader Variable', 'Georgia', 'serif']
       },
-      // The accent's two forms: the gradient for what is acted on, and a tint of it for AI actions.
-      backgroundImage: {
-        'accent-gradient': 'var(--color-accent-gradient)',
-        'accent-soft': 'var(--color-accent-soft)'
-      },
       colors: {
         bg: token('bg'),
         surface: token('surface'),
@@ -39,6 +34,9 @@ export default {
         text: token('text'),
         'text-muted': token('text-muted'),
         accent: token('accent'),
+        // The accent's two other forms: filled for what is acted on, and a tint for AI actions.
+        'accent-fill': token('accent-fill'),
+        'accent-soft': token('accent-soft'),
         'accent-hover': token('accent-hover'),
         'accent-foreground': token('accent-foreground'),
         danger: token('danger'),
@@ -48,7 +46,7 @@ export default {
         slides: token('slides'),
         paper: token('paper'),
         'paper-text': token('paper-text'),
-        'on-gradient': 'var(--color-on-gradient)',
+        'on-accent': token('on-accent'),
         'paper-border': token('paper-border'),
         warning: token('warning')
       }

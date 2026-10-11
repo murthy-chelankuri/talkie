@@ -73,7 +73,7 @@ export function TransportBar({
     <div className="mx-auto mb-2 mt-1.5 flex w-full max-w-3xl items-center gap-3 rounded-full bg-surface px-2 py-1.5 shadow-lg">
       <IconButton
         aria-label={playing ? 'Pause' : 'Play'}
-        className="h-8 w-8 rounded-full bg-accent-gradient text-on-gradient hover:bg-accent-gradient hover:text-on-gradient hover:brightness-110"
+        className="h-8 w-8 rounded-full bg-accent-fill text-on-accent hover:bg-accent-fill hover:text-on-accent hover:brightness-110"
         onClick={() => playerRef.current?.toggle()}
       >
         {playing ? <Pause size={15} /> : <Play size={15} />}
@@ -129,7 +129,7 @@ export function TransportBar({
         <span className="h-1 w-full overflow-hidden rounded-full bg-raised">
           <span
             ref={fillRef}
-            className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent-gradient"
+            className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent-fill"
           />
         </span>
       </div>

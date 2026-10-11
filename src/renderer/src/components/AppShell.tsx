@@ -50,7 +50,7 @@ export function AppShell({
               borrowed from the set used for controls. */}
           <span
             aria-hidden="true"
-            className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-accent-gradient text-on-gradient"
+            className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-accent-fill text-on-accent"
           >
             {/* The app icon's own mark, so the thing in the dock and the thing in the corner are
                 recognisably the same. A dot was left over from the icon before it. */}

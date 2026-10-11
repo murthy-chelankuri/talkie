@@ -55,7 +55,7 @@ export function Rail({
               )}
             >
               {item.icon}
-              {item.busy && <span aria-hidden="true" className="absolute right-1 top-1 h-2 w-2 animate-pulse rounded-full bg-accent-gradient" />}
+              {item.busy && <span aria-hidden="true" className="absolute right-1 top-1 h-2 w-2 animate-pulse rounded-full bg-accent-fill" />}
             </span>
             <span className={cn('text-[10px] leading-none', on ? 'text-text' : 'text-text-muted')}>{item.label}</span>
           </button>

@@ -123,7 +123,7 @@ export function ProjectSummary({
       <div className="flex flex-col gap-1.5">
         <div className="h-1 overflow-hidden rounded-full bg-surface-hover">
           <div
-            className={cn('h-full rounded-full transition-[width]', complete ? 'bg-success' : 'bg-accent-gradient')}
+            className={cn('h-full rounded-full transition-[width]', complete ? 'bg-success' : 'bg-accent-fill')}
             style={{ width: `${progress}%` }}
           />
         </div>
