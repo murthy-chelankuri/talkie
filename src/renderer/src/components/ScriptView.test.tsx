@@ -279,3 +279,35 @@ describe('following the video', () => {
     expect(screen.getByRole('region', { name: 'Scene 2' })).toHaveAttribute('aria-current', 'true')
   })
 })
+
+describe('recording a scene in your own voice', () => {
+  it('records from the script, not only from the timeline', async () => {
+    const onRecord = vi.fn()
+    view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Words.' })], { onRecord, onStopRecording: vi.fn() })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Record Narration for scene 1 in your own voice' }))
+
+    expect(onRecord).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+  })
+
+  it('offers Stop while recording, and says what to do meanwhile', async () => {
+    const onStopRecording = vi.fn()
+    view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Words.' })], {
+      recordingItemId: 'a',
+      onRecord: vi.fn(),
+      onStopRecording
+    })
+
+    expect(screen.getByText(/read the words aloud, then press Stop/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Voice Narration for scene 1' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Stop recording Narration for scene 1' }))
+
+    expect(onStopRecording).toHaveBeenCalled()
+  })
+
+  it('records one scene at a time', () => {
+    view([clip('a', 0), clip('b', 450)], [], { recordingItemId: 'a', onRecord: vi.fn(), onStopRecording: vi.fn() })
+
+    expect(screen.getByRole('button', { name: 'Record Narration for scene 2 in your own voice' })).toBeDisabled()
+  })
+})

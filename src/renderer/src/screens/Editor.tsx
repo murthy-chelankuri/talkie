@@ -813,6 +813,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             activeItemId={activeItemId}
             draftingItemId={draftingItemId}
             narratingItemId={narratingItemId}
+            recordingItemId={recordingItemId}
+            onRecord={handleRecord}
+            onStopRecording={handleStopRecording}
             playerRef={playerRef}
             onSeek={handleSeek}
             onSelectItem={handleSelectClip}

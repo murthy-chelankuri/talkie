@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { PlayerRef } from '@remotion/player'
-import { AudioLines, Play, Sparkles, TriangleAlert } from 'lucide-react'
+import { AudioLines, Mic, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { narrationScriptForItem, segmentsForItem } from '../lib/clipNarration'
 import { narrationFit, scriptParts, type NarrationFit } from '../lib/narrationFit'
@@ -38,18 +38,23 @@ export function ScriptView({
   activeItemId,
   draftingItemId,
   narratingItemId,
+  recordingItemId = null,
   playerRef,
   onSeek,
   onSelectItem,
   onCommit,
   onDraft,
-  onNarrate
+  onNarrate,
+  onRecord,
+  onStopRecording
 }: {
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
   activeItemId: string | null
   draftingItemId: string | null
   narratingItemId: string | null
+  /** The scene whose narration is being recorded in the user's own voice, if any. */
+  recordingItemId?: string | null
   /** The preview, followed so the scene being played stays on the page. */
   playerRef?: RefObject<PlayerRef | null>
   onSeek: (frame: number) => void
@@ -57,6 +62,8 @@ export function ScriptView({
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onDraft: (item: TimelineItem) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
+  onRecord?: (item: TimelineItem) => void | Promise<void>
+  onStopRecording?: () => void | Promise<void>
 }): JSX.Element {
   const sheetRef = useRef<HTMLDivElement | null>(null)
   // Counted from what each scene says rather than worked out again here: a scene trusts its take
@@ -123,12 +130,16 @@ export function ScriptView({
             playing={item.id === playingId}
             drafting={draftingItemId === item.id}
             narrating={narratingItemId === item.id}
+            recording={recordingItemId === item.id}
+            recordingElsewhere={recordingItemId !== null && recordingItemId !== item.id}
             onFit={reportFit}
             onSeek={onSeek}
             onSelectItem={onSelectItem}
             onCommit={onCommit}
             onDraft={onDraft}
             onNarrate={onNarrate}
+            onRecord={onRecord}
+            onStopRecording={onStopRecording}
           />
         ))}
       </div>
@@ -175,12 +186,16 @@ function Scene({
   playing,
   drafting,
   narrating,
+  recording,
+  recordingElsewhere,
   onFit,
   onSeek,
   onSelectItem,
   onCommit,
   onDraft,
-  onNarrate
+  onNarrate,
+  onRecord,
+  onStopRecording
 }: {
   item: TimelineItem
   index: number
@@ -189,12 +204,16 @@ function Scene({
   playing: boolean
   drafting: boolean
   narrating: boolean
+  recording: boolean
+  recordingElsewhere: boolean
   onFit: (id: string, long: boolean) => void
   onSeek: (frame: number) => void
   onSelectItem: (item: TimelineItem) => void
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onDraft: (item: TimelineItem) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
+  onRecord?: (item: TimelineItem) => void | Promise<void>
+  onStopRecording?: () => void | Promise<void>
 }): JSX.Element {
   const saved = narrationScriptForItem(segments, item.id)
   const [draft, setDraft] = useState(saved)
@@ -313,8 +332,8 @@ function Scene({
 
       <footer className="mt-3 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
         {fit && <FitMeter fit={fit} clipSeconds={item.duration / FPS} />}
-        <span role="status" className="text-[11px] text-text-muted">
-          {saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Saved' : ''}
+        <span role="status" className={cn('text-[11px]', recording ? 'text-danger' : 'text-text-muted')}>
+          {recording ? 'Recording… read the words aloud, then press Stop' : saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Saved' : ''}
         </span>
         <span className="ml-auto flex items-center gap-1.5">
           <Button
@@ -322,7 +341,7 @@ function Scene({
             size="sm"
             className="h-7 text-[12px]"
             aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
-            disabled={drafting || narrating}
+            disabled={drafting || narrating || recording}
             onClick={() => onDraft(item)}
           >
             {drafting ? <Spinner size="sm" /> : <Sparkles size={12} aria-hidden="true" />}
@@ -333,13 +352,34 @@ function Scene({
             size="sm"
             className="h-7 text-[12px]"
             aria-label={narrating ? `Voicing ${label}` : `Voice ${label}`}
-            title={draft !== saved ? 'Saving the words first' : undefined}
-            disabled={narrating || drafting || !draft.trim() || draft !== saved}
+            title={draft !== saved ? 'Saving the words first' : 'Read the words in the project’s voice'}
+            disabled={narrating || drafting || recording || !draft.trim() || draft !== saved}
             onClick={() => onNarrate(item)}
           >
             {narrating ? <Spinner size="sm" /> : <AudioLines size={12} className="text-accent" aria-hidden="true" />}
             Voice
           </Button>
+          {/* The same recorder as the timeline's microphone. Before this the script had only
+              Voice, which speaks in the synthetic voice — so pressing it to record your own did
+              something else entirely and looked like nothing working. Red, as recording is. */}
+          {onRecord && onStopRecording && (
+            <Button
+              variant={recording ? 'danger' : 'secondary'}
+              size="sm"
+              className="h-7 text-[12px]"
+              aria-label={recording ? `Stop recording ${label}` : `Record ${label} in your own voice`}
+              title={recording ? undefined : 'Record yourself reading the words'}
+              disabled={!recording && (narrating || drafting || recordingElsewhere)}
+              onClick={() => (recording ? onStopRecording() : onRecord(item))}
+            >
+              {recording ? (
+                <Square size={11} fill="currentColor" aria-hidden="true" />
+              ) : (
+                <Mic size={12} className="text-danger" aria-hidden="true" />
+              )}
+              {recording ? 'Stop' : 'Record'}
+            </Button>
+          )}
         </span>
       </footer>
     </section>
