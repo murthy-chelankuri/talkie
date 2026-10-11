@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AudioLines, Clapperboard, Film, Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, AudioLines, Clapperboard, Film, Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
 import {
   projectClient,
   type ProjectContext,
@@ -7,6 +7,7 @@ import {
   type ProjectSummary
 } from '../api/projectClient'
 import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
+import { lastProjectId, rememberLastProject } from '../lib/lastProject'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../remotion/constants'
@@ -30,11 +31,14 @@ import { ErrorBanner } from '../components/ui/ErrorBanner'
 function ProjectCard({
   project,
   onOpen,
-  onDelete
+  onDelete,
+  lead = false
 }: {
   project: ProjectOverview
   onOpen: (project: ProjectSummary) => void
   onDelete: (project: ProjectOverview) => Promise<void>
+  /** The project at the head of the screen: poster and details side by side, larger. */
+  lead?: boolean
 }): JSX.Element {
   const fullyNarrated = project.clipCount > 0 && project.narratedCount === project.clipCount
   const [confirming, setConfirming] = useState(false)
@@ -49,21 +53,23 @@ function ProjectCard({
         aria-label={`Open ${project.name}`}
         onClick={() => onOpen(project)}
         className={cn(
-          'flex w-full flex-col overflow-hidden rounded-xl border border-border bg-surface p-0 text-left',
-          'transition-colors hover:border-accent hover:bg-surface-hover'
+          'w-full overflow-hidden bg-surface p-0 text-left transition-colors hover:bg-surface-hover',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+          lead ? 'grid grid-cols-[1.3fr_1fr] rounded-2xl' : 'flex flex-col rounded-xl'
         )}
       >
         <span className="relative block aspect-video w-full overflow-hidden bg-bg">
           <ProjectPoster project={project} className="h-full w-full" />
           {project.clipCount > 0 && (
-            <span className="absolute bottom-2 right-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] tabular-nums text-white">
+            <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] tabular-nums text-white backdrop-blur">
               {formatTimecode(project.durationFrames / FPS)}
             </span>
           )}
         </span>
 
-        <span className="flex flex-col gap-1 px-3.5 py-3">
-          <span className="truncate text-[15px] font-medium text-text">{project.name}</span>
+        <span className={cn('flex flex-col gap-1', lead ? 'justify-center gap-2 p-6' : 'px-3.5 py-3')}>
+          {lead && <span className="text-[11px] text-text-muted">Pick up where you were</span>}
+          <span className={cn('truncate font-medium text-text', lead ? 'text-[20px] tracking-[-0.01em]' : 'text-[15px]')}>{project.name}</span>
           <span className="flex items-center gap-3 text-xs text-text-muted">
             <span className="flex items-center gap-1">
               {project.posterKind === 'image' ? <ImageIcon size={12} /> : <Film size={12} />}
@@ -77,6 +83,11 @@ function ProjectCard({
             )}
             <span className="ml-auto">{formatRelativeTime(project.createdAt)}</span>
           </span>
+          {lead && (
+            <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-[9px] bg-accent-soft px-3 py-1.5 text-[13px] font-medium text-accent ring-1 ring-inset ring-accent/35">
+              Open project <ArrowRight size={14} aria-hidden="true" />
+            </span>
+          )}
         </span>
       </button>
 
@@ -94,7 +105,7 @@ function ProjectCard({
       </IconButton>
 
       {confirming && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border border-danger bg-surface/95 px-5 text-center backdrop-blur">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-surface/95 px-5 text-center ring-1 ring-inset ring-danger backdrop-blur">
           <p className="text-sm text-text">
             Delete <span className="font-medium">{project.name}</span>?
           </p>
@@ -104,7 +115,7 @@ function ProjectCard({
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="bg-danger text-white hover:bg-danger"
+              variant="danger"
               disabled={deleting}
               onClick={async () => {
                 setDeleting(true)
@@ -218,7 +229,7 @@ export function ProjectBrowser({
    * Only the name is required. The rest says so.
    */
   const createForm = (
-    <div className="flex w-full flex-col gap-4 rounded-xl border border-accent bg-surface p-5">
+    <div className="flex w-full flex-col gap-4 rounded-2xl bg-surface p-5 ring-1 ring-inset ring-accent/40">
       <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
@@ -312,6 +323,15 @@ export function ProjectBrowser({
     </div>
   )
 
+  // The project last opened here leads; with none remembered, the newest, which comes first.
+  const remembered = lastProjectId()
+  const lead = projects.find((project) => project.id === remembered) ?? projects[0]
+  const rest = projects.filter((project) => project !== lead)
+  const open = (project: ProjectSummary): void => {
+    rememberLastProject(project.id)
+    onOpen(project)
+  }
+
   return (
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-8 px-8 py-10">
       <header className="flex items-end justify-between gap-4">
@@ -337,7 +357,7 @@ export function ProjectBrowser({
         </div>
       ) : projects.length === 0 && !showCreateForm ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <span className="rounded-2xl border border-border bg-surface p-4 text-accent">
+          <span className="rounded-2xl bg-surface p-4 text-accent">
             <Clapperboard size={28} aria-hidden="true" />
           </span>
           <div>
@@ -354,16 +374,18 @@ export function ProjectBrowser({
       ) : (
         <div className="flex flex-col gap-6">
           {showCreateForm && createForm}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-            {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onOpen={onOpen}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          {lead && (
+            <section aria-label="Continue where you left off">
+              <ProjectCard project={lead} onOpen={open} onDelete={handleDelete} lead />
+            </section>
+          )}
+          {rest.length > 0 && (
+            <section aria-label="All projects" className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+              {rest.map((project) => (
+                <ProjectCard key={project.id} project={project} onOpen={open} onDelete={handleDelete} />
+              ))}
+            </section>
+          )}
         </div>
       )}
     </div>

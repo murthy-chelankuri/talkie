@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell'
 import { ProjectSwitcher } from './components/ProjectSwitcher'
 import { projectClient, type ProjectSummary } from './api/projectClient'
 import { useMenuActions, useMenuState } from './lib/menuActions'
+import { rememberLastProject } from './lib/lastProject'
 
 export default function App(): JSX.Element {
   const [openProject, setOpenProject] = useState<ProjectSummary | null>(null)
@@ -24,6 +25,8 @@ export default function App(): JSX.Element {
   })
 
   async function switchProject(projectId: string): Promise<void> {
+    // Switching is opening too: the home screen leads with whichever was opened last.
+    rememberLastProject(projectId)
     setOpenProject(await projectClient.open(projectId))
   }
 

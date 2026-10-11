@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectBrowser } from './ProjectBrowser'
 import { projectClient, type ProjectOverview } from '../api/projectClient'
@@ -240,5 +240,43 @@ describe('ProjectBrowser', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(screen.getByRole('button', { name: 'New project' })).toBeInTheDocument()
+  })
+
+  describe('leading with the project you were last in', () => {
+    beforeEach(() => localStorage.clear())
+
+    it('puts the last opened project first, apart from the rest', async () => {
+      localStorage.setItem('talkie.lastProject', 'p2')
+      mockedOverviews.mockResolvedValue([overview({ id: 'p1', name: 'Newest' }), overview({ id: 'p2', name: 'Worked on' })])
+      render(<ProjectBrowser onOpen={vi.fn()} />)
+
+      const lead = await screen.findByRole('region', { name: 'Continue where you left off' })
+      expect(within(lead).getByRole('button', { name: 'Open Worked on' })).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'All projects' })).queryByRole('button', { name: 'Open Worked on' })).toBeNull()
+    })
+
+    it('leads with the newest when none has been opened here', async () => {
+      mockedOverviews.mockResolvedValue([overview({ id: 'p1', name: 'Newest' }), overview({ id: 'p2', name: 'Older' })])
+      render(<ProjectBrowser onOpen={vi.fn()} />)
+
+      const lead = await screen.findByRole('region', { name: 'Continue where you left off' })
+      expect(within(lead).getByRole('button', { name: 'Open Newest' })).toBeInTheDocument()
+    })
+
+    it('has no grid below it when there is only one project', async () => {
+      mockedOverviews.mockResolvedValue([overview()])
+      render(<ProjectBrowser onOpen={vi.fn()} />)
+
+      await screen.findByRole('region', { name: 'Continue where you left off' })
+      expect(screen.queryByRole('region', { name: 'All projects' })).toBeNull()
+    })
+
+    it('remembers a project when it is opened', async () => {
+      mockedOverviews.mockResolvedValue([overview({ id: 'p1', name: 'Newest' })])
+      render(<ProjectBrowser onOpen={vi.fn()} />)
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Open Newest' }))
+      expect(localStorage.getItem('talkie.lastProject')).toBe('p1')
+    })
   })
 })
