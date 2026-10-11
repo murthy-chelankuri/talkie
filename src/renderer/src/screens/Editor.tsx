@@ -831,7 +831,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                    player letterbox inside it framed a slab of black with the demo in the middle
                    of it. Absolute inset with auto margins is what fits a fixed ratio into a box
                    of any shape and centres it. */
-                <div className="absolute inset-2 m-auto aspect-video max-h-full max-w-full overflow-hidden rounded-lg bg-[#0c0d11] shadow-lg ring-1 ring-border">
+                <div className="absolute inset-2 m-auto aspect-video max-h-full max-w-full overflow-hidden rounded-xl bg-[#0c0d11] shadow-2xl">
                   <Player
                     ref={playerRef}
                     component={DemoComposition}
@@ -885,7 +885,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       </ResizablePanel>
       <Separator className="h-2 bg-transparent transition-colors hover:bg-accent/30" />
       <ResizablePanel id="timeline" defaultSize="46" minSize="20">
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col overflow-hidden rounded-xl bg-surface">
         {(reorderError || transcriptError) && (
           <div className="flex flex-col gap-2 px-3 pt-2">
             {reorderError && <ErrorBanner message={reorderError} />}
@@ -899,7 +899,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <div
           role="tablist"
           aria-label="Ways to work on this project"
-          className="flex shrink-0 items-end gap-0.5 border-b border-border bg-bg px-3 pt-1.5"
+          className="flex shrink-0 items-end gap-5 px-4 pt-2"
         >
           {PANES.map(({ id, label }) => (
             <button
@@ -909,15 +909,19 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               aria-selected={bottomPane === id}
               onClick={() => setBottomPane(id)}
               className={cn(
-                'rounded-t-md border border-b-0 px-3 py-1.5 text-[12px] transition-colors',
-                bottomPane === id
-                  ? id === 'script'
-                    ? '-mb-px border-paper-border bg-paper font-medium text-text'
-                    : '-mb-px border-border bg-surface font-medium text-text'
-                  : 'border-transparent bg-transparent text-text-muted hover:text-text'
+                'relative pb-2 pt-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                bottomPane === id ? 'font-medium text-text' : 'text-text-muted hover:text-text'
               )}
             >
               {label}
+              {/* The script's tab is underlined in paper, the timeline's in the accent: the same
+                  signal the panes themselves carry. */}
+              {bottomPane === id && (
+                <span
+                  aria-hidden="true"
+                  className={cn('absolute inset-x-0 bottom-0 h-0.5 rounded-full', id === 'script' ? 'bg-paper-border' : 'bg-accent-gradient')}
+                />
+              )}
             </button>
           ))}
         </div>

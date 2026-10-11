@@ -184,7 +184,7 @@ function Scene({
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => onCommit(item, draft)}
           onFocus={() => onSelectItem(item)}
-          className="w-full max-w-[62ch] resize-none border-0 bg-transparent p-0 font-serif text-[15px] leading-[1.65] text-text placeholder:italic placeholder:text-text-muted focus:outline-none"
+          className="w-full max-w-[62ch] resize-none border-0 bg-transparent p-0 font-serif text-[15px] leading-[1.65] text-paper-text placeholder:italic placeholder:text-text-muted focus:outline-none"
         />
         <p className="mt-2 flex h-5 items-center gap-2 text-[10px] text-text-muted">
           <span>{statusOf(segment)}</span>
