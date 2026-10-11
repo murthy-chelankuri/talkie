@@ -21,6 +21,9 @@ for (const name of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChan
   }
 }
 
+/** Where this script was served from — the asset server's `__talkie/` — for Talkie's own fonts. */
+const talkieBase = ((document.currentScript as HTMLScriptElement | null)?.src ?? '').replace(/\/runtime\.js(?:\?.*)?$/, '')
+
 const realRaf = window.requestAnimationFrame.bind(window)
 const clock = createClock()
 clock.install(window)
@@ -79,10 +82,10 @@ window.addEventListener('message', (event) => {
   const message = event.data as HostMessage
   if (message?.type === 'talkie:init') {
     Object.assign(talkie, { fps: message.fps, duration: message.durationFrames / message.fps, params: message.params, theme: message.theme, beats: message.beats })
-    void applyTheme(document, message.theme).then(() => resolveInit())
+    void applyTheme(document, message.theme, talkieBase).then(() => resolveInit())
   } else if (message?.type === 'talkie:theme') {
     talkie.theme = message.theme
-    void applyTheme(document, message.theme)
+    void applyTheme(document, message.theme, talkieBase)
   } else if (message?.type === 'talkie:seek') {
     // In order: a seek waits for the one before it, so replies come back in the order asked.
     queue = queue.then(() => seek(message.frame)).then(

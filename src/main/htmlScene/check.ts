@@ -5,7 +5,7 @@ import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { resolveBrowser } from '../capture/resolveBrowser'
 import { FPS, HEIGHT, WIDTH } from '../../remotion/constants'
 import type { RenderTheme } from '../../remotion/renderTheme'
-import type { SceneTheme } from '../../htmlScene/protocol'
+import { DEFAULT_SCENE_THEMES, type SceneTheme } from '../../htmlScene/protocol'
 
 /**
  * Play a scene in a headless browser the way the video does — the same sandbox, the same messages
@@ -30,7 +30,7 @@ export interface CheckRequest {
   src: string
   durationFrames: number
   params?: Record<string, unknown>
-  theme: SceneTheme | null
+  theme: SceneTheme
   /** Seconds into the scene at which each line of narration starts. */
   beats?: number[]
   /** Which moments to return. By default the start, each beat, and the end. */
@@ -41,8 +41,9 @@ export interface CheckRequest {
   rootDir: string
 }
 
-export function sceneThemeFor(theme: RenderTheme | null, variant: 'brand' | 'light' | 'dark'): SceneTheme | null {
-  if (!theme) return null
+/** No theme means Talkie's own look, as in the video — see HtmlScene.tsx. */
+export function sceneThemeFor(theme: RenderTheme | null, variant: 'brand' | 'light' | 'dark'): SceneTheme {
+  if (!theme) return DEFAULT_SCENE_THEMES[variant]
   return { ...theme.variants[variant], fonts: theme.fonts, ...(theme.logo ? { logo: theme.logo.url } : {}) }
 }
 
@@ -123,10 +124,8 @@ export async function checkHtmlScene(request: CheckRequest): Promise<CheckResult
     }
 
     const audit = await sceneFrame(page).evaluate(auditPage)
-    if (request.theme) {
-      for (const thing of audit.offTheme) {
-        problems.add(`Uses ${thing}, which is not one of the theme's colours — use var(--talkie-heading), var(--talkie-body), var(--talkie-accent) or var(--talkie-bg).`)
-      }
+    for (const thing of audit.offTheme) {
+      problems.add(`Uses ${thing}, which is not one of the theme's colours — use var(--talkie-heading), var(--talkie-body), var(--talkie-accent) or var(--talkie-bg).`)
     }
     for (const text of audit.overflow) problems.add(`"${text}" runs out of the frame.`)
     if (frames.length > 0 && frames.every((frame) => frame.png.length < BLANK_FRAME_BYTES)) {

@@ -5,7 +5,7 @@ import { join } from 'path'
 
 describe('what a scene is served besides its own files', () => {
   it('has the runtime, the host and the three bundled libraries, from a checkout too', () => {
-    for (const name of ['runtime.js', 'host.js', 'host.html', 'lib/anime.min.js', 'lib/d3.min.js', 'lib/lottie.min.js']) {
+    for (const name of ['runtime.js', 'host.js', 'host.html', 'lib/anime.min.js', 'lib/d3.min.js', 'lib/lottie.min.js', 'fonts/geist.woff2', 'fonts/newsreader.woff2']) {
       const found = htmlSceneResource(name)
       expect(found, name).not.toBeNull()
       expect(readFileSync(found!.path).length, name).toBeGreaterThan(100)

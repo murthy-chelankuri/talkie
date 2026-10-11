@@ -28,5 +28,8 @@ const packageDir = (name) => {
 cpSync(join(packageDir('animejs'), 'lib/anime.min.js'), join(out, 'lib/anime.min.js'))
 cpSync(join(packageDir('d3'), 'dist/d3.min.js'), join(out, 'lib/d3.min.js'))
 cpSync(join(packageDir('lottie-web'), 'build/player/lottie.min.js'), join(out, 'lib/lottie.min.js'))
+mkdirSync(join(out, 'fonts'), { recursive: true })
+cpSync(join(packageDir('@fontsource-variable/geist'), 'files/geist-latin-wght-normal.woff2'), join(out, 'fonts/geist.woff2'))
+cpSync(join(packageDir('@fontsource-variable/newsreader'), 'files/newsreader-latin-wght-normal.woff2'), join(out, 'fonts/newsreader.woff2'))
 cpSync(join(root, 'resources/html-templates'), join(out, 'templates'), { recursive: true })
 console.log(`HTML scene resources built into ${out}`)

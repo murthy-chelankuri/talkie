@@ -14,7 +14,10 @@ import { dirname, join, sep } from 'path'
 export const LIBRARIES: Record<string, [pkg: string, file: string]> = {
   'lib/anime.min.js': ['animejs', 'lib/anime.min.js'],
   'lib/d3.min.js': ['d3', 'dist/d3.min.js'],
-  'lib/lottie.min.js': ['lottie-web', 'build/player/lottie.min.js']
+  'lib/lottie.min.js': ['lottie-web', 'build/player/lottie.min.js'],
+  // Talkie's own two families, for scenes in a project with no theme or one that uses them.
+  'fonts/geist.woff2': ['@fontsource-variable/geist', 'files/geist-latin-wght-normal.woff2'],
+  'fonts/newsreader.woff2': ['@fontsource-variable/newsreader', 'files/newsreader-latin-wght-normal.woff2']
 }
 
 /**
@@ -30,7 +33,7 @@ function packageDir(name: string): string {
   }
   throw new Error(`Could not find the ${name} package.`)
 }
-const TYPES: Record<string, string> = { '.js': 'text/javascript', '.html': 'text/html' }
+const TYPES: Record<string, string> = { '.js': 'text/javascript', '.html': 'text/html', '.woff2': 'font/woff2' }
 
 export function shippedDir(fromDir: string = __dirname): string {
   return join(fromDir.replace(`app.asar${sep}`, `app.asar.unpacked${sep}`), '..', 'html-scene')

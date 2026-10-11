@@ -13,7 +13,7 @@ export function scenePolicy(sceneFolderUrl: string, base: string): string {
     `script-src 'unsafe-inline' 'unsafe-eval' ${sceneFolderUrl} ${talkie}`,
     `style-src 'unsafe-inline' ${sceneFolderUrl} data:`,
     `img-src ${sceneFolderUrl} data: blob:`,
-    `font-src ${sceneFolderUrl} data:`,
+    `font-src ${sceneFolderUrl} ${talkie}fonts/ data:`,
     `media-src ${sceneFolderUrl} data: blob:`,
     "connect-src 'none'",
     "frame-src 'none'",
