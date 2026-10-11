@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'http'
 import { randomBytes } from 'crypto'
-import { createReadStream, existsSync, statSync } from 'fs'
+import { createReadStream, existsSync, readFileSync, statSync } from 'fs'
 import { dirname, extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
 import type { TimelineItem } from '../../remotion/types'
@@ -10,6 +10,8 @@ import { VIDEO_TIME_LOG } from '../capture/rebaseActionLog'
 import { mergeFocuses, type ClickFocus } from '../../remotion/clickZoom'
 import type { Caption as CaptionCue } from '../transcript/captions'
 import { FPS } from '../../remotion/constants'
+import { htmlSceneResource } from '../htmlScene/resources'
+import { injectRuntime, scenePolicy } from '../htmlScene/policy'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -20,11 +22,22 @@ const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.wav': 'audio/wav',
   '.webm': 'video/webm',
-  '.mp4': 'video/mp4'
+  '.mp4': 'video/mp4',
+  // What HTML scenes are made of — see htmlScene/store.ts for the full list a scene may hold.
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.json': 'application/json',
+  '.txt': 'text/plain; charset=utf-8',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf'
 }
 
 // Timeline item kinds whose `data.src` is a local media path needing URL resolution.
-const SRC_MEDIA_KINDS = new Set(['image', 'video', 'diagram'])
+const SRC_MEDIA_KINDS = new Set(['image', 'video', 'diagram', 'html'])
 
 function parseByteRange(
   header: string | undefined,
@@ -91,6 +104,20 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
         return
       }
 
+      // Talkie's own files for HTML scenes — the runtime, the headless host, the libraries — by name
+      // from a fixed list, never by path, so nothing outside that list is reachable this way.
+      const afterSecret = requestedPath.slice(secret.length + 1)
+      if (afterSecret.startsWith('/__talkie/')) {
+        const resource = htmlSceneResource(afterSecret.slice('/__talkie/'.length))
+        if (!resource || !existsSync(resource.path)) {
+          refuse()
+          return
+        }
+        res.writeHead(200, { 'Content-Type': resource.type, 'Access-Control-Allow-Origin': '*' })
+        createReadStream(resource.path).pipe(res)
+        return
+      }
+
       const filePath = normalize(join(rootDir, requestedPath.slice(secret.length + 2)))
       // A bare `startsWith(rootDir)` is a directory-boundary bug: rootDir '/tmp/foo' would
       // wrongly accept '/tmp/foobar/secret' since it's a string prefix but not a real subpath.
@@ -98,6 +125,21 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
 
       if (!isInsideRoot || !existsSync(filePath) || !statSync(filePath).isFile()) {
         refuse()
+        return
+      }
+
+      // A scene page: Talkie's runtime goes in first, and a policy keeps it off the network and out
+      // of every folder but its own. Only pages under sources/html; other HTML is served as it is.
+      if (extname(filePath).toLowerCase() === '.html' && filePath.includes(`${sep}sources${sep}html${sep}`)) {
+        const base = `http://127.0.0.1:${port}/${secret}`
+        const folderUrl = resolveAssetUrl(dirname(filePath), rootDir, base) + '/'
+        const body = Buffer.from(injectRuntime(readFileSync(filePath, 'utf-8'), base))
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Security-Policy': scenePolicy(folderUrl, base),
+          'Content-Length': body.length
+        })
+        res.end(body)
         return
       }
 
@@ -268,6 +310,12 @@ export function resolveTimelineAssetUrls(
         ...(audioUrl ? { audioUrl } : {}),
         ...(captions ? { captions } : {}),
         ...(beats ? { beats } : {}),
+        // A scene's still for the timeline, once one has been drawn — see htmlScene/htmlSceneApi.ts.
+        ...(item.kind === 'html' && existsSync(join(dirname(data.src), 'poster.png'))
+          ? {
+              posterUrl: `${resolveAssetUrl(join(dirname(data.src), 'poster.png'), rootDir, serverUrl)}?v=${encodeURIComponent((item.data as { posterStamp?: string }).posterStamp ?? '')}`
+            }
+          : {}),
         // Where the clicks in this clip landed, so the picture can lean towards them.
         ...(item.kind === 'video'
           ? { focus: focusesFor(data.src, item, data.trimBefore ?? 0, data.trimAfter) }

@@ -395,4 +395,61 @@ describe('asset server, as something hostile would meet it', () => {
     expect(response.status).toBe(404)
     rmSync(root, { recursive: true, force: true })
   })
+
+  describe('HTML scenes', () => {
+    function sceneRoot(): string {
+      const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+      mkdirSync(join(rootDir, 'p', 'sources', 'html', 'r'), { recursive: true })
+      writeFileSync(join(rootDir, 'p', 'sources', 'html', 'r', 'index.html'), '<p>hi</p>')
+      writeFileSync(join(rootDir, 'p', 'other.html'), '<p>not a scene</p>')
+      return rootDir
+    }
+
+    it('serves a scene page with the runtime in it and a policy of its own', async () => {
+      const rootDir = sceneRoot()
+      const server = await getAssetServer(rootDir)
+      const res = await fetch(`${server.url}/p/sources/html/r/index.html`)
+
+      expect(res.headers.get('content-security-policy')).toContain("connect-src 'none'")
+      expect(res.headers.get('content-security-policy')).toContain(`img-src ${server.url}/p/sources/html/r/ data: blob:`)
+      expect(await res.text()).toContain(`${server.url}/__talkie/runtime.js`)
+      rmSync(rootDir, { recursive: true, force: true })
+    })
+
+    it('serves Talkie’s runtime and libraries, and nothing else under that name', async () => {
+      const rootDir = sceneRoot()
+      const server = await getAssetServer(rootDir)
+
+      expect((await fetch(`${server.url}/__talkie/runtime.js`)).status).toBe(200)
+      expect((await fetch(`${server.url}/__talkie/lib/d3.min.js`)).status).toBe(200)
+      expect((await fetch(`${server.url}/__talkie/lib/gsap.min.js`)).status).toBe(404)
+      expect((await fetch(`${server.url}/__talkie/%2E%2E%2Fpackage.json`)).status).toBe(404)
+      rmSync(rootDir, { recursive: true, force: true })
+    })
+
+    it('serves an HTML file that is not a scene as it is', async () => {
+      const rootDir = sceneRoot()
+      const server = await getAssetServer(rootDir)
+      const res = await fetch(`${server.url}/p/other.html`)
+
+      expect(res.headers.get('content-security-policy')).toBeNull()
+      expect(await res.text()).toBe('<p>not a scene</p>')
+      rmSync(rootDir, { recursive: true, force: true })
+    })
+
+    it('gives a scene clip its page’s address and, once drawn, its poster’s', () => {
+      const rootDir = sceneRoot()
+      const src = join(rootDir, 'p', 'sources', 'html', 'r', 'index.html')
+      const item = { id: 'h', kind: 'html', start: 0, duration: 90, data: { src, title: 'T', posterStamp: 's1' } }
+
+      const [before] = resolveTimelineAssetUrls([item], rootDir, 'http://x/s')
+      writeFileSync(join(rootDir, 'p', 'sources', 'html', 'r', 'poster.png'), 'png')
+      const [after] = resolveTimelineAssetUrls([item], rootDir, 'http://x/s')
+
+      expect((before.data as { src: string }).src).toBe('http://x/s/p/sources/html/r/index.html')
+      expect((before.data as { posterUrl?: string }).posterUrl).toBeUndefined()
+      expect((after.data as { posterUrl?: string }).posterUrl).toBe('http://x/s/p/sources/html/r/poster.png?v=s1')
+      rmSync(rootDir, { recursive: true, force: true })
+    })
+  })
 })

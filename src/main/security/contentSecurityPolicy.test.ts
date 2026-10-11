@@ -36,9 +36,13 @@ describe('the packaged app’s policy', () => {
 
   it('shuts the doors this app never uses', () => {
     expect(parsed['object-src']).toBe("'none'")
-    expect(parsed['frame-src']).toBe("'none'")
     expect(parsed['base-uri']).toBe("'none'")
     expect(parsed['form-action']).toBe("'none'")
+  })
+
+  it('frames nothing but HTML scenes, served by the local asset server', () => {
+    // A scene runs in a sandboxed frame; anything wider would let the editor frame the web.
+    expect(parsed['frame-src']).toBe('http://127.0.0.1:*')
   })
 
   it('still allows what the interface genuinely needs', () => {
