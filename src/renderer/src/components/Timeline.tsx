@@ -657,7 +657,9 @@ export function Timeline({
             disabled={narratingAll || progress.needing.length === 0}
             title={
               progress.needing.length === 0
-                ? `Every clip already speaks in ${currentVoice}`
+                ? progress.unwritten.length > 0
+                  ? 'Nothing to speak yet: write the words under the clip, or press Write the words'
+                  : `Every clip already speaks in ${currentVoice}`
                 : progress.silent.length > 0
                   ? 'Speak the narration on every clip that has none'
                   : `Read these again in ${currentVoice}, replacing the takes already there`

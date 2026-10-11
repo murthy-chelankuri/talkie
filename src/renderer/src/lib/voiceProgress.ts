@@ -19,7 +19,11 @@ export interface VoiceProgress {
   otherVoice: TimelineItem[]
   /** Clips with audio, whichever voice read it. */
   voiced: number
-  /** What "speak everything" acts on: the silent ones, then the ones in another voice. */
+  /**
+   * What "speak everything" acts on: the silent ones that have words, then the ones in another
+   * voice. A clip with no words is not in it — there is nothing to speak, and counting it made the
+   * button offer "Speak 1 clip", do nothing, and say nothing.
+   */
   needing: TimelineItem[]
   /** The voice those other takes were read in, when they all agree on one. */
   previousVoice?: string
@@ -53,7 +57,7 @@ export function voiceProgress(
     unwritten,
     otherVoice,
     voiced: timeline.length - silent.length,
-    needing: [...silent, ...otherVoice],
+    needing: [...silent.filter((item) => !unwritten.includes(item)), ...otherVoice],
     previousVoice: voices.size === 1 ? ([...voices][0] as string) : undefined
   }
 }
@@ -89,11 +93,17 @@ export function voiceProgressHint(progress: VoiceProgress, currentVoice: string)
 
 /** The label on the button that speaks everything still to be spoken. */
 export function speakAllLabel(progress: VoiceProgress, currentVoice: string): string {
-  if (progress.silent.length > 0) {
-    return `Speak ${progress.silent.length} clip${progress.silent.length === 1 ? '' : 's'}`
+  const speakable = progress.silent.length - progress.unwritten.length
+  if (speakable > 0) {
+    return `Speak ${speakable} clip${speakable === 1 ? '' : 's'}`
   }
   if (progress.otherVoice.length > 0) {
     return `Re-speak ${progress.otherVoice.length} in ${currentVoice}`
+  }
+  // Nothing this button can do, but something left to do: say what, rather than "All voiced".
+  if (progress.unwritten.length > 0) {
+    const count = progress.unwritten.length
+    return `${count} clip${count === 1 ? ' needs' : 's need'} words`
   }
   return 'All voiced'
 }
