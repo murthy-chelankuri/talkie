@@ -70,6 +70,24 @@ export async function gatherClipEvidence(
     }
   }
 
+  // A page is read the way it was described when it was made, and by the words its poster shows.
+  if (item.kind === 'html') {
+    const { title, prompt, posterText } = item.data as { title?: string; prompt?: string; posterText?: string }
+    return {
+      kind: 'scene',
+      durationSeconds,
+      actions: [],
+      framePaths: [],
+      sceneText: [
+        title ? `Title: ${title}` : null,
+        prompt ? `Made to show: ${prompt}` : null,
+        posterText ? `Words on screen: ${posterText}` : null
+      ]
+        .filter(Boolean)
+        .join('\n')
+    }
+  }
+
   return gatherVideoEvidence(item, src, durationSeconds)
 }
 

@@ -56,6 +56,9 @@ import { generateTheme, saveGeneratedTheme } from '../main/themes/generate/gener
 import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
+import { addHtmlScene, checkSceneItem, editHtmlScene, readHtmlScene } from '../main/htmlScene/htmlSceneApi'
+import { HTML_SCENE_GUIDE } from '../main/htmlScene/guide'
+import type { CheckResult } from '../main/htmlScene/check'
 import * as recording from './recordingSession'
 
 /** Where projects live. Overridable so the tests do not touch the real ones. */
@@ -72,7 +75,7 @@ function describeItem(item: TimelineItem, index: number): string {
   const seconds = (item.duration / 30).toFixed(1)
   const data = item.data as { title?: string; source?: string; trimBefore?: number; trimAfter?: number } | null
   const name =
-    item.kind === 'scene' || item.kind === 'diagram'
+    item.kind === 'scene' || item.kind === 'diagram' || item.kind === 'html'
       ? richTextToPlain(data?.title ?? '') || 'untitled'
       : item.kind
 
@@ -1004,6 +1007,154 @@ export function createTalkieServer(
           'talkie_set_duration to say how long each holds.'
       )
     }
+  )
+
+  // ---------------------------------------------------------------- HTML scenes
+  // A page drawn into the video frame by frame. Every change is checked headless and the frames
+  // come back as pictures, so an agent sees what it made before anyone watches it.
+
+  /** The check's verdict, and the frames themselves as images. */
+  const sceneReply = (said: string, check: CheckResult, warnings: string[] = []) => ({
+    content: [
+      {
+        type: 'text' as const,
+        text: [
+          said,
+          ...warnings.map((warning) => `Warning: ${warning}`),
+          check.problems.length ? `Problems to fix:\n${check.problems.map((p) => `- ${p}`).join('\n')}` : 'The check found nothing wrong.',
+          check.frames.length ? `Frames at ${check.frames.map((f) => `${f.atSeconds.toFixed(1)}s`).join(', ')}:` : ''
+        ]
+          .filter(Boolean)
+          .join('\n')
+      },
+      ...check.frames.slice(0, 6).map((frame) => ({ type: 'image' as const, data: frame.png.toString('base64'), mimeType: 'image/png' }))
+    ]
+  })
+  const HtmlLook = z.object({ theme: z.enum(['brand', 'light', 'dark']).optional() })
+  const absolute = (path: string): string => {
+    if (!isAbsolute(path)) throw new Error(`"${path}" is not an absolute path.`)
+    return path
+  }
+
+  tool(
+    'talkie_html_scene_guide',
+    {
+      title: 'How to write an HTML scene',
+      description:
+        'Read this before writing an HTML scene: the runtime API (talkie.time, onFrame, params, beats), ' +
+        'the theme variables every scene must use, the libraries available, and the rules.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () => text(HTML_SCENE_GUIDE)
+  )
+
+  tool(
+    'talkie_add_html_scene',
+    {
+      title: 'Add an HTML scene',
+      description:
+        'Put a web page on the timeline as a scene — a chart, kinetic type, a code walkthrough, anything a ' +
+        'browser can draw — played frame by frame in the project\'s theme. Give files (path → contents, at ' +
+        'least index.html), or path: an absolute .html file or folder to import. Read talkie_html_scene_guide ' +
+        'first. Returns what the check found and the frames it drew.',
+      inputSchema: {
+        projectId: z.string(),
+        title: z.string(),
+        files: z.record(z.string()).optional().describe('Files by path inside the scene, e.g. {"index.html": "..."}'),
+        path: z.string().optional().describe('An absolute path to an .html file or a folder to import instead'),
+        params: z.record(z.unknown()).optional().describe('Named values the page reads as talkie.params'),
+        style: HtmlLook.optional().describe(STYLE_HELP),
+        durationSeconds: z.number().positive().optional(),
+        position: z.number().int().min(1).optional().describe('Where on the timeline, counting from 1 as talkie_timeline does; the end if left out'),
+        prompt: z.string().optional().describe('What it was made to show, kept for later changes and for narration')
+      }
+    },
+    async ({ projectId, title, files, path, params, style, durationSeconds, position, prompt }) => {
+      if (!files && !path) return text('Give files, or a path to import.')
+      const outcome = await addHtmlScene(
+        projectId,
+        {
+          title,
+          ...(files ? { files } : {}),
+          ...(path ? { importPath: absolute(path) } : {}),
+          params,
+          style,
+          prompt,
+          position,
+          ...(durationSeconds ? { durationFrames: Math.round(durationSeconds * 30) } : {})
+        },
+        baseDir
+      )
+      return sceneReply(`Added "${title}" (clip id ${outcome.item.id}).`, outcome.check, outcome.warnings)
+    }
+  )
+
+  tool(
+    'talkie_html_scene',
+    {
+      title: 'Read an HTML scene',
+      description: 'An HTML scene\'s files, values, look, what it was made to show, and what the last check found.',
+      inputSchema: { projectId: z.string(), timelineItemId: z.string() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ projectId, timelineItemId }) => {
+      const { data, files } = readHtmlScene(projectId, timelineItemId, baseDir)
+      return text(
+        [
+          `${data.title} (clip id ${timelineItemId}), look: ${data.style.theme}`,
+          data.prompt ? `Made to show: ${data.prompt}` : '',
+          `Values: ${JSON.stringify(data.params)}`,
+          data.check?.problems.length ? `Last check:\n${data.check.problems.map((p) => `- ${p}`).join('\n')}` : 'Last check: nothing wrong.',
+          '',
+          ...files.map((file) => (file.text === undefined ? `=== ${file.path} === (${file.bytes} bytes, not text)` : `=== ${file.path} ===\n${file.text}`))
+        ]
+          .filter((line) => line !== '')
+          .join('\n')
+      )
+    }
+  )
+
+  tool(
+    'talkie_edit_html_scene',
+    {
+      title: 'Change an HTML scene',
+      description:
+        'Change an HTML scene: replace or add files, remove files, or change its title, values or look. ' +
+        'Only what is given changes. One undo step. Returns what the check found and the frames it drew.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string(),
+        files: z.record(z.string()).optional(),
+        removeFiles: z.array(z.string()).optional(),
+        title: z.string().optional(),
+        params: z.record(z.unknown()).optional(),
+        style: HtmlLook.optional().describe(STYLE_HELP)
+      }
+    },
+    async ({ projectId, timelineItemId, files, removeFiles, title, params, style }) => {
+      const outcome = await editHtmlScene(projectId, timelineItemId, { files, removeFiles, title, params, style }, baseDir)
+      return sceneReply('Changed.', outcome.check)
+    }
+  )
+
+  tool(
+    'talkie_check_html_scene',
+    {
+      title: 'Look at an HTML scene',
+      description:
+        'Draw an HTML scene at the moments asked for and return the frames as pictures, with anything wrong: ' +
+        'errors, attempts to leave the sandbox, colours not from the theme, text out of frame, animation that ' +
+        'depends on frame order. By default the start, each line of narration, and the end.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string(),
+        atSeconds: z.array(z.number().min(0)).optional()
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ projectId, timelineItemId, atSeconds }) =>
+      sceneReply('Checked.', await checkSceneItem(projectId, timelineItemId, atSeconds, baseDir))
   )
 
   tool(

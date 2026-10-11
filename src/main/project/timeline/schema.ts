@@ -73,11 +73,30 @@ export const DiagramSceneDataSchema = z.object({
   title: z.string().optional()
 })
 
+/**
+ * A scene drawn by a web page. `src` is the page itself, an absolute path like every other clip's
+ * media, inside a revision folder that is never changed once written — see htmlScene/store.ts.
+ */
+export const HtmlSceneDataSchema = z.object({
+  src: z.string(),
+  title: z.string(),
+  style: z.object({ theme: z.enum(['brand', 'light', 'dark']).default('dark') }).default({}),
+  params: z.record(z.unknown()).default({}),
+  prompt: z.string().optional(),
+  /** What the poster was drawn for — files, theme and variant — so a stale one is redrawn. */
+  posterStamp: z.string().optional(),
+  /** The words on the poster frame, for the narration drafter. */
+  posterText: z.string().optional(),
+  check: z.object({ problems: z.array(z.string()) }).optional()
+})
+export type HtmlSceneData = z.infer<typeof HtmlSceneDataSchema>
+
 export const TIMELINE_ITEM_DATA_SCHEMAS: Record<string, z.ZodSchema> = {
   image: ImageItemDataSchema,
   video: VideoItemDataSchema,
   scene: TextSceneDataSchema,
-  diagram: DiagramSceneDataSchema
+  diagram: DiagramSceneDataSchema,
+  html: HtmlSceneDataSchema
 }
 
 export type SceneStyle = z.infer<typeof SceneStyleSchema>

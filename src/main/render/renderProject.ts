@@ -20,6 +20,7 @@ import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { binariesDirectory } from './binaries'
 import { levelExport } from './loudness'
 import { redrawStaleDiagrams } from '../themes/projectDiagrams'
+import { redrawStalePosters } from '../htmlScene/htmlSceneApi'
 import { toRenderTheme } from '../themes/toRenderTheme'
 import { browserExecutablePath } from '../capture/resolveBrowser'
 import { remotionBundleLocation } from './remotionBundle'
@@ -45,6 +46,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   // Before anything is read: a theme changed since the project was last open leaves diagrams
   // drawn in the old colours, and the video should show the theme as it is now.
   await redrawStaleDiagrams(id, baseDir)
+  await redrawStalePosters(id, baseDir)
 
   const rootDir = projectsRootDir(baseDir)
   // Cast: project/timeline/schema.ts's zod-inferred TimelineItem treats `data` as optional

@@ -16,6 +16,8 @@ import type { Session } from 'electron'
 
 /** The loopback asset server, which serves each project's own media on an ephemeral port. */
 const ASSET_SERVER = 'http://127.0.0.1:*'
+// frame-src: HTML scenes play in a sandboxed frame served by the asset server — see
+// htmlScene/policy.ts. Nothing else is ever framed.
 
 /**
  * Inline styles are unavoidable here: the interface positions waveforms, clip blocks and the
@@ -32,7 +34,7 @@ const PRODUCTION_POLICY = [
   `connect-src 'self' data: blob: ${ASSET_SERVER}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
-  "frame-src 'none'",
+  `frame-src ${ASSET_SERVER}`,
   "base-uri 'none'",
   "form-action 'none'"
 ].join('; ')
@@ -52,7 +54,7 @@ const DEVELOPMENT_POLICY = [
   `connect-src 'self' data: blob: ws: http://localhost:* ${ASSET_SERVER}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
-  "frame-src 'none'",
+  `frame-src ${ASSET_SERVER}`,
   "base-uri 'none'",
   "form-action 'none'"
 ].join('; ')

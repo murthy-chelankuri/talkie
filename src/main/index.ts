@@ -5,6 +5,7 @@ import { registerTimelineHandlers } from './ipc/timelineHandlers'
 import { registerCaptureHandlers } from './ipc/captureHandlers'
 import { registerTranscriptHandlers } from './ipc/transcriptHandlers'
 import { registerThemeHandlers } from './ipc/themeHandlers'
+import { registerHtmlSceneHandlers } from './ipc/htmlSceneHandlers'
 import { migrateStorageRoot } from './project/migrateStorageRoot'
 import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
@@ -116,6 +117,7 @@ app.whenReady().then(() => {
   registerCaptureHandlers(ipcMain, () => mainWindowRef)
   registerTranscriptHandlers(ipcMain)
   registerThemeHandlers(ipcMain)
+  registerHtmlSceneHandlers(ipcMain, () => mainWindowRef)
   createWindow()
 
   app.on('activate', function () {

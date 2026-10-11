@@ -88,6 +88,14 @@ These each cost real time to find. None are obvious from the code.
 - **transformers.js refuses to load with both model sources off**, even from a full cache. While
   speaking, its remote host is pointed at a dead local port instead, so a cached model loads and a
   missing one fails rather than downloading mid-clip.
+- **The MCP server is an ES module, which has no `__dirname`.** The shared modules find what ships
+  beside them through it — the Remotion bundle, the HTML scene runtime — so `vite.mcp.config.ts`
+  defines `__dirname` and `__filename` in the bundle's banner. Without that, the built server threw
+  a `ReferenceError` on the first lookup and nothing caught it, because the tests run the sources;
+  `builtServer.test.ts` runs the built bundle from `/` once there is one.
+- **esbuild is a build tool, not part of the app.** `htmlScene/resources.ts` builds the scene runtime
+  on first use only in a checkout, and loads esbuild there and only there; a packaged build ships the
+  runtime already built and has no esbuild to load.
 - **Renderer entries are declared explicitly** in `electron.vite.config.ts` — the editor window
   and the recording toolbar. A new window needs adding there or it will not ship.
 
@@ -254,6 +262,26 @@ colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `
   provider chooses (rules if not), fonts come only from Google Fonts' `ofl/`/`apache/`, contrast
   is fixed, and the result waits in `Themes/.drafts` until saved.
 
+## HTML scenes
+
+A clip whose picture is a web page — HTML, CSS, JS — played frame by frame (`kind: 'html'`,
+`src/main/htmlScene/`, `src/htmlScene/`). People describe one, start from a template, import a page,
+or edit the code; agents use five MCP tools and get the frames back as images.
+
+- **A scene is a revision folder** under `sources/html/`, never changed once written; `src` points
+  at its page. Undo restores the pointer. Unreferenced revisions are swept when a project opens.
+- **Talkie's runtime owns the page's time.** The asset server injects `talkie-runtime.js` first;
+  it replaces the clock (rAF, timers, Date, performance.now) and answers each `seek` with `drawn`
+  once every animation is held at that moment. CSS animations can be replaced by the browser after
+  they are held, so it holds, paints and checks again.
+- **The theme arrives as CSS variables** (`--talkie-bg`, `--talkie-heading`, …). No theme means
+  Talkie's own look, as for slides; Talkie's fonts are served from `__talkie/fonts/`.
+- **`checkHtmlScene` is the one check**, for the editor, posters and agents: it plays the scene in
+  the headless host exactly as the video does and reports errors, sandbox attempts, off-theme
+  colours, text out of frame, blank frames and order-dependent animation.
+- **Libraries are anime.js, D3 and lottie-web only** — no GSAP (its licence forbids tools that
+  compete with Webflow's animation builder).
+
 ## Security invariants
 
 Do not weaken these without understanding what they are for. Each has tests.
@@ -273,6 +301,13 @@ Do not weaken these without understanding what they are for. Each has tests.
   microphone and fullscreen. Anything added to that list upstream arrives refused. Written as a
   named rule rather than an inline comparison because the inline one silently cost the preview
   its fullscreen button.
+- **HTML scenes play in `sandbox="allow-scripts"` frames and nothing more** — never
+  `allow-same-origin`. Their pages are served with `connect-src 'none'` and images and fonts only from
+  their own folder (`htmlScene/policy.ts`). A sandboxed frame can still navigate itself, carrying the
+  asset server's secret in its address, and only the *framing* page's policy stops that: every host —
+  the editor, the check's host page, and the export's composition — restricts `frame-src` to the
+  asset server. DNS prefetching is turned off and WebRTC removed, since no page policy covers either.
+  `check.test.ts` drives a hostile scene through every one of these.
 - **No window enables `nodeIntegration`.** Navigation is confined to the app's own pages by
   `src/main/security/navigationGuards.ts`.
 - **The MCP server is off by default** and checks a hashed token on every call.

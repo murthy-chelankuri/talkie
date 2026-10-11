@@ -181,3 +181,19 @@ export const themeClient = {
   addAsset: (...args: Parameters<Window['api']['themes']['addAsset']>) => announcing(window.api.themes.addAsset(...args)),
   render: (...args: Parameters<Window['api']['themes']['render']>) => window.api.themes.render(...args)
 }
+
+export type { HtmlSceneResult, HtmlSceneWriteResult } from '../../../main/ipc/htmlSceneHandlers'
+export type { HtmlSceneInput } from '../../../main/htmlScene/htmlSceneApi'
+export type { HtmlSceneData } from '../../../main/project/timeline/schema'
+
+export const htmlSceneClient = {
+  add: (...args: Parameters<Window['api']['htmlScene']['add']>) => window.api.htmlScene.add(...args),
+  edit: (...args: Parameters<Window['api']['htmlScene']['edit']>) => window.api.htmlScene.edit(...args),
+  read: (id: string, itemId: string) => window.api.htmlScene.read(id, itemId),
+  check: (id: string, itemId: string, atSeconds?: number[]) => window.api.htmlScene.check(id, itemId, atSeconds),
+  import: (id: string) => window.api.htmlScene.import(id),
+  templates: () => window.api.htmlScene.templates(),
+  fromTemplate: (id: string, templateId: string, title: string) => window.api.htmlScene.fromTemplate(id, templateId, title),
+  describe: (id: string, instruction: string) => window.api.htmlScene.describe(id, instruction),
+  change: (id: string, itemId: string, instruction: string) => window.api.htmlScene.change(id, itemId, instruction)
+}

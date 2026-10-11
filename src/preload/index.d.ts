@@ -8,6 +8,7 @@ import type {
   ThemesApi,
   AgentApi,
   SceneApi,
+  HtmlSceneApi,
   MenuApi
 } from './index'
 
@@ -20,6 +21,7 @@ declare global {
       agent: AgentApi
       project: ProjectApi
       scene: SceneApi
+      htmlScene: HtmlSceneApi
       timeline: TimelineApi
       render: RenderApi
       capture: CaptureApi

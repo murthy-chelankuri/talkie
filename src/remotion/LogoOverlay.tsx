@@ -19,7 +19,7 @@ export function logoPlacement(kind: string, data: unknown, theme: RenderTheme | 
   if (!logo) return null
 
   const layout = (data as { layout?: string } | null)?.layout
-  const isSlide = kind === 'scene' || kind === 'diagram'
+  const isSlide = kind === 'scene' || kind === 'diagram' || kind === 'html'
   if (isSlide && layout && layout !== 'standard') return null
   if (isSlide ? !logo.showOn.slides : !logo.showOn.recordings) return null
 
@@ -35,7 +35,7 @@ export function LogoOverlay({ kind, data }: { kind: string; data: unknown }): JS
   if (!placement || !theme?.logo) return null
 
   // A slide's ground is known; a recording's is whatever was on screen, so it is left alone.
-  const isSlide = kind === 'scene' || kind === 'diagram'
+  const isSlide = kind === 'scene' || kind === 'diagram' || kind === 'html'
   const background = isSlide ? resolveSceneTheme((data as { style?: SceneStyle } | null)?.style, theme).background : undefined
 
   return (

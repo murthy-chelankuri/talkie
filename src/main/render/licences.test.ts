@@ -40,4 +40,15 @@ describe('sharp, left out', () => {
 
     expect(lock).not.toMatch(/sharp-libvips/)
   })
+
+  it('serves HTML scenes only libraries under permissive licences, and never GSAP', () => {
+    // Scenes are given these at run time, so they ship with the app. GSAP is free to use but its
+    // licence forbids tools that compete with Webflow's animation builder — see the HTML scenes spec.
+    const licence = (name: string): string => JSON.parse(readFileSync(join(ROOT, 'node_modules', name, 'package.json'), 'utf-8')).license
+    expect(licence('animejs')).toBe('MIT')
+    expect(licence('d3')).toBe('ISC')
+    expect(licence('lottie-web')).toBe('MIT')
+    expect(licence('codemirror')).toBe('MIT')
+    expect(existsSync(join(ROOT, 'node_modules/gsap'))).toBe(false)
+  })
 })
