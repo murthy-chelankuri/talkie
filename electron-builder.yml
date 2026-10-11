@@ -31,6 +31,9 @@ asarUnpack:
   # The MCP server is spawned by an outside agent as a plain node process, which cannot read a
   # file inside an asar archive. It has to be a real file on disk for `node <path>` to work.
   - out/mcp/**
+  # HTML scenes' runtime, libraries and templates. The MCP server reads them as plain node to serve
+  # scenes it checks, and plain node cannot read inside the archive.
+  - out/html-scene/**
   - node_modules/@remotion/compositor-**/**
   - node_modules/playwright/**
   - node_modules/playwright-core/**
