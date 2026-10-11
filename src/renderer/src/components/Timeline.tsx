@@ -146,8 +146,13 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
   // rather than showing every slide in the dark palette slides had before there were themes.
   const look = resolveSceneTheme(data?.style, useRenderTheme())
 
+  // An HTML scene shows its poster — a still drawn by the check — once it has one.
+  if (item.kind === 'html' && (data as { posterUrl?: string } | null)?.posterUrl) {
+    return <img src={(data as { posterUrl: string }).posterUrl} alt="" className="pointer-events-none h-full w-full object-cover" />
+  }
+
   // A slide has no picture to show, so it shows what it says.
-  if (item.kind === 'scene') {
+  if (item.kind === 'scene' || item.kind === 'html') {
     return (
       <div
         // Bottom padding keeps the slide's own words clear of the kind chip in the corner.

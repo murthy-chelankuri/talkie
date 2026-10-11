@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { LayoutTemplate, Share2, Sparkles, TriangleAlert, X } from 'lucide-react'
+import { Code2, LayoutTemplate, Share2, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { sceneClient, type TimelineItem } from '../api/projectClient'
 import { RichTextField } from './RichTextField'
 import { plainToRichText, richTextToPlain } from '../../../main/project/timeline/richText'
@@ -13,8 +13,9 @@ import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
 import { Spinner } from './ui/Spinner'
 import { cn } from '../lib/cn'
+import { HtmlScenePanel } from './htmlScene/HtmlScenePanel'
 
-export type SceneKind = 'scene' | 'diagram'
+export type SceneKind = 'scene' | 'diagram' | 'html'
 
 export interface SceneDraft {
   title: string
@@ -42,7 +43,7 @@ function draftFrom(item: TimelineItem | null): { kind: SceneKind; draft: SceneDr
   }
 
   return {
-    kind: item?.kind === 'diagram' ? 'diagram' : 'scene',
+    kind: item?.kind === 'diagram' ? 'diagram' : item?.kind === 'html' ? 'html' : 'scene',
     draft: {
       title: data.title ?? '',
       bullets: data.bullets ?? [],
@@ -119,7 +120,8 @@ export function SceneEditor({
   }, [kind, draft.source, draft.style.theme, theme])
 
   async function askTheModel(): Promise<void> {
-    if (!instruction.trim()) return
+    // An HTML scene has its own panel, with its own way of asking.
+    if (!instruction.trim() || kind === 'html') return
     setWriting(true)
     setError(null)
     try {
@@ -153,6 +155,7 @@ export function SceneEditor({
   }
 
   async function save(): Promise<void> {
+    if (kind === 'html') return
     setSaving(true)
     setError(null)
     try {
@@ -206,7 +209,11 @@ export function SceneEditor({
       <div
         role="dialog"
         aria-label={item ? 'Edit scene' : 'Add a scene'}
-        className="flex h-[36rem] max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
+        className={cn(
+          'flex max-h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl',
+          // Code and a playing scene side by side need more room than a slide's two fields.
+          kind === 'html' ? 'h-[44rem] max-w-6xl' : 'h-[36rem] max-w-4xl'
+        )}
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
           <h2 className="font-serif text-lg text-text">{item ? 'Edit scene' : 'Add a scene'}</h2>
@@ -216,7 +223,8 @@ export function SceneEditor({
               {(
                 [
                   { id: 'scene' as const, label: 'Slide', icon: <LayoutTemplate size={13} /> },
-                  { id: 'diagram' as const, label: 'Diagram', icon: <Share2 size={13} /> }
+                  { id: 'diagram' as const, label: 'Diagram', icon: <Share2 size={13} /> },
+                  { id: 'html' as const, label: 'HTML', icon: <Code2 size={13} /> }
                 ]
               ).map((option) => (
                 <button
@@ -241,6 +249,10 @@ export function SceneEditor({
           </IconButton>
         </header>
 
+        {kind === 'html' ? (
+          <HtmlScenePanel projectId={projectId} item={item} theme={theme} onSaved={onSaved} onClose={onClose} />
+        ) : (
+        <>
         <div className="flex min-h-0 flex-1">
           <div className="flex w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto border-r border-border p-4">
             {kind === 'scene' ? (
@@ -377,6 +389,8 @@ export function SceneEditor({
             </Button>
           </div>
         </footer>
+        </>
+        )}
       </div>
     </div>
   )
