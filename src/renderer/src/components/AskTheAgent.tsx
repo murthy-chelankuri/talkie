@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, PanelRightClose, PanelRightOpen, Sparkles, Square } from 'lucide-react'
+import { ArrowUp, Sparkles, Square, X } from 'lucide-react'
 import { agentClient } from '../api/projectClient'
 import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
@@ -27,13 +27,14 @@ export interface Turn {
 
 export function AskTheAgent({
   projectId,
-  collapsed,
-  onToggleCollapsed,
+  onClose,
+  onWorkingChange,
   onChanged
 }: {
   projectId: string
-  collapsed: boolean
-  onToggleCollapsed: () => void
+  onClose: () => void
+  /** Told when a run starts and ends, so the rail can say so while this panel is shut. */
+  onWorkingChange?: (working: boolean) => void
   /** Reload from disk: the agent wrote to the same files through a process of its own. */
   onChanged: () => void | Promise<void>
 }): JSX.Element {
@@ -54,6 +55,10 @@ export function AskTheAgent({
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [turns, working])
+
+  useEffect(() => {
+    onWorkingChange?.(working)
+  }, [working, onWorkingChange])
 
   async function ask(): Promise<void> {
     const asked = instruction.trim()
@@ -81,23 +86,12 @@ export function AskTheAgent({
     }
   }
 
-  if (collapsed) {
-    return (
-      <aside className="flex h-full w-full flex-col items-center gap-2 overflow-hidden bg-surface px-2 py-3">
-        <IconButton aria-label="Show the agent" onClick={onToggleCollapsed}>
-          <PanelRightOpen size={16} />
-        </IconButton>
-        {/* The one thing worth saying at this width: it is still working. */}
-        {working && <Thinking compact />}
-      </aside>
-    )
-  }
-
   return (
     // Sized by the panel it is in rather than by itself: the edge beside it drags, so how much
-    // room a conversation gets is the reader's to decide.
-    <aside className="flex h-full w-full flex-col bg-surface">
-      <header className="flex shrink-0 items-center gap-2 border-b border-border px-3.5 py-2.5">
+    // room a conversation gets is the reader's to decide. Kept mounted while its panel is shut,
+    // so neither the conversation nor a run in progress is lost by looking at something else.
+    <aside aria-label="Agent conversation" className="flex h-full w-full flex-col rounded-xl bg-surface">
+      <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-3">
         <Sparkles size={13} className="shrink-0 text-accent" aria-hidden="true" />
         <h2 className="font-serif text-[14px] leading-none text-text">Ask Talkie</h2>
         {/* A run is not free, and the last one ran into a usage limit. Quiet, but there. */}
@@ -106,8 +100,8 @@ export function AskTheAgent({
             ${spent.toFixed(2)}
           </span>
         )}
-        <IconButton aria-label="Hide the agent" className="ml-auto" onClick={onToggleCollapsed}>
-          <PanelRightClose size={16} />
+        <IconButton aria-label="Close the agent" className="-mr-1.5 ml-auto" onClick={onClose}>
+          <X size={15} />
         </IconButton>
       </header>
 
@@ -133,8 +127,8 @@ export function AskTheAgent({
         <div ref={endRef} />
       </div>
 
-      <div className="shrink-0 border-t border-border p-2.5">
-        <div className="mx-auto flex max-w-2xl items-end gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-2 focus-within:border-accent">
+      <div className="shrink-0 p-2.5">
+        <div className="mx-auto flex max-w-2xl items-end gap-1.5 rounded-[10px] bg-raised px-2.5 py-2 focus-within:ring-2 focus-within:ring-accent">
           <textarea
             value={instruction}
             aria-label="Ask Talkie to change this project"
@@ -226,7 +220,7 @@ function Said({ turn }: { turn: Turn }): JSX.Element {
  * Three dots would say it is busy; this has to say more than that, because the agent is writing
  * the same files the editor is showing and the only safe thing to do meanwhile is nothing.
  */
-function Thinking({ compact = false }: { compact?: boolean }): JSX.Element {
+function Thinking(): JSX.Element {
   const dots = (
     <span className="flex items-center gap-1" aria-label="Working">
       {[0, 1, 2].map((dot) => (
@@ -238,8 +232,6 @@ function Thinking({ compact = false }: { compact?: boolean }): JSX.Element {
       ))}
     </span>
   )
-
-  if (compact) return dots
 
   return (
     <div className="flex flex-col gap-1.5 border-l-2 border-l-accent pl-2.5">

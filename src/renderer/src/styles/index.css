@@ -69,10 +69,8 @@ body {
 }
 
 /*
- * Temporary shim: Tailwind's Preflight (@tailwind base) strips native browser default styling
- * from form elements globally. The screens that have been designed set their own styles; this
- * only catches anything not yet restyled, using hardcoded colours so it cannot be mistaken for
- * part of the design system. Remove once nothing relies on it.
+ * Base rules Tailwind's Preflight leaves out: the [hidden] fix, and native dropdowns in the
+ * Studio field look.
  */
 @layer base {
   /*
@@ -85,21 +83,21 @@ body {
     display: none !important;
   }
 
+  /*
+   * Studio has no outlines, so a native dropdown takes the raised field look the inputs have.
+   * The stopgap that once gave every unstyled button a grey outline and fill is gone: Studio's
+   * default for a button is no box at all, and that rule drew one round every control that relied
+   * on it — the rail, the play controls, every icon button.
+   */
   select {
-    border: 1px solid #767676;
-    padding: 0.25rem 0.5rem;
-    border-radius: 2px;
+    border: 0;
+    border-radius: 9px;
+    padding: 0.375rem 0.625rem;
+    background-color: var(--color-raised);
+    color: var(--color-text);
   }
 
   button {
-    border: 1px solid #767676;
-    padding: 0.25rem 0.75rem;
-    border-radius: 2px;
-    background-color: #f0f0f0;
     cursor: pointer;
-  }
-
-  button:hover {
-    background-color: #e0e0e0;
   }
 }

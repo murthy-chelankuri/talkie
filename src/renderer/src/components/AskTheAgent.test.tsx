@@ -17,8 +17,7 @@ function panel(props: Record<string, unknown> = {}) {
   return render(
     <AskTheAgent
       projectId="p1"
-      collapsed={false}
-      onToggleCollapsed={vi.fn()}
+      onClose={vi.fn()}
       onChanged={vi.fn()}
       {...props}
     />
@@ -77,8 +76,7 @@ describe('asking Talkie to change the project', () => {
     rerender(
       <AskTheAgent
         projectId="p2"
-        collapsed={false}
-        onToggleCollapsed={vi.fn()}
+        onClose={vi.fn()}
         onChanged={vi.fn()}
       />
     )
@@ -143,20 +141,24 @@ describe('asking Talkie to change the project', () => {
     await waitFor(() => expect(screen.getByLabelText(/ask talkie/i)).not.toBeDisabled())
   })
 
-  it('folds away to a strip, still showing that it is working', async () => {
+  it('tells the editor when it starts and stops working, so the rail can say so while it is shut', async () => {
     let finish: (value: unknown) => void = () => undefined
     instruct.mockReturnValue(new Promise((resolve) => (finish = resolve)))
-    const { rerender } = panel()
+    const onWorkingChange = vi.fn()
+    panel({ onWorkingChange })
 
     await say('rewrite it all')
-    rerender(
-      <AskTheAgent projectId="p1" collapsed onToggleCollapsed={vi.fn()} onChanged={vi.fn()} />
-    )
-
-    expect(screen.queryByLabelText(/ask talkie to change/i)).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Working')).toBeInTheDocument()
-    expect(screen.getByLabelText('Show the agent')).toBeInTheDocument()
+    expect(onWorkingChange).toHaveBeenLastCalledWith(true)
 
     finish({ status: 'done', say: 'Done.' })
+    await waitFor(() => expect(onWorkingChange).toHaveBeenLastCalledWith(false))
+  })
+
+  it('closes when asked', async () => {
+    const onClose = vi.fn()
+    panel({ onClose })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close the agent' }))
+    expect(onClose).toHaveBeenCalled()
   })
 })

@@ -5,8 +5,7 @@ import {
   Group,
   Panel as ResizablePanel,
   Separator,
-  useDefaultLayout,
-  usePanelRef
+  useDefaultLayout
 } from 'react-resizable-panels'
 import {
   projectClient,
@@ -24,7 +23,15 @@ import { ScriptView } from '../components/ScriptView'
 import { AskTheAgent } from '../components/AskTheAgent'
 import { drawPendingDiagrams } from '../lib/drawPendingDiagrams'
 import { cn } from '../lib/cn'
-import { SourcesPanel } from '../components/SourcesPanel'
+import { TopBarActions } from '../components/AppShell'
+import { SidePanel } from '../components/ui/SidePanel'
+import { EditorRail } from '../components/editor/EditorRail'
+import { useRailPanel, type RailPanelId } from '../components/editor/useRailPanel'
+import { ResizeHandle, useResizableWidth } from '../components/editor/ResizeHandle'
+import { ProjectPanel } from '../components/editor/ProjectPanel'
+import { AddPanel } from '../components/editor/AddPanel'
+import { VoicePanel } from '../components/editor/VoicePanel'
+import { ExportControl } from '../components/editor/ExportControl'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
 import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
@@ -63,6 +70,13 @@ const PANES = [
   { id: 'script', label: 'Script' }
 ] as const
 
+const RAIL_TITLES: Record<RailPanelId, string> = {
+  project: 'Project',
+  add: 'Add to the video',
+  voice: 'Voice',
+  agent: 'Ask the agent'
+}
+
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
@@ -74,9 +88,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
   const stageLayout = useDefaultLayout({ id: 'editor-stage', storage: localStorage })
-  // The agent rail against the demo beside it. Remembered separately from the stage/timeline
-  // split, because how much room a conversation wants is not the same question.
-  const agentLayout = useDefaultLayout({ id: 'editor-agent', storage: localStorage })
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
@@ -99,14 +110,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // Operating the timeline and writing the script are different jobs wanting different shapes
   // of room, so the bottom pane does one at a time. See ScriptView.
   const [bottomPane, setBottomPane] = useState<'timeline' | 'script'>('timeline')
-  // Remembered, because the rail is a working preference rather than a per-session choice.
-  const [sourcesCollapsed, setSourcesCollapsed] = useState(
-    () => localStorage.getItem('talkie.sourcesCollapsed') === 'true'
-  )
-  // Whether the rail is folded. Owned by the panel, which remembers its own width through
-  // useDefaultLayout; this only follows it so the rail knows which of itself to draw.
-  const [agentCollapsed, setAgentCollapsed] = useState(false)
-  const agentPanel = usePanelRef()
+  // Which side panel is open — at most one — and how wide it is, both remembered on this Mac.
+  const rail = useRailPanel()
+  const [sideWidth, setSideWidth] = useResizableWidth('talkie.sidePanelWidth', 300, 260, 420)
+  // The agent can be working with its panel shut; the rail says so.
+  const [agentWorking, setAgentWorking] = useState(false)
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
@@ -195,15 +203,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
 
+  // An error nobody can read is worse than the failure itself, so a failed import or recording
+  // opens the panel that says so. An export's failure shows under Export, in the top bar.
+  const showRailPanel = rail.show
   useEffect(() => {
-    localStorage.setItem('talkie.sourcesCollapsed', String(sourcesCollapsed))
-  }, [sourcesCollapsed])
-
-  // A collapsed rail has no room for an error, and an error nobody can read is worse than the
-  // failure itself — so anything that went wrong opens the panel to say so.
-  useEffect(() => {
-    if (importError || exportError || recordError) setSourcesCollapsed(false)
-  }, [importError, exportError, recordError])
+    if (importError || recordError) showRailPanel('add')
+  }, [importError, recordError, showRailPanel])
 
   useEffect(() => {
     return () => recorderRef.current?.cancel()
@@ -686,57 +691,87 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const remotionTimeline = timeline as unknown as RemotionTimelineItem[]
 
   return (
+    <div className="flex h-full gap-2 bg-bg pb-2 pr-2">
+      <TopBarActions>
+        <ExportControl
+          exporting={exporting}
+          exportedPath={exportedPath}
+          exportError={exportError}
+          onExport={handleExport}
+          onDismiss={() => setExportedPath(null)}
+        />
+      </TopBarActions>
+      <EditorRail open={rail.open} onToggle={rail.toggle} agentWorking={agentWorking} />
     <Group
       orientation="vertical"
       defaultLayout={stageLayout.defaultLayout}
       onLayoutChanged={stageLayout.onLayoutChanged}
-      className="h-full"
+      className="min-w-0 flex-1"
     >
       <ResizablePanel id="stage" defaultSize="62" minSize="25">
-        <div className="flex h-full">
-            <SourcesPanel
-              project={project}
-              timeline={timeline}
-              segments={segments}
-              totalFrames={computeTimelineDuration(remotionTimeline)}
-              progress={progress}
-              currentVoice={voice}
-              fidelityNote={fidelityNote}
-              onKeepProjectVoice={handleKeepProjectVoice}
-              hasContext={hasProjectContext(project?.context)}
-              onEditContext={() => setEditingContext(true)}
-              projectVoice={project?.voice ?? null}
-              appVoice={appVoice}
-              voices={voices}
-              onProjectVoiceChange={(next) => void handleProjectVoiceChange(next)}
-              onAddScene={() => setSceneEditing('new')}
-              recording={recording}
-              exporting={exporting}
-              exportedPath={exportedPath}
-              importError={importError}
-              exportError={exportError}
-              recordError={recordError}
-              onImportImage={handleImportImage}
-          onImportDeck={handleImportDeck}
-          importingDeck={importingDeck}
-          deckProgress={deckProgress}
-              onRecordSession={handleRecordSession}
-              onExport={handleExport}
-              onDismissExport={() => setExportedPath(null)}
-              collapsed={sourcesCollapsed}
-              onToggleCollapsed={() => setSourcesCollapsed((open) => !open)}
-            />
-        {/* Drag the edge to give the conversation as much of the stage as it needs — the same
-            handle the stage and timeline already split on. The demo shrinks to suit; it is the
-            thing with a fixed shape, so it has the room to give. */}
-        <Group
-          orientation="horizontal"
-          defaultLayout={agentLayout.defaultLayout}
-          onLayoutChanged={agentLayout.onLayoutChanged}
-          className="min-w-0 flex-1"
-        >
-        <ResizablePanel id="demo" defaultSize="72" minSize="30">
-        <div className="flex h-full min-w-0 flex-col">
+        <div className="flex h-full min-h-0">
+          {/* One panel at a time beside the stage. The agent stays mounted while it is shut, so
+              its conversation — and a run still going — survive looking at something else. */}
+          <div className={cn('flex h-full shrink-0', !rail.open && 'hidden')} style={{ width: sideWidth }}>
+            <div className="min-w-0 flex-1">
+              {rail.open && rail.open !== 'agent' && (
+                <SidePanel title={RAIL_TITLES[rail.open]} onClose={rail.close}>
+                  {rail.open === 'project' && project && (
+                    <ProjectPanel
+                      project={project}
+                      totalFrames={computeTimelineDuration(remotionTimeline)}
+                      clipCount={timeline.length}
+                      narrated={progress.voiced}
+                      hasContext={hasProjectContext(project.context)}
+                      onEditContext={() => setEditingContext(true)}
+                    />
+                  )}
+                  {rail.open === 'add' && (
+                    <AddPanel
+                      recording={recording}
+                      importingDeck={importingDeck}
+                      deckProgress={deckProgress}
+                      isEmpty={timeline.length === 0}
+                      importError={importError}
+                      recordError={recordError}
+                      onRecordSession={handleRecordSession}
+                      onImportImage={handleImportImage}
+                      onAddScene={() => setSceneEditing('new')}
+                      onImportDeck={handleImportDeck}
+                    />
+                  )}
+                  {rail.open === 'voice' && (
+                    <VoicePanel
+                      timeline={timeline}
+                      progress={progress}
+                      currentVoice={voice}
+                      fidelityNote={fidelityNote}
+                      onKeepProjectVoice={handleKeepProjectVoice}
+                      projectVoice={project?.voice ?? null}
+                      appVoice={appVoice}
+                      voices={voices}
+                      onProjectVoiceChange={(next) => void handleProjectVoiceChange(next)}
+                    />
+                  )}
+                </SidePanel>
+              )}
+              <div className={cn('h-full', rail.open !== 'agent' && 'hidden')}>
+                <AskTheAgent
+                  projectId={projectId}
+                  onClose={rail.close}
+                  onWorkingChange={setAgentWorking}
+                  onChanged={async () => {
+                    // The agent wrote to the same files through a process of its own, so nothing the
+                    // editor is holding can be trusted until it has been read back.
+                    await refreshTimeline()
+                    await refreshSegments()
+                  }}
+                />
+              </div>
+            </div>
+            <ResizeHandle label="Resize the panel" side="left" width={sideWidth} onWidth={setSideWidth} />
+          </div>
+          <div className="flex h-full min-w-0 flex-1 flex-col">
           <div className="flex h-full flex-col bg-bg">
             {/* The mat stops at the video. Filling the pane with near-black left a slab of it
                 either side of a 16:9 frame in a wide, short pane, which reads as waste rather
@@ -779,47 +814,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </div>
-        </ResizablePanel>
-        <Separator
-          className={cn(
-            'w-1 bg-border transition-colors hover:bg-accent',
-            // Nothing to drag when it is folded; the button is the way back.
-            agentCollapsed && 'pointer-events-none'
-          )}
-        />
-        {/* Collapses in place rather than being unmounted: a fold that took the conversation
-            with it would be a fold nobody dares press. */}
-        <ResizablePanel
-          id="agent"
-          collapsible
-          collapsedSize={60}
-          defaultSize="26"
-          minSize={280}
-          maxSize="70"
-          panelRef={agentPanel}
-          onResize={(size) => setAgentCollapsed(size.inPixels <= 61)}
-        >
-          <AskTheAgent
-            projectId={projectId}
-            collapsed={agentCollapsed}
-            onToggleCollapsed={() => {
-              const panel = agentPanel.current
-              if (!panel) return
-              if (panel.isCollapsed()) panel.expand()
-              else panel.collapse()
-            }}
-            onChanged={async () => {
-              // The agent wrote to the same files through a process of its own, so nothing the
-              // editor is holding can be trusted until it has been read back.
-              await refreshTimeline()
-              await refreshSegments()
-            }}
-          />
-        </ResizablePanel>
-        </Group>
         </div>
       </ResizablePanel>
-      <Separator className="h-1 bg-border transition-colors hover:bg-accent" />
+      <Separator className="h-2 bg-transparent transition-colors hover:bg-accent/30" />
       <ResizablePanel id="timeline" defaultSize="46" minSize="20">
         <div className="flex h-full flex-col">
         {(reorderError || transcriptError) && (
@@ -909,6 +906,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         </ThemeContext.Provider>
         </div>
       </ResizablePanel>
+    </Group>
       {editingContext && project && (
         <AboutProjectDialog
           projectName={project.name}
@@ -937,6 +935,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           }}
         />
       )}
-    </Group>
+    </div>
   )
 }

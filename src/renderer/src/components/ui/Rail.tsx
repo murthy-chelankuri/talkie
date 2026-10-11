@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 export interface RailItem {
@@ -7,6 +7,8 @@ export interface RailItem {
   icon: ReactNode
   /** Shown in the tooltip, e.g. "⌘1". The shortcut itself is the caller's to handle. */
   shortcut?: string
+  /** Something going on behind a shut panel — drawn as a pulsing dot, and said to a screen reader. */
+  busy?: string
 }
 
 /**
@@ -24,6 +26,7 @@ export function Rail({
   selected: string | null
   onSelect: (id: string) => void
 }): JSX.Element {
+  const base = useId()
   return (
     <div role="tablist" aria-label={label} aria-orientation="vertical" className="flex w-[52px] shrink-0 flex-col items-center gap-2 pt-1">
       {items.map((item) => {
@@ -36,16 +39,23 @@ export function Rail({
             aria-selected={on}
             aria-label={item.label}
             title={item.shortcut ? `${item.label} (${item.shortcut})` : item.label}
+            aria-describedby={item.busy ? `${base}-${item.id}` : undefined}
             onClick={() => onSelect(item.id)}
             className="group flex flex-col items-center gap-1 focus-visible:outline-none"
           >
+            {item.busy && (
+              <span id={`${base}-${item.id}`} className="sr-only">
+                {item.busy}
+              </span>
+            )}
             <span
               className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-[10px] transition-colors group-focus-visible:ring-2 group-focus-visible:ring-accent',
+                'relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-colors group-focus-visible:ring-2 group-focus-visible:ring-accent',
                 on ? 'bg-accent-soft text-text ring-1 ring-inset ring-accent/50' : 'text-text-muted hover:bg-raised hover:text-text'
               )}
             >
               {item.icon}
+              {item.busy && <span aria-hidden="true" className="absolute right-1 top-1 h-2 w-2 animate-pulse rounded-full bg-accent-gradient" />}
             </span>
             <span className={cn('text-[10px] leading-none', on ? 'text-text' : 'text-text-muted')}>{item.label}</span>
           </button>
