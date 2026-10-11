@@ -30,8 +30,7 @@ A new timeline kind, `html`, registered in `src/remotion/itemRegistry.tsx` besid
 
 ```ts
 {
-  dir: string,                 // "sources/html/<sceneId>", relative to the project
-  entry: string,               // "index.html"
+  src: string,                 // absolute path of the entry page, inside a revision folder
   title: string,               // timeline label, MCP, narration drafting
   style: { theme: 'brand' | 'light' | 'dark' },   // the variant, as for slides
   params: Record<string, JsonValue>,  // named values the scene reads: { revenue: [12, 18, 31] }
@@ -44,15 +43,18 @@ A new timeline kind, `html`, registered in `src/remotion/itemRegistry.tsx` besid
 On disk, one folder per scene:
 
 ```
-<project>/sources/html/<sceneId>/
+<project>/sources/html/<revisionId>/
   index.html
   ...whatever it brings — images, fonts, Lottie .json, .js, .css
   poster.png                   // a still for the timeline thumbnail
 ```
 
 A folder rather than a string in `timeline.json`: imports bring images and fonts, and code is easier
-to edit and compare as files. History snapshots the scene folder with the timeline, so one save,
-one AI edit or one agent call is one undo step.
+to edit and compare as files. Every save writes a new revision folder and the clip's `src` points into
+it, so one save, one AI edit or one agent call is one undo step: undo restores the pointer, and
+the old folder is still there. History stays two JSON files. Revisions nothing points at are swept
+when the project opens, the one moment no undo can reach them. As `src` is a path like any other
+clip's media, URL resolution and the repair of moved projects need nothing new.
 
 **Allowed files** in a scene folder: `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp .gif
 .woff2 .woff .ttf .otf .txt`. At most 50 MB and 500 files per scene. Paths are checked to stay
