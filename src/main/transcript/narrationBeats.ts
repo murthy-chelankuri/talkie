@@ -13,7 +13,7 @@ import type { NarrationBeat } from './schema'
  * add a blank line or lose a bracket, and because a draft that arrives with no timings at all is
  * still perfectly good narration — it simply plays as one beat, the way every take used to.
  */
-const TIMED_LINE = /^\s*[[(]\s*(\d+(?:\.\d+)?)\s*(?:s|sec|secs|seconds)?\s*[\])]\s*(.*)$/
+export const TIMED_LINE = /^\s*[[(]\s*(\d+(?:\.\d+)?)\s*(?:s|sec|secs|seconds)?\s*[\])]\s*(.*)$/
 
 export function parseBeats(draft: string): NarrationBeat[] {
   const beats: NarrationBeat[] = []

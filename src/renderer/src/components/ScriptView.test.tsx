@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScriptView } from './ScriptView'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
@@ -14,8 +14,8 @@ function segment(over: Partial<TranscriptSegment> & { timelineItemId: string }):
 
 const noop = (): void => undefined
 
-function view(timeline: TimelineItem[], segments: TranscriptSegment[], props = {}): void {
-  render(
+function view(timeline: TimelineItem[], segments: TranscriptSegment[], props = {}) {
+  return render(
     <ScriptView
       timeline={timeline}
       segments={segments}
@@ -114,7 +114,7 @@ describe('writing the whole script in one place', () => {
 
     await userEvent.type(screen.getByLabelText('Narration for scene 1'), ' Edited.')
 
-    expect(screen.getByLabelText('Narrate Narration for scene 1')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Voice Narration for scene 1' })).toBeDisabled()
   })
 
   it('invites a first draft when the project is empty', () => {
@@ -147,5 +147,135 @@ describe('the script as a piece of paper', () => {
     screen.getByLabelText('Play from scene 2').click()
 
     expect(onSeek).toHaveBeenCalledWith(450)
+  })
+})
+
+
+describe('what a writer needs beside the words', () => {
+  it('keeps Draft and Voice on the page, labelled, rather than behind a hover', () => {
+    view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Saved.' })])
+
+    expect(screen.getByRole('button', { name: 'Draft Narration for scene 1' })).toHaveTextContent('Draft')
+    expect(screen.getByRole('button', { name: 'Voice Narration for scene 1' })).toHaveTextContent('Voice')
+  })
+
+  it('heads each scene with what it is and where it falls', () => {
+    view([clip('a', 0), clip('b', 450)], [])
+
+    const second = screen.getByRole('region', { name: 'Scene 2' })
+    expect(within(second).getByText('Recording ·', { exact: false })).toHaveTextContent('Recording · 0:15–0:30')
+  })
+
+  it('says roughly how long the words take against how long the clip runs', () => {
+    view([clip('a', 0, 450)], [segment({ timelineItemId: 'a', text: 'A few words here.' })])
+
+    expect(screen.getByText(/About 1s to say · clip 15\.0s/)).toBeInTheDocument()
+  })
+
+  it('warns when a scene has more words than time, and counts such scenes at the top', () => {
+    // Two seconds of clip, a paragraph of words: the voice would run on into the next scene.
+    const long = 'word '.repeat(40).trim()
+    view([clip('a', 0, 60), clip('b', 60, 450)], [segment({ timelineItemId: 'a', text: long })])
+
+    expect(screen.getByText(/trim the words or lengthen the clip/)).toBeInTheDocument()
+    expect(screen.getByText('1 scene has more words than time')).toBeInTheDocument()
+  })
+
+  it('draws the timings as chips without changing a character of what is typed', () => {
+    view(
+      [clip('a', 0)],
+      [segment({ timelineItemId: 'a', text: 'One.', beats: [{ at: 2.5, text: 'One.' }] })]
+    )
+
+    expect(screen.getByLabelText('Narration for scene 1')).toHaveValue('[2.5] One.')
+    const backdrop = screen.getByTestId('script-backdrop')
+    expect(backdrop).toHaveTextContent('[2.5] One.')
+    expect(within(backdrop).getByText('[2.5]').tagName).toBe('SPAN')
+  })
+})
+
+describe('keeping what is written', () => {
+  it('saves after a pause in typing, not only on leaving the box', async () => {
+    const onCommit = vi.fn()
+    view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Old.' })], { onCommit })
+
+    await userEvent.type(screen.getByLabelText('Narration for scene 1'), ' More.')
+
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }), 'Old. More.'), {
+      timeout: 2500
+    })
+    expect(await screen.findByText('Saved')).toBeInTheDocument()
+  })
+
+  it('does not save the same words twice when the box is left after saving', async () => {
+    // Committing twice before the first came back would create two segments for one scene.
+    const onCommit = vi.fn()
+    view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Old.' })], { onCommit })
+
+    await userEvent.type(screen.getByLabelText('Narration for scene 1'), ' More.')
+    await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1), { timeout: 2500 })
+    await userEvent.tab()
+
+    expect(onCommit).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not save an emptied scene until the box is left, so its take survives a retype', async () => {
+    const onCommit = vi.fn()
+    view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Old.', status: 'narrated' })], { onCommit })
+
+    await userEvent.clear(screen.getByLabelText('Narration for scene 1'))
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+})
+
+describe('following the video', () => {
+  function fakePlayer() {
+    const listeners: ((event: { detail: { frame: number } }) => void)[] = []
+    return {
+      ref: {
+        current: {
+          getCurrentFrame: () => 0,
+          addEventListener: (_: string, listener: (event: { detail: { frame: number } }) => void) => listeners.push(listener),
+          removeEventListener: () => undefined
+        }
+      },
+      at: (frame: number) => act(() => listeners.forEach((listener) => listener({ detail: { frame } })))
+    }
+  }
+
+  it('marks the scene being played and brings it onto the page', () => {
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
+    const player = fakePlayer()
+    view([clip('a', 0), clip('b', 450)], [], { playerRef: player.ref })
+
+    player.at(500)
+
+    expect(screen.getByRole('region', { name: 'Scene 2' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('region', { name: 'Scene 1' })).not.toHaveAttribute('aria-current')
+    expect(scrolled).toHaveBeenCalled()
+  })
+
+  it('leaves the page where it is while someone is typing', () => {
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
+    const player = fakePlayer()
+    view([clip('a', 0), clip('b', 450)], [], { playerRef: player.ref })
+
+    screen.getByLabelText('Narration for scene 1').focus()
+    scrolled.mockClear()
+    player.at(500)
+
+    expect(scrolled).not.toHaveBeenCalled()
+  })
+
+  it('opens on the scene the video is already in', () => {
+    // The script is mounted afresh each time it is switched to, often well into the video.
+    const ref = { current: { getCurrentFrame: () => 500, addEventListener: () => undefined, removeEventListener: () => undefined } }
+    view([clip('a', 0), clip('b', 450)], [], { playerRef: ref })
+
+    expect(screen.getByRole('region', { name: 'Scene 2' })).toHaveAttribute('aria-current', 'true')
   })
 })

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Player, type PlayerRef } from '@remotion/player'
-import { Clapperboard } from 'lucide-react'
+import { Clapperboard, Maximize2, Minimize2 } from 'lucide-react'
 import {
   Group,
   Panel as ResizablePanel,
@@ -35,12 +35,14 @@ import { AddPanel } from '../components/editor/AddPanel'
 import { VoicePanel } from '../components/editor/VoicePanel'
 import { ExportControl } from '../components/editor/ExportControl'
 import { Inspector } from '../components/editor/Inspector'
+import { useScriptFocus } from '../components/editor/useScriptFocus'
 import { diagramStamp } from '../../../main/themes/diagrams'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
 import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
 import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { TransportBar } from '../components/TransportBar'
+import { Button } from '../components/ui/Button'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { voiceProgress } from '../lib/voiceProgress'
 import { useMenuActions, useMenuState } from '../lib/menuActions'
@@ -114,6 +116,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // Operating the timeline and writing the script are different jobs wanting different shapes
   // of room, so the bottom pane does one at a time. See ScriptView.
   const [bottomPane, setBottomPane] = useState<'timeline' | 'script'>('timeline')
+  const scriptFocus = useScriptFocus(bottomPane === 'script')
+  const focused = scriptFocus.focused
   // Which side panel is open — at most one — and how wide it is, both remembered on this Mac.
   const rail = useRailPanel()
   const [sideWidth, setSideWidth] = useResizableWidth('talkie.sidePanelWidth', 300, 260, 420)
@@ -739,6 +743,121 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // timelineHandlers.ts.
   const remotionTimeline = timeline as unknown as RemotionTimelineItem[]
 
+  // The timeline and the script, built once and placed either under the stage or, while the
+  // script has the window, on their own.
+  const workPane = (
+        <div className="flex h-full flex-col overflow-hidden rounded-xl bg-surface">
+        {(reorderError || transcriptError) && (
+          <div className="flex flex-col gap-2 px-3 pt-2">
+            {reorderError && <ErrorBanner message={reorderError} />}
+            {transcriptError && <ErrorBanner message={transcriptError} />}
+          </div>
+        )}
+        {/* Two ways of working on the same project rather than a filter over one, so it is
+            built as a switch between them: the tab that is on carries the material of the pane
+            it opens — graphite for the timeline, paper for the script — which is the same
+            signal the panes themselves use. */}
+        <div className="flex shrink-0 items-center px-4 pt-2">
+        <div
+          role="tablist"
+          aria-label="Ways to work on this project"
+          className="flex items-end gap-5"
+        >
+          {PANES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={bottomPane === id}
+              onClick={() => {
+                setBottomPane(id)
+                if (id === 'timeline') scriptFocus.leave()
+              }}
+              className={cn(
+                'relative pb-2 pt-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                bottomPane === id ? 'font-medium text-text' : 'text-text-muted hover:text-text'
+              )}
+            >
+              {label}
+              {/* The script's tab is underlined in paper, the timeline's in the accent: the same
+                  signal the panes themselves carry. */}
+              {bottomPane === id && (
+                <span
+                  aria-hidden="true"
+                  className={cn('absolute inset-x-0 bottom-0 h-0.5 rounded-full', id === 'script' ? 'bg-paper-border' : 'bg-accent-gradient')}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+        {bottomPane === 'script' && timeline.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7 text-[12px] text-text-muted hover:text-text"
+            aria-pressed={focused}
+            title={focused ? 'Show the video again (Esc)' : 'Give the script the whole window'}
+            onClick={scriptFocus.toggle}
+          >
+            {focused ? <Minimize2 size={13} aria-hidden="true" /> : <Maximize2 size={13} aria-hidden="true" />}
+            {focused ? 'Show the video' : 'Focus on the script'}
+          </Button>
+        )}
+        </div>
+        {/* Thumbnails draw slides and diagrams in the project's theme, as the video does. */}
+        <ThemeContext.Provider value={renderTheme ?? null}>
+        {bottomPane === 'script' ? (
+          <ScriptView
+            timeline={timeline}
+            segments={segments}
+            activeItemId={activeItemId}
+            draftingItemId={draftingItemId}
+            narratingItemId={narratingItemId}
+            playerRef={playerRef}
+            onSeek={handleSeek}
+            onSelectItem={handleSelectClip}
+            onCommit={handleNarrationCommit}
+            onDraft={handleDraft}
+            onNarrate={handleNarrate}
+          />
+        ) : (
+        <Timeline
+          timeline={timeline}
+          segments={segments}
+          totalFrames={computeTimelineDuration(remotionTimeline)}
+          playerRef={playerRef}
+          selectedItemId={selectedItemId}
+          onSeek={handleSeek}
+          onSelectItem={handleSelectClip}
+          onReorder={handleReorder}
+          onSplit={handleSplit}
+          onActiveItemChange={setActiveItemId}
+          narratingItemId={narratingItemId}
+          narratingAll={narratingAll}
+          currentVoice={voice}
+          recordingItemId={recordingItemId}
+          onEditScene={(item) => setSceneEditing(item)}
+          onRecord={handleRecord}
+          onStopRecording={handleStopRecording}
+          draftingItemId={draftingItemId}
+          draftingAll={draftingAll}
+          onDraft={handleDraft}
+          onDraftAll={handleDraftAll}
+          progress={progress}
+          onNarrationCommit={handleNarrationCommit}
+          onNarrate={handleNarrate}
+          onNarrateAll={handleNarrateAll}
+          onDelete={handleDeleteClip}
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+        />
+        )}
+        </ThemeContext.Provider>
+        </div>
+  )
+
   return (
     <div className="flex h-full gap-2 bg-bg pb-2 pr-2">
       <TopBarActions>
@@ -751,6 +870,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         />
       </TopBarActions>
       <EditorRail open={rail.open} onToggle={rail.toggle} agentWorking={agentWorking} />
+    {/* Hidden rather than unmounted while the script has the window: the player keeps playing
+        what the script is about, and the agent keeps its conversation. */}
+    <div className={cn('flex min-w-0 flex-1', focused && 'hidden')}>
     <Group
       orientation="vertical"
       defaultLayout={stageLayout.defaultLayout}
@@ -885,99 +1007,23 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       </ResizablePanel>
       <Separator className="h-2 bg-transparent transition-colors hover:bg-accent/30" />
       <ResizablePanel id="timeline" defaultSize="46" minSize="20">
-        <div className="flex h-full flex-col overflow-hidden rounded-xl bg-surface">
-        {(reorderError || transcriptError) && (
-          <div className="flex flex-col gap-2 px-3 pt-2">
-            {reorderError && <ErrorBanner message={reorderError} />}
-            {transcriptError && <ErrorBanner message={transcriptError} />}
-          </div>
-        )}
-        {/* Two ways of working on the same project rather than a filter over one, so it is
-            built as a switch between them: the tab that is on carries the material of the pane
-            it opens — graphite for the timeline, paper for the script — which is the same
-            signal the panes themselves use. */}
-        <div
-          role="tablist"
-          aria-label="Ways to work on this project"
-          className="flex shrink-0 items-end gap-5 px-4 pt-2"
-        >
-          {PANES.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={bottomPane === id}
-              onClick={() => setBottomPane(id)}
-              className={cn(
-                'relative pb-2 pt-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                bottomPane === id ? 'font-medium text-text' : 'text-text-muted hover:text-text'
-              )}
-            >
-              {label}
-              {/* The script's tab is underlined in paper, the timeline's in the accent: the same
-                  signal the panes themselves carry. */}
-              {bottomPane === id && (
-                <span
-                  aria-hidden="true"
-                  className={cn('absolute inset-x-0 bottom-0 h-0.5 rounded-full', id === 'script' ? 'bg-paper-border' : 'bg-accent-gradient')}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-        {/* Thumbnails draw slides and diagrams in the project's theme, as the video does. */}
-        <ThemeContext.Provider value={renderTheme ?? null}>
-        {bottomPane === 'script' ? (
-          <ScriptView
-            timeline={timeline}
-            segments={segments}
-            activeItemId={activeItemId}
-            draftingItemId={draftingItemId}
-            narratingItemId={narratingItemId}
-            onSeek={handleSeek}
-            onSelectItem={handleSelectClip}
-            onCommit={handleNarrationCommit}
-            onDraft={handleDraft}
-            onNarrate={handleNarrate}
-          />
-        ) : (
-        <Timeline
-          timeline={timeline}
-          segments={segments}
-          totalFrames={computeTimelineDuration(remotionTimeline)}
-          playerRef={playerRef}
-          selectedItemId={selectedItemId}
-          onSeek={handleSeek}
-          onSelectItem={handleSelectClip}
-          onReorder={handleReorder}
-          onSplit={handleSplit}
-          onActiveItemChange={setActiveItemId}
-          narratingItemId={narratingItemId}
-          narratingAll={narratingAll}
-          currentVoice={voice}
-          recordingItemId={recordingItemId}
-          onEditScene={(item) => setSceneEditing(item)}
-          onRecord={handleRecord}
-          onStopRecording={handleStopRecording}
-          draftingItemId={draftingItemId}
-          draftingAll={draftingAll}
-          onDraft={handleDraft}
-          onDraftAll={handleDraftAll}
-          progress={progress}
-          onNarrationCommit={handleNarrationCommit}
-          onNarrate={handleNarrate}
-          onNarrateAll={handleNarrateAll}
-          onDelete={handleDeleteClip}
-          canUndo={history.canUndo}
-          canRedo={history.canRedo}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-        />
-        )}
-        </ThemeContext.Provider>
-        </div>
+        {!focused && workPane}
       </ResizablePanel>
     </Group>
+    </div>
+    {focused && (
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {timeline.length > 0 && (
+          <TransportBar
+            playerRef={playerRef}
+            timeline={timeline}
+            totalFrames={computeTimelineDuration(remotionTimeline)}
+            onSeek={handleSeek}
+          />
+        )}
+        <div className="min-h-0 flex-1">{workPane}</div>
+      </div>
+    )}
       {editingContext && project && (
         <AboutProjectDialog
           projectName={project.name}

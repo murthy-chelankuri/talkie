@@ -466,7 +466,9 @@ export function Timeline({
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
   const playheadRef = useRef<HTMLDivElement | null>(null)
   const rulerRef = useRef<HTMLDivElement | null>(null)
-  const frameRef = useRef(0)
+  // Where the video already is: the timeline is mounted afresh each time its tab is chosen, and
+  // starting at 0 drew the playhead on the opening clip while the preview sat well past it.
+  const frameRef = useRef(playerRef.current?.getCurrentFrame() ?? 0)
   // Which clip the playhead is inside. This only changes at clip boundaries, so it is the one
   // piece of playback position worth putting in state — everything else is written to the DOM
   // directly, because re-rendering the whole timeline 30 times a second starved the Player of

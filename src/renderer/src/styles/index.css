@@ -30,6 +30,7 @@
   --color-paper: #fdfbf6;
   --color-paper-text: #2a241b;
   --color-paper-border: #e4dccb;
+  --color-warning: #94560a;
   --color-danger: #c0333f;
   --color-danger-bg: #fdf1f2;
   --color-success: #1f7a52;
@@ -55,6 +56,7 @@
   --color-paper: #1e1b16;
   --color-paper-text: #ece3d2;
   --color-paper-border: #342f26;
+  --color-warning: #e8a64e;
   --color-danger: #ef6470;
   --color-danger-bg: #2a1518;
   --color-success: #59b487;

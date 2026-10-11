@@ -32,6 +32,12 @@ describe.each([[':root', 'light'], ["[data-theme='dark']", 'dark']])('the %s (%s
   it('sets the script readable on paper', () => {
     expect(ratio(t['color-paper-text'], t['color-paper'])).toBeGreaterThanOrEqual(4.5)
   })
+  it('sets the script’s notes, timings and warnings readable on paper', () => {
+    expect(ratio(t['color-text-muted'], t['color-paper'])).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(t['color-warning'], t['color-paper'])).toBeGreaterThanOrEqual(4.5)
+    // The timing chips are accent text at the size of the words around them.
+    expect(ratio(t['color-accent'], t['color-paper'])).toBeGreaterThanOrEqual(5.8)
+  })
 })
 
 it('sets text on the gradient readable at both of its ends', () => {

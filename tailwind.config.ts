@@ -1,5 +1,14 @@
 import type { Config } from 'tailwindcss'
 
+/**
+ * A token Tailwind can take an opacity off, as in `ring-accent/35`.
+ *
+ * A bare `var()` gives Tailwind nothing to put the alpha into, so it dropped every such class
+ * without a word — the soft buttons lost their outline and every tinted hover was transparent.
+ * `color-mix` puts it back without asking the tokens to be written as channels.
+ */
+const token = (name: string): string => `color-mix(in srgb, var(--color-${name}) calc(<alpha-value> * 100%), transparent)`
+
 export default {
   darkMode: ['selector', '[data-theme="dark"]'],
   content: [
@@ -22,25 +31,26 @@ export default {
         'accent-soft': 'var(--color-accent-soft)'
       },
       colors: {
-        bg: 'var(--color-bg)',
-        surface: 'var(--color-surface)',
-        raised: 'var(--color-raised)',
-        'surface-hover': 'var(--color-surface-hover)',
-        border: 'var(--color-border)',
-        text: 'var(--color-text)',
-        'text-muted': 'var(--color-text-muted)',
-        accent: 'var(--color-accent)',
-        'accent-hover': 'var(--color-accent-hover)',
-        'accent-foreground': 'var(--color-accent-foreground)',
-        danger: 'var(--color-danger)',
-        'danger-bg': 'var(--color-danger-bg)',
-        success: 'var(--color-success)',
-        media: 'var(--color-media)',
-        slides: 'var(--color-slides)',
-        paper: 'var(--color-paper)',
-        'paper-text': 'var(--color-paper-text)',
+        bg: token('bg'),
+        surface: token('surface'),
+        raised: token('raised'),
+        'surface-hover': token('surface-hover'),
+        border: token('border'),
+        text: token('text'),
+        'text-muted': token('text-muted'),
+        accent: token('accent'),
+        'accent-hover': token('accent-hover'),
+        'accent-foreground': token('accent-foreground'),
+        danger: token('danger'),
+        'danger-bg': token('danger-bg'),
+        success: token('success'),
+        media: token('media'),
+        slides: token('slides'),
+        paper: token('paper'),
+        'paper-text': token('paper-text'),
         'on-gradient': 'var(--color-on-gradient)',
-        'paper-border': 'var(--color-paper-border)'
+        'paper-border': token('paper-border'),
+        warning: token('warning')
       }
     }
   },

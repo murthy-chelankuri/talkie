@@ -122,6 +122,15 @@ below `NARRATION_TEXT_MIN_WIDTH`, and scene splitting made every clip narrower. 
 the other one: the whole project's narration top to bottom, in a column wide enough to read a
 sentence in, because most of what is wrong with narration is only wrong in context.
 
+The script can have the whole window ("Focus on the script"; Esc gives the video back) — under the
+stage it showed a scene and a half. It saves as you type, follows the playhead unless you are
+typing, and says under each scene whether the words fit the clip: estimated at
+`WORDS_PER_SECOND` until there is a take, then measured off it (`narrationFit.ts`). Timings are
+painted as chips under a transparent textarea, so the stored text is exactly what was typed.
+
+Token colours go through `color-mix` in `tailwind.config.ts` so `ring-accent/35` and the like
+work. With bare `var()` Tailwind silently emitted nothing for any colour with an opacity.
+
 **Timings live in the words.** A line beginning `[12.3]` is spoken at that second of its clip,
 and `narrationFromText` reads them back on the way in — in the IPC handlers and in MCP, so every
 route stores them the same way. Before that, editing narration anywhere cleared `beats` and

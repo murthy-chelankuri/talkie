@@ -4,6 +4,7 @@ import type { TimelineItem, TranscriptSegment } from '../../api/projectClient'
 import type { VoiceProgress } from '../../lib/voiceProgress'
 import { segmentsForItem } from '../../lib/clipNarration'
 import { formatTimecode } from '../../lib/timelineLayout'
+import { KIND_NAMES } from '../../lib/clipKinds'
 import { FPS } from '../../../../remotion/constants'
 import { VARIANT_FOR } from '../../../../remotion/sceneTheme'
 import { computeTimelineDuration } from '../../../../remotion/timelineDuration'
@@ -14,14 +15,6 @@ import { Segmented } from '../ui/Segmented'
 import { Spinner } from '../ui/Spinner'
 
 type Look = 'brand' | 'light' | 'dark'
-
-const KIND_NAMES: Record<string, string> = {
-  video: 'Recording',
-  image: 'Image',
-  scene: 'Slide',
-  diagram: 'Diagram',
-  html: 'HTML scene'
-}
 
 /** Scenes have a look and an editor; recordings and images are what they are. */
 const SCENE_KINDS = new Set(['scene', 'diagram', 'html'])
