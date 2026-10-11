@@ -14,6 +14,8 @@ import {
   captureClient,
   transcriptClient,
   agentClient,
+  sceneClient,
+  htmlSceneClient,
   type ProjectMetadata,
   type TimelineItem,
   type TranscriptSegment
@@ -32,6 +34,8 @@ import { ProjectPanel } from '../components/editor/ProjectPanel'
 import { AddPanel } from '../components/editor/AddPanel'
 import { VoicePanel } from '../components/editor/VoicePanel'
 import { ExportControl } from '../components/editor/ExportControl'
+import { Inspector } from '../components/editor/Inspector'
+import { diagramStamp } from '../../../main/themes/diagrams'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
 import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
@@ -115,6 +119,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [sideWidth, setSideWidth] = useResizableWidth('talkie.sidePanelWidth', 300, 260, 420)
   // The agent can be working with its panel shut; the rail says so.
   const [agentWorking, setAgentWorking] = useState(false)
+  const [inspectorWidth, setInspectorWidth] = useResizableWidth('talkie.inspectorWidth', 280, 240, 380)
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
@@ -619,6 +624,50 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     }
   }
 
+  /**
+   * A scene's look, changed from the inspector. Only the fields that belong to the scene are
+   * written back: the timeline the editor holds has asset URLs where the files' paths are kept,
+   * and a diagram's picture has its colours in it, so it is drawn again in the new look first.
+   */
+  async function handleLook(item: TimelineItem, look: 'brand' | 'light' | 'dark'): Promise<void> {
+    setReorderError(null)
+    try {
+      const data = item.data as {
+        title?: string
+        bullets?: string[]
+        layout?: string
+        source?: string
+        style?: Record<string, unknown>
+      }
+      const style = { ...data.style, theme: look }
+      if (item.kind === 'html') {
+        await htmlSceneClient.edit(projectId, item.id, { style: { theme: look } })
+      } else if (item.kind === 'diagram') {
+        const { renderMermaid } = await import('../lib/renderMermaid')
+        const theme = renderTheme ?? null
+        const { svg } = await renderMermaid(data.source ?? '', theme, look)
+        const src = await sceneClient.saveSvg(projectId, svg)
+        await sceneClient.update(projectId, item.id, {
+          source: data.source,
+          src,
+          style,
+          ...(data.title ? { title: data.title } : {}),
+          ...(theme ? { themeStamp: diagramStamp(theme, look) } : {})
+        })
+      } else {
+        await sceneClient.update(projectId, item.id, {
+          title: data.title ?? '',
+          bullets: data.bullets ?? [],
+          style,
+          ...(data.layout ? { layout: data.layout } : {})
+        })
+      }
+      await refreshTimeline()
+    } catch (err) {
+      setReorderError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   async function handleSplit(item: TimelineItem, atFrame: number): Promise<void> {
     setReorderError(null)
     try {
@@ -814,6 +863,24 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             )}
           </div>
         </div>
+          <ResizeHandle label="Resize the inspector" side="right" width={inspectorWidth} onWidth={setInspectorWidth} />
+          <div className="h-full shrink-0" style={{ width: inspectorWidth }}>
+            <Inspector
+              item={timeline.find((clip) => clip.id === selectedItemId) ?? null}
+              timeline={timeline}
+              segments={segments}
+              progress={progress}
+              themeName={renderTheme ? renderTheme.company || 'This project’s theme' : null}
+              playheadFrame={() => playerRef.current?.getCurrentFrame() ?? 0}
+              busy={{ narrating: narratingItemId === selectedItemId, drafting: draftingItemId === selectedItemId }}
+              onEdit={(item) => setSceneEditing(item)}
+              onLook={handleLook}
+              onNarrate={(item) => void handleNarrate(item)}
+              onDraft={(item) => void handleDraft(item)}
+              onSplit={(item, atFrame) => void handleSplit(item, atFrame)}
+              onDelete={(item) => void handleDeleteClip(item)}
+            />
+          </div>
         </div>
       </ResizablePanel>
       <Separator className="h-2 bg-transparent transition-colors hover:bg-accent/30" />
