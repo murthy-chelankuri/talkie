@@ -113,7 +113,16 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
           refuse()
           return
         }
-        res.writeHead(200, { 'Content-Type': resource.type, 'Access-Control-Allow-Origin': '*' })
+        res.writeHead(200, {
+          'Content-Type': resource.type,
+          'Access-Control-Allow-Origin': '*',
+          // The check's host page frames one scene. A sandboxed frame may still navigate itself —
+          // to an address carrying its own URL, secret and all — and only the framing page's
+          // policy can stop that, so this one allows frames from here and nowhere else.
+          ...(resource.path.endsWith('host.html')
+            ? { 'Content-Security-Policy': "default-src 'self'; style-src 'unsafe-inline'; frame-src http://127.0.0.1:*" }
+            : {})
+        })
         createReadStream(resource.path).pipe(res)
         return
       }
@@ -137,6 +146,8 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
         res.writeHead(200, {
           'Content-Type': 'text/html; charset=utf-8',
           'Content-Security-Policy': scenePolicy(folderUrl, base),
+          // A DNS lookup is a message too: prefetching a name made of data would carry it out.
+          'X-DNS-Prefetch-Control': 'off',
           'Content-Length': body.length
         })
         res.end(body)

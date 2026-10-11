@@ -96,6 +96,20 @@ The iframe is `sandbox="allow-scripts"` — never `allow-same-origin`, `allow-po
 `allow-forms`, `allow-top-navigation` or `allow-modals`. The page gets an opaque origin: no access
 to the parent, its storage, or `window.api`.
 
+**Three ways out that the page's own policy cannot close** (found while building the check):
+
+- **Navigating itself.** A sandboxed frame may still set its own `location`, taking its address —
+  secret and all — with it. Only the *framing* page's policy stops that, so every host restricts
+  `frame-src` to the asset server: the editor (below), the check's host page (served with its own
+  policy), and the export's composition page (a `frame-src` policy added at run time).
+  Chromium replaces a refused navigation with its "blocked" page; the check reports "tried to
+  leave its page".
+- **DNS prefetching** — a looked-up name can carry data. Scene pages are sent with
+  `X-DNS-Prefetch-Control: off`.
+- **WebRTC** — a STUN request is a message out, and no CSP directive governs it. The runtime
+  removes `RTCPeerConnection` before the page's code runs; with no frames or windows allowed, the
+  page has no other realm to get a fresh one from.
+
 **The editor's policy** (`src/main/security/contentSecurityPolicy.ts`) changes in one place:
 `frame-src 'none'` becomes `frame-src http://127.0.0.1:*`. Its test fails on anything wider.
 

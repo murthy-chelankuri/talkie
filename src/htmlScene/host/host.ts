@@ -39,7 +39,10 @@ Object.defineProperty(window, 'talkieHost', {
       const id = nextId++
       return new Promise<void>((resolve) => {
         const timer = setTimeout(() => { errors.push(`Frame ${frameNumber} was not drawn within 5 s.`); resolve() }, DRAW_TIMEOUT_MS)
-        waiting.set(id, () => { clearTimeout(timer); resolve() })
+        waiting.set(id, () => {
+          clearTimeout(timer)
+          resolve()
+        })
         frame!.contentWindow!.postMessage({ type: 'talkie:seek', frame: frameNumber, id }, '*')
       })
     }

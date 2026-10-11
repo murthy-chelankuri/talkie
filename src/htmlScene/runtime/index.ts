@@ -6,9 +6,20 @@
  * hands the page its theme, values and narration timings. See the spec, section 3.
  */
 import { createClock } from './clock'
-import { registerAnime, registerLottie, settleAnimations } from './animations'
+import { animationsBefore, animationsHeld, noteNewAnimations, registerAnime, registerLottie, settleAnimations } from './animations'
 import { applyTheme } from './theme'
 import type { HostMessage, SceneMessage, SceneTheme } from '../protocol'
+
+// WebRTC reaches the network without asking the page's policy — a STUN request is a message out.
+// Removed before the page's own code runs; with no frames or other windows allowed, it has no
+// other realm to fetch a fresh one from.
+for (const name of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel']) {
+  try {
+    delete (window as unknown as Record<string, unknown>)[name]
+  } catch {
+    // Not configurable here; the policy still holds everything else.
+  }
+}
 
 const realRaf = window.requestAnimationFrame.bind(window)
 const clock = createClock()
@@ -47,12 +58,19 @@ async function seek(frame: number): Promise<void> {
   await Promise.allSettled(waits)
   const ms = (frame * 1000) / talkie.fps
   Object.assign(talkie, { frame, time: ms / 1000 })
+  const before = animationsBefore(document)
   clock.advanceTo(ms)
   for (const handler of handlers) await handler(talkie.time)
-  settleAnimations(document, ms)
+  noteNewAnimations(document, before, ms)
   await document.fonts.ready
   await Promise.all(Array.from(document.images).filter((img) => !img.complete).map((img) => img.decode().catch(() => undefined)))
-  await painted()
+  // Held, painted, and checked: an animation the browser replaced in the meantime is held again
+  // and the frame painted again, so the picture captured is the one this moment asks for.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await settleAnimations(document, ms)
+    await painted()
+    if (animationsHeld(document, ms)) break
+  }
 }
 
 let queue = Promise.resolve()
