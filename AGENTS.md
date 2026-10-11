@@ -83,6 +83,11 @@ These each cost real time to find. None are obvious from the code.
   licence. `package.json` makes `stubs/sharp` a dependency and overrides `sharp` with `$sharp`
   (a `file:` path directly in `overrides` resolves relative to transformers.js and breaks a clean
   install). `licences.test.ts` fails if libvips reappears.
+- **Kokoro sometimes reads a line as pure silence.** One sentence in one voice at one speed came back
+  as seconds of zeros every time, and 2% faster read perfectly — a fault in the model, not the
+  words. It was saved as the take, and a scene lost its first sentence. `audibleTake.ts` checks
+  every take from the file the worker wrote, asks again a shade faster or slower, and errors with
+  the words if all of them are silent.
 - **The worker ends by signal, not `process.exit`.** onnxruntime-node aborts during an ordinary
   exit on macOS ("mutex lock failed"); releasing the model first does not help.
 - **transformers.js refuses to load with both model sources off**, even from a full cache. While
