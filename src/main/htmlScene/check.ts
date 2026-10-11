@@ -1,6 +1,5 @@
 import { writeFileSync } from 'fs'
 import { chromium, type Frame, type Page } from 'playwright'
-import { createCanvas, loadImage, type Image } from '@napi-rs/canvas'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { resolveBrowser } from '../capture/resolveBrowser'
 import { FPS, HEIGHT, WIDTH } from '../../remotion/constants'
@@ -50,23 +49,34 @@ export function sceneThemeFor(theme: RenderTheme | null, variant: 'brand' | 'lig
 /**
  * Whether two frames differ by more than the compositor's own noise — an edge anti-aliased a shade
  * differently is not a scene that depends on the order it is drawn in; a shape somewhere else is.
+ *
+ * Compared in the headless browser that drew them, on its own canvas. Not with a native canvas
+ * here: this module runs in the app's main process, where bundling one broke the app at launch.
  */
-async function differs(a: Buffer, b: Buffer): Promise<boolean> {
+async function differs(page: Page, a: Buffer, b: Buffer): Promise<boolean> {
   if (a.equals(b)) return false
-  const [left, right] = await Promise.all([loadImage(a), loadImage(b)])
-  const pixels = (image: Image): Uint8ClampedArray => {
-    const canvas = createCanvas(image.width, image.height)
-    const context = canvas.getContext('2d')
-    context.drawImage(image, 0, 0)
-    return context.getImageData(0, 0, image.width, image.height).data
-  }
-  const [p, q] = [pixels(left), pixels(right)]
-  if (p.length !== q.length) return true
-  let changed = 0
-  for (let i = 0; i < p.length; i += 4) {
-    if (Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]) > 48) changed++
-  }
-  return changed > (p.length / 4) * 0.001
+  return page.evaluate(
+    async ([left, right]) => {
+      const pixels = async (base64: string): Promise<Uint8ClampedArray> => {
+        const image = new Image()
+        image.src = `data:image/png;base64,${base64}`
+        await image.decode()
+        const bitmap = await createImageBitmap(image)
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+        const context = canvas.getContext('2d')!
+        context.drawImage(bitmap, 0, 0)
+        return context.getImageData(0, 0, bitmap.width, bitmap.height).data
+      }
+      const [p, q] = await Promise.all([pixels(left), pixels(right)])
+      if (p.length !== q.length) return true
+      let changed = 0
+      for (let i = 0; i < p.length; i += 4) {
+        if (Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]) > 48) changed++
+      }
+      return changed > (p.length / 4) * 0.001
+    },
+    [a.toString('base64'), b.toString('base64')] as const
+  )
 }
 
 /** Chromium encodes a frame of one colour in a few kilobytes; anything drawn on is far larger. */
@@ -146,7 +156,7 @@ export async function checkHtmlScene(request: CheckRequest): Promise<CheckResult
     await gather()
     await load()
     for (let s = 0; s < middle; s += 0.5) await shoot(s)
-    if (await differs(cold, await shoot(middle))) {
+    if (await differs(page, cold, await shoot(middle))) {
       problems.add('The middle frame differs depending on the order frames are drawn in — animate by talkie.time, not by counting frames or ticks.')
     }
     await gather()

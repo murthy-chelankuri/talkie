@@ -120,7 +120,7 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
           // to an address carrying its own URL, secret and all — and only the framing page's
           // policy can stop that, so this one allows frames from here and nowhere else.
           ...(resource.path.endsWith('host.html')
-            ? { 'Content-Security-Policy': "default-src 'self'; style-src 'unsafe-inline'; frame-src http://127.0.0.1:*" }
+            ? { 'Content-Security-Policy': "default-src 'self'; img-src data:; style-src 'unsafe-inline'; frame-src http://127.0.0.1:*" }
             : {})
         })
         createReadStream(resource.path).pipe(res)
