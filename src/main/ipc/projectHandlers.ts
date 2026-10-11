@@ -1,4 +1,6 @@
 import type { IpcMain } from 'electron'
+import { sweepUnusedRevisions } from '../htmlScene/store'
+import { redrawStalePosters } from '../htmlScene/htmlSceneApi'
 import { homedir } from 'os'
 import {
   createProject,
@@ -53,6 +55,11 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('project:open', (_event, id: string) => {
     const project = openProject(id)
     sweepUnusedNarrationAudio(id)
+    // Opening is the one moment no undo can reach an old revision of an HTML scene.
+    sweepUnusedRevisions(id)
+    // Not awaited: a poster drawn for another theme is fixed in the background, not before the
+    // project can be seen.
+    void redrawStalePosters(id).catch((err) => console.error(`Could not redraw HTML scene posters for ${id}:`, err))
     // Narration recorded before clips held a pause is sized to its audio alone, which the
     // lead-in would then push past the cut. Lengthen those clips rather than clip the voice.
     repairNarrationDurations(id)
