@@ -189,3 +189,13 @@ any feature does.
 - The AGENTS.md accent rule ("azure… 5.8:1") rewritten for violet, the gradient, and near-black
   text on it.
 - `2026-09-09-ui-redesign-design.md` marked as superseded in look, kept for its foundations.
+
+## 7. Deviations decided while planning
+
+- **Interface font stays Geist**, not Inter. The app already ships Geist, served locally; it is the
+  same kind of face, and switching would add a dependency for no visible gain.
+- **The inspector shows a recording's trimmed range, length and voice — not its click count.** The
+  window has no way to read clicks today, and adding one would be a behaviour change.
+- **The Project panel has no sources list.** None exists today; adding one would be new behaviour.
+- **"Continue where you left off" uses the last project opened in this window**, remembered in
+  `localStorage`, falling back to the newest. Projects record no last-changed time.

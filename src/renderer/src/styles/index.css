@@ -3,30 +3,32 @@
 @tailwind utilities;
 
 /*
- * Two materials, one signal colour.
+ * Studio: depth instead of outlines, and one vivid accent.
  *
- * The chrome is cool graphite so that recorded footage is the only saturated thing on screen.
- * The narration row is a warmer "paper" surface, because writing a script is a different act
- * from operating a timeline and should feel like one — and a warm surface under a cool signal
- * keeps the whole window from reading as cold. Azure marks what can be acted on. Red is
- * reserved for what is live right now — the record control and the playhead — so it never has
- * to compete for attention.
- *
- * The accent is dark in the light theme and light in the dark one because it is set as text at
- * 10 and 11 pixels in places; every pairing below clears 5.8:1, which the brass it replaces did
- * not always manage.
+ * Panels are told apart by stepping up through three surfaces — bg, surface, raised — rather than
+ * by lines round them; --color-border is for dividers inside a panel and nothing else. The accent
+ * is a violet-to-cyan gradient on what you act on and on anything AI or voice, with a solid violet
+ * for text and outlines, since a gradient cannot be set as small type. Text on the gradient is
+ * near-black: white falls to 2:1 at the cyan end. Red is still only for what is live — recording
+ * and the playhead — and the script keeps its warm paper, because writing is a different act.
+ * src/renderer/src/styles/contrast.test.ts holds every pairing to its floor.
  */
 :root {
-  --color-bg: #f4f6f9;
+  --color-bg: #f3f4f8;
   --color-surface: #ffffff;
-  --color-surface-hover: #eef1f5;
-  --color-border: #d9dee6;
+  --color-raised: #eef0f5;
+  --color-surface-hover: #e6e9f0;
+  --color-border: #e1e4eb;
   --color-text: #171b22;
   --color-text-muted: #5d6675;
-  --color-accent: #1a5fb4;
-  --color-accent-hover: #164e96;
+  --color-accent: #4b37d0;
+  --color-accent-hover: #3d2bb3;
   --color-accent-foreground: #ffffff;
+  --color-accent-gradient: linear-gradient(90deg, #7c6cff, #4fc3ff);
+  --color-on-gradient: #0e0f13;
+  --color-accent-soft: linear-gradient(90deg, rgba(124, 108, 255, 0.14), rgba(79, 195, 255, 0.12));
   --color-paper: #fdfbf6;
+  --color-paper-text: #2a241b;
   --color-paper-border: #e4dccb;
   --color-danger: #c0333f;
   --color-danger-bg: #fdf1f2;
@@ -37,16 +39,21 @@
 }
 
 :root[data-theme='dark'] {
-  --color-bg: #14171d;
-  --color-surface: #1b1f27;
-  --color-surface-hover: #232833;
-  --color-border: #2c323d;
-  --color-text: #e8eaee;
-  --color-text-muted: #99a2b1;
-  --color-accent: #7ab5f0;
-  --color-accent-hover: #96c7f5;
-  --color-accent-foreground: #0b1622;
+  --color-bg: #0e0f13;
+  --color-surface: #17181e;
+  --color-raised: #1d1f28;
+  --color-surface-hover: #262836;
+  --color-border: #23252f;
+  --color-text: #e9eaf0;
+  --color-text-muted: #8b8ea3;
+  --color-accent: #a99fff;
+  --color-accent-hover: #c2baff;
+  --color-accent-foreground: #0e0f13;
+  --color-accent-gradient: linear-gradient(90deg, #7c6cff, #4fc3ff);
+  --color-on-gradient: #0e0f13;
+  --color-accent-soft: linear-gradient(90deg, rgba(124, 108, 255, 0.2), rgba(79, 195, 255, 0.18));
   --color-paper: #1e1b16;
+  --color-paper-text: #ece3d2;
   --color-paper-border: #342f26;
   --color-danger: #ef6470;
   --color-danger-bg: #2a1518;
