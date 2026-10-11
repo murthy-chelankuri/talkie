@@ -311,3 +311,40 @@ describe('recording a scene in your own voice', () => {
     expect(screen.getByRole('button', { name: 'Record Narration for scene 2 in your own voice' })).toBeDisabled()
   })
 })
+
+describe('setting one scene large', () => {
+  it('sets that scene’s words large and leaves the rest as they were', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    view([clip('a', 0), clip('b', 450)], [])
+
+    await userEvent.click(screen.getByRole('button', { name: 'Larger text for scene 2' }))
+
+    expect(screen.getByRole('button', { name: 'Larger text for scene 2' })).toHaveAttribute('aria-pressed', 'true')
+    const large = screen.getByLabelText('Narration for scene 2', { selector: 'textarea' }).parentElement
+    const usual = screen.getByLabelText('Narration for scene 1', { selector: 'textarea' }).parentElement
+    expect(large).toHaveClass('text-[22px]')
+    expect(usual).toHaveClass('text-[15px]')
+  })
+
+  it('sets only one scene large at a time', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    view([clip('a', 0), clip('b', 450)], [])
+
+    await userEvent.click(screen.getByRole('button', { name: 'Larger text for scene 1' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Larger text for scene 2' }))
+
+    expect(screen.getByRole('button', { name: 'Larger text for scene 1' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('goes back to the usual size when pressed again', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    view([clip('a', 0)], [])
+
+    const toggle = screen.getByRole('button', { name: 'Larger text for scene 1' })
+    await userEvent.click(toggle)
+    await userEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByLabelText('Narration for scene 1', { selector: 'textarea' }).parentElement).toHaveClass('text-[15px]')
+  })
+})

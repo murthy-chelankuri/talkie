@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { PlayerRef } from '@remotion/player'
-import { AudioLines, Mic, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
+import { AudioLines, Maximize2, Mic, Minimize2, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { narrationScriptForItem, segmentsForItem } from '../lib/clipNarration'
 import { narrationFit, scriptParts, type NarrationFit } from '../lib/narrationFit'
@@ -69,6 +69,9 @@ export function ScriptView({
   // Counted from what each scene says rather than worked out again here: a scene trusts its take
   // over the estimate, and the count at the top once disagreed with every scene under it.
   const [longIds, setLongIds] = useState<ReadonlySet<string>>(new Set())
+  // One scene set large, for working on it alone or reading it aloud while recording. One at a
+  // time: the point is that it stands out from the rest.
+  const [enlargedId, setEnlargedId] = useState<string | null>(null)
   const reportFit = useCallback((id: string, long: boolean): void => {
     setLongIds((current) => {
       if (current.has(id) === long) return current
@@ -106,7 +109,7 @@ export function ScriptView({
 
   return (
     <div ref={sheetRef} className="h-full overflow-y-auto bg-paper">
-      <div className="mx-auto max-w-3xl px-8 pb-10 pt-5">
+      <div className={cn('mx-auto px-8 pb-10 pt-5', enlargedId ? 'max-w-5xl' : 'max-w-3xl')}>
         {/* What this sheet covers, said once at the top rather than repeated down the margin. */}
         <p className="mb-2 flex items-center gap-3 font-serif text-[13px] italic text-text-muted">
           <span>
@@ -132,6 +135,8 @@ export function ScriptView({
             narrating={narratingItemId === item.id}
             recording={recordingItemId === item.id}
             recordingElsewhere={recordingItemId !== null && recordingItemId !== item.id}
+            enlarged={enlargedId === item.id}
+            onToggleEnlarged={() => setEnlargedId((current) => (current === item.id ? null : item.id))}
             onFit={reportFit}
             onSeek={onSeek}
             onSelectItem={onSelectItem}
@@ -188,6 +193,8 @@ function Scene({
   narrating,
   recording,
   recordingElsewhere,
+  enlarged,
+  onToggleEnlarged,
   onFit,
   onSeek,
   onSelectItem,
@@ -206,6 +213,8 @@ function Scene({
   narrating: boolean
   recording: boolean
   recordingElsewhere: boolean
+  enlarged: boolean
+  onToggleEnlarged: () => void
   onFit: (id: string, long: boolean) => void
   onSeek: (frame: number) => void
   onSelectItem: (item: TimelineItem) => void
@@ -278,9 +287,16 @@ function Scene({
   }, [onFit, item.id, long])
   useEffect(() => () => onFit(item.id, false), [onFit, item.id])
   const end = (item.start + item.duration) / FPS
+  const sectionRef = useRef<HTMLElement | null>(null)
+
+  // Growing a scene pushes its words down the page, so it is brought back into view.
+  useEffect(() => {
+    if (enlarged) sectionRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [enlarged])
 
   return (
     <section
+      ref={sectionRef}
       data-scene-id={item.id}
       aria-label={`Scene ${index + 1}`}
       aria-current={playing ? 'true' : undefined}
@@ -319,11 +335,24 @@ function Scene({
           </p>
           <p className="mt-0.5 text-[11px] text-text-muted">{statusOf(segment)}</p>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 self-start text-[12px] text-text-muted hover:text-text"
+          aria-pressed={enlarged}
+          aria-label={`Larger text for scene ${index + 1}`}
+          title={enlarged ? 'Back to the usual size' : 'Set this scene’s words large'}
+          onClick={onToggleEnlarged}
+        >
+          {enlarged ? <Minimize2 size={13} aria-hidden="true" /> : <Maximize2 size={13} aria-hidden="true" />}
+          {enlarged ? 'Smaller' : 'Larger'}
+        </Button>
       </header>
 
       <TimedText
         value={draft}
         label={label}
+        large={enlarged}
         clipSeconds={item.duration / FPS}
         onChange={setDraft}
         onFocus={() => onSelectItem(item)}
@@ -387,7 +416,16 @@ function Scene({
 }
 
 /** The look both layers of the box share, so a wrapped line falls in the same place in each. */
-const TEXT = 'm-0 block w-full border-0 p-0 font-serif text-[15px] leading-[1.7] whitespace-pre-wrap break-words'
+const TEXT = 'm-0 block w-full border-0 p-0 font-serif whitespace-pre-wrap break-words'
+
+/**
+ * The two sizes the words come in. Set on the wrapper and inherited by both layers, so they can
+ * never disagree — and so the column, measured in `ch`, widens with the type.
+ */
+const SIZES = {
+  normal: 'text-[15px] leading-[1.7]',
+  large: 'text-[22px] leading-[1.6]'
+}
 
 /**
  * The words, with their timings drawn as quiet chips.
@@ -401,6 +439,7 @@ const TEXT = 'm-0 block w-full border-0 p-0 font-serif text-[15px] leading-[1.7]
 function TimedText({
   value,
   label,
+  large,
   clipSeconds,
   onChange,
   onFocus,
@@ -408,13 +447,14 @@ function TimedText({
 }: {
   value: string
   label: string
+  large: boolean
   clipSeconds: number
   onChange: (value: string) => void
   onFocus: () => void
   onBlur: () => void
 }): JSX.Element {
   return (
-    <div className="relative mt-4 min-h-[1.7em] max-w-[64ch]">
+    <div className={cn('relative mt-4 min-h-[1.7em] max-w-[64ch]', large ? SIZES.large : SIZES.normal)}>
       <div aria-hidden="true" data-testid="script-backdrop" className={cn(TEXT, 'pointer-events-none text-paper-text')}>
         {scriptParts(value).map((part, index) =>
           part.mark ? (
