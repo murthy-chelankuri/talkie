@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 import type { PlayerRef } from '@remotion/player'
-import { AudioLines, Maximize2, Mic, Minimize2, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
+import { AudioLines, Mic, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { narrationScriptForItem, segmentsForItem } from '../lib/clipNarration'
 import { narrationFit, scriptParts, type NarrationFit } from '../lib/narrationFit'
 import { KIND_NAMES } from '../lib/clipKinds'
+import { BASE_WIDTH, isBaseSize, resized, textPxFor, type SceneSize } from '../lib/sceneSize'
 import { formatTimecode } from '../lib/timelineLayout'
 import { useTakeSeconds } from '../hooks/useTakeSeconds'
 import { FPS } from '../../../remotion/constants'
@@ -69,9 +70,17 @@ export function ScriptView({
   // Counted from what each scene says rather than worked out again here: a scene trusts its take
   // over the estimate, and the count at the top once disagreed with every scene under it.
   const [longIds, setLongIds] = useState<ReadonlySet<string>>(new Set())
-  // One scene set large, for working on it alone or reading it aloud while recording. One at a
-  // time: the point is that it stands out from the rest.
-  const [enlargedId, setEnlargedId] = useState<string | null>(null)
+  // Scenes someone has dragged larger, by id. Kept here rather than in each scene so a size
+  // survives the scene re-rendering; not saved, since it is how the page is being read today.
+  const [sizes, setSizes] = useState<ReadonlyMap<string, SceneSize>>(new Map())
+  const setSize = useCallback((id: string, size: SceneSize | null): void => {
+    setSizes((current) => {
+      const next = new Map(current)
+      if (size && !isBaseSize(size)) next.set(id, size)
+      else next.delete(id)
+      return next
+    })
+  }, [])
   const reportFit = useCallback((id: string, long: boolean): void => {
     setLongIds((current) => {
       if (current.has(id) === long) return current
@@ -109,9 +118,9 @@ export function ScriptView({
 
   return (
     <div ref={sheetRef} className="h-full overflow-y-auto bg-paper">
-      <div className={cn('mx-auto px-8 pb-10 pt-5', enlargedId ? 'max-w-5xl' : 'max-w-3xl')}>
+      <div className="px-8 pb-10 pt-5">
         {/* What this sheet covers, said once at the top rather than repeated down the margin. */}
-        <p className="mb-2 flex items-center gap-3 font-serif text-[13px] italic text-text-muted">
+        <p style={{ maxWidth: BASE_WIDTH }} className="mx-auto mb-2 flex items-center gap-3 font-serif text-[13px] italic text-text-muted">
           <span>
             {timeline.length} {timeline.length === 1 ? 'scene' : 'scenes'} over {formatTimecode(runs / FPS)}
           </span>
@@ -135,8 +144,8 @@ export function ScriptView({
             narrating={narratingItemId === item.id}
             recording={recordingItemId === item.id}
             recordingElsewhere={recordingItemId !== null && recordingItemId !== item.id}
-            enlarged={enlargedId === item.id}
-            onToggleEnlarged={() => setEnlargedId((current) => (current === item.id ? null : item.id))}
+            size={sizes.get(item.id)}
+            onResize={setSize}
             onFit={reportFit}
             onSeek={onSeek}
             onSelectItem={onSelectItem}
@@ -193,8 +202,8 @@ function Scene({
   narrating,
   recording,
   recordingElsewhere,
-  enlarged,
-  onToggleEnlarged,
+  size,
+  onResize,
   onFit,
   onSeek,
   onSelectItem,
@@ -213,8 +222,8 @@ function Scene({
   narrating: boolean
   recording: boolean
   recordingElsewhere: boolean
-  enlarged: boolean
-  onToggleEnlarged: () => void
+  size: SceneSize | undefined
+  onResize: (id: string, size: SceneSize | null) => void
   onFit: (id: string, long: boolean) => void
   onSeek: (frame: number) => void
   onSelectItem: (item: TimelineItem) => void
@@ -288,11 +297,8 @@ function Scene({
   useEffect(() => () => onFit(item.id, false), [onFit, item.id])
   const end = (item.start + item.duration) / FPS
   const sectionRef = useRef<HTMLElement | null>(null)
-
-  // Growing a scene pushes its words down the page, so it is brought back into view.
-  useEffect(() => {
-    if (enlarged) sectionRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
-  }, [enlarged])
+  const width = size?.width ?? BASE_WIDTH
+  const extraHeight = size?.height ?? 0
 
   return (
     <section
@@ -300,7 +306,8 @@ function Scene({
       data-scene-id={item.id}
       aria-label={`Scene ${index + 1}`}
       aria-current={playing ? 'true' : undefined}
-      className={cn('relative scroll-my-6 py-6', !first && 'border-t border-paper-border')}
+      style={{ width, maxWidth: '100%' }}
+      className={cn('group/scene relative mx-auto scroll-my-6 py-6', !first && 'border-t border-paper-border')}
     >
       {/* The scene being played, marked down the margin rather than boxed. */}
       <span
@@ -335,24 +342,13 @@ function Scene({
           </p>
           <p className="mt-0.5 text-[11px] text-text-muted">{statusOf(segment)}</p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 self-start text-[12px] text-text-muted hover:text-text"
-          aria-pressed={enlarged}
-          aria-label={`Larger text for scene ${index + 1}`}
-          title={enlarged ? 'Back to the usual size' : 'Set this scene’s words large'}
-          onClick={onToggleEnlarged}
-        >
-          {enlarged ? <Minimize2 size={13} aria-hidden="true" /> : <Maximize2 size={13} aria-hidden="true" />}
-          {enlarged ? 'Smaller' : 'Larger'}
-        </Button>
       </header>
 
       <TimedText
         value={draft}
         label={label}
-        large={enlarged}
+        textPx={textPxFor(width)}
+        extraHeight={extraHeight}
         clipSeconds={item.duration / FPS}
         onChange={setDraft}
         onFocus={() => onSelectItem(item)}
@@ -411,21 +407,95 @@ function Scene({
           )}
         </span>
       </footer>
+      <ResizeCorner
+        label={`Resize scene ${index + 1}`}
+        size={{ width, height: extraHeight }}
+        maxWidth={() => (sectionRef.current?.parentElement?.clientWidth ?? width) - 64}
+        onResize={(next) => onResize(item.id, next)}
+      />
     </section>
+  )
+}
+
+/** How far one arrow-key press moves the corner. */
+const KEY_STEP = 40
+
+/**
+ * The scene's bottom-right corner, dragged to make the scene — and the words in it — larger.
+ *
+ * A pointer drag for the mouse, arrow keys for the keyboard, and a double-click (or Home) to put
+ * the scene back as it was. It sits outside the text so grabbing it never moves the caret.
+ */
+function ResizeCorner({
+  label,
+  size,
+  maxWidth,
+  onResize
+}: {
+  label: string
+  size: SceneSize
+  maxWidth: () => number
+  onResize: (size: SceneSize | null) => void
+}): JSX.Element {
+  const dragRef = useRef<{ x: number; y: number; start: SceneSize; max: number } | null>(null)
+
+  function onPointerDown(event: PointerEvent<HTMLButtonElement>): void {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    dragRef.current = { x: event.clientX, y: event.clientY, start: size, max: maxWidth() }
+  }
+
+  function onPointerMove(event: PointerEvent<HTMLButtonElement>): void {
+    const drag = dragRef.current
+    if (!drag) return
+    onResize(resized(drag.start, event.clientX - drag.x, event.clientY - drag.y, drag.max))
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
+    const steps: Record<string, [number, number]> = {
+      ArrowRight: [KEY_STEP / 2, 0],
+      ArrowLeft: [-KEY_STEP / 2, 0],
+      ArrowDown: [0, KEY_STEP],
+      ArrowUp: [0, -KEY_STEP]
+    }
+    if (event.key === 'Home') {
+      event.preventDefault()
+      onResize(null)
+      return
+    }
+    const step = steps[event.key]
+    if (!step) return
+    event.preventDefault()
+    onResize(resized(size, step[0], step[1], maxWidth()))
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title="Drag to make this scene larger · double-click to reset"
+      data-width={size.width}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={() => (dragRef.current = null)}
+      onPointerCancel={() => (dragRef.current = null)}
+      onDoubleClick={() => onResize(null)}
+      onKeyDown={onKeyDown}
+      className="absolute -right-5 bottom-1 flex h-5 w-5 cursor-nwse-resize touch-none items-end justify-end rounded text-text-muted opacity-40 transition-opacity hover:text-text hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group-hover/scene:opacity-80"
+    >
+      {/* Three diagonal ticks, the mark every window corner uses for "drag me". */}
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+        <path d="M11 4 4 11M11 7.5 7.5 11M11 1 1 11" />
+      </svg>
+    </button>
   )
 }
 
 /** The look both layers of the box share, so a wrapped line falls in the same place in each. */
 const TEXT = 'm-0 block w-full border-0 p-0 font-serif whitespace-pre-wrap break-words'
 
-/**
- * The two sizes the words come in. Set on the wrapper and inherited by both layers, so they can
- * never disagree — and so the column, measured in `ch`, widens with the type.
- */
-const SIZES = {
-  normal: 'text-[15px] leading-[1.7]',
-  large: 'text-[22px] leading-[1.6]'
-}
+
 
 /**
  * The words, with their timings drawn as quiet chips.
@@ -439,7 +509,8 @@ const SIZES = {
 function TimedText({
   value,
   label,
-  large,
+  textPx,
+  extraHeight,
   clipSeconds,
   onChange,
   onFocus,
@@ -447,14 +518,22 @@ function TimedText({
 }: {
   value: string
   label: string
-  large: boolean
+  textPx: number
+  /** Room added below the words by dragging the scene's corner down. */
+  extraHeight: number
   clipSeconds: number
   onChange: (value: string) => void
   onFocus: () => void
   onBlur: () => void
 }): JSX.Element {
   return (
-    <div className={cn('relative mt-4 min-h-[1.7em] max-w-[64ch]', large ? SIZES.large : SIZES.normal)}>
+    // The size is set here and both layers inherit it, so the painted timings and the caret can
+    // never be laid out at two different sizes.
+    <div
+      data-testid="script-text"
+      style={{ fontSize: textPx, lineHeight: 1.7, paddingBottom: extraHeight }}
+      className="relative mt-4 min-h-[1.7em]"
+    >
       <div aria-hidden="true" data-testid="script-backdrop" className={cn(TEXT, 'pointer-events-none text-paper-text')}>
         {scriptParts(value).map((part, index) =>
           part.mark ? (

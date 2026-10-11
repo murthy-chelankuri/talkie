@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScriptView } from './ScriptView'
@@ -312,39 +312,44 @@ describe('recording a scene in your own voice', () => {
   })
 })
 
-describe('setting one scene large', () => {
-  it('sets that scene’s words large and leaves the rest as they were', async () => {
-    Element.prototype.scrollIntoView = vi.fn()
+describe('dragging a scene larger', () => {
+  // jsdom lays nothing out, so every element is 0 wide; give the page a width to grow into.
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1400)
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  const textOf = (n: number): HTMLElement =>
+    within(screen.getByRole('region', { name: `Scene ${n}` })).getByTestId('script-text')
+
+  it('grows that scene’s words from its corner and leaves the rest as they were', async () => {
     view([clip('a', 0), clip('b', 450)], [])
 
-    await userEvent.click(screen.getByRole('button', { name: 'Larger text for scene 2' }))
+    screen.getByRole('button', { name: 'Resize scene 2' }).focus()
+    for (let i = 0; i < 8; i++) await userEvent.keyboard('{ArrowRight}')
 
-    expect(screen.getByRole('button', { name: 'Larger text for scene 2' })).toHaveAttribute('aria-pressed', 'true')
-    const large = screen.getByLabelText('Narration for scene 2', { selector: 'textarea' }).parentElement
-    const usual = screen.getByLabelText('Narration for scene 1', { selector: 'textarea' }).parentElement
-    expect(large).toHaveClass('text-[22px]')
-    expect(usual).toHaveClass('text-[15px]')
+    expect(parseFloat(textOf(2).style.fontSize)).toBeGreaterThan(15)
+    expect(textOf(1).style.fontSize).toBe('15px')
   })
 
-  it('sets only one scene large at a time', async () => {
-    Element.prototype.scrollIntoView = vi.fn()
-    view([clip('a', 0), clip('b', 450)], [])
-
-    await userEvent.click(screen.getByRole('button', { name: 'Larger text for scene 1' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Larger text for scene 2' }))
-
-    expect(screen.getByRole('button', { name: 'Larger text for scene 1' })).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  it('goes back to the usual size when pressed again', async () => {
-    Element.prototype.scrollIntoView = vi.fn()
+  it('adds room below the words when the corner goes down', async () => {
     view([clip('a', 0)], [])
 
-    const toggle = screen.getByRole('button', { name: 'Larger text for scene 1' })
-    await userEvent.click(toggle)
-    await userEvent.click(toggle)
+    screen.getByRole('button', { name: 'Resize scene 1' }).focus()
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}')
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByLabelText('Narration for scene 1', { selector: 'textarea' }).parentElement).toHaveClass('text-[15px]')
+    expect(textOf(1).style.paddingBottom).toBe('80px')
+  })
+
+  it('goes back to how it was on a double-click', async () => {
+    view([clip('a', 0)], [])
+
+    const corner = screen.getByRole('button', { name: 'Resize scene 1' })
+    corner.focus()
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}')
+    await userEvent.dblClick(corner)
+
+    expect(textOf(1).style.fontSize).toBe('15px')
+    expect(screen.getByRole('region', { name: 'Scene 1' }).style.width).toBe('640px')
   })
 })
