@@ -1,4 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { HtmlSceneInput } from '../main/htmlScene/htmlSceneApi'
+import type { HtmlSceneResult, HtmlSceneWriteResult } from '../main/ipc/htmlSceneHandlers'
+import type { HtmlSceneData } from '../main/project/timeline/schema'
 import type { ProjectMetadata, ProjectSummary, ProjectOverview } from '../main/project/schema'
 import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
@@ -116,6 +119,24 @@ const sceneApi = {
   write: (request: SceneRequest): Promise<SceneResult> => ipcRenderer.invoke('project:scene:write', request)
 }
 
+const htmlSceneApi = {
+  add: (id: string, input: HtmlSceneInput & { title: string }): Promise<HtmlSceneResult> =>
+    ipcRenderer.invoke('project:htmlScene:add', id, input),
+  edit: (id: string, itemId: string, input: HtmlSceneInput): Promise<HtmlSceneResult> =>
+    ipcRenderer.invoke('project:htmlScene:edit', id, itemId, input),
+  read: (id: string, itemId: string): Promise<{ data: HtmlSceneData; files: { path: string; text?: string; bytes: number }[] }> =>
+    ipcRenderer.invoke('project:htmlScene:read', id, itemId),
+  check: (id: string, itemId: string, atSeconds?: number[]): Promise<{ problems: string[]; frames: { atSeconds: number; url: string }[] }> =>
+    ipcRenderer.invoke('project:htmlScene:check', id, itemId, atSeconds),
+  import: (id: string): Promise<HtmlSceneResult | null> => ipcRenderer.invoke('project:htmlScene:import', id),
+  templates: (): Promise<{ id: string; name: string; description: string }[]> => ipcRenderer.invoke('project:htmlScene:templates'),
+  fromTemplate: (id: string, templateId: string, title: string): Promise<HtmlSceneResult> =>
+    ipcRenderer.invoke('project:htmlScene:fromTemplate', id, templateId, title),
+  describe: (id: string, instruction: string): Promise<HtmlSceneWriteResult> => ipcRenderer.invoke('project:htmlScene:describe', id, instruction),
+  change: (id: string, itemId: string, instruction: string): Promise<HtmlSceneWriteResult> =>
+    ipcRenderer.invoke('project:htmlScene:change', id, itemId, instruction)
+}
+
 const timelineApi = {
   read: (id: string): Promise<TimelineItem[]> => ipcRenderer.invoke('project:timeline:read', id),
   addItem: (id: string, item: { kind: string; start: number; duration: number; data: unknown }): Promise<TimelineItem> =>
@@ -184,6 +205,7 @@ contextBridge.exposeInMainWorld('api', {
   agent: agentApi,
   project: projectApi,
   scene: sceneApi,
+  htmlScene: htmlSceneApi,
   timeline: timelineApi,
   render: renderApi,
   capture: captureApi,
@@ -195,6 +217,7 @@ export type SettingsApi = typeof settingsApi
 export type ThemesApi = typeof themesApi
 export type AgentApi = typeof agentApi
 export type SceneApi = typeof sceneApi
+export type HtmlSceneApi = typeof htmlSceneApi
 export type ProjectApi = typeof projectApi
 export type TimelineApi = typeof timelineApi
 export type RenderApi = typeof renderApi
