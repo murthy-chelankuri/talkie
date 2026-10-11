@@ -35,7 +35,7 @@ export interface HtmlSceneInput {
   style?: { theme?: 'brand' | 'light' | 'dark' }
   prompt?: string
   durationFrames?: number
-  /** Where on the timeline, counting from 0. The end when absent. */
+  /** Where on the timeline, counting from 1 as talkie_timeline lists clips. The end when absent. */
   position?: number
 }
 

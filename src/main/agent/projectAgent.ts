@@ -61,6 +61,11 @@ export const AGENT_TOOLS = [
   'talkie_add_diagram',
   'talkie_add_image',
   'talkie_import_deck',
+  'talkie_html_scene_guide',
+  'talkie_add_html_scene',
+  'talkie_html_scene',
+  'talkie_edit_html_scene',
+  'talkie_check_html_scene',
   // Changing
   'talkie_edit_slide',
   'talkie_edit_diagram',

@@ -9,6 +9,8 @@ import { createTalkieServer } from './server'
 import { addTimelineItem, readTimeline, readTranscript } from '../main/project/projectApi'
 import { createMcpToken } from '../main/settings/mcpAccess'
 import { bandedPng } from '../main/themes/generate/testImages'
+import { GOOD } from '../main/htmlScene/fixtures'
+import { AGENT_TOOLS } from '../main/agent/projectAgent'
 import { readTheme } from '../main/themes/themeApi'
 import { updateSettings } from '../main/settings/settingsStore'
 
@@ -494,6 +496,72 @@ describe('Talkie over MCP', () => {
       await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'Hi', style: { size: 'large' } })
 
       expect((readTimeline(projectId, baseDir)[0].data as { style: object }).style).toMatchObject({ theme: 'light', align: 'center', size: 'large' })
+    })
+  })
+
+  describe('HTML scenes', () => {
+    const clipIdIn = (said: string): string => /clip id ([\w-]+)/.exec(said)?.[1] ?? ''
+    const raw = async (name: string, args: Record<string, unknown>) =>
+      (await client.callTool({ name, arguments: args })).content as Array<{ type: string; text?: string; data?: string; mimeType?: string }>
+
+    it('explains how to write one before anyone does', async () => {
+      const guide = await call('talkie_html_scene_guide')
+
+      expect(guide).toContain('talkie.onFrame')
+      expect(guide).toContain('--talkie-heading')
+      expect(guide).toContain('__TALKIE_LIB__/d3.min.js')
+    })
+
+    it('adds one, and shows the agent the frames it drew', async () => {
+      const projectId = await newProject('Charts')
+
+      const reply = await raw('talkie_add_html_scene', { projectId, title: 'Revenue', files: { 'index.html': GOOD } })
+
+      expect(reply[0].text).toMatch(/Added "Revenue" \(clip id [\w-]+\)/)
+      expect(reply[0].text).toContain('The check found nothing wrong.')
+      expect(reply.filter((part) => part.type === 'image' && part.mimeType === 'image/png').length).toBeGreaterThan(0)
+      expect(readTimeline(projectId, baseDir)[0].kind).toBe('html')
+    }, 180_000)
+
+    it('will only import from an absolute path', async () => {
+      const projectId = await newProject('Charts')
+
+      expect(await call('talkie_add_html_scene', { projectId, title: 'X', path: 'page.html' })).toMatch(/not an absolute path/)
+    })
+
+    it('changes only what it is given, reads back, and checks at the moments asked for', async () => {
+      const projectId = await newProject('Charts')
+      const id = clipIdIn(await call('talkie_add_html_scene', { projectId, title: 'Revenue', files: { 'index.html': GOOD } }))
+      const src = (readTimeline(projectId, baseDir)[0].data as { src: string }).src
+
+      await call('talkie_edit_html_scene', { projectId, timelineItemId: id, params: { quarter: 'Q4' }, style: { theme: 'light' } })
+      const read = await call('talkie_html_scene', { projectId, timelineItemId: id })
+      const checked = await raw('talkie_check_html_scene', { projectId, timelineItemId: id, atSeconds: [0.5] })
+
+      expect((readTimeline(projectId, baseDir)[0].data as { src: string }).src).toBe(src)
+      expect(read).toContain('look: light')
+      expect(read).toContain('"quarter":"Q4"')
+      expect(read).toContain('=== index.html ===')
+      expect(checked.filter((part) => part.type === 'image')).toHaveLength(1)
+    }, 300_000)
+
+    it('is moved and removed like any other clip', async () => {
+      const projectId = await newProject('Charts')
+      await call('talkie_add_scene', { projectId, title: 'First' })
+      const id = clipIdIn(await call('talkie_add_html_scene', { projectId, title: 'Revenue', files: { 'index.html': GOOD } }))
+
+      await call('talkie_move_clip', { projectId, timelineItemId: id, toPosition: 1 })
+      expect(readTimeline(projectId, baseDir)[0].id).toBe(id)
+      expect(await call('talkie_timeline', { projectId })).toContain('Revenue')
+
+      await call('talkie_delete_clip', { projectId, timelineItemId: id })
+      expect(readTimeline(projectId, baseDir).map((item) => item.kind)).toEqual(['scene'])
+    }, 180_000)
+
+    it('is all within reach of the agent inside the app', () => {
+      for (const name of ['talkie_html_scene_guide', 'talkie_add_html_scene', 'talkie_html_scene', 'talkie_edit_html_scene', 'talkie_check_html_scene']) {
+        expect(AGENT_TOOLS).toContain(name)
+      }
     })
   })
 
