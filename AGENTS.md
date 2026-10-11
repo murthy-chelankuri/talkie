@@ -346,9 +346,15 @@ the app stays the only writer.
 - **Comments say why, not what.** The codebase explains the reason a thing is the way it is,
   usually the failure that shaped it. Match that density and tone; do not narrate the code.
 - **British spelling in user-facing text and in names** — colour, licence, sanitise.
-- **Design tokens only**, from `src/renderer/src/styles/index.css`. The accent is azure
-  (`#1a5fb4` light, `#7ab5f0` dark) and is used as text at 10–11px, so any change must be
-  contrast-checked — the current floor is 5.8:1.
+- **Design tokens only**, from `src/renderer/src/styles/index.css` — the Studio look: depth from
+  three surfaces (`bg`, `surface`, `raised`) rather than outlines, which are only for dividers
+  inside a panel. The accent is a violet→cyan gradient on what is acted on, and a solid violet for
+  text and outlines (`#a99fff` dark, `#4b37d0` light), used as text at 10–11px. **Text on the
+  gradient is near-black (`#0e0f13`)** — white falls to 2:1 at its cyan end. Floors: 5.8:1 for
+  accent text, 4.5:1 for body and muted text, on every surface; `contrast.test.ts` holds both
+  themes to them. Dark is the default; red is only for recording and the playhead.
+- **The editor is a rail, one side panel, the stage, an inspector and the timeline.** The agent
+  stays mounted while its panel is shut, so a conversation and a run in progress survive.
 - **Tests describe behaviour, not implementation.** Names read as sentences about what the
   software does.
 - Prefer `git worktree` for parallel work. Tool-managed worktree directories (`.claude/worktrees/`

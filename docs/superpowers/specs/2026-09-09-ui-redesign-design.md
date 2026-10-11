@@ -1,5 +1,8 @@
 # UI Redesign Design
 
+> **Superseded in look** by `2026-10-11-studio-redesign-design.md`. The foundations here —
+> Tailwind, CSS-variable tokens, the `ui/` primitives, renderer tests — still stand.
+
 ## 1. Purpose & Scope
 
 Demo Editor's functionality (Plans 1-4: project management, browser-session recording, image import, Remotion preview/export, transcript editing + TTS narration) is complete and working, but the renderer has zero visual design applied — every screen is bare, unstyled HTML elements with no CSS anywhere in the codebase. This makes the app effectively unusable for real testing or demoing, despite the underlying features working correctly.
