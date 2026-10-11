@@ -25,7 +25,16 @@ export default defineConfig({
     rollupOptions: {
       external: (id) => !id.startsWith('.') && !id.startsWith('/') && !id.startsWith('\0'),
       output: {
-        banner: '#!/usr/bin/env node'
+        // The shared modules find what ships beside them from __dirname — the Remotion bundle, the
+        // HTML scene runtime — and an ES module has no __dirname. Defined here from the file's own
+        // URL, so those lookups land in out/ as they do in the app, not in a ReferenceError.
+        banner: [
+          '#!/usr/bin/env node',
+          "import { fileURLToPath as __talkieFileUrlToPath } from 'node:url'",
+          "import { dirname as __talkieDirname } from 'node:path'",
+          'const __filename = __talkieFileUrlToPath(import.meta.url)',
+          'const __dirname = __talkieDirname(__filename)'
+        ].join('\n')
       }
     }
   },

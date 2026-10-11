@@ -9,7 +9,7 @@ import { BUILTIN_THEMES } from '../themes/builtinThemes'
 import { renderThemeFrom } from '../themes/toRenderTheme'
 import { checkHtmlScene, sceneThemeFor, type CheckRequest } from './check'
 import { writeRevision } from './store'
-import { EMPTY, GOOD, HARD_CODED, HOSTILE, NAVIGATES, OVERFLOW, PER_TICK, SILENT } from './fixtures'
+import { EMPTY, GOOD, HARD_CODED, HOSTILE, NAVIGATES, OVERFLOW, OWN_FONT, PER_TICK, SILENT } from './fixtures'
 
 let baseDir: string
 let projectId: string
@@ -63,6 +63,13 @@ describe('checking an HTML scene', () => {
     const result = await check(HARD_CODED, { atSeconds: [0] })
 
     expect(result.problems.join('\n')).toMatch(/#ff0000.*--talkie-heading/)
+  }, 120_000)
+
+  it('reports a font the theme did not give it, but not code set in monospace', async () => {
+    const problems = (await check(OWN_FONT, { atSeconds: [0] })).problems.join('\n')
+
+    expect(problems).toMatch(/font papyrus.*--talkie-font-heading/)
+    expect(problems).not.toMatch(/monospace/)
   }, 120_000)
 
   it('reports animation that depends on the order frames are drawn in', async () => {

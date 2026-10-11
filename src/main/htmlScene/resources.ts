@@ -1,4 +1,3 @@
-import { buildSync } from 'esbuild'
 import { existsSync, mkdtempSync, readFileSync } from 'fs'
 import { createRequire } from 'module'
 import { tmpdir } from 'os'
@@ -42,6 +41,9 @@ export function shippedDir(fromDir: string = __dirname): string {
 let built: string | null = null
 function builtInCheckout(): string {
   if (built) return built
+  // esbuild is a build tool, not part of the app: loaded only here, in a checkout, so a packaged
+  // build — which ships the scripts already built and no esbuild — never asks for it.
+  const { buildSync } = createRequire(__filename)('esbuild') as typeof import('esbuild')
   const out = mkdtempSync(join(tmpdir(), 'talkie-html-scene-'))
   const root = join(__dirname, '..', '..', '..')
   for (const [entry, file] of [['src/htmlScene/runtime/index.ts', 'runtime.js'], ['src/htmlScene/host/host.ts', 'host.js']]) {

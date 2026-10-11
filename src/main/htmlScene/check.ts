@@ -125,7 +125,11 @@ export async function checkHtmlScene(request: CheckRequest): Promise<CheckResult
 
     const audit = await sceneFrame(page).evaluate(auditPage)
     for (const thing of audit.offTheme) {
-      problems.add(`Uses ${thing}, which is not one of the theme's colours — use var(--talkie-heading), var(--talkie-body), var(--talkie-accent) or var(--talkie-bg).`)
+      problems.add(
+        thing.startsWith('text in the font')
+          ? `Uses ${thing}, which is not one of the theme's — use var(--talkie-font-heading) or var(--talkie-font-body).`
+          : `Uses ${thing}, which is not one of the theme's colours — use var(--talkie-heading), var(--talkie-body), var(--talkie-accent) or var(--talkie-bg).`
+      )
     }
     for (const text of audit.overflow) problems.add(`"${text}" runs out of the frame.`)
     if (frames.length > 0 && frames.every((frame) => frame.png.length < BLANK_FRAME_BYTES)) {
@@ -190,6 +194,10 @@ function auditPage(): { offTheme: string[]; overflow: string[]; text: string } {
     return '#' + [match[1], match[2], match[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('')
   }
   const themed = allowed[0] !== ''
+  // The first family of each theme font; code in monospace is the one deliberate exception.
+  const firstFamily = (stack: string): string => stack.split(',')[0].trim().replace(/^["']|["']$/g, '').toLowerCase()
+  const allowedFonts = ['--talkie-font-heading', '--talkie-font-body'].map((name) => firstFamily(root.getPropertyValue(name)))
+  const monospace = /mono|menlo|courier|consolas/i
   const offTheme = new Set<string>()
   const overflow: string[] = []
   for (const element of Array.from(document.body.querySelectorAll('*')) as HTMLElement[]) {
@@ -200,6 +208,10 @@ function auditPage(): { offTheme: string[]; overflow: string[]; text: string } {
     if (textNodes.length > 0) {
       const colour = toHex(style.color)
       if (themed && colour && !allowed.includes(colour)) offTheme.add(`text in ${colour}`)
+      const family = firstFamily(style.fontFamily)
+      if (themed && allowedFonts[0] && !allowedFonts.includes(family) && !monospace.test(family)) {
+        offTheme.add(`text in the font ${family}`)
+      }
       // Measured on the text itself: a line that will not wrap runs past its box, not with it.
       const range = document.createRange()
       range.selectNodeContents(element)

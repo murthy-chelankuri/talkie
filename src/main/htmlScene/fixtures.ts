@@ -37,6 +37,8 @@ export const NAVIGATES = page(
 
 export const HARD_CODED = page('<h1 style="color:#ff0000;font-size:120px;margin:120px">Off brand</h1>')
 
+export const OWN_FONT = page('<h1 style="color:var(--talkie-heading);font:120px Papyrus, fantasy;margin:120px">Off brand</h1><pre style="color:var(--talkie-body);font:40px ui-monospace, monospace">code is fine</pre>')
+
 /** Moves a fixed amount per tick, so where it is depends on how many ticks came before. */
 export const PER_TICK = page(
   '<div id="dot"></div><script>let x = 0; const dot = document.getElementById("dot"); const step = () => { x += 8; dot.style.left = x + "px"; requestAnimationFrame(step) }; requestAnimationFrame(step)</script>',
