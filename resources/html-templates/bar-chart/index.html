@@ -1,5 +1,54 @@
 <!doctype html>
+<html>
+<head>
 <meta charset="utf-8">
-<meta name="talkie:template" content="Bar chart — bars grow in turn, each as it is mentioned">
-<body></body>
-<script>talkie.onFrame((t) => { document.body.textContent = t.toFixed(1) })</script>
+<meta name="talkie:template" content="Bar chart — bars grow in turn, each as its line of narration starts">
+<script src="__TALKIE_LIB__/d3.min.js"></script>
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); color: var(--talkie-body); font-family: var(--talkie-font-body); }
+  h1 { position: absolute; left: 160px; top: 110px; margin: 0; font: 600 76px/1.1 var(--talkie-font-heading); color: var(--talkie-heading); }
+  svg { position: absolute; left: 160px; top: 270px; overflow: visible; }
+  .label { fill: var(--talkie-body); font-size: 36px; }
+  .value { fill: var(--talkie-heading); font-size: 40px; font-weight: 600; }
+  .bar { fill: var(--talkie-accent); }
+  .base { stroke: var(--talkie-body); stroke-opacity: 0.4; stroke-width: 2; }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="chart" width="1600" height="680"></svg>
+<script>
+  // Values: title, labels (list), values (list of numbers), unit. Bars start on the narration's
+  // lines, counted back from the last, so one introducing sentence goes with the title.
+  let draw = () => {}
+  talkie.ready(talkie.initialised.then(() => {
+    const labels = talkie.params.labels ?? ['North', 'South', 'East', 'West']
+    const values = talkie.params.values ?? [42, 58, 31, 76]
+    const unit = talkie.params.unit ?? 'k'
+    document.getElementById('title').textContent = talkie.params.title ?? 'Revenue by region'
+
+    const svg = d3.select('#chart')
+    const width = 1600, height = 600
+    const x = d3.scaleBand().domain(labels).range([0, width]).padding(0.32)
+    const y = d3.scaleLinear().domain([0, d3.max(values) * 1.1]).range([height, 0])
+    svg.append('line').attr('class', 'base').attr('x1', 0).attr('x2', width).attr('y1', height).attr('y2', height)
+    const bars = svg.selectAll('.bar').data(values).join('rect').attr('class', 'bar').attr('rx', 6)
+      .attr('x', (_, i) => x(labels[i])).attr('width', x.bandwidth())
+    const numbers = svg.selectAll('.value').data(values).join('text').attr('class', 'value').attr('text-anchor', 'middle')
+      .attr('x', (_, i) => x(labels[i]) + x.bandwidth() / 2)
+    svg.selectAll('.label').data(labels).join('text').attr('class', 'label').attr('text-anchor', 'middle')
+      .attr('x', (d) => x(d) + x.bandwidth() / 2).attr('y', height + 56).text((d) => d)
+
+    const beats = talkie.beats
+    const starts = values.map((_, i) => (beats.length >= values.length ? beats[beats.length - values.length + i] : 0.5 + i * 0.6))
+    draw = (t) => {
+      const grown = starts.map((start) => d3.easeCubicOut(Math.min(Math.max((t - start) / 0.9, 0), 1)))
+      bars.attr('y', (d, i) => y(d * grown[i])).attr('height', (d, i) => height - y(d * grown[i]))
+      numbers.attr('y', (d, i) => y(d * grown[i]) - 18).attr('opacity', (_, i) => (grown[i] > 0 ? 1 : 0))
+        .text((d, i) => `${Math.round(d * grown[i])}${unit}`)
+    }
+  }))
+  talkie.onFrame((t) => draw(t))
+</script>
+</body>
+</html>

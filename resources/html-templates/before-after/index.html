@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="talkie:template" content="Before and after — one side, then a wipe across to the other">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); }
+  section { position: absolute; inset: 0; padding: 160px 200px; box-sizing: border-box; }
+  #after { clip-path: inset(0 0 0 100%); background: var(--talkie-bg); }
+  .tag { font: 600 34px/1 var(--talkie-font-body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--talkie-accent); }
+  h2 { margin: 28px 0 48px; font: 600 88px/1.1 var(--talkie-font-heading); color: var(--talkie-heading); }
+  li { font: 400 46px/1.6 var(--talkie-font-body); color: var(--talkie-body); }
+  .wipe { position: absolute; top: 0; bottom: 0; width: 8px; background: var(--talkie-accent); left: 100%; }
+</style>
+</head>
+<body>
+<section id="before"><div class="tag">Before</div><h2 id="beforeTitle"></h2><ul id="beforePoints"></ul></section>
+<section id="after"><div class="tag">After</div><h2 id="afterTitle"></h2><ul id="afterPoints"></ul></section>
+<div class="wipe" id="wipe"></div>
+<script>
+  // Values: before and after, each { title, points }. The wipe comes with the second line of
+  // narration if there is one, otherwise a little before halfway.
+  const fill = (side, value) => {
+    document.getElementById(side + 'Title').textContent = value.title
+    document.getElementById(side + 'Points').innerHTML = (value.points ?? []).map((p) => `<li>${String(p).replace(/</g, '&lt;')}</li>`).join('')
+  }
+  let at = 0
+  talkie.ready(talkie.initialised.then(() => {
+    fill('before', talkie.params.before ?? { title: 'An afternoon per demo', points: ['Record, re-record, edit', 'Write and read a script', 'Out of date next release'] })
+    fill('after', talkie.params.after ?? { title: 'Ten minutes per demo', points: ['Recorded while you click', 'Narrated for you', 'Re-made when the product changes'] })
+    at = talkie.beats[1] ?? talkie.duration * 0.45
+  }))
+  talkie.onFrame((t) => {
+    const k = Math.min(Math.max((t - at) / 0.8, 0), 1)
+    const eased = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2
+    const left = 100 - eased * 100
+    document.getElementById('after').style.clipPath = `inset(0 0 0 ${left}%)`
+    document.getElementById('wipe').style.left = `calc(${left}% - 4px)`
+    document.getElementById('wipe').style.opacity = k > 0 && k < 1 ? 1 : 0
+  })
+</script>
+</body>
+</html>

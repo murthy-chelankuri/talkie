@@ -42,6 +42,11 @@ const talkie = {
   beats: [] as number[],
   onFrame(fn: (t: number) => unknown): void { handlers.push(fn) },
   ready(promise: Promise<unknown>): void { waits.push(promise) },
+  /**
+   * Resolves once the theme, values and timings have arrived. A page's script runs before they do,
+   * so anything built from them waits on this: talkie.ready(talkie.initialised.then(build)).
+   */
+  initialised,
   anime: registerAnime,
   lottie: registerLottie
 }
