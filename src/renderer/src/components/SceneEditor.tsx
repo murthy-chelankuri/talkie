@@ -201,7 +201,7 @@ export function SceneEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -210,7 +210,7 @@ export function SceneEditor({
         role="dialog"
         aria-label={item ? 'Edit scene' : 'Add a scene'}
         className={cn(
-          'flex max-h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl',
+          'flex max-h-full w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl',
           // Code and a playing scene side by side need more room than a slide's two fields.
           kind === 'html' ? 'h-[44rem] max-w-6xl' : 'h-[36rem] max-w-4xl'
         )}
@@ -219,7 +219,7 @@ export function SceneEditor({
           <h2 className="font-serif text-lg text-text">{item ? 'Edit scene' : 'Add a scene'}</h2>
 
           {!item && (
-            <div className="ml-2 flex items-center gap-1 rounded-lg border border-border p-0.5">
+            <div className="ml-2 flex items-center gap-1 rounded-[10px] bg-raised p-0.5">
               {(
                 [
                   { id: 'scene' as const, label: 'Slide', icon: <LayoutTemplate size={13} /> },
@@ -350,7 +350,7 @@ export function SceneEditor({
               theme={theme}
             />
 
-            <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-bg p-3">
+            <div className="flex flex-col gap-1.5 rounded-lg bg-raised p-3">
               <span className="text-[13px] font-medium text-text">Ask for a change</span>
               <span className="text-[11px] leading-relaxed text-text-muted">
                 Say what you want different. It is told what the scene says now, so you can keep
@@ -422,7 +422,7 @@ function SceneStyleControls({
   const current = VARIANT_FOR[style.theme] ?? 'dark'
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-3">
+    <div className="flex flex-col gap-3 rounded-lg bg-raised p-3">
       <span className="text-[13px] font-medium text-text">Look</span>
 
       <div className="flex flex-col gap-1.5">
@@ -531,7 +531,7 @@ function Choice({
         aria-label={label}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-md border border-border bg-surface px-1.5 py-1 text-[12px] text-text"
+        className="rounded-md bg-raised px-1.5 py-1 text-[12px] text-text"
       >
         {options.map((option) => (
           <option key={option.id} value={option.id}>

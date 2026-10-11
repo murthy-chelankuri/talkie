@@ -41,7 +41,7 @@ export function VoicePicker({
         aria-label={ariaLabel}
         value={resolveVoiceName(value, voices)}
         onChange={(event) => onChange(event.target.value)}
-        className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+        className="min-w-0 flex-1 rounded-md bg-raised px-2.5 py-2 text-[13px] text-text"
       >
         {defaultOption && <option value={FOLLOWS_DEFAULT}>{defaultOption.label}</option>}
         {groupVoices(voices).map(([locale, group]) => (

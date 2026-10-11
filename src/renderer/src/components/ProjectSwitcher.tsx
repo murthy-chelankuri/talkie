@@ -70,7 +70,7 @@ export function ProjectSwitcher({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-[26rem] w-[19rem] overflow-y-auto rounded-xl border border-border bg-surface p-1.5 shadow-xl"
+          className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-[26rem] w-[19rem] overflow-y-auto rounded-xl bg-raised p-1.5 shadow-xl"
         >
           {projects.map((project) => {
             const isCurrent = project.id === currentProjectId
@@ -89,7 +89,7 @@ export function ProjectSwitcher({
                   isCurrent ? 'bg-surface-hover' : 'bg-transparent hover:bg-surface-hover'
                 )}
               >
-                <span className="relative block h-11 w-[4.75rem] shrink-0 overflow-hidden rounded-md border border-border bg-bg">
+                <span className="relative block h-11 w-[4.75rem] shrink-0 overflow-hidden rounded-md bg-raised">
                   <ProjectPoster project={project} className="h-full w-full" />
                   {project.clipCount > 0 && (
                     <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1 text-[9px] tabular-nums text-white">

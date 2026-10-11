@@ -67,7 +67,7 @@ export function ThemesSection(): JSX.Element {
       <button
         type="button"
         onClick={() => setView({ kind: 'edit', draft: theme, themeId: theme.id })}
-        className="flex w-full flex-col gap-2 rounded-lg border border-border bg-bg p-3 text-left transition-colors hover:border-text-muted/40"
+        className="flex w-full flex-col gap-2 rounded-lg bg-raised p-3 text-left transition-colors hover:border-text-muted/40"
       >
         <span className="flex h-10 overflow-hidden rounded-md" aria-hidden="true">
           {(['brand', 'light', 'dark'] as const).map((id) => (

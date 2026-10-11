@@ -122,7 +122,7 @@ export function ThemeEditor({
       <ThemePreview draft={draft} target={target} />
 
       {draft.provenance && draft.provenance.notes.length > 0 && (
-        <section aria-label="What was changed" className="flex flex-col gap-1 rounded-lg border border-border bg-bg p-3">
+        <section aria-label="What was changed" className="flex flex-col gap-1 rounded-lg bg-raised p-3">
           <span className="text-[12px] font-medium text-text">
             Made from {draft.provenance.from.join(', ') || 'your description'}. Worth knowing:
           </span>
@@ -158,7 +158,7 @@ export function ThemeEditor({
         {VARIANTS.map((variant) => {
           const colours = draft.variants[variant.id]
           return (
-            <div key={variant.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <div key={variant.id} className="flex flex-col gap-2 rounded-xl bg-raised p-3">
               <span className="text-[12px] text-text">
                 {variant.label} <span className="text-text-muted">— {variant.hint}</span>
               </span>
@@ -206,7 +206,7 @@ export function ThemeEditor({
                   aria-label="Logo corner"
                   value={draft.logo.corner}
                   onChange={(e) => setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, corner: e.target.value as NonNullable<ThemeDraft['logo']>['corner'] } }))}
-                  className="rounded-md border border-border bg-surface px-1.5 py-1 text-[12px] text-text"
+                  className="rounded-md bg-raised px-1.5 py-1 text-[12px] text-text"
                 >
                   <option value="top-left">Top left</option>
                   <option value="top-right">Top right</option>
@@ -244,7 +244,7 @@ export function ThemeEditor({
               aria-label="Caption bar"
               value={draft.overlays.caption}
               onChange={(e) => setDraft((d) => ({ ...d, overlays: { ...d.overlays, caption: e.target.value as VariantId } }))}
-              className="rounded-md border border-border bg-surface px-1.5 py-1 text-[12px] text-text"
+              className="rounded-md bg-raised px-1.5 py-1 text-[12px] text-text"
             >
               {VARIANTS.map((variant) => (
                 <option key={variant.id} value={variant.id}>
@@ -391,7 +391,7 @@ function FontField({
         ? 'Open font, downloaded'
         : 'Built into Talkie'
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
+    <div className="flex flex-col gap-1 rounded-xl bg-raised p-3">
       <span className="text-[11px] capitalize text-text-muted">{role}</span>
       <Input aria-label={`${role} font`} value={family} onChange={(e) => onFamily(e.target.value)} />
       <span className="text-[10px] text-text-muted">{where}</span>

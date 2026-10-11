@@ -36,7 +36,7 @@ export function ThemePicker({
             setApplying(false)
           }
         }}
-        className="rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text"
+        className="rounded-md bg-raised px-2 py-1.5 text-[13px] text-text"
       >
         <option value="">Talkie’s own look</option>
         {[

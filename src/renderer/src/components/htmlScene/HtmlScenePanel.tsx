@@ -84,7 +84,7 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
-      <section className="flex flex-col gap-2 rounded-lg border border-border bg-bg p-4">
+      <section className="flex flex-col gap-2 rounded-lg bg-raised p-4">
         <span className="flex items-center gap-1.5 text-[13px] font-medium text-text">
           <Sparkles size={14} className="text-accent" /> Describe it
         </span>
@@ -120,7 +120,7 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
               type="button"
               disabled={busy !== null}
               onClick={() => void run(template.id, () => htmlSceneClient.fromTemplate(projectId, template.id, template.name))}
-              className="flex flex-col gap-1 rounded-lg border border-border bg-bg p-3 text-left transition-colors hover:border-text-muted/40 disabled:opacity-60"
+              className="flex flex-col gap-1 rounded-lg bg-raised p-3 text-left transition-colors hover:border-text-muted/40 disabled:opacity-60"
             >
               <span className="flex items-center gap-1.5 text-[12px] font-medium text-text">
                 {busy === template.id && <Spinner size="sm" />}
@@ -309,7 +309,7 @@ function EditHtmlScene({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 bg-bg p-4">
-          <div className="aspect-video w-full overflow-hidden rounded-lg border border-border">
+          <div className="aspect-video w-full overflow-hidden rounded-xl bg-raised">
             <Player
               component={DemoComposition}
               inputProps={{ timeline, theme }}
@@ -324,7 +324,7 @@ function EditHtmlScene({
           </div>
           {dirty && <p className="text-[11px] text-text-muted">The preview shows the saved scene. Save to see your changes play.</p>}
           {[...warnings, ...problems].length > 0 ? (
-            <section aria-label="Problems" className="flex flex-col gap-1 overflow-y-auto rounded-lg border border-border p-3">
+            <section aria-label="Problems" className="flex flex-col gap-1 overflow-y-auto rounded-xl bg-raised p-3">
               {[...warnings, ...problems].map((problem) => (
                 <span key={problem} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-text">
                   <TriangleAlert size={12} className="mt-0.5 shrink-0 text-danger" />
