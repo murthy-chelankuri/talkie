@@ -16,7 +16,8 @@ export default defineConfig({
       'src/main/**/*.test.ts',
       'src/mcp/**/*.test.ts',
       'src/remotion/**/*.test.{ts,tsx}',
-      'src/renderer/**/*.test.{ts,tsx}'
+      'src/renderer/**/*.test.{ts,tsx}',
+      'src/htmlScene/**/*.test.ts'
     ],
     environmentMatchGlobs: [['src/renderer/**/*.test.{ts,tsx}', 'jsdom']],
     setupFiles: ['src/renderer/src/test/setup.ts']
