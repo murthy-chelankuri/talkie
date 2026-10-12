@@ -1,6 +1,6 @@
 import { homedir } from 'os'
 import { join } from 'path'
-import { renderMedia, selectComposition } from '@remotion/renderer'
+import { renderMedia, selectComposition, type CancelSignal } from '@remotion/renderer'
 import { writeFileSync } from 'fs'
 import {
   readTimelineLenient,
@@ -25,6 +25,7 @@ import { toRenderTheme } from '../themes/toRenderTheme'
 import { browserExecutablePath } from '../capture/resolveBrowser'
 import { remotionBundleLocation } from './remotionBundle'
 import { COMPOSITION_ID } from '../../remotion/constants'
+import { finishing, preparing, rendering, type ExportProgress } from './exportProgress'
 
 /** `checkout-demo-2026-09-11` — the project, and when it was rendered. */
 export function exportFileName(projectName: string, now: Date = new Date()): string {
@@ -37,11 +38,23 @@ export function exportFileName(projectName: string, now: Date = new Date()): str
   return `${slugify(projectName)}-${day}`
 }
 
-export async function renderProjectVideo(id: string, baseDir: string = homedir()): Promise<string> {
+export type RenderOptions = {
+  /** Told what the export is doing as it goes. See exportProgress.ts. */
+  onProgress?: (progress: ExportProgress) => void
+  /** Stops the render part way; the export then rejects. */
+  cancelSignal?: CancelSignal
+}
+
+export async function renderProjectVideo(
+  id: string,
+  baseDir: string = homedir(),
+  { onProgress, cancelSignal }: RenderOptions = {}
+): Promise<string> {
   const dir = findProjectDir(id, baseDir)
   if (!dir) {
     throw new Error(`No project found with id ${id}`)
   }
+  onProgress?.(preparing())
 
   // Before anything is read: a theme changed since the project was last open leaves diagrams
   // drawn in the old colours, and the video should show the theme as it is now.
@@ -90,11 +103,15 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
   // Named for the project and the day it was made, because this is the file the user hands to
   // somebody: `export-1789179493000.mp4` tells its owner nothing about what it is.
   const outputPath = join(dir, 'renders', `${exportFileName(openProject(id, baseDir).name)}.mp4`)
+  const totalFrames = computeTimelineDuration(rawTimeline)
+  onProgress?.(preparing(totalFrames))
 
   await renderMedia({
     binariesDirectory: binariesDirectory(),
     browserExecutable,
-    composition: { ...composition, durationInFrames: computeTimelineDuration(rawTimeline) },
+    composition: { ...composition, durationInFrames: totalFrames },
+    onProgress: (report) => onProgress?.(rendering(report, totalFrames)),
+    cancelSignal,
     serveUrl: bundleLocation,
     codec: 'h264',
     // The hardware encoder, for the licensing reason set out in stitchRecording.ts: libx264 is
@@ -112,6 +129,7 @@ export async function renderProjectVideo(id: string, baseDir: string = homedir()
 
   // The soundtrack brought to the level spoken video is delivered at, once the whole of it
   // exists to be measured. See loudness.ts.
+  onProgress?.(finishing(totalFrames))
   await levelExport(outputPath)
 
   writeCaptionsBeside(outputPath, id, baseDir)

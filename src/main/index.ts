@@ -12,6 +12,7 @@ import { repairAssetPaths } from './project/repairAssetPaths'
 import { registerEditContextMenu } from './menu/editContextMenu'
 import { installApplicationMenu, INITIAL_MENU_STATE, type MenuState } from './menu/applicationMenu'
 import { mayUse } from './security/permissions'
+import { cancelAllExports, exportsRunning } from './render/exportJob'
 import { applyContentSecurityPolicy } from './security/contentSecurityPolicy'
 import { closeAssetServer } from './render/assetServer'
 import { applyNavigationGuards } from './security/navigationGuards'
@@ -133,4 +134,14 @@ app.on('window-all-closed', () => {
 // project on the machine to anything on loopback for as long as the app was open.
 app.on('will-quit', () => {
   void closeAssetServer()
+})
+
+// An export renders in browsers of its own, and quitting under one left them running with no
+// parent. Cancelling is what closes them, so quitting waits for that first. See exportJob.ts.
+let exportsStopped = false
+app.on('before-quit', (event) => {
+  if (exportsStopped || !exportsRunning()) return
+  event.preventDefault()
+  exportsStopped = true
+  void cancelAllExports().finally(() => app.quit())
 })

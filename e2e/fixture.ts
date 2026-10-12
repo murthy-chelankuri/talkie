@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { join } from 'path'
 import { addScene, addTranscriptSegment, createProject } from '../src/main/project/projectApi'
@@ -41,6 +41,15 @@ export function makeFixture(engine: SpeechEngineId = 'system'): Fixture {
   // The Kokoro weights are hundreds of megabytes and pinned by hash, so the run borrows the
   // copy already downloaded rather than fetching its own. Only the model folder is shared.
   if (engine === 'kokoro') symlinkSync(kokoroCacheDir(homedir()), kokoroCacheDir(home))
+
+  // Playwright keeps its browsers under ~/Library/Caches, and export renders with its headless
+  // shell when it finds one there. Without this the run would export through a full Chrome —
+  // three times slower, and not what anyone with Playwright's browsers installed gets.
+  const browsers = join(homedir(), 'Library', 'Caches', 'ms-playwright')
+  if (existsSync(browsers)) {
+    mkdirSync(join(home, 'Library', 'Caches'), { recursive: true })
+    symlinkSync(browsers, join(home, 'Library', 'Caches', 'ms-playwright'))
+  }
 
   const script = engine === 'kokoro' ? [KOKORO_SILENT_LINE, SCRIPT[1]] : SCRIPT
   const project = createProject(PROJECT_NAME, home)

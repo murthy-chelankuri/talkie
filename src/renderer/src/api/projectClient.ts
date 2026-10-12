@@ -71,6 +71,8 @@ export type { KokoroDownload } from '../../../main/tts/kokoro/kokoroProcess'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
 export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'
+import type { ExportProgress, ExportResult } from '../../../main/render/exportProgress'
+export type { ExportResult, ExportProgress }
 export type { DraftResult } from '../../../main/agent/draftNarration'
 
 export const settingsClient = {
@@ -121,7 +123,10 @@ export const sceneClient = {
 }
 
 export const renderClient = {
-  exportVideo: (id: string): Promise<string> => window.api.render.exportVideo(id),
+  exportVideo: (id: string): Promise<ExportResult> => window.api.render.exportVideo(id),
+  cancelExport: (id: string): Promise<boolean> => window.api.render.cancelExport(id),
+  onExportProgress: (callback: (projectId: string, progress: ExportProgress) => void): (() => void) =>
+    window.api.render.onExportProgress(callback),
   describe: (path: string) => window.api.render.describe(path),
   open: (path: string) => window.api.render.open(path),
   reveal: (path: string) => window.api.render.reveal(path)

@@ -11,7 +11,16 @@ import { IconButton } from './ui/IconButton'
  * and it cannot be opened or found from there without copying the text into somewhere else. The
  * name, the size and the two things anyone would want to do with it are here instead.
  */
-export function ExportedCard({ path, onDismiss }: { path: string; onDismiss: () => void }): JSX.Element | null {
+export function ExportedCard({
+  path,
+  took,
+  onDismiss
+}: {
+  path: string
+  /** How long the export took, when it is known. */
+  took?: string
+  onDismiss: () => void
+}): JSX.Element | null {
   const [file, setFile] = useState<ExportedFile | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,7 +32,7 @@ export function ExportedCard({ path, onDismiss }: { path: string; onDismiss: () 
   if (!file) return null
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-lg border border-success/40 bg-success/[0.06] p-3">
+    <div role="status" className="flex flex-col gap-2.5 rounded-lg border border-success/40 bg-success/[0.06] p-3">
       <div className="flex items-start gap-2">
         <CircleCheck size={15} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -31,7 +40,10 @@ export function ExportedCard({ path, onDismiss }: { path: string; onDismiss: () 
           <span className="truncate text-[11px] text-text-muted" title={file.path}>
             {file.name}
           </span>
-          <span className="text-[11px] text-text-muted">{formatBytes(file.bytes)}</span>
+          <span className="text-[11px] text-text-muted">
+            {formatBytes(file.bytes)}
+            {took ? ` · took ${took}` : ''}
+          </span>
         </div>
         <IconButton aria-label="Dismiss" onClick={onDismiss} className="-mr-1 -mt-1 h-6 w-6">
           <X size={13} />
