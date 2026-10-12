@@ -17,6 +17,8 @@
     "notices": "node scripts/generateNotices.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
+    "e2e": "npm run build && vitest run -c vitest.e2e.config.ts",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "package": "npm run notices && npm run build && electron-builder --mac",
     "package:dir": "npm run build && electron-builder --mac --dir",
     "build:mcp": "vite build --config vite.mcp.config.ts",
