@@ -12,6 +12,12 @@ describe('what the renderer may ask the system for', () => {
     expect(mayUse('media')).toBe(true)
   })
 
+  it('lets a Copy button put text on the clipboard, but not read what is already there', () => {
+    // writeText asks for this one; refused, the token's Copy button copied nothing and said nothing.
+    expect(mayUse('clipboard-sanitized-write')).toBe(true)
+    expect(mayUse('clipboard-read')).toBe(false)
+  })
+
   it('refuses everything else, including what it has never heard of', () => {
     // Deny by default: the list Electron can be asked for grows, and a permission added to it
     // upstream should arrive refused rather than granted.

@@ -312,7 +312,8 @@ Do not weaken these without understanding what they are for. Each has tests.
   `file://` (origin `null`) and needs to sample video frames onto a canvas.
 - **Permissions are deny-by-default**, in `src/main/security/permissions.ts`. Electron's list
   includes the camera, screen capture, the clipboard and location; this app needs the
-  microphone and fullscreen. Anything added to that list upstream arrives refused. Written as a
+  microphone, fullscreen, and writing to the clipboard (`clipboard-sanitized-write`, what every
+  Copy button asks for — never `clipboard-read`). Anything added to that list upstream arrives refused. Written as a
   named rule rather than an inline comparison because the inline one silently cost the preview
   its fullscreen button.
 - **HTML scenes play in `sandbox="allow-scripts"` frames and nothing more** — never
