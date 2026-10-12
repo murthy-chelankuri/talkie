@@ -24,13 +24,18 @@ const ASSET_SERVER = 'http://127.0.0.1:*'
  * timeline with computed `style` attributes, which CSP counts as inline regardless of who wrote
  * them. Scripts are not given the same latitude.
  */
+/**
+ * `data:` in media-src is for Remotion's player, which starts each of its shared audio tags on a
+ * tiny silent MP3 written inline. Refused, every preview logged a policy violation per tag, and
+ * an error that is always there hides the one that is new. Audio cannot run script.
+ */
 const PRODUCTION_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
   `style-src 'self' 'unsafe-inline'`,
   "font-src 'self' data:",
   `img-src 'self' data: blob: ${ASSET_SERVER}`,
-  `media-src 'self' blob: ${ASSET_SERVER}`,
+  `media-src 'self' data: blob: ${ASSET_SERVER}`,
   `connect-src 'self' data: blob: ${ASSET_SERVER}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
@@ -50,7 +55,7 @@ const DEVELOPMENT_POLICY = [
   `style-src 'self' 'unsafe-inline'`,
   "font-src 'self' data:",
   `img-src 'self' data: blob: ${ASSET_SERVER}`,
-  `media-src 'self' blob: ${ASSET_SERVER}`,
+  `media-src 'self' data: blob: ${ASSET_SERVER}`,
   `connect-src 'self' data: blob: ws: http://localhost:* ${ASSET_SERVER}`,
   "worker-src 'self' blob:",
   "object-src 'none'",

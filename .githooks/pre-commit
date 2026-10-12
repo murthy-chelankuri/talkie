@@ -1,0 +1,16 @@
+#!/bin/sh
+# Quick checks before a commit: the types, and the tests that touch what is being committed.
+# The whole suite and the end-to-end run wait for pre-push, where minutes are worth spending.
+# Skip once with `git commit --no-verify`.
+set -e
+
+echo "pre-commit: typecheck"
+npm run --silent typecheck
+
+# Only the staged source files; vitest finds every test that imports them, directly or not.
+files=$(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.ts' 'src/*.tsx' 'e2e/*.ts')
+if [ -n "$files" ]; then
+  echo "pre-commit: tests related to the staged files"
+  # shellcheck disable=SC2086
+  npx vitest related --run --passWithNoTests $files
+fi

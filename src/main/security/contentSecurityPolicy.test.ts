@@ -51,6 +51,8 @@ describe('the packaged app’s policy', () => {
     // Project media is served over loopback; thumbnails are drawn to blobs and data URLs.
     expect(parsed['img-src']).toContain('http://127.0.0.1:*')
     expect(parsed['media-src']).toContain('blob:')
+    // The preview's player primes its audio tags with an inline silent clip.
+    expect(parsed['media-src']).toContain('data:')
     // elkjs and pdf.js each start a worker.
     expect(parsed['worker-src']).toContain('blob:')
   })

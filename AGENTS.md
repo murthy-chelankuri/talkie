@@ -13,13 +13,28 @@ capture, `say` or the built-in Kokoro voice for speech.
 ```bash
 npm run dev          # electron-vite dev
 npm test             # vitest, the whole suite (~55s, 93 files)
+npm run e2e          # builds, then drives the built app end to end (~2 min)
 npm run typecheck    # both tsconfigs — node and web
 npm run build        # electron-vite build + the MCP bundle
 npm run package      # regenerates notices, builds, produces release/Talkie-<version>-arm64.dmg
 npm run notices      # regenerates the third-party licence data
 ```
 
-Run `npm test` and `npm run typecheck` before committing. Both are expected to pass.
+Run `npm test` and `npm run typecheck` before committing. Both are expected to pass. The git
+hooks in `.githooks/` hold you to it — `npm install` points git at them. Before a commit: the
+types and the tests related to the staged files (seconds). Before a push: the types, the whole
+suite, and `npm run e2e` (a few minutes). `--no-verify` skips them once; it is not a habit.
+
+**The end-to-end run** (`e2e/`) exists because every change that broke something passed the
+tests nearest to it and broke a flow somewhere else: a Speak button that did nothing, Copy
+buttons refused a permission, a Kokoro take with its first sentence missing. Each was only
+visible in the built app. The run starts `out/` with Playwright against a throwaway `HOME` — a
+fixture project built through `projectApi`, never the person's own projects or their settings,
+which hold API keys — and checks what lands on disk as well as what is on screen: takes are
+measured for silence (`e2e/audio.ts`), the export for length and a soundtrack. Kokoro borrows the
+model already downloaded and is skipped where there is none. Any error the window logs fails the
+test, so an error that is always there is a bug to fix, not noise to filter. When something
+breaks in a way the run missed, add the flow to it.
 
 A test that speaks through `say`, drives a browser or runs ffmpeg gets at least 60 seconds,
 and 90 where it asks for a voice macOS has to fetch and warm up first. None of them are

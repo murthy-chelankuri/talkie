@@ -1,0 +1,17 @@
+#!/bin/sh
+# Everything, before anything leaves the machine: the types, the whole suite, and the built
+# app driven end to end. Each change that broke something so far passed the tests nearest to it
+# and broke a flow somewhere else — a button, a permission, a take — and only the app itself,
+# built as it ships, shows that. Skip once with `git push --no-verify`.
+set -e
+
+echo "pre-push: typecheck"
+npm run --silent typecheck
+
+# One retry: a handful of tests speak through `say` or render with a real browser, and under a
+# full run on a busy machine one of them sometimes times out. A real failure fails twice.
+echo "pre-push: unit tests"
+npx vitest run --retry=1
+
+echo "pre-push: end to end, against the built app"
+npm run --silent e2e
