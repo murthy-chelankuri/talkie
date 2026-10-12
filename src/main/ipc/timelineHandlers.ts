@@ -19,6 +19,7 @@ import { describeExport, openExport, showExportInFinder } from '../render/reveal
 import { addScene, updateSceneData, writeDiagramSvg } from '../project/projectApi'
 import { writeScene, type SceneRequest } from '../agent/writeScene'
 import { renderProjectVideo } from '../render/renderProject'
+import { cancelExport, runExport } from '../render/exportJob'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import { burnedCaptionsFor } from '../transcript/burnedCaptions'
 import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
@@ -62,7 +63,18 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     withHistory(id, () => deleteTimelineItem(id, timelineItemId))
   )
 
-  ipcMain.handle('project:render:export', (_event, id: string) => renderProjectVideo(id))
+  // Progress goes back to the window that asked, as it happens: an export takes minutes, and a
+  // button that only says it is busy cannot tell anyone whether it is slow or stuck.
+  ipcMain.handle('project:render:export', (event, id: string) =>
+    runExport(
+      id,
+      (projectId, options) => renderProjectVideo(projectId, homedir(), options),
+      (progress) => {
+        if (!event.sender.isDestroyed()) event.sender.send('project:render:progress', id, progress)
+      }
+    )
+  )
+  ipcMain.handle('project:render:cancel', (_event, id: string) => cancelExport(id))
 
   ipcMain.handle('project:import:image', async (_event, id: string) => {
     const window = getWindow()

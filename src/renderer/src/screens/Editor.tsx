@@ -33,7 +33,7 @@ import { ResizeHandle, useResizableWidth } from '../components/editor/ResizeHand
 import { ProjectPanel } from '../components/editor/ProjectPanel'
 import { AddPanel } from '../components/editor/AddPanel'
 import { VoicePanel } from '../components/editor/VoicePanel'
-import { ExportControl } from '../components/editor/ExportControl'
+import { ExportControl, type ExportState } from '../components/editor/ExportControl'
 import { Inspector } from '../components/editor/Inspector'
 import { useScriptFocus } from '../components/editor/useScriptFocus'
 import { diagramStamp } from '../../../main/themes/diagrams'
@@ -88,9 +88,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
-  const [exportedPath, setExportedPath] = useState<string | null>(null)
+  const [exportState, setExportState] = useState<ExportState>({ status: 'idle' })
   const [recording, setRecording] = useState(false)
   const [recordError, setRecordError] = useState<string | null>(null)
   const stageLayout = useDefaultLayout({ id: 'editor-stage', storage: localStorage })
@@ -228,6 +226,14 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       if (draftedProjectId !== projectId) return
       void refreshSegments()
       void refreshTimeline()
+    })
+  }, [projectId])
+
+  // Progress for this project's export only; a report that arrives after it has ended is dropped.
+  useEffect(() => {
+    return renderClient.onExportProgress((exportingProjectId, progress) => {
+      if (exportingProjectId !== projectId) return
+      setExportState((state) => (state.status === 'running' ? { ...state, progress } : state))
     })
   }, [projectId])
 
@@ -695,17 +701,18 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }
 
   async function handleExport(): Promise<void> {
-    setExporting(true)
-    setExportError(null)
-    setExportedPath(null)
+    if (exportState.status === 'running') return
+    setExportState({ status: 'running', progress: { stage: 'preparing', fraction: 0, renderedFrames: 0, totalFrames: 0 }, startedAt: Date.now() })
     try {
-      const path = await renderClient.exportVideo(projectId)
-      setExportedPath(path)
+      setExportState(await renderClient.exportVideo(projectId))
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setExporting(false)
+      setExportState({ status: 'failed', message: err instanceof Error ? err.message : String(err) })
     }
+  }
+
+  async function handleCancelExport(): Promise<void> {
+    setExportState((state) => (state.status === 'running' ? { ...state, cancelling: true } : state))
+    await renderClient.cancelExport(projectId)
   }
 
   async function handleRecordSession(): Promise<void> {
@@ -865,11 +872,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     <div className="flex h-full gap-2 bg-bg pb-2 pr-2">
       <TopBarActions>
         <ExportControl
-          exporting={exporting}
-          exportedPath={exportedPath}
-          exportError={exportError}
+          state={exportState}
           onExport={handleExport}
-          onDismiss={() => setExportedPath(null)}
+          onCancel={handleCancelExport}
+          onDismiss={() => setExportState({ status: 'idle' })}
         />
       </TopBarActions>
       <EditorRail open={rail.open} onToggle={rail.toggle} agentWorking={agentWorking} />

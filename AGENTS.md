@@ -80,6 +80,12 @@ These each cost real time to find. None are obvious from the code.
   either fails in a packaged build and nowhere else. `exportFromAnywhere.test.ts` moves the
   working directory to `/` on purpose, because running from the checkout is the case that has
   always worked.
+- **Export renders in Chrome's headless shell, not a full Chrome.** A full Chrome holds some
+  frames for 300–750ms each whatever the scene, so more tabs, the GPU or fewer pixels all
+  changed nothing and a 55-second demo took three minutes; the shell does it in under one.
+  `browserExecutablePath()` finds the shell Playwright installs beside its Chromium and falls back
+  to the installed browser. An export's browsers are its own processes: quitting mid-export left
+  them running with no parent, so `before-quit` cancels exports and waits (`exportJob.ts`).
 - **The composition is bundled at build time**, by `scripts/bundleRemotion.mjs` into `out/remotion`,
   and resolved from `__dirname` by `remotionBundle.ts`. Export used to bundle it on demand from
   `process.cwd()` + `src/`, and a packaged build has neither. The bundle is unpacked from the

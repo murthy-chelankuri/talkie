@@ -32,6 +32,7 @@ import type { McpConnection } from '../main/setup/mcpConnection'
 import type { SpeechEngineDescription } from '../main/tts/engineRegistry'
 import type { ProjectContext } from '../main/project/projectContext'
 import type { ExportedFile } from '../main/render/revealExport'
+import type { ExportProgress, ExportResult } from '../main/render/exportProgress'
 import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
 
@@ -150,7 +151,13 @@ const timelineApi = {
 }
 
 const renderApi = {
-  exportVideo: (id: string): Promise<string> => ipcRenderer.invoke('project:render:export', id),
+  exportVideo: (id: string): Promise<ExportResult> => ipcRenderer.invoke('project:render:export', id),
+  cancelExport: (id: string): Promise<boolean> => ipcRenderer.invoke('project:render:cancel', id),
+  onExportProgress: (callback: (projectId: string, progress: ExportProgress) => void): (() => void) => {
+    const listener = (_event: unknown, projectId: string, progress: ExportProgress): void => callback(projectId, progress)
+    ipcRenderer.on('project:render:progress', listener)
+    return () => ipcRenderer.removeListener('project:render:progress', listener)
+  },
   describe: (path: string): Promise<ExportedFile | null> => ipcRenderer.invoke('project:render:describe', path),
   open: (path: string): Promise<string | null> => ipcRenderer.invoke('project:render:open', path),
   reveal: (path: string): Promise<string | null> => ipcRenderer.invoke('project:render:reveal', path)

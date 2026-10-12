@@ -50,10 +50,9 @@ function renderPanel(props: Partial<PanelProps> = {}) {
     voices: [],
     onProjectVoiceChange: vi.fn(),
     recording: false,
-    exporting: false,
-    exportedPath: null,
+    state: { status: 'idle' },
+    onCancel: vi.fn(),
     importError: null,
-    exportError: null,
     recordError: null,
     isEmpty: true,
     onImportImage: vi.fn(),
@@ -172,7 +171,7 @@ describe('the editor\'s panels', () => {
   })
 
   it('shows what went wrong when it has the room', () => {
-    renderPanel({ exportError: 'Rendering failed.' })
+    renderPanel({ state: { status: 'failed', message: 'Rendering failed.' } })
 
     expect(screen.getByRole('alert')).toHaveTextContent('Rendering failed.')
   })
@@ -261,10 +260,59 @@ describe('why a project sounds the way it does', () => {
 })
 
 describe('Export, in the top bar', () => {
-  it('is busy and cannot be pressed twice while exporting', () => {
-    renderPanel({ exporting: true })
+  const running = (fraction: number, stage: 'preparing' | 'rendering' | 'encoding' | 'finishing' = 'rendering') =>
+    ({
+      status: 'running',
+      progress: { stage, fraction, renderedFrames: 312, totalFrames: 1800 },
+      startedAt: Date.now()
+    }) as const
 
-    expect(screen.getByRole('button', { name: 'Exporting video' })).toBeDisabled()
+  it('says how far it has got while it exports, rather than only greying out', () => {
+    renderPanel({ state: running(0.42) })
+
+    expect(screen.getByRole('button', { name: 'Exporting video, 42%' })).toBeEnabled()
+    expect(screen.getByRole('progressbar', { name: 'Export' })).toHaveAttribute('aria-valuenow', '42')
+    expect(screen.getByText('Drawing frame 312 of 1,800')).toBeInTheDocument()
   })
 
+  it('names each step, so a slow one does not look stuck', () => {
+    renderPanel({ state: running(0.96, 'finishing') })
+
+    expect(screen.getByText('Levelling the sound and writing captions')).toBeInTheDocument()
+  })
+
+  it('can be cancelled part way', async () => {
+    const onCancel = vi.fn()
+    renderPanel({ state: running(0.3), onCancel })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel export' }))
+
+    expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('cannot be started twice: pressing it again only hides or shows the progress', async () => {
+    const onExport = vi.fn()
+    renderPanel({ state: running(0.5), onExport })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Exporting video, 50%' }))
+
+    expect(onExport).not.toHaveBeenCalled()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+
+  it('says it failed and why, and offers to try again', async () => {
+    const onExport = vi.fn()
+    renderPanel({ state: { status: 'failed', message: 'The browser closed.' }, onExport })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Export failed')
+    expect(screen.getByRole('alert')).toHaveTextContent('The browser closed.')
+    await userEvent.click(screen.getByRole('button', { name: 'Export again' }))
+    expect(onExport).toHaveBeenCalled()
+  })
+
+  it('says when it was cancelled', () => {
+    renderPanel({ state: { status: 'cancelled' } })
+
+    expect(screen.getByText('Export cancelled')).toBeInTheDocument()
+  })
 })

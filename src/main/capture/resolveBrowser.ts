@@ -79,10 +79,18 @@ export const LAUNCH_ARGS = [
  * download a browser to by walking up from the current directory until it finds a package.json —
  * and an app opened from Finder is started in `/`, where there is none and nothing may be
  * written. Export failed there with `ENOENT: mkdir '/.remotion'`, which names the symptom and
- * nothing else. The same browser that records the demo renders it, which is one fewer thing to
- * install and one fewer thing to differ.
+ * nothing else.
+ *
+ * Chrome's headless shell first, when Playwright has installed one, because it is what Remotion
+ * is built to render with. A full Chrome hands each tab its frames at its own pace: a third of
+ * them waited 300–750ms to be set, whatever the scene, so adding tabs, the GPU or fewer pixels
+ * changed nothing and a 55-second demo took three minutes. The shell drew the same video in 53
+ * seconds. The installed browser is the fallback, so export still works where there is no shell.
  */
 export function browserExecutablePath(): string | null {
+  const shell = playwrightHeadlessShell()
+  if (shell) return shell
+
   const installed = INSTALLED_BROWSERS.find((browser) => existsSync(browser.executable))
   if (installed) return installed.executable
 
@@ -92,6 +100,29 @@ export function browserExecutablePath(): string | null {
   } catch {
     return null
   }
+}
+
+function playwrightHeadlessShell(): string | null {
+  try {
+    const shell = headlessShellBeside(chromium.executablePath())
+    return shell && existsSync(shell) ? shell : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Where Playwright keeps the headless shell of the same build as its Chromium.
+ *
+ * `npx playwright install chromium` installs both, side by side, named for one revision:
+ * `ms-playwright/chromium-1243/…` and `ms-playwright/chromium_headless_shell-1243/…`. Playwright
+ * has no public way to ask for the second, so it is found from the first.
+ */
+export function headlessShellBeside(chromiumExecutable: string): string | null {
+  const match = /^(.*)\/chromium-(\d+)\/chrome-mac-(arm64|x64)\//.exec(chromiumExecutable)
+  if (!match) return null
+  const [, root, revision, arch] = match
+  return `${root}/chromium_headless_shell-${revision}/chrome-headless-shell-mac-${arch}/chrome-headless-shell`
 }
 
 export const NO_BROWSER_MESSAGE =
