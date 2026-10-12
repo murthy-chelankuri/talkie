@@ -61,8 +61,8 @@ export function ClipNarrationBox({
       className={cn(
         // Warm paper against the cool chrome above: writing a script is a different act from
         // operating the timeline, so the surface says so.
-        'flex h-full flex-col overflow-hidden rounded-md border bg-paper',
-        active ? 'border-accent' : 'border-paper-border'
+        'flex h-full flex-col overflow-hidden rounded-lg bg-paper',
+        active && 'ring-1 ring-accent'
       )}
     >
       {/* Whose voice this is, and whether it has one, is the voice layer's job now — saying it
@@ -118,7 +118,7 @@ export function ClipNarrationBox({
           data-clip-seconds={(item.duration / FPS).toFixed(2)}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => onCommit(item, draft)}
-          className="min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent"
+          className="min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-paper-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent"
         />
       )}
     </div>

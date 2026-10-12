@@ -56,7 +56,7 @@ export function RichTextField({
     <div className="flex flex-col gap-1.5">
       <div
         className={cn(
-          'flex items-center gap-0.5 rounded-lg border border-border bg-surface p-1 transition-opacity',
+          'flex items-center gap-0.5 rounded-lg bg-raised p-1 transition-opacity',
           !focused && 'opacity-60'
         )}
       >
@@ -124,7 +124,7 @@ export function RichTextField({
           if (event.key === 'Enter' && !multiline) event.preventDefault()
         }}
         className={cn(
-          'min-h-[2.5rem] rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text',
+          'min-h-[2.5rem] rounded-md bg-raised px-2.5 py-2 text-[13px] text-text',
           'focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent',
           'empty:before:text-text-muted empty:before:content-[attr(data-placeholder)]',
           className

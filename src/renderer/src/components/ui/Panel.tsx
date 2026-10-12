@@ -21,7 +21,7 @@ export function Panel({
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
   return (
-    <div className={cn('flex flex-col rounded-md border border-border bg-surface', className)}>
+    <div className={cn('flex flex-col rounded-xl bg-surface', className)}>
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-sm font-medium text-text">{title}</span>
         {collapsible && (

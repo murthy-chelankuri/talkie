@@ -7,7 +7,8 @@ const STORAGE_KEY = 'demo-editor-theme'
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  // Studio is designed dark first; light is there for whoever switches to it, and stays chosen.
+  return 'dark'
 }
 
 export function useTheme(): { theme: Theme; toggleTheme: () => void } {

@@ -68,10 +68,12 @@ export function TransportBar({
   const skipForward = nextClipStart(timeline, frameRef.current)
 
   return (
-    <div className="flex items-center gap-3 border-t border-border bg-surface px-3 py-2">
+    // A pill floating under the picture rather than a bar across the window: the controls belong
+    // to the video, and the video is the brightest thing on screen.
+    <div className="mx-auto mb-2 mt-1.5 flex w-full max-w-3xl items-center gap-3 rounded-full bg-surface px-2 py-1.5 shadow-lg">
       <IconButton
         aria-label={playing ? 'Pause' : 'Play'}
-        className="h-8 w-8 bg-accent text-accent-foreground hover:bg-accent-hover hover:text-accent-foreground"
+        className="h-8 w-8 rounded-full bg-accent-fill text-on-accent hover:bg-accent-fill hover:text-on-accent hover:brightness-110"
         onClick={() => playerRef.current?.toggle()}
       >
         {playing ? <Pause size={15} /> : <Play size={15} />}
@@ -124,10 +126,10 @@ export function TransportBar({
           'flex items-center'
         )}
       >
-        <span className="h-1 w-full overflow-hidden rounded-full bg-border">
+        <span className="h-1 w-full overflow-hidden rounded-full bg-raised">
           <span
             ref={fillRef}
-            className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent"
+            className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent-fill"
           />
         </span>
       </div>

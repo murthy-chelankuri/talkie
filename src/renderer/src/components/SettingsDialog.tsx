@@ -127,7 +127,7 @@ export function SettingsDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -137,7 +137,7 @@ export function SettingsDialog({
         aria-label="Settings"
         // Sized to the window rather than to a fixed 34rem: settings are lists of settings, and
         // a box that stops short of the space it has makes every one of them a scroll.
-        className="flex h-[min(44rem,100%)] w-full max-w-4xl overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
+        className="flex h-[min(44rem,100%)] w-full max-w-4xl overflow-hidden rounded-2xl bg-surface shadow-2xl"
       >
         <nav className="flex w-52 shrink-0 flex-col gap-0.5 border-r border-border bg-bg p-2.5">
           <p className="px-2.5 pb-2 pt-1 font-serif text-base text-text">Settings</p>
@@ -309,7 +309,7 @@ function NarrationSection({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-6 rounded-lg border border-border bg-bg px-4 py-3">
+      <div className="flex items-start justify-between gap-6 rounded-lg bg-raised px-4 py-3">
         <div className="flex flex-col gap-0.5">
           <span className="text-[13px] font-medium text-text">Draft narration automatically</span>
           <span className="text-xs leading-relaxed text-text-muted">
@@ -389,7 +389,7 @@ function NarrationSection({
                       claudeCli: { ...settings.narration.claudeCli, model: event.target.value as typeof settings.narration.claudeCli.model }
                     })
                   }
-                  className="rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+                  className="rounded-md bg-raised px-2.5 py-2 text-[13px] text-text"
                 >
                   <option value="">Default</option>
                   <option value="sonnet">Sonnet</option>
@@ -413,7 +413,7 @@ function NarrationSection({
                   onChange={(event) =>
                     onPatch({ copilotCli: { ...settings.narration.copilotCli, model: event.target.value } })
                   }
-                  className="rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+                  className="rounded-md bg-raised px-2.5 py-2 text-[13px] text-text"
                 >
                   <option value="">Auto</option>
                   {copilotModels.map((model) => (
@@ -437,7 +437,7 @@ function NarrationSection({
                 aria-label="Local model"
                 value={settings.narration.local.model || localServer.models[0] || ''}
                 onChange={(event) => onPatch({ local: { ...settings.narration.local, model: event.target.value } })}
-                className="rounded-md border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+                className="rounded-md bg-raised px-2.5 py-2 text-[13px] text-text"
               >
                 {localServer.models.map((model) => (
                   <option key={model} value={model}>
@@ -568,7 +568,7 @@ function VoiceSection({
         label="Delivery"
         hint="Explaining runs slower than reading, and a real stop at a full stop is what keeps it from sounding recited."
       >
-        <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg px-4 py-3.5">
+        <div className="flex flex-col gap-4 rounded-lg bg-raised px-4 py-3.5">
           <Slider
             label="Pace"
             value={`${settings.speech.pace} words a minute`}
@@ -765,7 +765,7 @@ function McpSection(): JSX.Element | null {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+      <div className="flex items-start justify-between gap-4 rounded-xl bg-raised p-4">
         <span className="flex min-w-0 flex-col gap-1">
           <span className="flex items-center gap-2">
             <Plug size={13} className="shrink-0 text-accent" aria-hidden="true" />
@@ -792,14 +792,14 @@ function McpSection(): JSX.Element | null {
       {connection.enabled && connection.serverPath && (
         <>
           {!connection.hasToken ? (
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-raised px-4 py-3">
               <span className="text-xs leading-relaxed text-text-muted">
                 No token yet. Nothing can connect until you make one.
               </span>
               <Button onClick={createToken}>Create a token</Button>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-raised px-4 py-3">
               <span className="text-xs leading-relaxed text-text-muted">
                 {connection.tokenCreatedAt
                   ? `Token created ${new Date(connection.tokenCreatedAt).toLocaleDateString()}.`
@@ -825,7 +825,7 @@ function McpSection(): JSX.Element | null {
                 another.
               </span>
               <div className="flex items-start gap-2">
-                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-raised px-3 py-2 text-[11px] leading-relaxed text-text">
                   {freshToken}
                 </pre>
                 <IconButton
@@ -847,7 +847,7 @@ function McpSection(): JSX.Element | null {
                   : 'Add it to your agent with this, putting your token in place of YOUR_TOKEN:'}
               </p>
               <div className="flex items-start gap-2">
-                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-raised px-3 py-2 text-[11px] leading-relaxed text-text">
                   {connection.addCommand}
                 </pre>
                 <IconButton
@@ -861,7 +861,7 @@ function McpSection(): JSX.Element | null {
 
               <p className="text-xs text-text-muted">Or paste this into any other client’s config:</p>
               <div className="flex items-start gap-2">
-                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-text">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-raised px-3 py-2 text-[11px] leading-relaxed text-text">
                   {connection.configJson}
                 </pre>
                 <IconButton
@@ -896,7 +896,7 @@ function ExportSection({
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+      <div className="flex items-start justify-between gap-4 rounded-xl bg-raised p-4">
         <span className="flex min-w-0 flex-col gap-1">
           <span className="text-[13px] font-medium text-text">Burn captions into the video</span>
           <span className="text-xs leading-relaxed text-text-muted">
@@ -940,7 +940,7 @@ function RecordingSection({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+      <div className="flex items-start justify-between gap-4 rounded-xl bg-raised p-4">
         <span className="flex min-w-0 flex-col gap-1">
           <span className="text-[13px] font-medium text-text">Show what is being used</span>
           <span className="text-xs leading-relaxed text-text-muted">
@@ -984,7 +984,7 @@ function RecordingSection({
         </Field>
       )}
 
-      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+      <div className="flex items-start justify-between gap-4 rounded-xl bg-raised p-4">
         <span className="flex min-w-0 flex-col gap-1">
           <span className="text-[13px] font-medium text-text">
             Record sites with untrusted certificates
@@ -1032,7 +1032,7 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         {allWell ? (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-raised px-4 py-3">
             <span className="flex items-center gap-2.5">
               <CheckCircle2 size={14} className="shrink-0 text-success" aria-hidden="true" />
               <span className="text-[13px] text-text">Everything Talkie needs is available</span>
@@ -1048,7 +1048,7 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
                 ? 'Something Talkie needs is missing. What is marked in red has to be fixed before that part will work.'
                 : 'Everything required is available. These are optional, and only affect what they say.'}
             </p>
-            <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+            <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl bg-raised">
               {unready.map((check) => (
                 <CheckRow key={check.id} check={check} />
               ))}
@@ -1064,7 +1064,7 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
         )}
 
         {showAll && (
-          <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+          <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl bg-raised">
             {(allWell ? checks : ready).map((check) => (
               <CheckRow key={check.id} check={check} />
             ))}

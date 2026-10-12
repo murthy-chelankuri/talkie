@@ -39,6 +39,7 @@ import { RECORDED_VOICE, hasStaleVoice, segmentsForItem, voiceOf } from '../lib/
 import { WAVEFORM_BUCKETS, useWaveform } from '../lib/waveform'
 import { speakAllLabel, type VoiceProgress } from '../lib/voiceProgress'
 import { IconButton } from './ui/IconButton'
+import { ButtonGroup } from './ui/ButtonGroup'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
 import { ClipNarrationBox } from './ClipNarrationBox'
@@ -262,13 +263,15 @@ export function VoiceLayer({
   const startShare = NARRATION_LEAD_IN_FRAMES / FPS / clipSeconds
   const widthShare = waveform ? Math.min(waveform.seconds / clipSeconds, 1 - startShare) : 0
 
+  // Colour says what state the voice is in — green spoken, violet changed or your own, a dashed
+  // outline for none — so these keep their colours and lose only the outline round a voiced take.
   const tone = !narrated
-    ? 'border-dashed border-border bg-transparent text-text-muted'
+    ? 'border border-dashed border-border bg-transparent text-text-muted'
     : stale
-      ? 'border-accent/60 bg-accent/10 text-accent'
+      ? 'bg-accent/10 text-accent'
       : own
-        ? 'border-accent/55 bg-accent/15 text-accent'
-        : 'border-success/45 bg-success/10 text-success'
+        ? 'bg-accent/15 text-accent'
+        : 'bg-success/10 text-success'
 
   const label = !narrated
     ? hasWords
@@ -284,7 +287,7 @@ export function VoiceLayer({
     <div
       title={label}
       className={cn(
-        'relative flex h-full items-center overflow-hidden rounded border px-1.5 text-[10px]',
+        'relative flex h-full items-center overflow-hidden rounded-md px-1.5 text-[10px]',
         tone
       )}
     >
@@ -375,11 +378,9 @@ function ClipBlock({
       onDoubleClick={() => isScene && onEditScene(item)}
       title={isScene ? 'Double-click to edit this scene' : undefined}
       className={cn(
-        // p-0 and an explicit hover colour are needed because Preflight's shim in index.css
-        // gives every bare <button> hardcoded padding and a light grey hover background.
-        'absolute top-0 h-full overflow-hidden rounded border bg-surface p-0 text-left text-sm text-text',
+        'absolute top-0 h-full overflow-hidden rounded-lg bg-raised p-0 text-left text-sm text-text',
         'cursor-grab active:cursor-grabbing',
-        selected ? 'border-accent ring-2 ring-accent' : 'border-border'
+        selected && 'ring-2 ring-accent'
       )}
     >
       <ClipThumbnail item={item} />
@@ -465,7 +466,9 @@ export function Timeline({
   const trackAreaRef = useRef<HTMLDivElement | null>(null)
   const playheadRef = useRef<HTMLDivElement | null>(null)
   const rulerRef = useRef<HTMLDivElement | null>(null)
-  const frameRef = useRef(0)
+  // Where the video already is: the timeline is mounted afresh each time its tab is chosen, and
+  // starting at 0 drew the playhead on the opening clip while the preview sat well past it.
+  const frameRef = useRef(playerRef.current?.getCurrentFrame() ?? 0)
   // Which clip the playhead is inside. This only changes at clip boundaries, so it is the one
   // piece of playback position worth putting in state — everything else is written to the DOM
   // directly, because re-rendering the whole timeline 30 times a second starved the Player of
@@ -597,7 +600,7 @@ export function Timeline({
    */
   if (timeline.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 border-t border-border bg-surface text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl bg-surface text-center">
         <LayoutTemplate size={22} className="text-text-muted/60" aria-hidden="true" />
         <p className="text-sm text-text">Your clips will line up here</p>
         <p className="max-w-sm text-xs leading-relaxed text-text-muted">
@@ -609,11 +612,11 @@ export function Timeline({
   }
 
   return (
-    <div className="flex h-full flex-col border-t border-border bg-surface">
+    <div className="flex h-full flex-col rounded-b-xl bg-surface">
       {/* No timecode and no clip count here: the transport bar shows the first a few pixels
           above, and the project summary shows the second. Saying either again only crowds the
           actions, which are what this row is for. */}
-      <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+      <div className="flex items-center gap-3 px-3 py-2">
         {confirmingDelete && itemUnderPlayhead ? (
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-text-muted">
@@ -621,7 +624,7 @@ export function Timeline({
             </span>
             <Button
               size="sm"
-              className="bg-danger text-white hover:bg-danger"
+              variant="danger"
               onClick={() => {
                 setConfirmingDelete(false)
                 onDelete(itemUnderPlayhead)
@@ -638,7 +641,7 @@ export function Timeline({
           {/* The two steps, named for what they produce rather than for the verb behind them,
               and carrying the same icons as the buttons on each clip. */}
           <Button
-            variant="secondary"
+            variant="soft"
             size="sm"
             onClick={onDraftAll}
             disabled={draftingAll || timeline.length === 0}
@@ -648,13 +651,15 @@ export function Timeline({
             Write the words
           </Button>
           <Button
-            variant="secondary"
+            variant="soft"
             size="sm"
             onClick={onNarrateAll}
             disabled={narratingAll || progress.needing.length === 0}
             title={
               progress.needing.length === 0
-                ? `Every clip already speaks in ${currentVoice}`
+                ? progress.unwritten.length > 0
+                  ? 'Nothing to speak yet: write the words under the clip, or press Write the words'
+                  : `Every clip already speaks in ${currentVoice}`
                 : progress.silent.length > 0
                   ? 'Speak the narration on every clip that has none'
                   : `Read these again in ${currentVoice}, replacing the takes already there`
@@ -663,6 +668,7 @@ export function Timeline({
             {narratingAll ? <Spinner size="sm" /> : <AudioLines size={14} className="text-accent" />}
             {speakAllLabel(progress, currentVoice)}
           </Button>
+          <ButtonGroup aria-label="Edit the timeline" className="ml-1">
           <IconButton aria-label="Undo" disabled={!canUndo} onClick={onUndo}>
             <Undo2 size={16} />
           </IconButton>
@@ -703,6 +709,7 @@ export function Timeline({
           >
             <ZoomIn size={16} />
           </IconButton>
+          </ButtonGroup>
         </div>
         )}
       </div>

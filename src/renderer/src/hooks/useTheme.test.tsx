@@ -17,18 +17,21 @@ describe('useTheme', () => {
     document.documentElement.removeAttribute('data-theme')
   })
 
-  it('defaults to light when the OS prefers light and nothing is stored', () => {
-    mockMatchMedia(false)
-    const { result } = renderHook(() => useTheme())
-    expect(result.current.theme).toBe('light')
-    expect(document.documentElement.dataset.theme).toBe('light')
+  it('starts dark whatever the OS prefers, since Studio is designed dark first', () => {
+    for (const prefersDark of [false, true]) {
+      localStorage.clear()
+      mockMatchMedia(prefersDark)
+      const { result } = renderHook(() => useTheme())
+      expect(result.current.theme).toBe('dark')
+      expect(document.documentElement.dataset.theme).toBe('dark')
+    }
   })
 
-  it('defaults to dark when the OS prefers dark and nothing is stored', () => {
+  it('keeps light for whoever chose it', () => {
+    localStorage.setItem('demo-editor-theme', 'light')
     mockMatchMedia(true)
     const { result } = renderHook(() => useTheme())
-    expect(result.current.theme).toBe('dark')
-    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(result.current.theme).toBe('light')
   })
 
   it('reads a previously stored theme over the OS preference', () => {
@@ -42,8 +45,8 @@ describe('useTheme', () => {
     mockMatchMedia(false)
     const { result } = renderHook(() => useTheme())
     act(() => result.current.toggleTheme())
-    expect(result.current.theme).toBe('dark')
-    expect(localStorage.getItem('demo-editor-theme')).toBe('dark')
-    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(result.current.theme).toBe('light')
+    expect(localStorage.getItem('demo-editor-theme')).toBe('light')
+    expect(document.documentElement.dataset.theme).toBe('light')
   })
 })

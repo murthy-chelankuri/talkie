@@ -83,6 +83,11 @@ These each cost real time to find. None are obvious from the code.
   licence. `package.json` makes `stubs/sharp` a dependency and overrides `sharp` with `$sharp`
   (a `file:` path directly in `overrides` resolves relative to transformers.js and breaks a clean
   install). `licences.test.ts` fails if libvips reappears.
+- **Kokoro sometimes reads a line as pure silence.** One sentence in one voice at one speed came back
+  as seconds of zeros every time, and 2% faster read perfectly — a fault in the model, not the
+  words. It was saved as the take, and a scene lost its first sentence. `audibleTake.ts` checks
+  every take from the file the worker wrote, asks again a shade faster or slower, and errors with
+  the words if all of them are silent.
 - **The worker ends by signal, not `process.exit`.** onnxruntime-node aborts during an ordinary
   exit on macOS ("mutex lock failed"); releasing the model first does not help.
 - **transformers.js refuses to load with both model sources off**, even from a full cache. While
@@ -121,6 +126,15 @@ clip's width, which is fine for a glance and hopeless for writing — it hides t
 below `NARRATION_TEXT_MIN_WIDTH`, and scene splitting made every clip narrower. `ScriptView` is
 the other one: the whole project's narration top to bottom, in a column wide enough to read a
 sentence in, because most of what is wrong with narration is only wrong in context.
+
+The script can have the whole window ("Focus on the script"; Esc gives the video back) — under the
+stage it showed a scene and a half. It saves as you type, follows the playhead unless you are
+typing, and says under each scene whether the words fit the clip: estimated at
+`WORDS_PER_SECOND` until there is a take, then measured off it (`narrationFit.ts`). Timings are
+painted as chips under a transparent textarea, so the stored text is exactly what was typed.
+
+Token colours go through `color-mix` in `tailwind.config.ts` so `ring-accent/35` and the like
+work. With bare `var()` Tailwind silently emitted nothing for any colour with an opacity.
 
 **Timings live in the words.** A line beginning `[12.3]` is spoken at that second of its clip,
 and `narrationFromText` reads them back on the way in — in the IPC handlers and in MCP, so every
@@ -298,7 +312,8 @@ Do not weaken these without understanding what they are for. Each has tests.
   `file://` (origin `null`) and needs to sample video frames onto a canvas.
 - **Permissions are deny-by-default**, in `src/main/security/permissions.ts`. Electron's list
   includes the camera, screen capture, the clipboard and location; this app needs the
-  microphone and fullscreen. Anything added to that list upstream arrives refused. Written as a
+  microphone, fullscreen, and writing to the clipboard (`clipboard-sanitized-write`, what every
+  Copy button asks for — never `clipboard-read`). Anything added to that list upstream arrives refused. Written as a
   named rule rather than an inline comparison because the inline one silently cost the preview
   its fullscreen button.
 - **HTML scenes play in `sandbox="allow-scripts"` frames and nothing more** — never
@@ -346,9 +361,16 @@ the app stays the only writer.
 - **Comments say why, not what.** The codebase explains the reason a thing is the way it is,
   usually the failure that shaped it. Match that density and tone; do not narrate the code.
 - **British spelling in user-facing text and in names** — colour, licence, sanitise.
-- **Design tokens only**, from `src/renderer/src/styles/index.css`. The accent is azure
-  (`#1a5fb4` light, `#7ab5f0` dark) and is used as text at 10–11px, so any change must be
-  contrast-checked — the current floor is 5.8:1.
+- **Design tokens only**, from `src/renderer/src/styles/index.css` — the Studio look: depth from
+  three surfaces (`bg`, `surface`, `raised`) rather than outlines, which are only for dividers
+  inside a panel. The accent is one solid blue: `accent-fill` (`#2563eb`, white text) on what is
+  acted on, `accent-soft` (a tint of it) on AI and voice actions, and `accent` for text and
+  outlines (`#79a8ff` dark, `#1a4bb8` light), used as text at 10–11px. It replaced a violet→cyan
+  gradient that read as decoration; leave the colour to the video. Floors: 5.8:1 for
+  accent text, 4.5:1 for body and muted text, on every surface; `contrast.test.ts` holds both
+  themes to them. Dark is the default; red is only for recording and the playhead.
+- **The editor is a rail, one side panel, the stage, an inspector and the timeline.** The agent
+  stays mounted while its panel is shut, so a conversation and a run in progress survive.
 - **Tests describe behaviour, not implementation.** Names read as sentences about what the
   software does.
 - Prefer `git worktree` for parallel work. Tool-managed worktree directories (`.claude/worktrees/`

@@ -1,4 +1,6 @@
+import { readFileSync } from 'fs'
 import { DEFAULT_PACE } from '../settings/schema'
+import { audibleTake, wavSamples } from './audibleTake'
 import type { SpeechOptions, TTSProvider, Voice } from './ttsProvider'
 import { KOKORO_DOWNLOAD_MB, isKokoroDownloaded } from './kokoro/kokoroModel'
 import { speakWithKokoro } from './kokoro/kokoroProcess'
@@ -82,6 +84,9 @@ export const kokoroTtsProvider: TTSProvider = {
 
     // The whole take in one go: Kokoro shapes a paragraph as a paragraph and pauses at
     // punctuation by itself, so nothing is spliced in afterwards.
-    await speakWithKokoro(text, voice, speedFor(options.pace), outputPath)
+    await audibleTake(text, speedFor(options.pace), async (speed) => {
+      await speakWithKokoro(text, voice, speed, outputPath)
+      return { audio: wavSamples(readFileSync(outputPath)) }
+    })
   }
 }

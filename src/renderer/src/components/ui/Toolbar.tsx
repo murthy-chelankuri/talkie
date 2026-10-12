@@ -5,6 +5,6 @@ type ToolbarProps = HTMLAttributes<HTMLDivElement>
 
 export function Toolbar({ className, ...props }: ToolbarProps): JSX.Element {
   return (
-    <div role="toolbar" className={cn('flex items-center gap-1 border-b border-border bg-surface p-2', className)} {...props} />
+    <div role="toolbar" className={cn('flex items-center gap-1 bg-surface p-2', className)} {...props} />
   )
 }

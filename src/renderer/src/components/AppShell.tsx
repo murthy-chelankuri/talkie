@@ -1,9 +1,21 @@
-import { useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { IconButton } from './ui/IconButton'
 import { SettingsDialog } from './SettingsDialog'
 import { useMenuActions } from '../lib/menuActions'
+
+/**
+ * Where a screen puts its own actions in the top bar — the editor's Export. A slot rather than a
+ * prop: the shell does not know what the screen below it holds, and Export's state lives there.
+ */
+const TopBarSlot = createContext<HTMLElement | null>(null)
+
+export function TopBarActions({ children }: { children: ReactNode }): JSX.Element | null {
+  const slot = useContext(TopBarSlot)
+  return slot ? createPortal(children, slot) : null
+}
 
 export function AppShell({
   children,
@@ -16,6 +28,7 @@ export function AppShell({
   const { theme, toggleTheme } = useTheme()
   const [showSettings, setShowSettings] = useState(false)
   // Which section the menu asked for; the button opens where it always did.
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
   const [settingsSection, setSettingsSection] = useState<'narration' | 'licences'>('narration')
 
   useMenuActions({
@@ -31,13 +44,13 @@ export function AppShell({
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
-      <header className="flex shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-2">
+      <header className="flex shrink-0 items-center justify-between bg-bg px-4 py-2">
         <span className="flex items-center gap-2">
           {/* An aperture-like mark: the app's one piece of identity, drawn rather than an icon
               borrowed from the set used for controls. */}
           <span
             aria-hidden="true"
-            className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-accent text-accent-foreground"
+            className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-accent-fill text-on-accent"
           >
             {/* The app icon's own mark, so the thing in the dock and the thing in the corner are
                 recognisably the same. A dot was left over from the icon before it. */}
@@ -58,6 +71,7 @@ export function AppShell({
           )}
         </span>
         <span className="flex items-center gap-1">
+          <span ref={setSlot} data-testid="top-bar-actions" className="mr-1 flex items-center gap-2" />
           <IconButton aria-label="Settings" onClick={() => setShowSettings(true)}>
             <SettingsIcon size={16} />
           </IconButton>
@@ -69,7 +83,9 @@ export function AppShell({
           </IconButton>
         </span>
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      <TopBarSlot.Provider value={slot}>
+        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      </TopBarSlot.Provider>
       {showSettings && (
         <SettingsDialog initialSection={settingsSection} onClose={() => setShowSettings(false)} />
       )}

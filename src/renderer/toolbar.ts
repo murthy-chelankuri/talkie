@@ -31,7 +31,8 @@ function applyTheme(): void {
   } catch {
     // A window with no storage still has to render.
   }
-  const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+  // Dark unless light was chosen, as in the editor: Studio is designed dark first.
+  const dark = stored !== 'light'
   document.documentElement.dataset.theme = dark ? 'dark' : 'light'
 }
 
@@ -85,10 +86,10 @@ window.capture.onEnded((reason, failed) => {
 
 window.capture.onExploring((status, needsYou) => {
   exploring.textContent = needsYou ? `⚠ ${status}` : status
-  // Accent on surface, not on surface-hover: the latter measures 5.55:1 in the light theme and
-  // the floor for accent-as-small-text is 5.8:1. This pairing is 6.29:1 light, 7.62:1 dark.
+  // Accent text on the surface clears the 5.8:1 floor for small accent text in both themes —
+  // 7.62:1 light, 7.67:1 dark; see contrast.test.ts.
   exploring.className = needsYou
-    ? 'mt-auto rounded-md border border-accent bg-surface px-2 py-1.5 text-[11px] font-medium leading-relaxed text-accent'
+    ? 'mt-auto rounded-[10px] bg-surface px-2 py-1.5 text-[11px] font-medium leading-relaxed text-accent ring-1 ring-inset ring-accent'
     : 'mt-auto text-[11px] leading-relaxed text-text-muted'
   exploring.hidden = false
 })

@@ -130,10 +130,29 @@ describe('what the user is told is left to do', () => {
 describe('the label on the button that speaks everything', () => {
   const timeline = clips(2)
 
-  it('offers to speak the clips that have no voice', () => {
-    const progress = voiceProgress(timeline, [], 'Samantha')
+  it('offers to speak the clips that have words but no voice', () => {
+    const segments = timeline.map((_, index) => segment(index, { status: 'edited', audioFile: undefined }))
 
-    expect(speakAllLabel(progress, 'Samantha')).toBe('Speak 2 clips')
+    expect(speakAllLabel(voiceProgress(timeline, segments, 'Samantha'), 'Samantha')).toBe('Speak 2 clips')
+  })
+
+  it('does not offer to speak a clip with no words, which it cannot do', () => {
+    // An HTML scene arrives with no narration. Counting it offered "Speak 1 clip", and pressing
+    // that did nothing at all.
+    const progress = voiceProgress(timeline, [segment(0)], 'Samantha')
+
+    expect(progress.needing).toHaveLength(0)
+    expect(speakAllLabel(progress, 'Samantha')).toBe('1 clip needs words')
+  })
+
+  it('speaks the written clips and leaves the unwritten one out', () => {
+    const three = clips(3)
+    const segments = [segment(0), segment(1, { status: 'edited', audioFile: undefined })]
+
+    const progress = voiceProgress(three, segments, 'Samantha')
+
+    expect(progress.needing.map((item) => item.id)).toEqual(['clip-1'])
+    expect(speakAllLabel(progress, 'Samantha')).toBe('Speak 1 clip')
   })
 
   it('offers to re-speak, naming the voice it would switch to', () => {

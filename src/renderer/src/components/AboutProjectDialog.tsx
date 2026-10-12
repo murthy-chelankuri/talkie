@@ -67,11 +67,11 @@ export function AboutProjectDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm">
       <div
         role="dialog"
         aria-label="About this project"
-        className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-bg shadow-xl"
+        className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl"
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
           <h2 className="font-serif text-lg text-text">About this project</h2>
