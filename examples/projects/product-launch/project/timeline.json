@@ -1,11 +1,11 @@
 [
   {
-    "id": "8c7ceaa8-e35c-4fa9-a1bc-2c975493af8a",
+    "id": "de850509-a0d2-420b-a513-367623da5fc1",
     "kind": "scene",
     "start": 0,
-    "duration": 100,
+    "duration": 102,
     "data": {
-      "title": "Introducing Lumen",
+      "title": "Introducing Tidewell",
       "layout": "title",
       "bullets": [],
       "style": {
@@ -18,31 +18,31 @@
     }
   },
   {
-    "id": "0d9aaa9b-7656-4ed8-ab20-5b0e21ce978f",
+    "id": "f0d97542-a038-4ed2-b89b-44e71586fe36",
     "kind": "html",
-    "start": 100,
-    "duration": 195,
+    "start": 102,
+    "duration": 194,
     "data": {
-      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/c082c2ef-6e9c-46f4-833c-0803a74e1305/index.html",
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/f1cb3b67-600a-4f3a-9ac9-be95c1352e35/index.html",
       "title": "Your week, planned for you",
       "style": {
         "theme": "dark"
       },
       "params": {
         "title": "Your week, planned for you",
-        "subtitle": "Lumen finds the time before the meetings do"
+        "subtitle": "Tidewell finds the time before the meetings do"
       },
-      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/c082c2ef-6e9c-46f4-833c-0803a74e1305:b5f189ab:dark",
-      "posterText": "Yourweek,plannedforyou\n\nLumen finds the time before the meetings do",
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/f1cb3b67-600a-4f3a-9ac9-be95c1352e35:b5f189ab:dark",
+      "posterText": "Yourweek,plannedforyou\n\nTidewell finds the time before the meetings do",
       "check": {
         "problems": []
       }
     }
   },
   {
-    "id": "b4dc1604-cf2c-40c6-9507-5529b2300ee9",
+    "id": "18594ab1-8544-4a61-9bcc-6ddf512f6284",
     "kind": "scene",
-    "start": 295,
+    "start": 296,
     "duration": 340,
     "data": {
       "title": "The average week",
@@ -62,12 +62,12 @@
     }
   },
   {
-    "id": "0ea4770e-e61c-4e7f-be83-765f51e3bb7b",
+    "id": "fadacc02-cac2-440d-bea0-4142cf0122c9",
     "kind": "html",
-    "start": 635,
-    "duration": 239,
+    "start": 636,
+    "duration": 242,
     "data": {
-      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/dca12da6-3c1e-4b3a-9f12-78b60cc7033e/index.html",
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/c9d9dad0-de7f-4794-81ab-4372401414ad/index.html",
       "title": "Focus time won back",
       "style": {
         "theme": "dark"
@@ -77,7 +77,7 @@
         "decimals": 1,
         "label": "hours of focus time won back, every week"
       },
-      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/dca12da6-3c1e-4b3a-9f12-78b60cc7033e:b5f189ab:dark",
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/c9d9dad0-de7f-4794-81ab-4372401414ad:b5f189ab:dark",
       "posterText": "6.5\nhours of focus time won back, every week",
       "check": {
         "problems": []
@@ -85,12 +85,12 @@
     }
   },
   {
-    "id": "7d948775-4122-4742-9fcc-2db6eac8a3ec",
+    "id": "3aca0a06-ecc4-4e2d-b68c-8613caf2a278",
     "kind": "html",
-    "start": 874,
+    "start": 878,
     "duration": 436,
     "data": {
-      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/1992f093-7a6b-4722-b784-77298f20de41/index.html",
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/b974f6f6-25bd-4989-9d62-9d359799b1c3/index.html",
       "title": "Hours won back, by team",
       "style": {
         "theme": "dark"
@@ -111,7 +111,7 @@
         ],
         "unit": "h"
       },
-      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/1992f093-7a6b-4722-b784-77298f20de41:b5f189ab:dark",
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/b974f6f6-25bd-4989-9d62-9d359799b1c3:b5f189ab:dark",
       "posterText": "Focus hours won back each week\n5h\n9h\n3h\n0h\nDesign\nEngineering\nSales\nSupport",
       "check": {
         "problems": []
@@ -119,19 +119,19 @@
     }
   },
   {
-    "id": "52cbcf3d-e17e-456c-9398-98a54248dc6b",
+    "id": "ab9e1ac7-78f5-40ec-904f-b23e81112e9d",
     "kind": "html",
-    "start": 1310,
-    "duration": 333,
+    "start": 1314,
+    "duration": 335,
     "data": {
-      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/271dd832-6af1-4d6e-877a-d8b826e85244/index.html",
-      "title": "Before and with Lumen",
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/e3da2f34-2528-49d8-85a2-72bd1d8403dc/index.html",
+      "title": "Before and with Tidewell",
       "style": {
         "theme": "dark"
       },
       "params": {
         "before": {
-          "title": "Before Lumen",
+          "title": "Before Tidewell",
           "points": [
             "Meetings land anywhere",
             "Deep work defended by hand",
@@ -139,7 +139,7 @@
           ]
         },
         "after": {
-          "title": "With Lumen",
+          "title": "With Tidewell",
           "points": [
             "Meetings moved for you",
             "Focus time guarded",
@@ -147,20 +147,20 @@
           ]
         }
       },
-      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/271dd832-6af1-4d6e-877a-d8b826e85244:b5f189ab:dark",
-      "posterText": "BEFORE\nBefore Lumen\nMeetings land anywhere\nDeep work defended by hand\nOverbooked weeks found on Friday\nAFTER\nWith Lumen\nMeetings moved for you\nFocus time guarded\nOverbooking flagged on Monday",
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/e3da2f34-2528-49d8-85a2-72bd1d8403dc:b5f189ab:dark",
+      "posterText": "BEFORE\nBefore Tidewell\nMeetings land anywhere\nDeep work defended by hand\nOverbooked weeks found on Friday\nAFTER\nWith Tidewell\nMeetings moved for you\nFocus time guarded\nOverbooking flagged on Monday",
       "check": {
         "problems": []
       }
     }
   },
   {
-    "id": "b096b4e8-015e-4100-aeee-425d9513c705",
+    "id": "50a703c4-ebbf-44bc-aa2e-bafc3a777388",
     "kind": "scene",
-    "start": 1643,
-    "duration": 153,
+    "start": 1649,
+    "duration": 155,
     "data": {
-      "title": "Try Lumen free",
+      "title": "Try Tidewell free",
       "layout": "closing",
       "bullets": [],
       "style": {

@@ -18,7 +18,7 @@ describe('the examples', () => {
     talkie = await launchTalkie(fixture)
     const { win } = talkie
 
-    for (const name of ['Meet Talkie', 'Lumen product launch', 'Taskboard walkthrough', 'Where does a photo go?']) {
+    for (const name of ['Meet Talkie', 'Tidewell product launch', 'Taskboard walkthrough', 'Where does a photo go?']) {
       await win.getByRole('button', { name: `Open ${name}` }).waitFor()
     }
     await win.getByRole('button', { name: 'Open Meet Talkie' }).click()
