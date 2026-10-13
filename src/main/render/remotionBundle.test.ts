@@ -68,7 +68,7 @@ describe('where a packaged build finds the composition', () => {
   it('never reaches for the working directory to find it', () => {
     // The whole bug in one line, and the only check that would have caught it. Comments are
     // stripped first, because the line explaining why cwd is wrong is not the line using it.
-    const code = readFileSync(join(__dirname, 'renderProject.ts'), 'utf-8')
+    const code = readFileSync(join(__dirname, 'remotionExport.ts'), 'utf-8')
       .split('\n')
       .filter((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*'))
       .join('\n')

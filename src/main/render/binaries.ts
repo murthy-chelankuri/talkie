@@ -3,8 +3,8 @@ import { join } from 'path'
 
 /**
  * Where Remotion's own compositor binaries are, for Remotion's export (renderMedia and
- * selectComposition in renderProject.ts) and nothing else; everything Talkie runs itself goes
- * through src/main/media. Goes with step 3 of the renderer, when Talkie's own export replaces it.
+ * selectComposition in remotionExport.ts) and nothing else; everything Talkie runs itself goes
+ * through src/main/media. Kept behind TALKIE_RENDERER until step 5 of the renderer removes it.
  *
  * Remotion resolves them relative to its own package, which works while the app runs from a
  * checkout. In a packaged build the code lives inside an asar archive, and a native binary

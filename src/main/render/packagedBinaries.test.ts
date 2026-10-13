@@ -21,8 +21,8 @@ import { join } from 'path'
  * these in the suite exercises the checkout layout, which is exactly the case that always worked.
  *
  * Talkie's own ffmpeg calls go through src/main/media, which finds its binaries from its own
- * folder (binaries.test.ts there). What is left here is Remotion's export, which still runs on
- * Remotion's compositor until step 3 of the renderer.
+ * folder (binaries.test.ts there). What is left here is Remotion's export (remotionExport.ts),
+ * kept behind TALKIE_RENDERER until step 5 of the renderer.
  */
 const MAIN = join(__dirname, '..')
 

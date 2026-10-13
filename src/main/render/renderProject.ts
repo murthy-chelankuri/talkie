@@ -44,6 +44,14 @@ export type RenderOptions = {
   renderer?: 'own' | 'remotion'
 }
 
+/** The option, then `TALKIE_RENDERER=remotion`, then Talkie's own. */
+export function chooseRenderer(
+  options: Pick<RenderOptions, 'renderer'>,
+  env: Record<string, string | undefined>
+): 'own' | 'remotion' {
+  return options.renderer ?? (env.TALKIE_RENDERER === 'remotion' ? 'remotion' : 'own')
+}
+
 export async function renderProjectVideo(
   id: string,
   baseDir: string = homedir(),
@@ -88,8 +96,7 @@ export async function renderProjectVideo(
   const totalFrames = computeTimelineDuration(rawTimeline)
   onProgress?.(preparing(totalFrames))
 
-  const renderer = options.renderer ?? (process.env.TALKIE_RENDERER === 'remotion' ? 'remotion' : 'own')
-  if (renderer === 'remotion') {
+  if (chooseRenderer(options, process.env) === 'remotion') {
     await renderWithRemotion({ timeline, theme, totalFrames, outputPath, onProgress, signal })
   } else {
     await exportVideo({

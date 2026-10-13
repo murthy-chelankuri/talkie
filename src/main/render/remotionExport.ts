@@ -48,26 +48,31 @@ export async function renderWithRemotion({
   // Remotion takes its own cancel signal; the rest of Talkie speaks AbortSignal.
   const { cancelSignal, cancel } = makeCancelSignal()
   if (signal?.aborted) cancel()
-  signal?.addEventListener('abort', () => cancel(), { once: true })
+  const onAbort = (): void => cancel()
+  signal?.addEventListener('abort', onAbort, { once: true })
 
-  await renderMedia({
-    binariesDirectory: binariesDirectory(),
-    browserExecutable,
-    composition: { ...composition, durationInFrames: totalFrames },
-    onProgress: (report) => onProgress?.(rendering(report, totalFrames)),
-    cancelSignal,
-    serveUrl: bundleLocation,
-    codec: 'h264',
-    // The hardware encoder, for the licensing reason set out in stitchRecording.ts: libx264 is
-    // what makes the bundled ffmpeg GPL, and nothing here needs it. `if-possible` rather than
-    // `required` because a failed export is a worse outcome than a fallback — though on Apple
-    // Silicon, which is the only hardware this app supports, the fallback cannot be reached.
-    hardwareAcceleration: 'if-possible',
-    // Tagged as high-definition colour, which is what it is. Left to itself the file came out
-    // marked bt470bg — the colour space of PAL television — with its transfer and primaries
-    // unset, so any player that honoured the tag showed the wrong colours for a 1080p video.
-    colorSpace: 'bt709',
-    outputLocation: outputPath,
-    inputProps: { timeline, theme }
-  })
+  try {
+    await renderMedia({
+      binariesDirectory: binariesDirectory(),
+      browserExecutable,
+      composition: { ...composition, durationInFrames: totalFrames },
+      onProgress: (report) => onProgress?.(rendering(report, totalFrames)),
+      cancelSignal,
+      serveUrl: bundleLocation,
+      codec: 'h264',
+      // The hardware encoder, for the licensing reason set out in stitchRecording.ts: libx264 is
+      // what makes the bundled ffmpeg GPL, and nothing here needs it. `if-possible` rather than
+      // `required` because a failed export is a worse outcome than a fallback — though on Apple
+      // Silicon, which is the only hardware this app supports, the fallback cannot be reached.
+      hardwareAcceleration: 'if-possible',
+      // Tagged as high-definition colour, which is what it is. Left to itself the file came out
+      // marked bt470bg — the colour space of PAL television — with its transfer and primaries
+      // unset, so any player that honoured the tag showed the wrong colours for a 1080p video.
+      colorSpace: 'bt709',
+      outputLocation: outputPath,
+      inputProps: { timeline, theme }
+    })
+  } finally {
+    signal?.removeEventListener('abort', onAbort)
+  }
 }

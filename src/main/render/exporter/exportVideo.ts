@@ -2,7 +2,7 @@ import { mkdirSync, renameSync, rmSync, writeFileSync } from 'fs'
 import { once } from 'events'
 import { randomBytes } from 'crypto'
 import { dirname, extname, join } from 'path'
-import { chromium, type Browser, type Page } from 'playwright'
+import { chromium, type Browser, type BrowserServer, type Page } from 'playwright'
 import type { TimelineItem } from '../../../remotion/types'
 import type { RenderTheme } from '../../../remotion/renderTheme'
 import { FPS, HEIGHT, WIDTH } from '../../../remotion/constants'
@@ -10,6 +10,7 @@ import { h264, runFfmpeg, spawnFfmpeg, type RunningTool } from '../../media'
 import { browserExecutablePath } from '../../capture/resolveBrowser'
 import { drawing, encoding, type ExportProgress } from '../exportProgress'
 import { closeReaders } from './frameSource'
+import { closeWithin } from './closeWithin'
 import { splitFrames, tabCount } from './ranges'
 import { soundtrackArgs, takesFor } from './soundtrack'
 
@@ -55,16 +56,31 @@ export async function exportVideo(input: OwnExportInput): Promise<void> {
   const stop = new AbortController()
   const forward = (): void => stop.abort(signal?.reason)
   signal?.addEventListener('abort', forward)
+  // Launched as a server and connected to, rather than launched in-process, because only the server
+  // hands over the browser's process to kill when it will not close.
+  let server: BrowserServer | null = null
   let browser: Browser | null = null
   // One close, shared: a second browser.close() while the first is under way returns at once,
   // and the export returned with its browser still exiting.
   let closing: Promise<void> | null = null
-  const closeBrowser = (): Promise<void> => (closing ??= browser?.close().catch(() => undefined) ?? Promise.resolve())
+  // Bounded: Playwright waits for Chromium's process to exit, and a headless shell that stalls on
+  // its way out would leave Cancel unsettled and the project "already being exported" until restart.
+  const closeBrowser = (): Promise<void> =>
+    (closing ??= browser
+      ? closeWithin(
+          async () => {
+            await browser?.close()
+            await server?.close()
+          },
+          () => server?.kill()
+        )
+      : Promise.resolve())
   // Closing the browser is what ends a tab mid-seek: a frame's holds may wait 30 s, and a tab
   // only looks at the signal between frames.
   stop.signal.addEventListener('abort', () => void (browser && closeBrowser()))
   try {
-    browser = await chromium.launch({ executablePath: browserExecutablePath() ?? undefined, headless: true })
+    server = await chromium.launchServer({ executablePath: browserExecutablePath() ?? undefined, headless: true })
+    browser = await chromium.connect(server.wsEndpoint())
     stop.signal.throwIfAborted()
     const ranges = splitFrames(totalFrames, tabCount())
     const encode = await h264('export')
