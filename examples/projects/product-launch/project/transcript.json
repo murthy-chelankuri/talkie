@@ -1,22 +1,22 @@
 [
   {
-    "id": "92f05119-1040-4c70-9d97-c98a9053a44d",
-    "text": "Introducing Lumen.",
-    "timelineItemId": "8c7ceaa8-e35c-4fa9-a1bc-2c975493af8a",
-    "audioFile": "92f05119-1040-4c70-9d97-c98a9053a44d-1791866879623.wav",
+    "id": "6aa6568c-5683-4c95-ac2c-24dc4279c900",
+    "text": "Introducing Tidewell.",
+    "timelineItemId": "de850509-a0d2-420b-a513-367623da5fc1",
+    "audioFile": "6aa6568c-5683-4c95-ac2c-24dc4279c900-1791877522648.wav",
     "voice": "af_heart",
     "status": "narrated"
   },
   {
-    "id": "28b5dec4-c108-49e7-b9d9-345fd611009c",
-    "text": "Your calendar fills up with other people's plans. Lumen fills it with yours.",
-    "timelineItemId": "0d9aaa9b-7656-4ed8-ab20-5b0e21ce978f",
-    "audioFile": "28b5dec4-c108-49e7-b9d9-345fd611009c-1791866880104.wav",
+    "id": "48123185-1461-4ff8-ba36-1f98ea731873",
+    "text": "Your calendar fills up with other people's plans. Tidewell fills it with yours.",
+    "timelineItemId": "f0d97542-a038-4ed2-b89b-44e71586fe36",
+    "audioFile": "48123185-1461-4ff8-ba36-1f98ea731873-1791877524048.wav",
     "voice": "af_heart",
     "status": "narrated"
   },
   {
-    "id": "ed869eb6-8089-44d1-b0ab-163a37484b79",
+    "id": "4fd6f743-8702-4c14-9456-8a19037d529a",
     "text": "The average week has: twenty-three meetings, eleven hours of interruptions, and just four hours to actually think.",
     "beats": [
       {
@@ -36,21 +36,21 @@
         "text": "and just four hours to actually think."
       }
     ],
-    "timelineItemId": "b4dc1604-cf2c-40c6-9507-5529b2300ee9",
-    "audioFile": "ed869eb6-8089-44d1-b0ab-163a37484b79-1791866881415.wav",
+    "timelineItemId": "18594ab1-8544-4a61-9bcc-6ddf512f6284",
+    "audioFile": "4fd6f743-8702-4c14-9456-8a19037d529a-1791877526659.wav",
     "voice": "af_heart",
     "status": "narrated"
   },
   {
-    "id": "d9fb2710-ae98-43be-96e4-5a9ead4841b1",
-    "text": "Lumen protects your focus time automatically. Early teams got back six and a half hours a week.",
-    "timelineItemId": "0ea4770e-e61c-4e7f-be83-765f51e3bb7b",
-    "audioFile": "d9fb2710-ae98-43be-96e4-5a9ead4841b1-1791866884399.wav",
+    "id": "1eed9ea1-d726-42fd-a881-f1568cc0fde6",
+    "text": "Tidewell protects your focus time automatically. Early teams got back six and a half hours a week.",
+    "timelineItemId": "fadacc02-cac2-440d-bea0-4142cf0122c9",
+    "audioFile": "1eed9ea1-d726-42fd-a881-f1568cc0fde6-1791877529706.wav",
     "voice": "af_heart",
     "status": "narrated"
   },
   {
-    "id": "c8564a35-bf48-4824-b74b-0639d3376f7d",
+    "id": "53ae9160-cd27-4a9d-8390-e1cb1110422e",
     "text": "Every team saw the difference. Design got five hours back. Engineering, nine — nearly twice the time to build. Sales, four. And support, six.",
     "beats": [
       {
@@ -74,14 +74,14 @@
         "text": "And support, six."
       }
     ],
-    "timelineItemId": "7d948775-4122-4742-9fcc-2db6eac8a3ec",
-    "audioFile": "c8564a35-bf48-4824-b74b-0639d3376f7d-1791866886070.wav",
+    "timelineItemId": "3aca0a06-ecc4-4e2d-b68c-8613caf2a278",
+    "audioFile": "53ae9160-cd27-4a9d-8390-e1cb1110422e-1791877531605.wav",
     "voice": "af_heart",
     "status": "narrated"
   },
   {
-    "id": "e18eb8b8-3e5f-4760-8b63-5d1155a614e9",
-    "text": "No more defending your calendar by hand. Lumen moves meetings, guards deep work, and tells you when a week is overbooked — before it starts.",
+    "id": "39b93355-d57b-41c7-94c0-17a468d20737",
+    "text": "No more defending your calendar by hand. Tidewell moves meetings, guards deep work, and tells you when a week is overbooked — before it starts.",
     "beats": [
       {
         "at": 0.2,
@@ -89,19 +89,19 @@
       },
       {
         "at": 3.2,
-        "text": "Lumen moves meetings, guards deep work, and tells you when a week is overbooked — before it starts."
+        "text": "Tidewell moves meetings, guards deep work, and tells you when a week is overbooked — before it starts."
       }
     ],
-    "timelineItemId": "52cbcf3d-e17e-456c-9398-98a54248dc6b",
-    "audioFile": "e18eb8b8-3e5f-4760-8b63-5d1155a614e9-1791866890299.wav",
+    "timelineItemId": "ab9e1ac7-78f5-40ec-904f-b23e81112e9d",
+    "audioFile": "39b93355-d57b-41c7-94c0-17a468d20737-1791877535984.wav",
     "voice": "af_heart",
     "status": "narrated"
   },
   {
-    "id": "50d886a1-c95a-4b6b-a978-2b839578bb21",
-    "text": "Lumen. Your week, planned for you. Try it free today.",
-    "timelineItemId": "b096b4e8-015e-4100-aeee-425d9513c705",
-    "audioFile": "50d886a1-c95a-4b6b-a978-2b839578bb21-1791866892747.wav",
+    "id": "9082b5bc-efa7-49eb-9eef-a5cff1bb6328",
+    "text": "Tidewell. Your week, planned for you. Try it free today.",
+    "timelineItemId": "50a703c4-ebbf-44bc-aa2e-bafc3a777388",
+    "audioFile": "9082b5bc-efa7-49eb-9eef-a5cff1bb6328-1791877538484.wav",
     "voice": "af_heart",
     "status": "narrated"
   }

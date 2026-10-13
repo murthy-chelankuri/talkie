@@ -45,18 +45,18 @@ someone would meet it. The waits — the walk, drafting, voicing, exporting — 
 
 ## 2. Product launch — about 60 seconds
 
-A launch video for **Lumen**, a made-up calendar app, with no recording at all: themed scenes,
+A launch video for **Tidewell**, a made-up calendar app, with no recording at all: themed scenes,
 three of them HTML. Theme: *Midnight*.
 
 | # | On screen | Narration |
 |---|---|---|
-| 1 | **Opening card:** "Introducing Lumen" | Introducing Lumen. |
-| 2 | **Kinetic title:** "Your week, planned for you" · "Lumen finds the time before the meetings do" | Your calendar fills up with other people's plans. Lumen fills it with yours. |
+| 1 | **Opening card:** "Introducing Tidewell" | Introducing Tidewell. |
+| 2 | **Kinetic title:** "Your week, planned for you" · "Tidewell finds the time before the meetings do" | Your calendar fills up with other people's plans. Tidewell fills it with yours. |
 | 3 | **Slide:** "The average week" · 23 meetings · 11 hours of interruptions · 4 hours to actually think | The average week has: twenty-three meetings, eleven hours of interruptions, and just four hours to actually think. |
-| 4 | **Big number:** counts up to 6.5 · "hours of focus time won back, every week" | Lumen protects your focus time automatically. Early teams got back six and a half hours a week. |
+| 4 | **Big number:** counts up to 6.5 · "hours of focus time won back, every week" | Tidewell protects your focus time automatically. Early teams got back six and a half hours a week. |
 | 5 | **Bar chart:** "Focus hours won back each week" — Design 5, Engineering 9, Sales 4, Support 6, each bar as it is named | Every team saw the difference. Design got five hours back. Engineering, nine — nearly twice the time to build. Sales, four. And support, six. |
-| 6 | **Before and after:** "Before Lumen" wipes to "With Lumen" | No more defending your calendar by hand. Lumen moves meetings, guards deep work, and tells you when a week is overbooked — before it starts. |
-| 7 | **Closing card:** "Try Lumen free" | Lumen. Your week, planned for you. Try it free today. |
+| 6 | **Before and after:** "Before Tidewell" wipes to "With Tidewell" | No more defending your calendar by hand. Tidewell moves meetings, guards deep work, and tells you when a week is overbooked — before it starts. |
+| 7 | **Closing card:** "Try Tidewell free" | Tidewell. Your week, planned for you. Try it free today. |
 
 ---
 
