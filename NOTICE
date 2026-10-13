@@ -45,10 +45,11 @@ FFmpeg, x264, x265 -- GPL
 --------------------------------------------------------------------------------
 
 Talkie runs FFmpeg 9.0.2 as built by Martin Riedl
-(https://ffmpeg.martin-riedl.de), configured --enable-gpl --enable-version3 with x264 and x265 linked in, which
-makes the binaries GPL-3.0-or-later. `npm install` fetches them, pinned by
-SHA-256 in scripts/ffmpegBuilds.json, into vendor/ffmpeg/. A packaged build
-carries them in Contents/Resources/ffmpeg/.
+(https://ffmpeg.martin-riedl.de), configured --enable-gpl --enable-version3
+with x264 and x265 linked in, which makes the binaries GPL-3.0-or-later.
+`npm install` fetches them, pinned by SHA-256 in scripts/ffmpegBuilds.json,
+into vendor/ffmpeg/. A packaged build carries them in
+Contents/Resources/ffmpeg/.
 
 Until Talkie's own export replaces Remotion's (step 3 of the renderer),
 Remotion's compositor package (@remotion/compositor-*) also brings an FFmpeg
@@ -79,8 +80,9 @@ FFmpeg source:  https://ffmpeg.org/download.html
 x264 source:    https://www.videolan.org/developers/x264.html
 x265 source:    https://www.videolan.org/developers/x265.html
 
-For Remotion's FFmpeg n7.1: which GPL version applies, and what a source offer is
----------------------------------------------------------------------------------
+For Remotion's FFmpeg n7.1: which GPL version applies, and what a source
+offer is
+------------------------------------------------------------------------
 
 These binaries are "GPL-2.0-or-later", so a distributor may elect version 3.
 Anyone distributing a build of Talkie should elect GPL-3.0-or-later and say so,
