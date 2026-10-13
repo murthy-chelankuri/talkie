@@ -45,6 +45,28 @@ export function rendering(
   }
 }
 
+/** Talkie's own export: capturing is most of the middle, the rest is joining and mixing. */
+const DRAWING_SHARE = 0.9
+
+export function drawing(renderedFrames: number, totalFrames: number): ExportProgress {
+  const done = totalFrames > 0 ? clamp(renderedFrames / totalFrames) : 0
+  return {
+    stage: 'rendering',
+    fraction: PREPARING + done * DRAWING_SHARE * (1 - PREPARING - FINISHING),
+    renderedFrames: Math.min(renderedFrames, totalFrames),
+    totalFrames
+  }
+}
+
+/**
+ * Said once every tab's encoder has finished its segment, which is the first part of the share
+ * after drawing, so it sits halfway through that share rather than where the last frame left it.
+ */
+export function encoding(totalFrames: number): ExportProgress {
+  const share = DRAWING_SHARE + (1 - DRAWING_SHARE) / 2
+  return { stage: 'encoding', fraction: PREPARING + share * (1 - PREPARING - FINISHING), renderedFrames: totalFrames, totalFrames }
+}
+
 export function finishing(totalFrames: number): ExportProgress {
   return { stage: 'finishing', fraction: 1 - FINISHING, renderedFrames: totalFrames, totalFrames }
 }

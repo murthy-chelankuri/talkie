@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { finishing, preparing, rendering } from './exportProgress'
+import { drawing, encoding, finishing, preparing, rendering } from './exportProgress'
 
 describe('how far an export has got', () => {
   it('starts at nothing, getting ready', () => {
@@ -22,5 +22,13 @@ describe('how far an export has got', () => {
     const done = rendering({ progress: 1, renderedFrames: 300, stitchStage: 'muxing' }, 300)
     expect(done.fraction).toBeLessThanOrEqual(finishing(300).fraction)
     expect(rendering({ progress: Number.NaN, renderedFrames: 0, stitchStage: 'encoding' }, 300).fraction).toBeGreaterThanOrEqual(0)
+  })
+
+  it('moves through drawing as frames are captured, and holds a share back for encoding', () => {
+    expect(drawing(0, 100).stage).toBe('rendering')
+    expect(drawing(50, 100).fraction).toBeGreaterThan(drawing(10, 100).fraction)
+    expect(drawing(100, 100).fraction).toBeLessThan(encoding(100).fraction)
+    expect(encoding(100).stage).toBe('encoding')
+    expect(encoding(100).fraction).toBeLessThan(finishing(100).fraction)
   })
 })

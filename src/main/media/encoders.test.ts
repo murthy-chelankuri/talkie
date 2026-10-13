@@ -14,4 +14,10 @@ describe('choosing an H.264 encoder', () => {
   it.runIf(process.platform === 'darwin')('finds the hardware encoder in the pinned build', async () => {
     expect(await h264('intermediate')).toEqual(['-c:v', 'h264_videotoolbox', '-q:v', '65'])
   }, 60_000)
+
+  it('asks the hardware encoder for the export at its own quality', () => {
+    const args = chooseH264('darwin', new Set(['h264_videotoolbox']), 'export')
+    expect(args.slice(0, 2)).toEqual(['-c:v', 'h264_videotoolbox'])
+    expect(args).toContain('-q:v')
+  })
 })
