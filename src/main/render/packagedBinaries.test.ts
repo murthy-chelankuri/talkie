@@ -42,5 +42,9 @@ describe('shelling out from a packaged build', () => {
     expect(source.slice(call, call + 400)).toContain('binariesDirectory')
   })
 
-  it.todo('ships Talkie’s own ffmpeg outside the archive, where src/main/media looks for it')
+  it('ships Talkie’s own ffmpeg outside the archive, where src/main/media looks for it', () => {
+    const builder = readFileSync(join(MAIN, '..', '..', 'electron-builder.yml'), 'utf-8')
+    // packagedResources() + 'ffmpeg' is where toolPath looks in a packaged build.
+    expect(builder).toMatch(/- from: vendor\/ffmpeg\/\$\{platform\}-\$\{arch\}\s+to: ffmpeg/)
+  })
 })
