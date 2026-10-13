@@ -10,7 +10,7 @@ import { h264, runFfmpeg, spawnFfmpeg, type RunningTool } from '../../media'
 import { browserExecutablePath } from '../../capture/resolveBrowser'
 import { drawing, encoding, type ExportProgress } from '../exportProgress'
 import { closeReaders } from './frameSource'
-import { closeWithin } from './closeWithin'
+import { closeBrowserServer } from './closeWithin'
 import { splitFrames, tabCount } from './ranges'
 import { soundtrackArgs, takesFor } from './soundtrack'
 
@@ -65,19 +65,12 @@ export async function exportVideo(input: OwnExportInput): Promise<void> {
   let closing: Promise<void> | null = null
   // Bounded: Playwright waits for Chromium's process to exit, and a headless shell that stalls on
   // its way out would leave Cancel unsettled and the project "already being exported" until restart.
-  const closeBrowser = (): Promise<void> =>
-    (closing ??= browser
-      ? closeWithin(
-          async () => {
-            await browser?.close()
-            await server?.close()
-          },
-          () => server?.kill()
-        )
-      : Promise.resolve())
+  // Not remembered while there is no server yet: an abort during launch must not stop the close
+  // in `finally` from running once there is one.
+  const closeBrowser = (): Promise<void> => (server ? (closing ??= closeBrowserServer(browser, server)) : Promise.resolve())
   // Closing the browser is what ends a tab mid-seek: a frame's holds may wait 30 s, and a tab
   // only looks at the signal between frames.
-  stop.signal.addEventListener('abort', () => void (browser && closeBrowser()))
+  stop.signal.addEventListener('abort', () => void (server && closeBrowser()))
   try {
     server = await chromium.launchServer({ executablePath: browserExecutablePath() ?? undefined, headless: true })
     browser = await chromium.connect(server.wsEndpoint())
