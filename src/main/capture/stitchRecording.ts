@@ -1,5 +1,4 @@
-import { RenderInternals } from '@remotion/renderer'
-import { ffOptions } from '../render/binaries'
+import { runFfmpeg, h264 } from '../media'
 import { logFailure } from '../diagnostics/log'
 
 /** A stretch of one page's video: where the person was looking, and for how long. */
@@ -40,11 +39,8 @@ const KEYFRAME_INTERVAL_FRAMES = '30'
  * this file is the source the final render reads, so its losses are inherited, and a hardware
  * encode is cheap enough that the extra bits cost nothing worth counting.
  */
+// The encoder and its quality come from src/main/media's table, per system.
 const ENCODE_ARGS = [
-  '-c:v',
-  'h264_videotoolbox',
-  '-q:v',
-  '65',
   '-g',
   KEYFRAME_INTERVAL_FRAMES,
   '-pix_fmt',
@@ -95,12 +91,7 @@ export async function stitchRecording(clips: RecordedClip[], outputPath: string)
         ]
 
   try {
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: [...inputs, ...join, ...ENCODE_ARGS, outputPath],
-      ...ffOptions(),
-      cancelSignal: undefined
-    })
+    await runFfmpeg([...inputs, ...join, ...(await h264('intermediate')), ...ENCODE_ARGS, outputPath])
     return outputPath
   } catch (err) {
     // The raw captures are already safely on disk, so a failed stitch must not lose the

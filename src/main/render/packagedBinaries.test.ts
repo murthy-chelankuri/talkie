@@ -19,13 +19,15 @@ import { join } from 'path'
  *
  * Read off the source rather than executed, because the failure is a packaging one: running
  * these in the suite exercises the checkout layout, which is exactly the case that always worked.
+ *
+ * Talkie's own ffmpeg calls go through src/main/media, which finds its binaries from its own
+ * folder (binaries.test.ts there). What is left here is Remotion's export, which still runs on
+ * Remotion's compositor until step 3 of the renderer.
  */
 const MAIN = join(__dirname, '..')
 
 /** Remotion entry points that reach for a binary, and the file each is called from. */
 const CALLS_A_BINARY = [
-  { fn: 'getVideoMetadata', file: 'capture/importRecordedSession.ts' },
-  { fn: 'getVideoMetadata', file: 'transcript/fitToFootage.ts' },
   { fn: 'selectComposition', file: 'render/renderProject.ts' },
   { fn: 'renderMedia', file: 'render/renderProject.ts' }
 ]
@@ -40,20 +42,5 @@ describe('shelling out from a packaged build', () => {
     expect(source.slice(call, call + 400)).toContain('binariesDirectory')
   })
 
-  it('leaves no callFf without it, which is how the rule was kept before', () => {
-    // The original invariant, still worth pinning: every callFf spreads ffOptions().
-    for (const file of [
-      'capture/stitchRecording.ts',
-      'transcript/recordNarration.ts',
-      'setup/readiness.ts',
-      'agent/clipEvidence.ts',
-      'render/loudness.ts'
-    ]) {
-      const source = readFileSync(join(MAIN, file), 'utf-8')
-      const calls = source.split('RenderInternals.callFf(').length - 1
-      const told = source.split('...ffOptions()').length - 1
-
-      expect(told, `${file} has ${calls} callFf calls but ${told} passing ffOptions()`).toBe(calls)
-    }
-  })
+  it.todo('ships Talkie’s own ffmpeg outside the archive, where src/main/media looks for it')
 })

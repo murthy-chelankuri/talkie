@@ -1,6 +1,5 @@
 import { homedir } from 'os'
 import { dirname, join } from 'path'
-import { getVideoMetadata } from '@remotion/renderer'
 import { addTimelineItem, readTimeline } from '../project/projectApi'
 import { stitchRecording, type RecordedClip } from './stitchRecording'
 import { rebaseActionLog, VIDEO_TIME_LOG } from './rebaseActionLog'
@@ -8,19 +7,19 @@ import { readActionLog } from './actionLog'
 import { planScenes } from './sceneBoundaries'
 import { cleanActionLog } from '../agent/cleanActionLog'
 import { findTopicBreaks } from '../agent/topicBreaks'
-import { binariesDirectory } from '../render/binaries'
+import { probeMedia } from '../media'
 import { logFailure } from '../diagnostics/log'
 import { FPS } from '../../remotion/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 
 // Playwright writes its .webm progressively and does not always finalize a duration in the
-// container header, so getVideoMetadata can legitimately report null. Fall back to a visible
+// container header, so probing can legitimately report null. Fall back to a visible
 // placeholder length rather than failing the import — the clip is still on the timeline and
 // its duration can be corrected later.
 //
 // Three seconds, and it decides the length of the whole import: every scene is cut against this
 // number. That made it the most expensive fallback in the app when measuring failed for a reason
-// that was not the container — see the binariesDirectory passed below.
+// that was not the container, such as the probe failing to run.
 const FALLBACK_DURATION_FRAMES = 90
 
 /**
@@ -74,16 +73,13 @@ export async function importRecordedSession(
 
   let durationFrames = FALLBACK_DURATION_FRAMES
   try {
-    // Told where the binaries are, like every other call that shells out. Without it Remotion
-    // looks beside its own package, which in a packaged build is inside the asar archive where
-    // nothing can be executed — so measuring threw, the fallback above stood in for the real
-    // length, and a recording of any duration arrived on the timeline as three seconds of its
-    // opening. For an app behind a login that is the login and nothing after it.
-    const { durationInSeconds } = await getVideoMetadata(playablePath, {
-      binariesDirectory: binariesDirectory()
-    })
-    if (durationInSeconds && durationInSeconds > 0) {
-      durationFrames = Math.max(1, Math.round(durationInSeconds * FPS))
+    // src/main/media finds its binaries from its own folder, packaged or not. When measuring
+    // threw for want of them, the fallback above stood in for the real length and a recording of
+    // any duration arrived on the timeline as three seconds of its opening. For an app behind a
+    // login that is the login and nothing after it.
+    const { durationSeconds } = await probeMedia(playablePath)
+    if (durationSeconds && durationSeconds > 0) {
+      durationFrames = Math.max(1, Math.round(durationSeconds * FPS))
     }
   } catch (err) {
     logFailure(`Could not read duration of recorded video ${playablePath}`, err)

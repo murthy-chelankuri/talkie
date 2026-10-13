@@ -1,9 +1,10 @@
 import { execFileSync, execSync } from 'child_process'
-import { dirname, join } from 'path'
+import { join } from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { exportsIn, launchTalkie, openProject, type Talkie } from './app'
 import { takeShape, type TakeShape } from './audio'
 import { makeFixture, type Fixture } from './fixture'
+import { ffmpegPath, ffprobePath } from '../src/main/media'
 
 let fixture: Fixture
 let talkie: Talkie
@@ -15,13 +16,10 @@ afterEach(async () => {
   expect(errors, 'the window logged errors').toEqual([])
 })
 
-/** The ffmpeg and ffprobe the export itself uses, so the run needs nothing else installed. */
-const BINARIES = dirname(require.resolve('@remotion/compositor-darwin-arm64/package.json'))
-
 function probe(path: string): { seconds: number; audio: boolean } {
-  const out = execFileSync(join(BINARIES, 'ffprobe'), [
+  const out = execFileSync(ffprobePath(), [
     '-v', 'error', '-show_entries', 'format=duration:stream=codec_type', '-of', 'json', path
-  ], { env: { ...process.env, DYLD_LIBRARY_PATH: BINARIES } }).toString()
+  ]).toString()
   const parsed = JSON.parse(out) as { format: { duration: string }; streams: { codec_type: string }[] }
   return {
     seconds: Number(parsed.format.duration),
@@ -31,13 +29,11 @@ function probe(path: string): { seconds: number; audio: boolean } {
 
 /**
  * The video's soundtrack, taken out as a WAV so it can be measured like a take. Through a file
- * because the ffmpeg Remotion ships has neither `volumedetect` nor a raw PCM muxer.
+ * decoded to PCM and measured here rather than by a filter, which keeps the measurement the same whatever ffmpeg build is installed.
  */
 function soundtrack(video: string): TakeShape {
   const wav = join(fixture.home, 'soundtrack.wav')
-  execFileSync(join(BINARIES, 'ffmpeg'), ['-v', 'error', '-y', '-i', video, '-vn', '-ac', '1', '-c:a', 'pcm_s16le', wav], {
-    env: { ...process.env, DYLD_LIBRARY_PATH: BINARIES }
-  })
+  execFileSync(ffmpegPath(), ['-v', 'error', '-y', '-i', video, '-vn', '-ac', '1', '-c:a', 'pcm_s16le', wav])
   return takeShape(wav)
 }
 

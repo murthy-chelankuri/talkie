@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from 'vitest'
-import { binariesDirectory, ffOptions } from './binaries'
+import { binariesDirectory } from './binaries'
 
 /**
  * The packaged app failed its own export check before this existed: ffmpeg is copied out of the
@@ -24,12 +24,5 @@ describe('locating the bundled video tools', () => {
     asMutable.resourcesPath = '/nowhere/in/particular'
 
     expect(binariesDirectory()).toBeNull()
-  })
-
-  it('gives every ffmpeg call the same options, so one cannot drift from the rest', () => {
-    const options = ffOptions()
-
-    expect(options).toMatchObject({ indent: false, logLevel: 'error' })
-    expect(options).toHaveProperty('binariesDirectory')
   })
 })

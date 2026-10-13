@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
+import { runFfmpeg } from '../media'
 import { createProject, addTimelineItem, addTranscriptSegment, readTimeline } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
@@ -45,15 +45,8 @@ const ONE_PIXEL_PNG_BASE64 =
 async function clipOf(seconds: number, path: string): Promise<void> {
   const still = `${path}.png`
   writeFileSync(still, Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'))
-  await RenderInternals.callFf({
-    bin: 'ffmpeg',
-    args: ['-loop', '1', '-framerate', '25', '-i', still, '-t', seconds.toFixed(3), '-c:v', 'libx264',
-      '-vf', 'scale=320:180', '-pix_fmt', 'yuv420p', '-y', path],
-    indent: false,
-    logLevel: 'error',
-    binariesDirectory: null,
-    cancelSignal: undefined
-  })
+  await runFfmpeg(['-loop', '1', '-framerate', '25', '-i', still, '-t', seconds.toFixed(3), '-c:v', 'libx264',
+      '-vf', 'scale=320:180', '-pix_fmt', 'yuv420p', '-y', path])
   rmSync(still, { force: true })
 }
 
