@@ -161,12 +161,15 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
       const query = new URL(req.url ?? '/', 'http://127.0.0.1').searchParams
       const asked = query.get('frame')
       if (asked !== null && ['.mp4', '.webm'].includes(extname(filePath).toLowerCase())) {
-        const frame = Number(asked)
-        if (!Number.isInteger(frame) || frame < 0) {
+        // The reader names whose decoder this is, so closing an export can stop it; one with no
+        // name could never be stopped.
+        const reader = query.get('reader')
+        if (!/^\d+$/.test(asked) || !reader) {
           refuse()
           return
         }
-        footageFrame(query.get('reader') ?? '', filePath, frame).then(
+        const frame = Number(asked)
+        footageFrame(reader, filePath, frame).then(
           (jpeg) => {
             res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': jpeg.length, 'Cache-Control': 'no-store' })
             res.end(jpeg)

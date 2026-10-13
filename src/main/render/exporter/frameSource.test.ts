@@ -1,9 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runFfmpeg } from '../../media'
-import { closeReaders, decodersStarted, footageFrame } from './frameSource'
+import { closeReaders, decodersStarted, footageFrame, liveDecoders } from './frameSource'
 
 let dir: string
 let clip: string
@@ -64,5 +64,55 @@ describe('a recording’s frames, for the export', () => {
   it('shows the last frame for a moment past the end, as a held recording does', async () => {
     const last = await footageFrame('t-2', clip, 89)
     expect(await footageFrame('t-2', clip, 120)).toEqual(last)
+  }, 60_000)
+})
+
+describe('decoders that must not outlive their use', () => {
+  let long: string
+  let short: string
+  beforeAll(async () => {
+    // The earlier tests' decoders are still running; these count what is live from nothing.
+    closeReaders('t')
+    await vi.waitFor(() => expect(liveDecoders()).toBe(0), { timeout: 5000 })
+    long = join(dir, 'long.mp4')
+    await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=20', '-c:v', 'mpeg4', '-q:v', '2', '-y', long])
+    // Audio outlasts the picture, so the container says two seconds and the video has one.
+    short = join(dir, 'short.mp4')
+    await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=30:duration=1', '-f', 'lavfi', '-i', 'sine=duration=2', '-c:v', 'mpeg4', '-q:v', '2', '-y', short])
+  }, 60_000)
+
+  it('ends a decoder paused with a full pipe when it is restarted', async () => {
+    await footageFrame('p-0', long, 100)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    expect(liveDecoders()).toBe(1)
+
+    await footageFrame('p-0', long, 10)
+
+    // The old one is gone and the new one is the only one.
+    await vi.waitFor(() => expect(liveDecoders()).toBe(1), { timeout: 5000 })
+    closeReaders('p')
+    await vi.waitFor(() => expect(liveDecoders()).toBe(0), { timeout: 5000 })
+  }, 60_000)
+
+  it('ends a paused decoder when its export is closed', async () => {
+    await footageFrame('q-0', long, 100)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    closeReaders('q')
+    await vi.waitFor(() => expect(liveDecoders()).toBe(0), { timeout: 5000 })
+  }, 60_000)
+
+  it('starts nothing for a reader whose export has closed', async () => {
+    closeReaders('c')
+    const before = decodersStarted()
+    await expect(footageFrame('c-0', clip, 5)).rejects.toThrow(/closed/)
+    expect(decodersStarted()).toBe(before)
+  }, 60_000)
+
+  it('holds the last frame when the decoder itself runs out of footage', async () => {
+    await footageFrame('r-0', short, 25)
+    const held = await footageFrame('r-0', short, 55)
+    const last = await footageFrame('r-1', short, 29)
+    expect(held).toEqual(last)
+    closeReaders('r')
   }, 60_000)
 })

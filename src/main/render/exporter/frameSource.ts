@@ -22,6 +22,8 @@ type Decoder = {
   frames: Buffer[]
   last: Buffer | null
   ended: boolean
+  /** Why the decoder stopped, when it did not reach the end of the file cleanly. */
+  error: Error | null
   waiting: (() => void) | null
   tool: RunningTool
 }
@@ -30,12 +32,30 @@ const decoders = new Map<string, Decoder>()
 /** Requests for one reader's file, one at a time, so a restart never pulls a decoder out from under a caller waiting on it. */
 const queues = new Map<string, Promise<unknown>>()
 const lastFrame = new Map<string, number>()
+/** Decoders whose ffmpeg has not exited yet, for tests that check nothing is left running. */
+const live = new Set<Decoder>()
+/** Prefixes an export has closed: a request already in flight for one must not start a decoder nobody will stop. */
+const closed = new Set<string>()
 let started = 0
 
 const EOI = Buffer.from([0xff, 0xd9])
 
 export function decodersStarted(): number {
   return started
+}
+
+export function liveDecoders(): number {
+  return live.size
+}
+
+/**
+ * Ends a decoder for good. Its stdout is destroyed first: paused with a full pipe, ffmpeg is
+ * blocked in a write that a SIGTERM merely restarts, and Node never reads on to the end that
+ * would let it exit — the process outlived the kill indefinitely.
+ */
+function stopDecoder(decoder: Decoder): void {
+  decoder.tool.process.stdout.destroy()
+  decoder.tool.process.kill()
 }
 
 async function finalFrame(file: string): Promise<number> {
@@ -56,12 +76,14 @@ function start(file: string, from: number): Decoder {
   // is half a frame early: a frame stamped at exactly `from / FPS` is dropped as "before the
   // start" once that time is rounded up to four places, and the last frame of a file went missing.
   const tool = spawnFfmpeg(['-v', 'error', '-ss', (Math.max(0, from - 0.5) / FPS).toFixed(4), '-i', file, '-vf', `fps=${FPS}`, '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2', 'pipe:1'])
-  const decoder: Decoder = { file, next: from, frames: [], last: null, ended: false, waiting: null, tool }
+  const decoder: Decoder = { file, next: from, frames: [], last: null, ended: false, error: null, waiting: null, tool }
+  live.add(decoder)
   let pending = Buffer.alloc(0)
   tool.process.stdout.on('data', (chunk: Buffer) => {
     pending = Buffer.concat([pending, chunk])
     // A JPEG ends at FF D9; inside one, a literal FF is always followed by 00, so that pair
-    // marks the end of a frame and nothing else.
+    // marks the end of a frame and nothing else (the mjpeg encoder writes no embedded thumbnail,
+    // which is the one place a second JPEG could sit inside the first).
     for (let end = pending.indexOf(EOI); end !== -1; end = pending.indexOf(EOI)) {
       decoder.frames.push(pending.subarray(0, end + 2))
       pending = pending.subarray(end + 2)
@@ -69,11 +91,13 @@ function start(file: string, from: number): Decoder {
     if (decoder.frames.length >= MAX_BUFFERED) tool.process.stdout.pause()
     decoder.waiting?.()
   })
-  const finish = (): void => {
+  const finish = (error: Error | null): void => {
+    decoder.error = error
     decoder.ended = true
+    live.delete(decoder)
     decoder.waiting?.()
   }
-  tool.done.then(finish, finish)
+  tool.done.then(() => finish(null), (error: Error) => finish(error))
   return decoder
 }
 
@@ -89,14 +113,20 @@ async function take(decoder: Decoder): Promise<Buffer | null> {
   return frame
 }
 
+function isClosed(reader: string): boolean {
+  for (const prefix of closed) if (reader.startsWith(`${prefix}-`)) return true
+  return false
+}
+
 async function serve(reader: string, file: string, frame: number): Promise<Buffer> {
   const wanted = Math.min(frame, await finalFrame(file))
+  if (isClosed(reader)) throw new Error(`Reader ${reader} was closed`)
   const key = `${reader}\u0000${file}`
   let decoder = decoders.get(key)
   const behind = decoder && wanted < decoder.next - 1
   const tooFar = decoder && wanted > decoder.next + RESTART_AHEAD
   if (!decoder || behind || tooFar) {
-    decoder?.tool.process.kill()
+    if (decoder) stopDecoder(decoder)
     decoder = start(file, wanted)
     decoders.set(key, decoder)
   }
@@ -106,6 +136,9 @@ async function serve(reader: string, file: string, frame: number): Promise<Buffe
     const taken = await take(decoder)
     if (!taken) break
   }
+  // Only a clean end of file holds the last frame; a decoder that failed would otherwise hand
+  // out a frozen picture for the rest of the export.
+  if (decoder.next <= wanted && decoder.error) throw decoder.error
   if (!decoder.last) throw new Error(`No frame ${wanted} in ${file}`)
   return decoder.last
 }
@@ -123,9 +156,10 @@ export function footageFrame(reader: string, file: string, frame: number): Promi
 
 /** Stops every decoder an export's tabs started. Their readers all begin `<export id>-`. */
 export function closeReaders(prefix: string): void {
+  closed.add(prefix)
   for (const [key, decoder] of decoders) {
     if (key.startsWith(`${prefix}-`)) {
-      decoder.tool.process.kill()
+      stopDecoder(decoder)
       decoders.delete(key)
     }
   }
