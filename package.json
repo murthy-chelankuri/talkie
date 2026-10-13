@@ -13,7 +13,7 @@
   "main": "./out/main/index.cjs",
   "scripts": {
     "dev": "node scripts/ensureElectron.mjs && node scripts/fetchFfmpeg.mjs --ensure && electron-vite dev",
-    "build": "electron-vite build && npm run build:mcp && npm run build:remotion && npm run build:htmlscene",
+    "build": "electron-vite build && npm run build:mcp && npm run build:remotion && npm run build:htmlscene && npm run build:exportpage",
     "notices": "node scripts/generateNotices.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
@@ -25,7 +25,8 @@
     "package:dir": "node scripts/fetchFfmpeg.mjs --ensure && npm run build && electron-builder --mac --dir",
     "build:mcp": "vite build --config vite.mcp.config.ts",
     "build:remotion": "node scripts/bundleRemotion.mjs",
-    "build:htmlscene": "node scripts/bundleHtmlScene.mjs"
+    "build:htmlscene": "node scripts/bundleHtmlScene.mjs",
+    "build:exportpage": "node scripts/bundleExportPage.mjs"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",

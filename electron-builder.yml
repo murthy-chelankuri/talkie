@@ -42,6 +42,8 @@ asarUnpack:
   # HTML scenes' runtime, libraries and templates. The MCP server reads them as plain node to serve
   # scenes it checks, and plain node cannot read inside the archive.
   - out/html-scene/**
+  # The export page, fetched by the headless browser the export draws in. See exporter/exportPage.ts.
+  - out/export-page/**
   - node_modules/@remotion/compositor-**/**
   - node_modules/playwright/**
   - node_modules/playwright-core/**

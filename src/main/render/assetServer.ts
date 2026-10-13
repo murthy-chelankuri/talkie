@@ -13,6 +13,7 @@ import { FPS } from '../../remotion/constants'
 import { htmlSceneResource } from '../htmlScene/resources'
 import { injectRuntime, scenePolicy } from '../htmlScene/policy'
 import { footageFrame } from './exporter/frameSource'
+import { exportPageResource } from './exporter/exportPage'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -108,6 +109,23 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
       // Talkie's own files for HTML scenes — the runtime, the headless host, the libraries — by name
       // from a fixed list, never by path, so nothing outside that list is reachable this way.
       const afterSecret = requestedPath.slice(secret.length + 1)
+      if (afterSecret.startsWith('/__talkie/export/')) {
+        const resource = exportPageResource(afterSecret.slice('/__talkie/export/'.length))
+        if (!resource || !existsSync(resource.path)) {
+          refuse()
+          return
+        }
+        res.writeHead(200, {
+          'Content-Type': resource.type,
+          // The export page draws from this server and nowhere else. Scenes' frames are allowed
+          // from here only, as in every other host (see CLAUDE.md's security invariants).
+          ...(resource.path.endsWith('index.html')
+            ? { 'Content-Security-Policy': "default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:*" }
+            : {})
+        })
+        createReadStream(resource.path).pipe(res)
+        return
+      }
       if (afterSecret.startsWith('/__talkie/')) {
         const resource = htmlSceneResource(afterSecret.slice('/__talkie/'.length))
         if (!resource || !existsSync(resource.path)) {
