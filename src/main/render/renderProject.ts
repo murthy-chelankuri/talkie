@@ -85,7 +85,7 @@ export async function renderProjectVideo(
   // relative to this file rather than to the working directory for the same reason; in a
   // packaged build the shipped bundle answers first and it is never reached. See
   // remotionBundle.ts.
-  const bundleLocation = await remotionBundleLocation(join(__dirname, '../../remotion/index.tsx'))
+  const bundleLocation = await remotionBundleLocation(join(__dirname, '../../video/remotionEntry.tsx'))
   // Both calls are given a browser for the same reason they are given the binaries: left to
   // find their own, they derive the place to put it from the working directory, which is `/`
   // for an app opened from Finder. See browserExecutablePath.
