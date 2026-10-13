@@ -12,7 +12,7 @@ import { ProjectMetadataSchema } from '../project/schema'
  * The example projects Talkie ships with, put among the person's own on first launch.
  *
  * Each is an ordinary project — open it, change it, export it — so what someone learns from one
- * is what they would do with their own. They are built by `npm run examples` and kept under
+ * is what they would do with their own. They are built by `npm run examples:rebuild` and kept under
  * `examples/projects/<id>/`: `example.json` says what it is, `project/` is the project folder.
  */
 
@@ -28,7 +28,10 @@ export const PROJECT_DIR_TOKEN = '{{TALKIE_PROJECT_DIR}}'
 const ExampleManifestSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  /** Raised when an example is rebuilt in a way worth a fresh copy. Not yet acted on. */
+  /**
+   * Raised when an example is rebuilt in a way worth a fresh copy. Someone with an older one gets
+   * the new one beside it, since theirs may hold their own changes.
+   */
   version: z.number().int().positive(),
   /** Lower first. Installed in this order, so the browser shows them in it. */
   order: z.number().int().default(0)
@@ -77,8 +80,9 @@ function readInstallRecord(baseDir: string): z.infer<typeof InstallRecordSchema>
 }
 
 /**
- * Install every shipped example not installed before. Run at startup; a deleted example is not
- * brought back, and one added in a later version arrives once.
+ * Install every shipped example not installed before, or installed at an older version. Run at
+ * startup; a deleted example is not brought back, and a new one, or a new version of one, arrives
+ * once.
  *
  * Returns the ids of the projects it made.
  */
@@ -86,7 +90,7 @@ export function installExamples(baseDir: string = homedir(), sourceDir: string |
   const record = readInstallRecord(baseDir)
   const made: string[] = []
   for (const [index, example] of listShippedExamples(sourceDir).entries()) {
-    if (example.id in record.installed) continue
+    if ((record.installed[example.id] ?? 0) >= example.version) continue
     made.push(installExample(example, sourceDir!, baseDir, index))
     record.installed[example.id] = example.version
     // Written after each, so an example that fails to copy does not take the others with it on

@@ -11,14 +11,14 @@ capture, `say` or the built-in Kokoro voice for speech.
 ## Commands
 
 ```bash
-npm run dev          # electron-vite dev
-npm test             # vitest, the whole suite (~55s, 93 files)
-npm run e2e          # builds, then drives the built app end to end (~2 min)
-npm run examples     # builds the shipped example projects (~10 min, needs Kokoro and the claude CLI)
-npm run typecheck    # both tsconfigs — node and web
-npm run build        # electron-vite build + the MCP bundle
-npm run package      # regenerates notices, builds, produces release/Talkie-<version>-arm64.dmg
-npm run notices      # regenerates the third-party licence data
+npm run dev               # electron-vite dev
+npm test                  # vitest, the whole suite (~55s, 93 files)
+npm run e2e               # builds, then drives the built app end to end (~2 min)
+npm run examples:rebuild  # remakes the shipped examples from their scripts (~2 min, needs Kokoro)
+npm run typecheck         # both tsconfigs — node and web
+npm run build             # electron-vite build + the MCP bundle
+npm run package           # regenerates notices, builds, produces release/Talkie-<version>-arm64.dmg
+npm run notices           # regenerates the third-party licence data
 ```
 
 Run `npm test` and `npm run typecheck` before committing. Both are expected to pass. The git
@@ -320,19 +320,26 @@ or edit the code; agents use five MCP tools and get the frames back as images.
 
 ## Examples
 
-Talkie ships ready-made projects (`examples/projects/<id>/`), put among the person's own on first
-launch by `installExamples.ts` — once each, so a deleted one stays deleted and a new one arrives
-once. They are ordinary projects, built by `npm run examples` (`STORY=<id>` for one) through the
-same functions the app uses, voiced in Kokoro, with every take checked for silence.
+Talkie ships ready-made projects (`examples/projects/<id>/`), copied among the person's own on
+first launch by `installExamples.ts` — in milliseconds, nothing is made on their machine. Once
+each, so a deleted one stays deleted; a new example, or a new `version` of one, arrives once, beside
+any older copy rather than over it, since that copy may hold their changes.
+
+They are ordinary projects, made by `npm run examples:rebuild` (`STORY=<id>` for one) through the
+same functions the app uses, voiced in Kokoro, with every take checked for silence. Only someone
+changing a story runs it; commit what it writes to `examples/projects/`, and raise the story's
+`version` when people with the old one should get the new.
 
 - **Clips store absolute paths**, so a shipped example holds `{{TALKIE_PROJECT_DIR}}` instead and
   the installer fills it in. Copying a project by hand left every clip pointing at the machine it
   came from, and export failed with a 404 for each.
 - **Meet Talkie is filmed, not staged.** `examples/build/tour/` drives the built app in a throwaway
   home, records its windows, draws a pointer in (a recording has none), writes each click down for
-  the zoom, and cuts out the waiting. The tour therefore breaks when the app does — treat a failed
-  `npm run examples` as a bug report. `TOUR=1 TOUR_UNTIL=<shot>` films part of it;
-  `TOUR_REUSE=1` re-cuts the last filming. Build first: it films `out/`.
+  the zoom, and cuts out the waiting. A rebuild reuses the footage Meet Talkie already ships;
+  `REFILM=1` films it again, about nine minutes with the app on screen — leave its windows alone,
+  closing one ends the filming. The tour breaks when the app does, so treat a failed filming as a
+  bug report. `TOUR=1 TOUR_UNTIL=<shot>` films part of it; `TOUR_REUSE=1` re-cuts the last
+  filming. Build first, and not while `npm run dev` is running: both write `out/`, which it films.
 - **The tour drafts and runs the agent through the Claude CLI**, which keeps its login in the
   keychain under the real home. A `claude` shim on PATH gives that one process HOME back; the
   agent's MCP server is told the tour's home (`TALKIE_HOME`) separately, so it never reaches the

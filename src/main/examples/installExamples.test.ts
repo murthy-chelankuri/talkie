@@ -9,11 +9,11 @@ import { findProjectDir } from '../project/paths'
 let home: string
 let shipped: string
 
-/** A shipped example as `npm run examples` leaves it: a manifest and a project folder. */
-function shipExample(id: string, name: string, order: number): void {
+/** A shipped example as `npm run examples:rebuild` leaves it: a manifest and a project folder. */
+function shipExample(id: string, name: string, order: number, version = 1): void {
   const project = join(shipped, id, 'project')
   mkdirSync(join(project, 'sources'), { recursive: true })
-  writeFileSync(join(shipped, id, 'example.json'), JSON.stringify({ id, name, version: 1, order }))
+  writeFileSync(join(shipped, id, 'example.json'), JSON.stringify({ id, name, version, order }))
   writeFileSync(
     join(project, 'project.json'),
     JSON.stringify({ id: 'built-id', name, createdAt: '2026-01-01T00:00:00.000Z', schemaVersion: 1 })
@@ -75,6 +75,19 @@ describe('the examples Talkie ships with', () => {
 
     expect(installExamples(home, shipped)).toHaveLength(1)
     expect(listProjects(home)).toHaveLength(3)
+  })
+
+  it('arrive again, beside the old copy, when one is rebuilt as a new version', () => {
+    const [meet] = installExamples(home, shipped)
+    shipExample('meet-talkie', 'Meet Talkie', 0, 2)
+
+    const made = installExamples(home, shipped)
+
+    expect(made).toHaveLength(1)
+    expect(made).not.toContain(meet)
+    expect(openProject(made[0], home).example).toBe('meet-talkie')
+    expect(listProjects(home)).toHaveLength(3)
+    expect(installExamples(home, shipped)).toEqual([])
   })
 
   it('can be reinstalled fresh, beside any copy that has been changed', () => {

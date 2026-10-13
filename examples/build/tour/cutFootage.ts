@@ -9,7 +9,7 @@ import { HEIGHT, WIDTH, type Filmed, type Shot } from './film'
 const BINARIES = dirname(require.resolve('@remotion/compositor-darwin-arm64/package.json'))
 const ENV = { ...process.env, DYLD_LIBRARY_PATH: BINARIES }
 
-function lengthMs(video: string): number {
+export function lengthMs(video: string): number {
   const out = execFileSync(
     join(BINARIES, 'ffprobe'),
     ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', video],

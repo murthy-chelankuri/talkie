@@ -6,11 +6,12 @@ import { appWalkthrough } from './stories/appWalkthrough'
 import { architecture } from './stories/architecture'
 
 /**
- * `npm run examples` — builds every example story into `examples/projects/`, voiced.
+ * `npm run examples:rebuild` — builds every example story into `examples/projects/`, voiced.
  *
  * A test run rather than a script because it is the same machinery the suite already drives:
  * the sources run directly, Kokoro is forked from its TypeScript, and mermaid and HTML scenes are
- * drawn in the headless browser the tests use. `STORY=meet-talkie npm run examples` builds one.
+ * drawn in the headless browser the tests use. `STORY=meet-talkie npm run examples:rebuild` builds
+ * one; `REFILM=1` films Meet Talkie's tour again rather than reusing the footage it ships with.
  */
 const STORIES: Story[] = [meetTalkie, productLaunch, appWalkthrough, architecture]
 

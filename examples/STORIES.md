@@ -9,8 +9,8 @@ Voice: Kokoro, af_heart. Roughly 2.9 words a second, so each scene's clip is siz
 
 ## 1. Meet Talkie — about 3½ minutes
 
-What Talkie does, shown by doing it. The footage is the real app, filmed while the example builds
-(`examples/build/tour/filmTour.ts`): one project made from nothing, every capability in the order
+What Talkie does, shown by doing it. The footage is the real app, filmed by
+`examples/build/tour/filmTour.ts` (again with `REFILM=1`): one project made from nothing, every capability in the order
 someone would meet it. The waits — the walk, drafting, voicing, exporting — are cut out.
 
 | # | On screen | Narration |

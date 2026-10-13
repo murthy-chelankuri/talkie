@@ -3,8 +3,9 @@ import { filmAndCut } from '../tour/tour'
 
 /**
  * What Talkie does, shown by doing it: one project made from nothing, every capability met in the
- * order someone would meet it. The footage is the real app, filmed as this builds (see
- * tour/filmTour.ts), so the tour can never show an app that is not the one that ships.
+ * order someone would meet it. The footage is the real app, filmed by tour/filmTour.ts — reused
+ * from the last filming unless REFILM=1 — so the tour shows the app that ships, and films it again
+ * when that app changes how it looks.
  *
  * Each line is written for the shot under it and to fit inside it; a line that outruns its shot
  * holds the last frame, which the build reports.
