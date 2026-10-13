@@ -6,13 +6,16 @@ import {
   useCurrentFrame,
   useVideoConfig as useRemotionVideoConfig
 } from 'remotion'
+import { isOwnRenderer } from './engine'
+import { OwnFill, OwnSequence, useOwnFrame, useOwnRenderMode, useOwnVideoConfig } from './own/clock'
 
 /**
  * The frame clock the composition is drawn against. The host (the editor's preview or the
  * export) owns the frame; scenes only read it.
  *
- * Delegates to Remotion until steps 3 and 4 of the renderer replace it; the names here are the
- * ones the scenes keep.
+ * Remotion's, or Talkie's own in the export page (engine.ts); the names here are the ones the
+ * scenes keep. The engine is fixed for a page, so the conditional hook calls below are made in
+ * the same order on every render.
  */
 
 export type VideoConfig = { fps: number; width: number; height: number; durationInFrames: number }
@@ -20,7 +23,8 @@ export type RenderMode = 'export' | 'preview'
 
 /** The frame, counted from the start of the nearest enclosing Sequence. */
 export function useFrame(): number {
-  return useCurrentFrame()
+  // One engine per page (engine.ts), so the same hook is called on every render.
+  return isOwnRenderer() ? useOwnFrame() : useCurrentFrame()
 }
 
 /**
@@ -28,12 +32,14 @@ export function useFrame(): number {
  * parent Sequence's, as Remotion's is, so a nested Sequence never reports more than remains.
  */
 export function useVideoConfig(): VideoConfig {
-  const { fps, width, height, durationInFrames } = useRemotionVideoConfig()
+  // One engine per page (engine.ts), so the same hook is called on every render.
+  const { fps, width, height, durationInFrames } = isOwnRenderer() ? useOwnVideoConfig() : useRemotionVideoConfig()
   return { fps, width, height, durationInFrames }
 }
 
 /** Whether frames are being exported, which waits on holds, or previewed, which never does. */
 export function useRenderMode(): RenderMode {
+  if (isOwnRenderer()) return useOwnRenderMode()
   return getRemotionEnvironment().isRendering ? 'export' : 'preview'
 }
 
@@ -45,6 +51,7 @@ export function useRenderMode(): RenderMode {
  * parent, whatever duration it asks for: a narration take that runs past its clip is cut there.
  */
 export function Sequence({ from, durationInFrames, children }: { from: number; durationInFrames?: number; children: ReactNode }): JSX.Element {
+  if (isOwnRenderer()) return <OwnSequence from={from} durationInFrames={durationInFrames}>{children}</OwnSequence>
   return (
     <RemotionSequence from={from} durationInFrames={durationInFrames}>
       {children}
@@ -59,5 +66,6 @@ export function Sequence({ from, durationInFrames, children }: { from: number; d
  * The caller's `style` is applied over that layout. `clock.test.tsx` holds it.
  */
 export function Fill({ style, children }: { style?: CSSProperties; children?: ReactNode }): JSX.Element {
+  if (isOwnRenderer()) return <OwnFill style={style}>{children}</OwnFill>
   return <AbsoluteFill style={style}>{children}</AbsoluteFill>
 }

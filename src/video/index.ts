@@ -8,3 +8,7 @@ export { useFrame, useVideoConfig, useRenderMode, Sequence, Fill, type VideoConf
 export { hold, type Release } from './hold'
 export { Picture, Footage, Sound } from './media'
 export { spring, interpolate, type SpringConfig, type Extrapolate } from './motion'
+export { chooseOwnRenderer } from './engine'
+export { VideoRoot } from './own/clock'
+export { whenSettled } from './own/hold'
+export { setFrameReader } from './own/media'

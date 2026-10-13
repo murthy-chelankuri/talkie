@@ -1,4 +1,6 @@
 import { continueRender, delayRender } from 'remotion'
+import { isOwnRenderer } from './engine'
+import { ownHold } from './own/hold'
 
 export type Release = () => void
 
@@ -6,9 +8,10 @@ export type Release = () => void
  * Keeps the current frame from being taken until what it needs has arrived: a font, a diagram,
  * a logo's colours, an HTML scene's drawing. The label is what an export that times out names.
  *
- * Delegates to Remotion until step 3 of the renderer brings Talkie's own export.
+ * Remotion's, or Talkie's own in the export page (engine.ts).
  */
 export function hold(label: string, { timeoutMs }: { timeoutMs?: number } = {}): Release {
+  if (isOwnRenderer()) return ownHold(label, timeoutMs)
   const handle = delayRender(label, timeoutMs === undefined ? undefined : { timeoutInMilliseconds: timeoutMs })
   let released = false
   // Idempotent because releasing on success and again on unmount is the natural way to write a

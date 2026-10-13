@@ -1,15 +1,18 @@
 import type { CSSProperties } from 'react'
 import { Audio, Img, OffthreadVideo } from 'remotion'
+import { isOwnRenderer } from './engine'
+import { OwnFootage, OwnPicture, OwnSound } from './own/media'
 
 /**
  * Pictures, footage and sound, each held until it can be shown at the frame asked for.
  * Every `src` must already be an http URL from the asset server: the export page is served
  * over http, and Chromium will not load file:// beneath it (see resolveTimelineAssetUrls).
  *
- * Delegates to Remotion until steps 3 and 4 of the renderer.
+ * Remotion's, or Talkie's own in the export page (engine.ts).
  */
 
 export function Picture({ src, alt, style }: { src: string; alt?: string; style?: CSSProperties }): JSX.Element {
+  if (isOwnRenderer()) return <OwnPicture src={src} alt={alt} style={style} />
   return <Img src={src} alt={alt} style={style} />
 }
 
@@ -34,7 +37,8 @@ export function Footage({
   trimBefore?: number
   trimAfter?: number
   style?: CSSProperties
-}): JSX.Element {
+}): JSX.Element | null {
+  if (isOwnRenderer()) return <OwnFootage src={src} trimBefore={trimBefore} trimAfter={trimAfter} style={style} />
   return <OffthreadVideo src={src} trimBefore={trimBefore} trimAfter={trimAfter} style={style} />
 }
 
@@ -42,6 +46,7 @@ export function Footage({
  * Narration, starting at the enclosing Sequence's first frame and stopping at its last. A
  * nested Sequence ends with its parent, so a take longer than its clip is cut at the clip's end.
  */
-export function Sound({ src }: { src: string }): JSX.Element {
+export function Sound({ src }: { src: string }): JSX.Element | null {
+  if (isOwnRenderer()) return <OwnSound src={src} />
   return <Audio src={src} />
 }

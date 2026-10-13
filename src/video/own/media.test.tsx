@@ -1,0 +1,45 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest'
+import { act, render } from '@testing-library/react'
+import { VideoRoot } from './clock'
+import { openHoldCount, resetHolds } from './hold'
+import { OwnFootage, OwnPicture, OwnSound, footageFrameUrl } from './media'
+
+afterEach(() => resetHolds())
+
+const root = (frame: number, children: JSX.Element): JSX.Element => (
+  <VideoRoot frame={frame} fps={30} width={1920} height={1080} durationInFrames={300} mode="export">
+    {children}
+  </VideoRoot>
+)
+
+describe('Talkie’s own media', () => {
+  it('holds the frame until a picture has loaded', async () => {
+    const view = render(root(0, <OwnPicture src="http://127.0.0.1:1/s/p/a.png" />))
+    expect(openHoldCount()).toBe(1)
+    const img = view.container.querySelector('img')!
+    // jsdom loads nothing; this stands in for the browser saying it has.
+    Object.defineProperty(img, 'decode', { value: () => Promise.resolve() })
+    await act(async () => void img.dispatchEvent(new Event('load')))
+    expect(openHoldCount()).toBe(0)
+  })
+
+  it('asks the asset server for the recording’s frame at the clip’s moment', () => {
+    const view = render(root(10, <OwnFootage src="http://127.0.0.1:1/s/p/rec.mp4" trimBefore={45} />))
+    expect(view.container.querySelector('img')!.getAttribute('src')).toBe(footageFrameUrl('http://127.0.0.1:1/s/p/rec.mp4', 55, ''))
+  })
+
+  it('draws nothing past trimAfter, where the next scene of the same recording begins', () => {
+    const view = render(root(20, <OwnFootage src="http://127.0.0.1:1/s/p/rec.mp4" trimBefore={45} trimAfter={60} />))
+    expect(view.container.querySelector('img')).toBeNull()
+  })
+
+  it('names the frame and the reader in the URL, keeping any query the URL had', () => {
+    expect(footageFrameUrl('http://h/s/rec.mp4', 7, 'ab12-3')).toBe('http://h/s/rec.mp4?frame=7&reader=ab12-3')
+    expect(footageFrameUrl('http://h/s/rec.mp4?v=2', 7, 'r')).toBe('http://h/s/rec.mp4?v=2&frame=7&reader=r')
+  })
+
+  it('plays no sound in the picture: the export mixes the soundtrack from the timeline', () => {
+    expect(render(root(0, <OwnSound src="http://h/a.wav" />)).container.innerHTML).toBe('')
+  })
+})
