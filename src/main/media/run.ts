@@ -20,11 +20,16 @@ export function runFfprobe(args: string[], options: { signal?: AbortSignal } = {
 
 function run(tool: MediaTool, args: string[], signal: AbortSignal | undefined): Promise<ToolOutput> {
   return new Promise((resolve, reject) => {
-    execFile(toolPath(tool), args, { maxBuffer: MAX_OUTPUT_BYTES, signal, encoding: 'utf-8' }, (error, stdout, stderr) => {
+    const child = execFile(toolPath(tool), args, { maxBuffer: MAX_OUTPUT_BYTES, signal, encoding: 'utf-8' }, (error, stdout, stderr) => {
       if (error) {
         // The last lines are where ffmpeg says what went wrong; the rest is its stream listing.
         const said = stderr.trim().split('\n').slice(-12).join('\n')
-        reject(new Error(`${tool} failed: ${error.message}${said ? `\n${said}` : ''}`))
+        const failed = new Error(`${tool} failed: ${error.message}${said ? `\n${said}` : ''}`)
+        // A cancel is answered the moment it is asked, before the process has gone; a caller that
+        // then clears away its files would pull them from under an ffmpeg still writing them.
+        const running = signal?.aborted && child.pid !== undefined && child.exitCode === null && child.signalCode === null
+        if (running) child.once('exit', () => reject(failed))
+        else reject(failed)
         return
       }
       resolve({ stdout, stderr })

@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, readdirSync, rmSync } from 'fs'
 import { spawnSync } from 'child_process'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { addTimelineItem, createProject, readTimelineLenient } from '../../project/projectApi'
 import { findProjectDir, projectsRootDir } from '../../project/paths'
-import { probeMedia, runFfprobe } from '../../media'
+import { probeMedia, runFfmpeg, runFfprobe } from '../../media'
 import { closeAssetServer, getAssetServer, resolveTimelineAssetUrls } from '../assetServer'
 import type { TimelineItem } from '../../../remotion/types'
 import type { ExportProgress } from '../exportProgress'
@@ -80,6 +80,7 @@ describe('Talkie’s own export', () => {
     expect(liveDecoders()).toBe(0)
     expect(runningChildren()).toEqual([])
   }, 180_000)
+
   it('fails as a whole when one tab cannot draw its frames, saying why and leaving nothing behind', async () => {
     baseDir = mkdtempSync(join(tmpdir(), 'talkie-own-export-'))
     const project = createProject('Broken', baseDir)
@@ -93,13 +94,74 @@ describe('Talkie’s own export', () => {
     const rawTimeline = readTimelineLenient(project.id, baseDir) as unknown as TimelineItem[]
     const timeline = resolveTimelineAssetUrls(rawTimeline, root, server.url)
 
+    const began = Date.now()
     await expect(
       exportVideo({ timeline, rawTimeline, theme: null, totalFrames: 600, narration: new Map(), serverUrl: server.url, outputPath: join(baseDir, 'out.mp4') })
     ).rejects.toThrow(/gone\.mp4/)
+
+    // Well short of the other tabs drawing their hundreds of frames: they were stopped, not finished.
+    expect(Date.now() - began).toBeLessThan(15_000)
 
     expect(partsLeft()).toEqual([])
     expect(readdirSync(baseDir)).not.toContain('out.mp4')
     expect(liveDecoders()).toBe(0)
     expect(runningChildren()).toEqual([])
   }, 180_000)
+  it('exports to a file whose name it also uses for its own working files', async () => {
+    const input = await twoClips()
+    const out = join(baseDir, 'video.mp4')
+
+    await exportVideo({ ...input, outputPath: out })
+
+    expect(await probeMedia(out)).toMatchObject({ videoCodec: 'h264', hasAudio: true })
+    expect(partsLeft()).toEqual([])
+  }, 180_000)
+
+  it('stops when cancelled after drawing, while the file is put together, with the reason it was given', async () => {
+    const input = await twoClips()
+    const cancel = new AbortController()
+    const reason = new Error('Cancelled by the person')
+    const onProgress = (progress: ExportProgress): void => {
+      if (progress.stage === 'encoding') cancel.abort(reason)
+    }
+
+    await expect(exportVideo({ ...input, outputPath: join(baseDir, 'out.mp4'), onProgress, signal: cancel.signal })).rejects.toBe(reason)
+
+    expect(partsLeft()).toEqual([])
+    expect(readdirSync(baseDir)).not.toContain('out.mp4')
+    expect(runningChildren()).toEqual([])
+  }, 180_000)
+
+  it('stops every recording decoder its tabs started when cancelled', async () => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-own-export-'))
+    const project = createProject('Recorded', baseDir)
+    const footage = join(findProjectDir(project.id, baseDir)!, 'sources', 'session.mp4')
+    await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=20', '-c:v', 'mpeg4', '-q:v', '2', '-y', footage])
+    addTimelineItem(project.id, { kind: 'video', start: 0, duration: 600, data: { src: footage } } as never, baseDir)
+    const root = projectsRootDir(baseDir)
+    const server = await getAssetServer(root)
+    const rawTimeline = readTimelineLenient(project.id, baseDir) as unknown as TimelineItem[]
+    const timeline = resolveTimelineAssetUrls(rawTimeline, root, server.url)
+    const decoders = decodersStarted()
+    const cancel = new AbortController()
+    const onProgress = (progress: ExportProgress): void => {
+      if (progress.renderedFrames >= 20) cancel.abort()
+    }
+
+    await expect(
+      exportVideo({ timeline, rawTimeline, theme: null, totalFrames: 600, narration: new Map(), serverUrl: server.url, outputPath: join(baseDir, 'out.mp4'), onProgress, signal: cancel.signal })
+    ).rejects.toThrow()
+
+    expect(decodersStarted()).toBeGreaterThan(decoders)
+    await vi.waitFor(() => expect(liveDecoders()).toBe(0), { timeout: 5000 })
+    expect(partsLeft()).toEqual([])
+    expect(runningChildren()).toEqual([])
+  }, 180_000)
+
+  it('refuses plainly when there is nothing to export', async () => {
+    const input = await twoClips()
+
+    await expect(exportVideo({ ...input, totalFrames: 0, outputPath: join(baseDir, 'out.mp4') })).rejects.toThrow('Nothing to export: the timeline is empty.')
+    expect(partsLeft()).toEqual([])
+  })
 })

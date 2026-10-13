@@ -1,7 +1,7 @@
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'fs'
 import { once } from 'events'
 import { randomBytes } from 'crypto'
-import { basename, dirname, join } from 'path'
+import { dirname, extname, join } from 'path'
 import { chromium, type Browser, type Page } from 'playwright'
 import type { TimelineItem } from '../../../remotion/types'
 import type { RenderTheme } from '../../../remotion/renderTheme'
@@ -46,6 +46,7 @@ const COLOUR = ['-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p
  */
 export async function exportVideo(input: OwnExportInput): Promise<void> {
   const { totalFrames, outputPath, onProgress, signal } = input
+  if (!(totalFrames > 0)) throw new Error('Nothing to export: the timeline is empty.')
   signal?.throwIfAborted()
   const id = randomBytes(4).toString('hex')
   const parts = join(dirname(outputPath), `.parts-${id}`)
@@ -95,14 +96,25 @@ export async function exportVideo(input: OwnExportInput): Promise<void> {
     onProgress?.(encoding(totalFrames))
     const list = join(parts, 'segments.txt')
     writeFileSync(list, segments.map((path) => `file '${path.replace(/'/g, "'\\''")}'`).join('\n') + '\n')
+    // Each stage stopped by a cancel says so with the caller's reason, not as an ffmpeg failure.
+    const stage = async (args: string[]): Promise<void> => {
+      try {
+        await runFfmpeg(args, { signal: stop.signal })
+      } catch (err) {
+        signal?.throwIfAborted()
+        throw err
+      }
+    }
     const video = join(parts, 'video.mp4')
-    await runFfmpeg(['-v', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', '-y', video], { signal: stop.signal })
+    await stage(['-v', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', '-y', video])
     const sound = join(parts, 'soundtrack.m4a')
-    await runFfmpeg(soundtrackArgs(takesFor(input.rawTimeline, input.narration), totalFrames, sound), { signal: stop.signal })
+    await stage(soundtrackArgs(takesFor(input.rawTimeline, input.narration), totalFrames, sound))
     // Muxed among the parts and moved into place, so a cancel during the mux leaves no half a file
-    // where the finished one would be.
-    const muxed = join(parts, basename(outputPath))
-    await runFfmpeg(['-v', 'error', '-i', video, '-i', sound, '-map', '0:v', '-map', '1:a', '-c', 'copy', '-movflags', '+faststart', '-y', muxed], { signal: stop.signal })
+    // where the finished one would be. Under a name of its own: the export's name, used here, was
+    // the concat's own output when someone called their export video.mp4.
+    const muxed = join(parts, `muxed${extname(outputPath)}`)
+    await stage(['-v', 'error', '-i', video, '-i', sound, '-map', '0:v', '-map', '1:a', '-c', 'copy', '-movflags', '+faststart', '-y', muxed])
+    signal?.throwIfAborted()
     renameSync(muxed, outputPath)
   } finally {
     signal?.removeEventListener('abort', forward)

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { spawnSync } from 'child_process'
 import { runFfmpeg, runFfprobe, spawnFfmpeg } from './run'
 
 describe('running ffmpeg', () => {
@@ -24,6 +25,19 @@ describe('running ffmpeg', () => {
     setTimeout(() => controller.abort(), 200)
 
     await expect(run).rejects.toThrow()
+  }, 60_000)
+
+  it('has stopped ffmpeg by the time a cancelled run says so, so its files can be cleared away', async () => {
+    const controller = new AbortController()
+    const run = runFfmpeg(['-f', 'lavfi', '-i', 'anullsrc', '-f', 'null', '-'], { signal: controller.signal })
+    setTimeout(() => controller.abort(), 200)
+    await expect(run).rejects.toThrow()
+
+    const children = spawnSync('ps', ['-A', '-o', 'ppid=,stat=,command='], { encoding: 'utf-8' })
+      .stdout.split('\n')
+      .map((line) => line.trim().split(/\s+/))
+      .filter(([ppid, stat, command]) => ppid === String(process.pid) && !stat?.startsWith('Z') && /ffmpeg/.test(command ?? ''))
+    expect(children).toEqual([])
   }, 60_000)
 })
 
