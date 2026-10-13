@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="talkie:template" content="Big number — counts up to one figure, with a line saying what it is">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); }
+  main { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+  .figure { font: 700 260px/1 var(--talkie-font-heading); color: var(--talkie-accent); font-variant-numeric: tabular-nums; }
+  .label { font: 400 56px/1.2 var(--talkie-font-body); color: var(--talkie-body); opacity: 0; }
+</style>
+</head>
+<body>
+<main><div class="figure" id="figure">0</div><div class="label" id="label"></div></main>
+<script>
+  // Values: value (number), label, prefix, suffix, decimals. Counts from the first narration line
+  // if there is one, otherwise from the start.
+  let render = () => {}
+  talkie.ready(talkie.initialised.then(() => {
+    const value = Number(talkie.params.value ?? 1250000)
+    const decimals = Number(talkie.params.decimals ?? 0)
+    const prefix = talkie.params.prefix ?? ''
+    const suffix = talkie.params.suffix ?? ''
+    const format = new Intl.NumberFormat('en-GB', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    document.getElementById('label').textContent = talkie.params.label ?? 'demos recorded this year'
+    const start = talkie.beats[0] ?? 0.3
+    render = (t) => {
+      const k = Math.min(Math.max((t - start) / 2, 0), 1)
+      const eased = k === 1 ? 1 : 1 - Math.pow(2, -10 * k)
+      document.getElementById('figure').textContent = prefix + format.format(value * eased) + suffix
+      document.getElementById('label').style.opacity = Math.min(Math.max((t - start - 1.2) / 0.6, 0), 1)
+    }
+  }))
+  talkie.onFrame((t) => render(t))
+</script>
+</body>
+</html>

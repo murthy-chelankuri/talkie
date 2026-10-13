@@ -1,7 +1,7 @@
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
-import { basename, join } from 'path'
+import { basename, dirname, join } from 'path'
 import {
   CURRENT_SCHEMA_VERSION,
   ProjectMetadataSchema,
@@ -68,7 +68,12 @@ export function listProjects(baseDir: string = homedir()): ProjectSummary[] {
       try {
         const raw = JSON.parse(readFileSync(metadataPath, 'utf-8'))
         const metadata = migrateProjectMetadata(raw)
-        return { id: metadata.id, name: metadata.name, createdAt: metadata.createdAt }
+        return {
+          id: metadata.id,
+          name: metadata.name,
+          createdAt: metadata.createdAt,
+          ...(metadata.example ? { example: metadata.example } : {})
+        }
       } catch (err) {
         console.error(`Skipping unreadable project at ${entry.name}:`, err)
         return undefined
@@ -98,23 +103,38 @@ export function listProjectOverviews(baseDir: string = homedir()): ProjectOvervi
     const narratedItemIds = new Set(
       transcript.filter((segment) => segment.status === 'narrated').map((segment) => segment.timelineItemId)
     )
-    const poster = timeline[0]
-    const posterData = poster?.data as { src?: string; trimBefore?: number } | undefined
+    const poster = timeline.map(posterOf).find((found) => found !== null)
 
     return {
       ...summary,
       clipCount: timeline.length,
       durationFrames: timeline.reduce((total, item) => total + item.duration, 0),
       narratedCount: timeline.filter((item) => narratedItemIds.has(item.id)).length,
-      ...(posterData?.src
-        ? {
-            posterPath: posterData.src,
-            posterKind: poster.kind,
-            ...(posterData.trimBefore ? { posterTrimBefore: posterData.trimBefore } : {})
-          }
-        : {})
+      ...(poster ?? {})
     }
   })
+}
+
+/**
+ * The picture a clip offers the project browser, if it has one of its own.
+ *
+ * The first clip that has one, not simply the first clip: a project that opens on a title slide —
+ * every themed project, and every example — otherwise showed as a grey square. A slide has no
+ * picture until it is rendered; a diagram has its drawing and an HTML scene the poster its check
+ * wrote beside the page.
+ */
+function posterOf(item: TimelineItem): Pick<ProjectOverview, 'posterPath' | 'posterKind' | 'posterTrimBefore'> | null {
+  const data = item.data as { src?: string; trimBefore?: number }
+  if (!data?.src) return null
+  if (item.kind === 'video') {
+    return { posterPath: data.src, posterKind: 'video', ...(data.trimBefore ? { posterTrimBefore: data.trimBefore } : {}) }
+  }
+  if (item.kind === 'image' || item.kind === 'diagram') return { posterPath: data.src, posterKind: 'image' }
+  if (item.kind === 'html') {
+    const drawn = join(dirname(data.src), 'poster.png')
+    return existsSync(drawn) ? { posterPath: drawn, posterKind: 'image' } : null
+  }
+  return null
 }
 
 export function openProject(id: string, baseDir: string = homedir()): ProjectMetadata {

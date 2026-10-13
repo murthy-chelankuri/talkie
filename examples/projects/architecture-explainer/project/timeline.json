@@ -1,0 +1,138 @@
+[
+  {
+    "id": "019e96d8-5d8e-4ec2-aa15-f823adf5f9bd",
+    "kind": "scene",
+    "start": 0,
+    "duration": 197,
+    "data": {
+      "title": "Where does a photo go?",
+      "layout": "title",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  },
+  {
+    "id": "5066de53-8f80-46e9-9369-3cf07e744522",
+    "kind": "diagram",
+    "start": 197,
+    "duration": 529,
+    "data": {
+      "source": "graph LR\n  phone[Phone] --> gateway[API gateway]\n  gateway --> upload[Upload service]\n  upload --> storage[(Object storage)]",
+      "style": {
+        "theme": "dark",
+        "font": "serif",
+        "align": "left",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      },
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/scenes/f4126e46-6c08-4046-a4b1-872a1e3b4d09.svg",
+      "themeStamp": "2f670642:dark:2",
+      "title": "The upload"
+    }
+  },
+  {
+    "id": "0c6b19fe-195e-49a8-9dd2-e0cc5bf6e75e",
+    "kind": "diagram",
+    "start": 726,
+    "duration": 492,
+    "data": {
+      "source": "graph LR\n  storage[(Object storage)] --> queue[Queue]\n  queue --> thumbs[Thumbnailer]\n  thumbs --> cdn[CDN]",
+      "style": {
+        "theme": "dark",
+        "font": "serif",
+        "align": "left",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      },
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/scenes/9577bed9-aab5-4ba3-bcb8-3c5747019e17.svg",
+      "themeStamp": "2f670642:dark:2",
+      "title": "Afterwards"
+    }
+  },
+  {
+    "id": "fbf99b94-ca1d-4bae-97d8-89413ec5ccf8",
+    "kind": "html",
+    "start": 1218,
+    "duration": 395,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/52dd9337-015d-4c10-8640-3e818ba95c8c/index.html",
+      "title": "The upload handler",
+      "style": {
+        "theme": "dark"
+      },
+      "params": {
+        "title": "The upload handler",
+        "code": "async function upload(request) {\n  const user = await auth.check(request)\n  const key = await storage.put(user, request.photo)\n  await queue.send('thumbnails', { key })\n  return { status: 'stored', key }\n}",
+        "highlights": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            5,
+            5
+          ]
+        ]
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/52dd9337-015d-4c10-8640-3e818ba95c8c:2f670642:dark",
+      "posterText": "The upload handler\n1\nasync function upload(request) {\n2\n  const user = await auth.check(request)\n3\n  const key = await storage.put(user, request.photo)\n4\n  await queue.send('thumbnails', { key })\n5\n  return { status: 'stored', key }\n6\n}",
+      "check": {
+        "problems": []
+      }
+    }
+  },
+  {
+    "id": "d4d8fa92-f9f4-4650-a500-3f03340249e9",
+    "kind": "scene",
+    "start": 1613,
+    "duration": 342,
+    "data": {
+      "title": "Why it's built this way",
+      "layout": "standard",
+      "bullets": [
+        "Fast replies",
+        "Retries for free",
+        "Scales one piece at a time"
+      ],
+      "style": {
+        "theme": "dark",
+        "font": "serif",
+        "align": "left",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  },
+  {
+    "id": "cd9077f9-3b89-4466-aed3-a0b972848fe8",
+    "kind": "scene",
+    "start": 1955,
+    "duration": 208,
+    "data": {
+      "title": "Explained in sixty seconds",
+      "layout": "closing",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  }
+]

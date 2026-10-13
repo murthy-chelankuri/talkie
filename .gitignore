@@ -52,3 +52,4 @@ release/
 .claude/shell-snapshots/
 .aider*
 .cursor/rules/generated/
+examples/.tour/

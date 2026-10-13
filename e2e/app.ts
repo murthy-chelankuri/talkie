@@ -20,7 +20,9 @@ export type Talkie = {
  */
 export async function launchTalkie(fixture: Fixture): Promise<Talkie> {
   const app = await _electron.launch({
-    args: ['.'],
+    // A profile inside the fixture too: on macOS Electron finds its user-data folder from the
+    // system, not HOME, so a run otherwise shares the person's own window state and storage.
+    args: ['.', `--user-data-dir=${join(fixture.home, 'profile')}`],
     cwd: join(__dirname, '..'),
     env: { ...process.env, HOME: fixture.home, TALKIE_HEADLESS: '1' }
   })

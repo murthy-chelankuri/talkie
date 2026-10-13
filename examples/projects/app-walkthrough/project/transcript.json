@@ -1,0 +1,58 @@
+[
+  {
+    "id": "443dfca8-0a82-4d29-b2ff-5711694da360",
+    "text": "Here's Taskboard, a simple way to see your team's work at a glance — in one minute.",
+    "timelineItemId": "dacbebb6-46c2-4513-9874-27f64380296d",
+    "audioFile": "443dfca8-0a82-4d29-b2ff-5711694da360-1791866939716.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "813f9099-78e3-4d3d-a7a6-473f5ac188a9",
+    "text": "Every piece of work is a card, and every card lives in a column: what's waiting, what's in progress, and what's finished.",
+    "timelineItemId": "e348bf43-bcb5-4870-ae05-b796b790af9b",
+    "audioFile": "813f9099-78e3-4d3d-a7a6-473f5ac188a9-1791866941037.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "6b1ce7ca-4b2e-4b8c-ae79-ae97cad1c9a9",
+    "text": "Adding work takes a second. Press New task, give it a name, and it lands in To do.",
+    "timelineItemId": "2ce8b8ff-81b1-4c00-b1e4-50687415c430",
+    "audioFile": "6b1ce7ca-4b2e-4b8c-ae79-ae97cad1c9a9-1791866942973.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "6f00e4be-3d7d-4308-8e72-7d308ea1f49e",
+    "text": "When you pick something up, press Start. The card moves across, so everyone can see who's on what.",
+    "timelineItemId": "806ea83e-be87-4c32-a188-f1c40a356297",
+    "audioFile": "6f00e4be-3d7d-4308-8e72-7d308ea1f49e-1791866944369.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "648bf9a8-cd78-47ad-ad22-e7ce55ca8676",
+    "text": "Finish it, and it moves to Done — and the bar along the top shows how far through the week you are.",
+    "timelineItemId": "84453762-7c1f-4670-b348-0a118d6696b1",
+    "audioFile": "648bf9a8-cd78-47ad-ad22-e7ce55ca8676-1791866947285.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "2ef29e73-2ef2-45bd-86f5-be96fca50517",
+    "text": "And when you just need your own list, Mine hides everything else.",
+    "timelineItemId": "18c67636-40e0-4fe6-921b-a6545f0f7381",
+    "audioFile": "2ef29e73-2ef2-45bd-86f5-be96fca50517-1791866950007.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "9a976e75-b9dc-41b4-8dc3-f19fd894391d",
+    "text": "That walkthrough was recorded in one take, without a word said. The words came afterwards, and the picture leans in wherever a click landed.",
+    "timelineItemId": "b82a3d16-ee74-4d8a-a61e-a3a6d6ab32c8",
+    "audioFile": "9a976e75-b9dc-41b4-8dc3-f19fd894391d-1791866951057.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  }
+]

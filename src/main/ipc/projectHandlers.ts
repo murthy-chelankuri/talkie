@@ -21,6 +21,7 @@ import { repairNarrationDurations } from '../transcript/repairNarrationDurations
 import { checkReadiness } from '../setup/readiness'
 import { mcpConnection } from '../setup/mcpConnection'
 import { createMcpToken, revokeMcpToken } from '../settings/mcpAccess'
+import { reinstallExamples } from '../examples/installExamples'
 import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
 import { listCopilotModels } from '../agent/copilotModels'
@@ -107,6 +108,9 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
     revokeMcpToken()
     return mcpConnection()
   })
+  // A fresh copy of each example beside whatever has become of the first: someone who has
+  // reworded one to learn by it should not lose that to get the original back.
+  ipcMain.handle('settings:reinstallExamples', () => reinstallExamples().length)
   // Whichever engine is chosen — a list of macOS voices is no use to someone using Kokoro.
   ipcMain.handle('settings:voices', () => speechEngine(readSettings().speech.engine).voices())
   ipcMain.handle('settings:speechEngines', () => describeSpeechEngines())

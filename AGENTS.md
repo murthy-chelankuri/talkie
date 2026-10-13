@@ -14,6 +14,7 @@ capture, `say` or the built-in Kokoro voice for speech.
 npm run dev          # electron-vite dev
 npm test             # vitest, the whole suite (~55s, 93 files)
 npm run e2e          # builds, then drives the built app end to end (~2 min)
+npm run examples     # builds the shipped example projects (~10 min, needs Kokoro and the claude CLI)
 npm run typecheck    # both tsconfigs — node and web
 npm run build        # electron-vite build + the MCP bundle
 npm run package      # regenerates notices, builds, produces release/Talkie-<version>-arm64.dmg
@@ -316,6 +317,32 @@ or edit the code; agents use five MCP tools and get the frames back as images.
   colours, text out of frame, blank frames and order-dependent animation.
 - **Libraries are anime.js, D3 and lottie-web only** — no GSAP (its licence forbids tools that
   compete with Webflow's animation builder).
+
+## Examples
+
+Talkie ships ready-made projects (`examples/projects/<id>/`), put among the person's own on first
+launch by `installExamples.ts` — once each, so a deleted one stays deleted and a new one arrives
+once. They are ordinary projects, built by `npm run examples` (`STORY=<id>` for one) through the
+same functions the app uses, voiced in Kokoro, with every take checked for silence.
+
+- **Clips store absolute paths**, so a shipped example holds `{{TALKIE_PROJECT_DIR}}` instead and
+  the installer fills it in. Copying a project by hand left every clip pointing at the machine it
+  came from, and export failed with a 404 for each.
+- **Meet Talkie is filmed, not staged.** `examples/build/tour/` drives the built app in a throwaway
+  home, records its windows, draws a pointer in (a recording has none), writes each click down for
+  the zoom, and cuts out the waiting. The tour therefore breaks when the app does — treat a failed
+  `npm run examples` as a bug report. `TOUR=1 TOUR_UNTIL=<shot>` films part of it;
+  `TOUR_REUSE=1` re-cuts the last filming. Build first: it films `out/`.
+- **The tour drafts and runs the agent through the Claude CLI**, which keeps its login in the
+  keychain under the real home. A `claude` shim on PATH gives that one process HOME back; the
+  agent's MCP server is told the tour's home (`TALKIE_HOME`) separately, so it never reaches the
+  person's projects. Never point the build at the real `~/Talkie` — settings hold API keys.
+- **The walkthrough is recorded through Talkie's own recorder** (`StoryProject.recording`), headed:
+  headless Chromium draws a 1.5x page into only the top 720 rows of the frame and pads the rest
+  grey. Each scene is marked as it starts and the recording is cut at the marks, not by the
+  splitter, so every line is over the moment it was written for.
+- **Taskboard** (`examples/apps/taskboard/`) is the demo app the examples record and the tour makes
+  a theme from. It starts the same every time, so a rebuild films the same board.
 
 ## Security invariants
 

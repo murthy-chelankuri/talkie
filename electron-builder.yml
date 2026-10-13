@@ -23,6 +23,10 @@ files:
 extraResources:
   - from: licences
     to: licences
+  # The example projects, built by `npm run examples` and copied into ~/Talkie/Projects on first
+  # launch. Outside the archive because they are copied with plain fs calls. See installExamples.ts.
+  - from: examples/projects
+    to: examples
 
 # Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
 # ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver

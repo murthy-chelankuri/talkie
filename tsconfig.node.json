@@ -21,6 +21,8 @@
     "src/mcp/**/*",
     "vitest.config.ts",
     "e2e/**/*",
-    "vitest.e2e.config.ts"
+    "vitest.e2e.config.ts",
+    "examples/build/**/*",
+    "vitest.examples.config.ts"
   ]
 }

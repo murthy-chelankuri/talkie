@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contentSecurityPolicy } from './contentSecurityPolicy'
+import { contentSecurityPolicy, withPolicy } from './contentSecurityPolicy'
 
 const directives = (policy: string): Record<string, string> =>
   Object.fromEntries(
@@ -68,5 +68,26 @@ describe('the dev server’s policy', () => {
 
   it('is the only policy that concedes it', () => {
     expect(contentSecurityPolicy(false)).not.toContain('unsafe-eval')
+  })
+})
+
+describe('the policy each response is served under', () => {
+  const app = contentSecurityPolicy(false)
+  const scene = "script-src 'unsafe-inline' http://127.0.0.1:5000/s/; connect-src 'none'"
+
+  it('leaves an HTML scene page the policy the asset server wrote for it', () => {
+    const headers = withPolicy('http://127.0.0.1:5000/s/sources/html/a/index.html', { 'Content-Security-Policy': [scene] }, app)
+
+    expect(headers['Content-Security-Policy']).toEqual([scene])
+  })
+
+  it('puts the app’s policy on the app’s own pages', () => {
+    expect(withPolicy('file:///app/index.html', {}, app)['Content-Security-Policy']).toEqual([app])
+  })
+
+  it('replaces a policy anything off the loopback server brings, whatever its spelling', () => {
+    const headers = withPolicy('https://example.com/', { 'content-security-policy': ["script-src *"] }, app)
+
+    expect(headers).toEqual({ 'Content-Security-Policy': [app] })
   })
 })

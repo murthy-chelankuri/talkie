@@ -1,0 +1,246 @@
+[
+  {
+    "id": "79201b3c-fc75-461c-910c-62e4a3d647df",
+    "kind": "scene",
+    "start": 0,
+    "duration": 279,
+    "data": {
+      "title": "Meet Talkie",
+      "layout": "title",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  },
+  {
+    "id": "07b91704-f582-4af1-be76-36123eddae0f",
+    "kind": "diagram",
+    "start": 279,
+    "duration": 346,
+    "data": {
+      "source": "graph LR\n  record[Record] --> write[Write]\n  write --> voice[Voice]\n  voice --> export[Export]",
+      "style": {
+        "theme": "dark",
+        "font": "serif",
+        "align": "left",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      },
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/scenes/5df74f3a-0be0-419b-9875-33f95444082d.svg",
+      "themeStamp": "2f670642:dark:2",
+      "title": "From app to video"
+    }
+  },
+  {
+    "id": "16d95826-78ae-4b32-bd20-d532a654a91c",
+    "kind": "video",
+    "start": 625,
+    "duration": 306,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/01-new-project/clip.mp4"
+    }
+  },
+  {
+    "id": "d3b93e57-5926-4903-9599-ffe82d3dc52e",
+    "kind": "video",
+    "start": 931,
+    "duration": 100,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/02-record/clip.mp4"
+    }
+  },
+  {
+    "id": "219ecda9-6ccf-4e3a-badc-dd5235b049a2",
+    "kind": "video",
+    "start": 1031,
+    "duration": 188,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/03-toolbar/clip.mp4"
+    }
+  },
+  {
+    "id": "4e0d228f-7a67-48b0-8acf-ae489c17ed99",
+    "kind": "video",
+    "start": 1219,
+    "duration": 228,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/04-recorded/clip.mp4"
+    }
+  },
+  {
+    "id": "a36bb059-a4ff-4591-855b-d3b07bd5c5a2",
+    "kind": "video",
+    "start": 1447,
+    "duration": 187,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/05-write/clip.mp4"
+    }
+  },
+  {
+    "id": "25761290-3bc8-4d07-bf3c-e4cd88118f6e",
+    "kind": "video",
+    "start": 1634,
+    "duration": 284,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/06-written/clip.mp4"
+    }
+  },
+  {
+    "id": "44de956a-5508-41d3-9fb2-233800dd5dc2",
+    "kind": "video",
+    "start": 1918,
+    "duration": 263,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/07-voice/clip.mp4"
+    }
+  },
+  {
+    "id": "c76a1c35-1ae9-4f84-94e2-ef97ab18aebd",
+    "kind": "video",
+    "start": 2181,
+    "duration": 244,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/08-voiced/clip.mp4"
+    }
+  },
+  {
+    "id": "8b5541c3-ad1c-4129-849b-64f64dbb8ab5",
+    "kind": "video",
+    "start": 2425,
+    "duration": 334,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/09-slide/clip.mp4"
+    }
+  },
+  {
+    "id": "b9041791-5d02-45be-847e-ddb3a56643f8",
+    "kind": "video",
+    "start": 2759,
+    "duration": 183,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/10-slide-written/clip.mp4"
+    }
+  },
+  {
+    "id": "9bf7804a-5803-4088-b655-143888d47166",
+    "kind": "video",
+    "start": 2942,
+    "duration": 385,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/11-diagram/clip.mp4"
+    }
+  },
+  {
+    "id": "20457504-301d-4ef5-999a-0282ebd66eea",
+    "kind": "video",
+    "start": 3327,
+    "duration": 433,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/12-html/clip.mp4"
+    }
+  },
+  {
+    "id": "757ef415-8627-4743-a2a4-b60fb490545a",
+    "kind": "video",
+    "start": 3760,
+    "duration": 309,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/13-html-changed/clip.mp4"
+    }
+  },
+  {
+    "id": "36dd8ab0-16d1-440a-bdbc-f8c1b5815f60",
+    "kind": "video",
+    "start": 4069,
+    "duration": 595,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/14-settings/clip.mp4"
+    }
+  },
+  {
+    "id": "111fa6a8-8d8c-4cee-a4cd-14f385d714eb",
+    "kind": "video",
+    "start": 4664,
+    "duration": 275,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/15-theme/clip.mp4"
+    }
+  },
+  {
+    "id": "433e7383-699a-4b2a-9eb1-fb89b7b7d78f",
+    "kind": "video",
+    "start": 4939,
+    "duration": 250,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/16-theme-made/clip.mp4"
+    }
+  },
+  {
+    "id": "2f7af963-b34a-459c-9aff-a8896351d53a",
+    "kind": "video",
+    "start": 5189,
+    "duration": 415,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/17-theme-applied/clip.mp4"
+    }
+  },
+  {
+    "id": "78982378-40e8-4099-b57e-ba50ddaa294a",
+    "kind": "video",
+    "start": 5604,
+    "duration": 295,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/18-agent/clip.mp4"
+    }
+  },
+  {
+    "id": "0856d9c0-281b-451a-a36d-6ae36959425a",
+    "kind": "video",
+    "start": 5899,
+    "duration": 159,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/19-agent-done/clip.mp4"
+    }
+  },
+  {
+    "id": "dc8a95f3-2563-4125-ad19-c824fc3c91a6",
+    "kind": "video",
+    "start": 6058,
+    "duration": 198,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/20-export/clip.mp4"
+    }
+  },
+  {
+    "id": "954d97ed-2e09-4448-8371-793c824b9732",
+    "kind": "video",
+    "start": 6256,
+    "duration": 147,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/tour/21-exported/clip.mp4"
+    }
+  },
+  {
+    "id": "f52c9fd7-6b13-4fd0-8f69-d09ec5382514",
+    "kind": "scene",
+    "start": 6403,
+    "duration": 302,
+    "data": {
+      "title": "Make it yours",
+      "layout": "closing",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  }
+]

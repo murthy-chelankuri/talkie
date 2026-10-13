@@ -78,11 +78,29 @@ export function applyContentSecurityPolicy(session: Session, isDevelopment: bool
   const policy = contentSecurityPolicy(isDevelopment)
 
   session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [policy]
-      }
-    })
+    callback({ responseHeaders: withPolicy(details.url, details.responseHeaders, policy) })
   })
+}
+
+/**
+ * The app's policy on every response, except one the asset server has written a policy for.
+ *
+ * Those are HTML scene pages, served with a policy of their own (htmlScene/policy.ts) that is
+ * stricter about everything but inline script — which a scene is mostly made of. Stamping the
+ * app's `script-src 'self'` over the top refused every one of them, so in a built app each HTML
+ * scene played as a black frame in the editor; the dev policy allows inline script, so it never
+ * showed there, and export draws in its own browser. Only loopback pages keep theirs: nothing
+ * else is allowed to set the terms it is loaded under.
+ */
+export function withPolicy(
+  url: string,
+  headers: Record<string, string[]> | undefined,
+  policy: string
+): Record<string, string[]> {
+  const own = Object.keys(headers ?? {}).some((name) => name.toLowerCase() === 'content-security-policy')
+  if (own && url.startsWith('http://127.0.0.1:')) return headers!
+  const rest = Object.fromEntries(
+    Object.entries(headers ?? {}).filter(([name]) => name.toLowerCase() !== 'content-security-policy')
+  )
+  return { ...rest, 'Content-Security-Policy': [policy] }
 }
