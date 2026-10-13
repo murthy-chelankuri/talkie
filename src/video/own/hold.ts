@@ -7,6 +7,7 @@ type Open = { label: string; opened: number; timeoutMs: number }
 
 const open = new Map<number, Open>()
 let next = 1
+/** Sticky for the life of the page, on purpose: one page is one export tab, and a failed page is closed. */
 let failure: string | null = null
 
 export function ownHold(label: string, timeoutMs: number = DEFAULT_TIMEOUT_MS, now: () => number = Date.now): Release {

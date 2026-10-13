@@ -18,7 +18,8 @@ function nameOf(src: string): string {
   try {
     return decodeURIComponent(new URL(src).pathname.split('/').pop() ?? src)
   } catch {
-    return src
+    // Not a URL we can parse; still only the last segment, so a secret in the path stays out of messages.
+    return src.split('/').pop() || src
   }
 }
 
@@ -44,7 +45,11 @@ export function OwnPicture({ src, alt, style, label }: { src: string; alt?: stri
       reportFailure(`Could not load ${name}`)
       release()
     }
-    if (img.complete && img.naturalWidth > 0) loaded()
+    // Already finished before we listened: a load or an error event will not come again.
+    if (img.complete) {
+      if (img.naturalWidth > 0) loaded()
+      else failed()
+    }
     img.addEventListener('load', loaded)
     img.addEventListener('error', failed)
     return () => {

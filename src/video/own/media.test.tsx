@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, render } from '@testing-library/react'
 import { VideoRoot } from './clock'
-import { openHoldCount, resetHolds } from './hold'
+import { openHoldCount, resetHolds, whenSettled } from './hold'
+import { Picture, chooseOwnRenderer } from '../index'
 import { OwnFootage, OwnPicture, OwnSound, footageFrameUrl } from './media'
 
 afterEach(() => resetHolds())
@@ -41,5 +42,35 @@ describe('Talkie’s own media', () => {
 
   it('plays no sound in the picture: the export mixes the soundtrack from the timeline', () => {
     expect(render(root(0, <OwnSound src="http://h/a.wav" />)).container.innerHTML).toBe('')
+  })
+
+  it('fails the export at once, and lets go of the hold, when a picture cannot be loaded', async () => {
+    const view = render(root(0, <OwnPicture src="http://127.0.0.1:1/s/p/missing.png" />))
+    await act(async () => void view.container.querySelector('img')!.dispatchEvent(new Event('error')))
+    expect(openHoldCount()).toBe(0)
+    await expect(whenSettled()).rejects.toThrow('Could not load missing.png')
+  })
+
+  it('lets go of its hold when it is unmounted before the picture arrives', () => {
+    const view = render(root(0, <OwnPicture src="http://127.0.0.1:1/s/p/a.png" />))
+    expect(openHoldCount()).toBe(1)
+    view.unmount()
+    expect(openHoldCount()).toBe(0)
+  })
+
+  it('holds again for a new src on the same Picture, until that image has loaded', async () => {
+    chooseOwnRenderer()
+    const loadIt = async (container: HTMLElement): Promise<void> => {
+      const img = container.querySelector('img')!
+      Object.defineProperty(img, 'decode', { value: () => Promise.resolve() })
+      await act(async () => void img.dispatchEvent(new Event('load')))
+    }
+    const view = render(root(0, <Picture src="http://h/a.png" />))
+    await loadIt(view.container)
+    expect(openHoldCount()).toBe(0)
+    view.rerender(root(0, <Picture src="http://h/b.png" />))
+    expect(openHoldCount()).toBe(1)
+    await loadIt(view.container)
+    expect(openHoldCount()).toBe(0)
   })
 })

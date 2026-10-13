@@ -12,7 +12,9 @@ import { OwnFootage, OwnPicture, OwnSound } from './own/media'
  */
 
 export function Picture({ src, alt, style }: { src: string; alt?: string; style?: CSSProperties }): JSX.Element {
-  if (isOwnRenderer()) return <OwnPicture src={src} alt={alt} style={style} />
+  // Keyed on src: the picture opens its hold once, so a new src must be a new picture with a new hold,
+  // or a frame could be taken before the new image has loaded.
+  if (isOwnRenderer()) return <OwnPicture key={src} src={src} alt={alt} style={style} />
   return <Img src={src} alt={alt} style={style} />
 }
 
