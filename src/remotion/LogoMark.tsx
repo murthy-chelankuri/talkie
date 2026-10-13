@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Img, continueRender, delayRender } from 'remotion'
+import { Picture, hold } from '../video'
 import type { RenderTheme } from './renderTheme'
 import { logoPlate, readLogoColours, type LogoColours } from './logoLegibility'
 
@@ -28,20 +28,20 @@ export function LogoMark({
   useEffect(() => {
     if (!background) return
     let wanted = true
-    const handle = delayRender('Reading the logo’s colours')
+    const release = hold('Reading the logo’s colours')
     void readLogoColours(url).then((read) => {
       if (wanted) setColours(read)
-      continueRender(handle)
+      release()
     })
     return () => {
       wanted = false
-      continueRender(handle)
+      release()
     }
   }, [url, background])
 
   const plate = logoPlate(colours ?? null, background, theme)
   const image = (
-    <Img
+    <Picture
       src={url}
       alt=""
       style={{ display: 'block', height: plate ? height * 0.72 : height, maxWidth: plate ? maxWidth * 0.8 : maxWidth, objectFit: 'contain' }}

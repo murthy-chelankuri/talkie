@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AbsoluteFill, continueRender, delayRender, getRemotionEnvironment, useCurrentFrame, useVideoConfig } from 'remotion'
+import { Fill, hold, useFrame, useRenderMode, useVideoConfig, type Release } from '../../video'
 import { useRenderTheme } from '../renderTheme'
 import { DEFAULT_SCENE_THEMES, DRAW_TIMEOUT_MS, isSceneMessage, type SceneTheme } from '../../htmlScene/protocol'
 
@@ -16,8 +16,8 @@ const LOAD_TIMEOUT_MS = 15_000
 
 /**
  * A sandboxed frame may still navigate itself, and only the page framing it can refuse that. The
- * editor's policy already does; the export renders this composition in a page of Remotion's,
- * which has none — so the same rule is added here, once, before any scene is framed.
+ * editor's policy already does; the export renders this composition in a page with no such policy —
+ * so the same rule is added here, once, before any scene is framed.
  */
 function confineFrames(): void {
   if (typeof document === 'undefined' || document.querySelector('meta[data-talkie-frames]')) return
@@ -35,7 +35,7 @@ function confineFrames(): void {
  */
 export function HtmlScene({ data }: { data: unknown }): JSX.Element {
   const scene = data as HtmlSceneProps
-  const frame = useCurrentFrame()
+  const frame = useFrame()
   const { fps, durationInFrames, width, height } = useVideoConfig()
   const theme = useRenderTheme()
   const variant = scene.style?.theme ?? 'dark'
@@ -43,22 +43,20 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
   const sceneTheme: SceneTheme = theme
     ? { ...theme.variants[variant], fonts: theme.fonts, ...(theme.logo ? { logo: theme.logo.url } : {}) }
     : DEFAULT_SCENE_THEMES[variant]
-  const rendering = getRemotionEnvironment().isRendering
+  const rendering = useRenderMode() === 'export'
 
   const ref = useRef<HTMLIFrameElement>(null)
   const pending = useRef(new Map<number, () => void>())
   const nextId = useRef(1)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [loadHandle] = useState(() => (rendering ? delayRender(`Loading the HTML scene "${scene.title}"`) : null))
+  const [releaseLoad] = useState<Release | null>(() => (rendering ? hold(`Loading the HTML scene "${scene.title}"`) : null))
 
   confineFrames()
 
   useEffect(() => {
     let loaded = false
-    const settle = (): void => {
-      if (loadHandle !== null) continueRender(loadHandle)
-    }
+    const settle = (): void => releaseLoad?.()
     const onMessage = (event: MessageEvent): void => {
       if (event.source !== ref.current?.contentWindow || !isSceneMessage(event.data)) return
       const message = event.data
@@ -109,22 +107,22 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
   useEffect(() => {
     if (!ready || failed) return
     const id = nextId.current++
-    const handle = rendering ? delayRender(`HTML scene "${scene.title}", frame ${frame}`) : null
+    const release = rendering ? hold(`HTML scene "${scene.title}", frame ${frame}`) : null
     const timer = setTimeout(() => {
       console.error(`HTML scene "${scene.title}": frame ${frame} was not drawn within 5 s`)
       pending.current.delete(id)
-      if (handle !== null) continueRender(handle)
+      release?.()
     }, DRAW_TIMEOUT_MS)
     pending.current.set(id, () => {
       clearTimeout(timer)
-      if (handle !== null) continueRender(handle)
+      release?.()
     })
     ref.current?.contentWindow?.postMessage({ type: 'talkie:seek', frame, id }, '*')
   }, [frame, ready, failed])
 
   if (failed) {
     return (
-      <AbsoluteFill
+      <Fill
         style={{
           background: sceneTheme.background,
           color: sceneTheme.heading,
@@ -134,12 +132,12 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
         }}
       >
         {scene.title}
-      </AbsoluteFill>
+      </Fill>
     )
   }
 
   return (
-    <AbsoluteFill style={{ background: sceneTheme.background }}>
+    <Fill style={{ background: sceneTheme.background }}>
       <iframe
         ref={ref}
         src={scene.src}
@@ -149,6 +147,6 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
         height={height}
         style={{ border: 0, display: 'block' }}
       />
-    </AbsoluteFill>
+    </Fill>
   )
 }

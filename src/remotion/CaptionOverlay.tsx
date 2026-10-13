@@ -1,4 +1,4 @@
-import { useCurrentFrame } from 'remotion'
+import { useFrame } from '../video'
 import { useRenderTheme, type RenderTheme } from './renderTheme'
 // The same shape the captions are built in; a second definition would be one to keep in step.
 import type { Caption as CaptionCue } from '../main/transcript/captions'
@@ -36,7 +36,7 @@ export function captionLook(theme: RenderTheme | null): { background: string; co
 }
 
 export function CaptionOverlay({ cues }: { cues: CaptionCue[] }): JSX.Element | null {
-  const frame = useCurrentFrame()
+  const frame = useFrame()
   const look = captionLook(useRenderTheme())
   const current = cues.find((cue) => frame >= cue.startFrame && frame < cue.endFrame)
   if (!current) return null

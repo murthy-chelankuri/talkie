@@ -2,13 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactNode } from 'react'
 
-vi.mock('remotion', () => ({
-  AbsoluteFill: ({ children, style }: { children?: ReactNode; style?: object }) => <div style={style}>{children}</div>,
-  useCurrentFrame: () => 0,
+vi.mock('../video', () => ({
+  Fill: ({ children, style }: { children?: ReactNode; style?: object }) => <div style={style}>{children}</div>,
+  useFrame: () => 0,
   useVideoConfig: () => ({ fps: 30, width: 1920, height: 1080, durationInFrames: 90 }),
-  getRemotionEnvironment: () => ({ isRendering: false }),
-  delayRender: () => 1,
-  continueRender: () => undefined
+  useRenderMode: () => 'preview',
+  hold: () => () => undefined
 }))
 
 const { HtmlScene } = await import('./items/HtmlScene')

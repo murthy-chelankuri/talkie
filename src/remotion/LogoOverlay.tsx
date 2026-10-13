@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { useVideoConfig } from 'remotion'
+import { useVideoConfig } from '../video'
 import { useRenderTheme, type RenderTheme } from './renderTheme'
 import { resolveSceneTheme } from './sceneTheme'
 import { LogoMark } from './LogoMark'
