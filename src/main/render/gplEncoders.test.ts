@@ -61,7 +61,7 @@ describe('the encoders the app asks for', () => {
   })
 
   it('asks Remotion to render with hardware acceleration', () => {
-    const source = readFileSync(join(MAIN, 'render', 'renderProject.ts'), 'utf-8')
+    const source = readFileSync(join(MAIN, 'render', 'remotionExport.ts'), 'utf-8')
 
     expect(source).toMatch(/hardwareAcceleration:\s*'(if-possible|required)'/)
   })

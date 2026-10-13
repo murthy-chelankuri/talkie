@@ -28,8 +28,8 @@ const MAIN = join(__dirname, '..')
 
 /** Remotion entry points that reach for a binary, and the file each is called from. */
 const CALLS_A_BINARY = [
-  { fn: 'selectComposition', file: 'render/renderProject.ts' },
-  { fn: 'renderMedia', file: 'render/renderProject.ts' }
+  { fn: 'selectComposition', file: 'render/remotionExport.ts' },
+  { fn: 'renderMedia', file: 'render/remotionExport.ts' }
 ]
 
 describe('shelling out from a packaged build', () => {

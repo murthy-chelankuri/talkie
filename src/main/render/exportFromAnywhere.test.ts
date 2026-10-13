@@ -31,15 +31,21 @@ describe('exporting with the working directory somewhere unwritable', () => {
     expect(browser!.startsWith('/')).toBe(true)
   })
 
-  it('hands that browser to both of the calls that would otherwise fetch one', () => {
+  it('hands that browser to both of Remotion\'s calls that would otherwise fetch one', () => {
     // Remotion only skips working out a download directory when it is given a browser outright.
     // Miss either call and export fails in a packaged build and nowhere else.
-    const source = readFileSync(join(__dirname, 'renderProject.ts'), 'utf-8')
+    const source = readFileSync(join(__dirname, 'remotionExport.ts'), 'utf-8')
 
     for (const call of ['selectComposition(', 'renderMedia(']) {
       const at = source.indexOf(call)
       expect(at, `${call} is no longer called here — update this test`).toBeGreaterThan(-1)
       expect(source.slice(at, at + 400), `${call} is missing browserExecutable`).toContain('browserExecutable')
     }
+  })
+
+  it("launches Talkie's own exporter with that browser too", () => {
+    const source = readFileSync(join(__dirname, 'exporter/exportVideo.ts'), 'utf-8')
+
+    expect(source).toContain('executablePath: browserExecutablePath()')
   })
 })
