@@ -23,7 +23,10 @@ export function useFrame(): number {
   return useCurrentFrame()
 }
 
-/** The video's size and rate, and the enclosing Sequence's length. */
+/**
+ * The video's size and rate, and the enclosing Sequence's length. That length is clipped to the
+ * parent Sequence's, as Remotion's is, so a nested Sequence never reports more than remains.
+ */
 export function useVideoConfig(): VideoConfig {
   const { fps, width, height, durationInFrames } = useRemotionVideoConfig()
   return { fps, width, height, durationInFrames }
@@ -34,7 +37,13 @@ export function useRenderMode(): RenderMode {
   return getRemotionEnvironment().isRendering ? 'export' : 'preview'
 }
 
-/** Shifts the clock for its children, and mounts them only while the frame is inside it. */
+/**
+ * Shifts the clock for its children, and mounts them only while the frame is inside it.
+ *
+ * The children sit in one full-frame layer laid out as `Fill` is, which `ImageItem` and
+ * `VideoItem` rely on to size themselves at 100%. A nested Sequence ends no later than its
+ * parent, whatever duration it asks for: a narration take that runs past its clip is cut there.
+ */
 export function Sequence({ from, durationInFrames, children }: { from: number; durationInFrames?: number; children: ReactNode }): JSX.Element {
   return (
     <RemotionSequence from={from} durationInFrames={durationInFrames}>
@@ -43,7 +52,12 @@ export function Sequence({ from, durationInFrames, children }: { from: number; d
   )
 }
 
-/** A layer covering the whole frame. */
+/**
+ * A layer covering the whole frame, as a flex column: absolutely positioned, top/left/right/bottom
+ * 0, width and height 100%, `display: flex`, `flex-direction: column`. A slide centres itself
+ * with `justifyContent`/`alignItems` on this and would sit in the corner without the column.
+ * The caller's `style` is applied over that layout. `clock.test.tsx` holds it.
+ */
 export function Fill({ style, children }: { style?: CSSProperties; children?: ReactNode }): JSX.Element {
   return <AbsoluteFill style={style}>{children}</AbsoluteFill>
 }

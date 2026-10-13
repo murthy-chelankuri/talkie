@@ -12,7 +12,7 @@ import { join, relative, sep } from 'path'
  * is testing a scene against something it no longer imports.
  *
  * The main process still exports and measures with @remotion/renderer and @remotion/bundler; steps 2
- * and 3 replace those, and narrow MAIN_PROCESS_ONLY's places as they go.
+ * and 3 replace those, and narrow MAIN_PROCESS_PLACES as they go.
  */
 const ROOT = join(__dirname, '..', '..')
 const SEAM = join('src', 'video') + sep
@@ -20,7 +20,7 @@ const SCANNED = ['src', 'scripts', 'e2e', join('examples', 'build')]
 
 /** Export and ffmpeg, still Remotion's until steps 2 and 3, and kept to where they are used. */
 const MAIN_PROCESS_ONLY = ['@remotion/renderer', '@remotion/bundler']
-const MAIN_PROCESS_PLACES = [SEAM, join('src', 'main') + sep, join('scripts') + sep]
+const MAIN_PROCESS_PLACES = [join('src', 'main') + sep, join('scripts') + sep]
 
 function sourceFiles(dir: string): string[] {
   const found: string[] = []
@@ -33,10 +33,13 @@ function sourceFiles(dir: string): string[] {
 }
 
 function specifiers(source: string): string[] {
-  return [...source.matchAll(/(?:from\s+|import\s*\(\s*|require\s*\(\s*|vi\.mock\(\s*)['"]([^'"]+)['"]/g)].map((match) => match[1])
+  // `from 'x'`, a bare `import 'x'`, dynamic import and require, and every vitest way of reaching
+  // a module (mock, doMock, importActual, importMock), with an optional type argument.
+  const forms = /(?:from\s+|import\s+|import\s*\(\s*|require\s*\(\s*|vi\.(?:mock|doMock|importActual|importMock)\s*(?:<[^>]*>)?\(\s*)['"]([^'"]+)['"]/g
+  return [...source.matchAll(forms)].map((match) => match[1])
 }
 
-const isRemotion = (specifier: string): boolean => specifier === 'remotion' || specifier.startsWith('@remotion/')
+const isRemotion = (specifier: string): boolean => specifier === 'remotion' || specifier.startsWith('remotion/') || specifier.startsWith('@remotion/')
 
 describe('the line around Remotion', () => {
   it('finds src/video importing Remotion, so a regex that matched nothing cannot pass', () => {

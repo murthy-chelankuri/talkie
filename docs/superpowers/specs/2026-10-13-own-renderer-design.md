@@ -46,14 +46,16 @@ re-export of Remotion; steps 3 and 4 replace the insides, and the scenes are not
 | `useFrame()` | `useCurrentFrame` | Frame relative to the nearest `<Sequence>`. |
 | `useVideoConfig()` | `useVideoConfig` | `{ fps, width, height, durationInFrames }` — of the enclosing `<Sequence>` for duration, as Remotion's is. |
 | `useRenderMode()` | `getRemotionEnvironment().isRendering` | `'export' \| 'preview'`. |
-| `<Sequence from durationInFrames?>` | `Sequence` | Offsets the clock for its children; mounts them only while the frame is inside it. |
-| `<Fill style>` | `AbsoluteFill` | A layer covering the whole frame. |
+| `<Sequence from durationInFrames?>` | `Sequence` | Offsets the clock for its children; mounts them only while the frame is inside it. Children sit in one full-frame column layer, as `Fill`. A nested Sequence ends no later than its parent. |
+| `<Fill style>` | `AbsoluteFill` | A layer covering the whole frame as a flex column: absolute, top/left/right/bottom 0, width and height 100%, `display: flex`, `flex-direction: column`; the caller's `style` applies over it. Slides centre themselves on that column. |
 | `hold(label, { timeoutMs? })` → `release()` | `delayRender` / `continueRender` | In export, a frame is captured only when no hold is open. A hold past its timeout fails the export with its label (§3). In preview, holds never block. |
 | `<Picture src>` | `Img` | `<img>` holding until loaded and `decode()`d. |
 | `<Footage src trimBefore trimAfter>` | `OffthreadVideo` | Export: an `<img>` of the exact frame from the asset server (§3). Preview: a `<video>` the player keeps in step (§4). |
 | `<Sound src>` | `Audio` | Preview: an `<audio>` the player keeps in step. Export: renders nothing; the soundtrack is mixed from the timeline (§3). |
 | `interpolate(value, input, output, options?)` | `interpolate` | Linear, with `extrapolateLeft/Right: 'clamp' \| 'extend'` (default `extend`, as Remotion). |
 | `spring({ frame, fps, config, durationInFrames? })` | `spring` | Our own damped-harmonic-oscillator implementation (mass, stiffness, damping, overshoot clamping; `durationInFrames` rescales time to settle in that many frames). Written from the physics, not from Remotion's code. While both exist, a test compares ours with values sampled from Remotion's for the configs Talkie uses; the sampled numbers are kept as test data. |
+
+During steps 3 and 4 Remotion's export and Talkie's run side by side from the same composition, so `src/video` picks its implementation per host (a context provided by `<VideoRoot>`, falling back to Remotion's), decided in step 3's plan; scenes do not change either way.
 
 Scenes change only their imports and these names: `ThemeFonts`, `LogoMark`, `DiagramScene` and
 `HtmlScene` move from `delayRender`/`continueRender` to `hold`/`release`.
@@ -116,8 +118,8 @@ calls `seek(frame)`, captures the viewport over CDP (`Page.captureScreenshot`, J
 `h264('export')`, 30 fps, `yuv420p`, `bt709` tags, keyframe at its first frame) producing one
 segment. Progress is the sum of frames captured across tabs.
 
-**Footage.** `<Footage>` in export mode requests `/frame/<clip-id>/<n>` from the asset server.
-Per clip per tab, the server keeps one ffmpeg decoding forward from the requested frame (`-ss`
+**Footage.** `<Footage>` in export mode requests `/frame/<n>` from the asset server, naming its `src` and `trimBefore`
+(which `Footage` already has, so `VideoItem` does not change). Per clip per tab, keyed on those two, the server keeps one ffmpeg decoding forward from the requested frame (`-ss`
 to the clip's `trimBefore` + n) and hands frames out in order; a request behind the decoder or
 more than two seconds ahead restarts it there. Frames are JPEG. Click zoom is unchanged — it is
 CSS on the frame, as now.
@@ -126,7 +128,9 @@ CSS on the frame, as now.
 - Segments are joined with the `concat` demuxer, no re-encode.
 - The soundtrack comes from the timeline, not the page: each take is placed at its clip's
   start plus the narration lead-in (`adelay`), mixed (`amix`, `normalize=0`), padded to the
-  video's length (`apad` + `-t`), and encoded AAC 48 kHz; recordings stay silent. The lead-in
+  video's length (`apad` + `-t`), and encoded AAC 48 kHz; recordings stay silent. Each take is
+  also trimmed (`atrim`) to end at its clip's end, as the composition cuts it today, since a
+  nested Sequence ends with its parent. The lead-in
   becomes one shared function, used by export, preview and captions.
 - Video and soundtrack are muxed into the MP4 (`-c copy`, `+faststart`).
 
@@ -168,6 +172,7 @@ panel and the theme preview — through `seekTo`, `getCurrentFrame`, `toggle`, `
 - **Preloading:** the next clip's media mounts, hidden, 0.5 s before its clip starts.
 - **Seeking and scrubbing** pause media, set the frame, and seek every mounted element; the picture
   follows at once, media catches up when ready.
+- **Scale:** the composition is drawn at `width`×`height` and scaled to fit the element, as the Player does; scenes use fixed pixel sizes and depend on it.
 - **HTML scenes** are told the frame as now; preview never waits on holds.
 - **Mute and fullscreen** act on the player's container, so `permissions.ts`'s fullscreen rule
   still applies.

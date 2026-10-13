@@ -14,7 +14,11 @@ export function Picture({ src, alt, style }: { src: string; alt?: string; style?
 }
 
 /**
- * A recording, from `trimBefore` up to `trimAfter` (frames into the file).
+ * A recording, from `trimBefore` up to `trimAfter`. Both count composition frames, so seconds
+ * into the file are the value over the composition's fps, not frames of the file.
+ *
+ * Like `Sound`, it starts at the enclosing Sequence's first frame and stops at its last, nested
+ * Sequences included.
  *
  * OffthreadVideo, not Video: an HTML5 <video> seeked frame by frame hangs on the VP8 .webm
  * files Playwright produces, so the export takes frames from the compositor instead. In the
@@ -34,7 +38,10 @@ export function Footage({
   return <OffthreadVideo src={src} trimBefore={trimBefore} trimAfter={trimAfter} style={style} />
 }
 
-/** Narration, starting at the enclosing Sequence's first frame. */
+/**
+ * Narration, starting at the enclosing Sequence's first frame and stopping at its last. A
+ * nested Sequence ends with its parent, so a take longer than its clip is cut at the clip's end.
+ */
 export function Sound({ src }: { src: string }): JSX.Element {
   return <Audio src={src} />
 }

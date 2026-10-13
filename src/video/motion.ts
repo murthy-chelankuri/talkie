@@ -1,6 +1,6 @@
 /**
  * The motion every scene is drawn with. Our own, written from the physics and from how
- * Remotion's was measured to behave (see the plan for step 1), so that slides move exactly as
+ * Remotion's was measured to behave (see docs/superpowers/plans/2026-10-13-own-renderer-step-1-seam.md), so that slides move exactly as
  * they did once Remotion is gone; springSamples.json holds the proof.
  */
 

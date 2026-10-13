@@ -28,6 +28,10 @@ export type PreviewProps<P extends object> = {
   inputProps: P
   durationInFrames: number
   fps: number
+  /**
+   * The composition's size, not the element's. The picture is drawn at this size and scaled to
+   * fit `style`; scenes rely on that (fixed pixel font sizes, HtmlScene's 1920-wide frame).
+   */
   width: number
   height: number
   /** The player's own controls, for panels without the editor's transport bar. */
