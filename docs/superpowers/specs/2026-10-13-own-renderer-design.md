@@ -27,7 +27,7 @@ starts from what this one leaves.
 
 | Step | PR | Done when |
 |---|---|---|
-| 1 | **The seam** — `src/video/`, every Remotion import goes through it, still delegating to Remotion | Nothing outside `src/video/` imports `remotion`/`@remotion/*`; behaviour unchanged; all gates pass |
+| 1 | **The seam** — `src/video/`, every Remotion import goes through it, still delegating to Remotion | Nothing outside `src/video/` imports `remotion` or `@remotion/player`, and `@remotion/renderer`/`@remotion/bundler` only in `src/main/` and `scripts/` (steps 2–3 remove those); behaviour unchanged; all gates pass |
 | 2 | **Our own ffmpeg** — `src/main/media/`, `ffmpeg-static`/`ffprobe-static` replace the compositor's binaries | Nothing outside `src/main/media/` spawns ffmpeg; packaged build finds the binaries; all gates pass |
 | 3 | **Our own export**, beside Remotion's (`TALKIE_RENDERER=remotion\|own`, default `own` once proven) | Comparison test and speed limit pass (§3) |
 | 4 | **Our own preview player** | Existing player e2e unchanged and passing; new in-step e2e passes (§4) |
@@ -47,6 +47,7 @@ re-export of Remotion; steps 3 and 4 replace the insides, and the scenes are not
 | `useVideoConfig()` | `useVideoConfig` | `{ fps, width, height, durationInFrames }` — of the enclosing `<Sequence>` for duration, as Remotion's is. |
 | `useRenderMode()` | `getRemotionEnvironment().isRendering` | `'export' \| 'preview'`. |
 | `<Sequence from durationInFrames?>` | `Sequence` | Offsets the clock for its children; mounts them only while the frame is inside it. |
+| `<Fill style>` | `AbsoluteFill` | A layer covering the whole frame. |
 | `hold(label, { timeoutMs? })` → `release()` | `delayRender` / `continueRender` | In export, a frame is captured only when no hold is open. A hold past its timeout fails the export with its label (§3). In preview, holds never block. |
 | `<Picture src>` | `Img` | `<img>` holding until loaded and `decode()`d. |
 | `<Footage src trimBefore trimAfter>` | `OffthreadVideo` | Export: an `<img>` of the exact frame from the asset server (§3). Preview: a `<video>` the player keeps in step (§4). |
@@ -176,7 +177,7 @@ for playing a project, an HTML scene and the transport pass unchanged. A new e2e
 cut from a recording to a narrated slide and requires `<video>` and `<audio>` within two frames of
 the clock.
 
-Not included: playback speed, looping — Talkie uses neither.
+`controls`, `loop` and `autoPlay` are kept: the HTML scene panel and the theme preview use the player's own controls and loop, and the theme preview starts by itself. Not included: playback speed — Talkie does not use it.
 
 ## 5. Removal and documentation
 

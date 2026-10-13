@@ -135,7 +135,14 @@ These each cost real time to find. None are obvious from the code.
   toolbar (five calls, nothing more).
 - `src/renderer/` — React. Reaches main only through `window.api`.
 - `src/remotion/` — the composition. Shared by the preview and the export, so what is on screen
-  is what renders.
+  is what renders. It takes its clock, holds, media and motion from `src/video/` and never from
+  Remotion itself.
+- `src/video/` — the only way in to Remotion, which Talkie is replacing with its own renderer
+  (`docs/superpowers/specs/2026-10-13-own-renderer-design.md`). `index.ts` is the composition's
+  side and `preview.tsx` the editor's, kept apart so the export bundle carries no player.
+  `spring` and `interpolate` are already Talkie's own, matched to Remotion's against sampled
+  values. `videoBoundary.test.ts` fails on a direct import or mock of Remotion anywhere else; the
+  main process keeps `@remotion/renderer` and `@remotion/bundler` until the export is replaced.
 - `src/mcp/` — a standalone MCP server, a **separate process**, off by default and token-gated.
 - Projects live in `~/Talkie/Projects/<id>-<slug>/` as `project.json`, `timeline.json`,
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
