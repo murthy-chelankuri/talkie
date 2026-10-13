@@ -5,6 +5,8 @@ import { addScene, addTranscriptSegment, createProject } from '../src/main/proje
 import { updateSettings } from '../src/main/settings/settingsStore'
 import { isKokoroDownloaded, kokoroCacheDir } from '../src/main/tts/kokoro/kokoroModel'
 import type { SpeechEngineId } from '../src/main/settings/schema'
+import { addHtmlScene } from '../src/main/htmlScene/htmlSceneApi'
+import { templateFiles } from '../src/main/htmlScene/templates'
 
 export const PROJECT_NAME = 'End to end'
 
@@ -32,6 +34,27 @@ export type Fixture = { home: string; projectId: string; dispose: () => void }
  * the person's own projects and — more to the point — their settings, which hold API keys.
  */
 export function makeFixture(engine: SpeechEngineId = 'system'): Fixture {
+  return buildFixture(engine)
+}
+
+/**
+ * The fixture with an HTML scene after the slides, for what only a web page in a frame can show.
+ * Async because a scene is checked in a headless browser before it is added.
+ */
+export async function makeFixtureWithHtmlScene(): Promise<Fixture> {
+  const fixture = buildFixture('system')
+  await addHtmlScene(
+    fixture.projectId,
+    { title: 'Kinetic', files: templateFiles('kinetic-title') as Record<string, string>, params: { title: 'In a frame', subtitle: HTML_SCENE_SUBTITLE } },
+    fixture.home
+  )
+  return fixture
+}
+
+/** What the HTML scene says, to find it drawn. */
+export const HTML_SCENE_SUBTITLE = 'Drawn by a web page'
+
+function buildFixture(engine: SpeechEngineId): Fixture {
   const home = mkdtempSync(join(tmpdir(), 'talkie-e2e-'))
   updateSettings(
     { speech: engine === 'kokoro' ? { engine, voice: KOKORO_VOICE } : { engine }, narration: { autoDraft: false } },

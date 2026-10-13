@@ -1,0 +1,12 @@
+{"t":173,"type":"navigation","url":"http://127.0.0.1:56786/"}
+{"t":1908,"type":"annotation","annotation":"important"}
+{"t":11261,"type":"annotation","annotation":"important"}
+{"t":11909,"type":"click","selector":"#new-task","text":"New task","x":0.92257080078125,"y":0.19197048611111112,"w":0.0736083984375,"h":0.05243055555555556}
+{"t":13884,"type":"input","selector":"#new-title","value":"Write the launch post"}
+{"t":13884,"type":"click","selector":"button","text":"Add","x":0.9372161865234375,"y":0.3350911458333333,"w":0.044317626953125,"h":0.06354166666666666}
+{"t":19130,"type":"annotation","annotation":"important"}
+{"t":20651,"type":"click","selector":"button","text":"Start","x":0.2946868896484375,"y":0.4511935763888889,"w":0.041876220703125,"h":0.04006076388888889}
+{"t":27000,"type":"annotation","annotation":"important"}
+{"t":28237,"type":"click","selector":"button","text":"Done","x":0.6051177978515625,"y":0.4511935763888889,"w":0.042889404296875,"h":0.04006076388888889}
+{"t":36354,"type":"annotation","annotation":"important"}
+{"t":37886,"type":"click","selector":"button","text":"Mine","x":0.8514190673828125,"y":0.19197048611111112,"w":0.045257568359375,"h":0.046875}

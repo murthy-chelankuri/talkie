@@ -8,6 +8,7 @@ import {
   openProject,
   readTimeline,
   readTimelineLenient,
+  addScene,
   addTimelineItem,
   importImage,
   readTranscript,
@@ -867,6 +868,17 @@ describe('listProjectOverviews', () => {
     expect(overview.posterPath).toBe('/v.mp4')
     expect(overview.posterKind).toBe('video')
     expect(overview.posterTrimBefore).toBe(45)
+  })
+
+  it('offers the first clip with a picture as the poster when the project opens on a slide', () => {
+    const project = createProject('Opens on a title', baseDir)
+    addScene(project.id, 'scene', { title: 'Welcome' }, baseDir)
+    addScene(project.id, 'diagram', { source: 'graph LR; A-->B', src: '/drawn.svg' }, baseDir)
+
+    const [overview] = listProjectOverviews(baseDir)
+
+    expect(overview.posterPath).toBe('/drawn.svg')
+    expect(overview.posterKind).toBe('image')
   })
 
   it('still lists a project whose timeline cannot be read', () => {

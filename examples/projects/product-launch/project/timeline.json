@@ -1,0 +1,175 @@
+[
+  {
+    "id": "8c7ceaa8-e35c-4fa9-a1bc-2c975493af8a",
+    "kind": "scene",
+    "start": 0,
+    "duration": 100,
+    "data": {
+      "title": "Introducing Lumen",
+      "layout": "title",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  },
+  {
+    "id": "0d9aaa9b-7656-4ed8-ab20-5b0e21ce978f",
+    "kind": "html",
+    "start": 100,
+    "duration": 195,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/c082c2ef-6e9c-46f4-833c-0803a74e1305/index.html",
+      "title": "Your week, planned for you",
+      "style": {
+        "theme": "dark"
+      },
+      "params": {
+        "title": "Your week, planned for you",
+        "subtitle": "Lumen finds the time before the meetings do"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/c082c2ef-6e9c-46f4-833c-0803a74e1305:b5f189ab:dark",
+      "posterText": "Yourweek,plannedforyou\n\nLumen finds the time before the meetings do",
+      "check": {
+        "problems": []
+      }
+    }
+  },
+  {
+    "id": "b4dc1604-cf2c-40c6-9507-5529b2300ee9",
+    "kind": "scene",
+    "start": 295,
+    "duration": 340,
+    "data": {
+      "title": "The average week",
+      "layout": "standard",
+      "bullets": [
+        "23 meetings",
+        "11 hours of interruptions",
+        "4 hours to actually think"
+      ],
+      "style": {
+        "theme": "dark",
+        "font": "serif",
+        "align": "left",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  },
+  {
+    "id": "0ea4770e-e61c-4e7f-be83-765f51e3bb7b",
+    "kind": "html",
+    "start": 635,
+    "duration": 239,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/dca12da6-3c1e-4b3a-9f12-78b60cc7033e/index.html",
+      "title": "Focus time won back",
+      "style": {
+        "theme": "dark"
+      },
+      "params": {
+        "value": 6.5,
+        "decimals": 1,
+        "label": "hours of focus time won back, every week"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/dca12da6-3c1e-4b3a-9f12-78b60cc7033e:b5f189ab:dark",
+      "posterText": "6.5\nhours of focus time won back, every week",
+      "check": {
+        "problems": []
+      }
+    }
+  },
+  {
+    "id": "7d948775-4122-4742-9fcc-2db6eac8a3ec",
+    "kind": "html",
+    "start": 874,
+    "duration": 436,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/1992f093-7a6b-4722-b784-77298f20de41/index.html",
+      "title": "Hours won back, by team",
+      "style": {
+        "theme": "dark"
+      },
+      "params": {
+        "title": "Focus hours won back each week",
+        "labels": [
+          "Design",
+          "Engineering",
+          "Sales",
+          "Support"
+        ],
+        "values": [
+          5,
+          9,
+          4,
+          6
+        ],
+        "unit": "h"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/1992f093-7a6b-4722-b784-77298f20de41:b5f189ab:dark",
+      "posterText": "Focus hours won back each week\n5h\n9h\n3h\n0h\nDesign\nEngineering\nSales\nSupport",
+      "check": {
+        "problems": []
+      }
+    }
+  },
+  {
+    "id": "52cbcf3d-e17e-456c-9398-98a54248dc6b",
+    "kind": "html",
+    "start": 1310,
+    "duration": 333,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/271dd832-6af1-4d6e-877a-d8b826e85244/index.html",
+      "title": "Before and with Lumen",
+      "style": {
+        "theme": "dark"
+      },
+      "params": {
+        "before": {
+          "title": "Before Lumen",
+          "points": [
+            "Meetings land anywhere",
+            "Deep work defended by hand",
+            "Overbooked weeks found on Friday"
+          ]
+        },
+        "after": {
+          "title": "With Lumen",
+          "points": [
+            "Meetings moved for you",
+            "Focus time guarded",
+            "Overbooking flagged on Monday"
+          ]
+        }
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/271dd832-6af1-4d6e-877a-d8b826e85244:b5f189ab:dark",
+      "posterText": "BEFORE\nBefore Lumen\nMeetings land anywhere\nDeep work defended by hand\nOverbooked weeks found on Friday\nAFTER\nWith Lumen\nMeetings moved for you\nFocus time guarded\nOverbooking flagged on Monday",
+      "check": {
+        "problems": []
+      }
+    }
+  },
+  {
+    "id": "b096b4e8-015e-4100-aeee-425d9513c705",
+    "kind": "scene",
+    "start": 1643,
+    "duration": 153,
+    "data": {
+      "title": "Try Lumen free",
+      "layout": "closing",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  }
+]

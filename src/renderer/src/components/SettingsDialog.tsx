@@ -1073,6 +1073,41 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
       </div>
 
       <McpSection />
+      <ExamplesSection />
+    </div>
+  )
+}
+
+/** The examples come back as new projects; ones already changed are left as they are. */
+function ExamplesSection(): JSX.Element {
+  const [state, setState] = useState<{ status: 'idle' | 'working' } | { status: 'done'; count: number } | { status: 'failed'; message: string }>({
+    status: 'idle'
+  })
+
+  async function reinstall(): Promise<void> {
+    setState({ status: 'working' })
+    try {
+      setState({ status: 'done', count: await settingsClient.reinstallExamples() })
+    } catch (err) {
+      setState({ status: 'failed', message: err instanceof Error ? err.message : String(err) })
+    }
+  }
+
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-xl bg-raised px-4 py-3">
+      <span className="flex flex-col gap-0.5">
+        <span className="text-[13px] font-medium text-text">Example projects</span>
+        <span className="text-[11px] leading-relaxed text-text-muted">
+          {state.status === 'done'
+            ? `Added ${state.count} fresh ${state.count === 1 ? 'copy' : 'copies'} to your projects.`
+            : state.status === 'failed'
+              ? state.message
+              : 'Put a fresh copy of each example among your projects. Any you have changed stay as they are.'}
+        </span>
+      </span>
+      <Button size="sm" variant="secondary" disabled={state.status === 'working'} onClick={() => void reinstall()}>
+        {state.status === 'working' ? <Spinner size="sm" /> : 'Reinstall examples'}
+      </Button>
     </div>
   )
 }

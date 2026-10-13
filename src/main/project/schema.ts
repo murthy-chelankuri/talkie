@@ -28,7 +28,9 @@ export const ProjectMetadataSchema = z.object({
    * Whether the opening and closing cards were added, which happens the first time a project
    * gets a theme and never again — a later change of theme restyles them rather than adding more.
    */
-  bookendsAdded: z.boolean().optional()
+  bookendsAdded: z.boolean().optional(),
+  /** Which shipped example this project was installed from, if it was. See installExamples.ts. */
+  example: z.string().optional()
 })
 
 export type ProjectMetadata = z.infer<typeof ProjectMetadataSchema>
@@ -37,6 +39,8 @@ export interface ProjectSummary {
   id: string
   name: string
   createdAt: string
+  /** Set when the project is one of the examples Talkie ships with. */
+  example?: string
 }
 
 // What the project browser needs to show a project without opening it.

@@ -9,6 +9,7 @@ import { registerHtmlSceneHandlers } from './ipc/htmlSceneHandlers'
 import { migrateStorageRoot } from './project/migrateStorageRoot'
 import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
+import { installExamples } from './examples/installExamples'
 import { registerEditContextMenu } from './menu/editContextMenu'
 import { installApplicationMenu, INITIAL_MENU_STATE, type MenuState } from './menu/applicationMenu'
 import { mayUse } from './security/permissions'
@@ -83,6 +84,13 @@ app.whenReady().then(() => {
   // and point their media at wherever the files now sit.
   migrateStorageRoot()
   repairAssetPaths()
+  // After the repairs, so an example lands in a projects folder that is already where it belongs.
+  // Never fatal: an app that cannot copy its examples is still an app.
+  try {
+    installExamples()
+  } catch (err) {
+    console.error('Could not install the example projects:', err)
+  }
 
   // Applied to every window the app ever creates, including the recording toolbar, rather than
   // to each one at the point it is built and forgotten for the next one.

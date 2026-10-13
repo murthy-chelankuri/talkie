@@ -71,6 +71,7 @@ const settingsApi = {
   mcpCreateToken: (): Promise<{ token: string; connection: McpConnection }> =>
     ipcRenderer.invoke('settings:mcpCreateToken'),
   mcpRevokeToken: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpRevokeToken'),
+  reinstallExamples: (): Promise<number> => ipcRenderer.invoke('settings:reinstallExamples'),
   voices: (): Promise<Voice[]> => ipcRenderer.invoke('settings:voices'),
   speechEngines: (): Promise<SpeechEngineDescription[]> => ipcRenderer.invoke('settings:speechEngines'),
   previewVoice: (voice: string, text: string): Promise<void> =>

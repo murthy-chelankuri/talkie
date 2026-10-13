@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taskboard — your team's week at a glance</title>
+<meta name="description" content="Taskboard shows what your team is working on, what's waiting, and what's done.">
+<meta name="theme-color" content="#e8553d">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#board" aria-label="Taskboard home">
+    <img src="logo.svg" alt="" width="28" height="28">
+    <span>Taskboard</span>
+  </a>
+  <nav class="views" role="tablist" aria-label="Views">
+    <a role="tab" href="#board" data-view="board">Board</a>
+    <a role="tab" href="#team" data-view="team">Team</a>
+    <a role="tab" href="#reports" data-view="reports">Reports</a>
+  </nav>
+  <span class="me" title="Signed in as Priya"><span class="avatar a1">P</span></span>
+</header>
+
+<main>
+  <section id="board" class="view" aria-labelledby="board-title">
+    <div class="board-head">
+      <div>
+        <h1 id="board-title">This week</h1>
+        <p class="sub">Launch of the spring release</p>
+      </div>
+      <div class="actions">
+        <div class="filter" role="group" aria-label="Show">
+          <button type="button" data-filter="all" aria-pressed="true">Everyone</button>
+          <button type="button" data-filter="mine" aria-pressed="false">Mine</button>
+        </div>
+        <button type="button" class="primary" id="new-task">New task</button>
+      </div>
+    </div>
+
+    <div class="progress" aria-label="How far through the week">
+      <div class="bar"><span id="progress-fill"></span></div>
+      <span id="progress-text"></span>
+    </div>
+
+    <form id="new-form" class="new-form" hidden>
+      <input id="new-title" name="title" placeholder="What needs doing?" autocomplete="off" aria-label="Task name">
+      <button type="submit" class="primary">Add</button>
+    </form>
+
+    <div class="columns">
+      <section class="column" data-column="todo"><h2>To do <span class="count"></span></h2><ul></ul></section>
+      <section class="column" data-column="doing"><h2>Doing <span class="count"></span></h2><ul></ul></section>
+      <section class="column" data-column="done"><h2>Done <span class="count"></span></h2><ul></ul></section>
+    </div>
+  </section>
+
+  <section id="team" class="view" hidden aria-labelledby="team-title">
+    <h1 id="team-title">Team</h1>
+    <p class="sub">Who is on what this week</p>
+    <ul class="people" id="people"></ul>
+  </section>
+
+  <section id="reports" class="view" hidden aria-labelledby="reports-title">
+    <h1 id="reports-title">Reports</h1>
+    <p class="sub">Tasks finished each day</p>
+    <div class="chart" id="chart"></div>
+    <div class="stats">
+      <div><strong>2.4 days</strong><span>from start to done, on average</span></div>
+      <div><strong>92%</strong><span>of last week's tasks finished</span></div>
+      <div><strong>3</strong><span>tasks waiting on someone else</span></div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

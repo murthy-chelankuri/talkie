@@ -1,0 +1,216 @@
+[
+  {
+    "id": "e2d766f4-e73d-4720-a1ad-5db557221d3b",
+    "text": "This is Talkie. It turns a silent recording of your app into a narrated demo video. Here's one being made, from nothing.",
+    "timelineItemId": "79201b3c-fc75-461c-910c-62e4a3d647df",
+    "audioFile": "e2d766f4-e73d-4720-a1ad-5db557221d3b-1791866826986.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "7e0fb565-1d22-4c7d-aae1-fa5fa85c2fd0",
+    "text": "It takes four steps. Record the app. Write the words. Give them a voice. And export the video.",
+    "beats": [
+      {
+        "at": 0.2,
+        "text": "It takes four steps."
+      },
+      {
+        "at": 2.1,
+        "text": "Record the app."
+      },
+      {
+        "at": 3.7,
+        "text": "Write the words."
+      },
+      {
+        "at": 5.3,
+        "text": "Give them a voice."
+      },
+      {
+        "at": 7.2,
+        "text": "And export the video."
+      }
+    ],
+    "timelineItemId": "07b91704-f582-4af1-be76-36123eddae0f",
+    "audioFile": "7e0fb565-1d22-4c7d-aae1-fa5fa85c2fd0-1791866831790.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "0a5c2c99-12f6-4946-bebc-d8c933502208",
+    "text": "Everything starts with a project. Give it a name, and say in a sentence what it's about — the narration is written from that.",
+    "timelineItemId": "16d95826-78ae-4b32-bd20-d532a654a91c",
+    "audioFile": "0a5c2c99-12f6-4946-bebc-d8c933502208-1791866834305.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "6d2dacbc-a5e9-4561-b14a-29e232a2e092",
+    "text": "Then record your app.",
+    "timelineItemId": "d3b93e57-5926-4903-9599-ffe82d3dc52e",
+    "audioFile": "6d2dacbc-a5e9-4561-b14a-29e232a2e092-1791866836348.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "640b091f-5fd3-4de0-b357-25f00e02a608",
+    "text": "Type its address, tick Show me round it, and Talkie walks the app by itself.",
+    "timelineItemId": "219ecda9-6ccf-4e3a-badc-dd5235b049a2",
+    "audioFile": "640b091f-5fd3-4de0-b357-25f00e02a608-1791866836855.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "c1f58af5-3757-4d4c-9ab3-a9e8c2d2586e",
+    "text": "The recording comes back cut into scenes, and the picture leans in wherever a click landed.",
+    "timelineItemId": "4e0d228f-7a67-48b0-8acf-ae489c17ed99",
+    "audioFile": "c1f58af5-3757-4d4c-9ab3-a9e8c2d2586e-1791866838065.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "38622d1e-a7bb-4c2f-9a10-108c37a8d021",
+    "text": "Press Write the words, and your AI drafts the narration for every scene.",
+    "timelineItemId": "a36bb059-a4ff-4591-855b-d3b07bd5c5a2",
+    "audioFile": "38622d1e-a7bb-4c2f-9a10-108c37a8d021-1791866839621.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "7d299249-8f1d-44c3-a520-789c2df6173b",
+    "text": "The script shows it all in one column. The numbers in brackets are timings: each line is spoken at that second of its scene.",
+    "timelineItemId": "25761290-3bc8-4d07-bf3c-e4cd88118f6e",
+    "audioFile": "7d299249-8f1d-44c3-a520-789c2df6173b-1791866840926.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "10e091ac-92a2-4572-aa3a-eec2e2b03482",
+    "text": "Choose a voice — the Mac’s own, or Kokoro, built in and close to a person — and press Speak.",
+    "timelineItemId": "44de956a-5508-41d3-9fb2-233800dd5dc2",
+    "audioFile": "10e091ac-92a2-4572-aa3a-eec2e2b03482-1791866843072.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "6f9a27b4-8832-4b42-b0e0-68b88c4a3f20",
+    "text": "Every scene gets its own take, and the scene is sized to fit it.",
+    "timelineItemId": "c76a1c35-1ae9-4f84-94e2-ef97ab18aebd",
+    "audioFile": "6f9a27b4-8832-4b42-b0e0-68b88c4a3f20-1791866844602.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "061fde71-dc6b-47ae-9543-6f24a98e0302",
+    "text": "Not every scene is a recording. Add a slide, say what should be on it, and the AI writes it.",
+    "timelineItemId": "8b5541c3-ad1c-4129-849b-64f64dbb8ab5",
+    "audioFile": "061fde71-dc6b-47ae-9543-6f24a98e0302-1791866845751.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "7074ef2d-f0d0-445f-85b6-d950986977e3",
+    "text": "Its points appear as they are spoken.",
+    "timelineItemId": "b9041791-5d02-45be-847e-ddb3a56643f8",
+    "audioFile": "7074ef2d-f0d0-445f-85b6-d950986977e3-1791866848785.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "fce08956-c405-44b1-ad5d-6bdce5330ad5",
+    "text": "Diagrams are written in Mermaid, and drawn box by box, in the order the narration names them.",
+    "timelineItemId": "9bf7804a-5803-4088-b655-143888d47166",
+    "audioFile": "fce08956-c405-44b1-ad5d-6bdce5330ad5-1791866849458.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "de0818e4-b078-496c-9077-d45f4b111432",
+    "text": "An HTML scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours.",
+    "timelineItemId": "20457504-301d-4ef5-999a-0282ebd66eea",
+    "audioFile": "de0818e4-b078-496c-9077-d45f4b111432-1791866852544.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "f5cba99a-54d0-4042-922c-ed7132114ea6",
+    "text": "Every scene is checked before it reaches the timeline: that it runs, stays in its sandbox, and fits the frame.",
+    "timelineItemId": "757ef415-8627-4743-a2a4-b60fb490545a",
+    "audioFile": "f5cba99a-54d0-4042-922c-ed7132114ea6-1791866854713.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "0a166f0d-7346-4887-9a91-8805f3ad8419",
+    "text": "Settings decide who writes and who speaks — Claude, Copilot or a local model; the Mac’s voices or Kokoro. Recording sets the click highlight, Export can burn in captions, and System lets AI agents connect.",
+    "timelineItemId": "36dd8ab0-16d1-440a-bdbc-f8c1b5815f60",
+    "audioFile": "0a166f0d-7346-4887-9a91-8805f3ad8419-1791866856562.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "32dd586d-1a43-4109-a494-54294e6e2269",
+    "text": "A theme is a company’s look. Give Talkie a website, and it reads the real colours, fonts and logo.",
+    "timelineItemId": "111fa6a8-8d8c-4cee-a4cd-14f385d714eb",
+    "audioFile": "32dd586d-1a43-4109-a494-54294e6e2269-1791866860348.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "007fb93c-b2ae-4ff2-8629-0ca71cac2d58",
+    "text": "Every colour is checked so text stays readable.",
+    "timelineItemId": "433e7383-699a-4b2a-9eb1-fb89b7b7d78f",
+    "audioFile": "007fb93c-b2ae-4ff2-8629-0ca71cac2d58-1791866862099.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "f140873b-a6ae-452c-8f4b-975ad42c47ad",
+    "text": "Choose it for the project, and the whole video takes it on — with an opening and a closing card added for you.",
+    "timelineItemId": "2f7af963-b34a-459c-9aff-a8896351d53a",
+    "audioFile": "f140873b-a6ae-452c-8f4b-975ad42c47ad-1791866862990.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "c1bf229f-d58e-4b53-a5e6-1d65cdd9966e",
+    "text": "Or just ask. The agent changes the whole project, using the same tools Talkie offers any AI agent.",
+    "timelineItemId": "78982378-40e8-4099-b57e-ba50ddaa294a",
+    "audioFile": "c1bf229f-d58e-4b53-a5e6-1d65cdd9966e-1791866864781.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "7ffcd8e3-15d3-431f-b6af-390b75357b15",
+    "text": "And the introduction is written, placed and given its words.",
+    "timelineItemId": "0856d9c0-281b-451a-a36d-6ae36959425a",
+    "audioFile": "7ffcd8e3-15d3-431f-b6af-390b75357b15-1791866866855.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "0920058c-f7bc-4317-8d0a-be60efe51a06",
+    "text": "Export shows its progress, and how long is left.",
+    "timelineItemId": "dc8a95f3-2563-4125-ad19-c824fc3c91a6",
+    "audioFile": "0920058c-f7bc-4317-8d0a-be60efe51a06-1791866867909.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "3123ca59-541f-4a2f-9f14-26be87484788",
+    "text": "And there is the video, with captions beside it.",
+    "timelineItemId": "954d97ed-2e09-4448-8371-793c824b9732",
+    "audioFile": "3123ca59-541f-4a2f-9f14-26be87484788-1791866868866.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "fdeb2a6f-1ff5-48ce-bee0-d576233c0500",
+    "text": "The other examples show a product launch, an app walkthrough and an architecture explainer. Open one, change a word, and press Speak.",
+    "timelineItemId": "f52c9fd7-6b13-4fd0-8f69-d09ec5382514",
+    "audioFile": "fdeb2a6f-1ff5-48ce-bee0-d576233c0500-1791866871275.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  }
+]

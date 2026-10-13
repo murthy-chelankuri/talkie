@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="talkie:template" content="Code walkthrough — the code, with each part lit up as it is explained">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); }
+  h1 { position: absolute; left: 160px; top: 100px; margin: 0; font: 600 64px/1.1 var(--talkie-font-heading); color: var(--talkie-heading); }
+  .code { position: absolute; left: 160px; right: 160px; top: 230px; }
+  .line { position: relative; font: 400 38px/64px ui-monospace, Menlo, monospace; color: var(--talkie-body); white-space: pre; padding-left: 96px; }
+  .line .n { position: absolute; left: 0; width: 64px; text-align: right; color: var(--talkie-body); opacity: 0.45; }
+  .glow { position: absolute; left: -24px; right: -24px; background: var(--talkie-accent); border-radius: 10px; opacity: 0; }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<div class="code" id="code"><div class="glow" id="glow"></div></div>
+<script>
+  // Values: title, code (text), highlights (list of [first line, last line], counting from 1).
+  // Each highlight moves on with the narration; without timings, every two seconds.
+  let render = () => {}
+  talkie.ready(talkie.initialised.then(() => {
+    document.getElementById('title').textContent = talkie.params.title ?? 'Recording a session'
+    const code = talkie.params.code ?? "const session = await talkie.record('https://app.example.com')\nawait session.click('New project')\nawait session.type('Quarterly review')\nconst video = await session.export()"
+    const highlights = talkie.params.highlights ?? [[1, 1], [2, 3], [4, 4]]
+    const box = document.getElementById('code')
+    code.split('\n').slice(0, 11).forEach((text, i) => {
+      const line = document.createElement('div')
+      line.className = 'line'
+      line.innerHTML = `<span class="n">${i + 1}</span>`
+      line.append(document.createTextNode(text))
+      box.append(line)
+    })
+    const beats = talkie.beats
+    const starts = highlights.map((_, i) => (beats.length >= highlights.length ? beats[beats.length - highlights.length + i] : 0.6 + i * 2))
+    const glow = document.getElementById('glow')
+    render = (t) => {
+      let current = -1
+      starts.forEach((start, i) => { if (t >= start) current = i })
+      if (current < 0) { glow.style.opacity = 0; return }
+      const [first, last] = highlights[current]
+      glow.style.top = `${(first - 1) * 64}px`
+      glow.style.height = `${(last - first + 1) * 64}px`
+      glow.style.opacity = 0.18 * Math.min((t - starts[current]) / 0.3, 1)
+    }
+  }))
+  talkie.onFrame((t) => render(t))
+</script>
+</body>
+</html>

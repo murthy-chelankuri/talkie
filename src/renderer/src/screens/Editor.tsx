@@ -33,6 +33,7 @@ import { ResizeHandle, useResizableWidth } from '../components/editor/ResizeHand
 import { ProjectPanel } from '../components/editor/ProjectPanel'
 import { AddPanel } from '../components/editor/AddPanel'
 import { VoicePanel } from '../components/editor/VoicePanel'
+import { exampleVoiceNote } from '../lib/exampleVoice'
 import { ExportControl, type ExportState } from '../components/editor/ExportControl'
 import { Inspector } from '../components/editor/Inspector'
 import { useScriptFocus } from '../components/editor/useScriptFocus'
@@ -104,6 +105,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
   const [appVoice, setAppVoice] = useState('')
+  const [appEngine, setAppEngine] = useState('')
   const [voices, setVoices] = useState<Voice[]>([])
   const [editingContext, setEditingContext] = useState(false)
   const [importingDeck, setImportingDeck] = useState(false)
@@ -290,7 +292,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // Re-read the voice whenever settings change: narration recorded in the old one is stale.
   useEffect(() => {
     const load = (): void => {
-      void settingsClient.read().then((settings) => setAppVoice(settings.speech.voice))
+      void settingsClient.read().then((settings) => {
+        setAppVoice(settings.speech.voice)
+        setAppEngine(settings.speech.engine)
+      })
     }
     load()
     // The list of voices this machine has, for the project's own voice picker.
@@ -1002,6 +1007,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               segments={segments}
               progress={progress}
               themeName={renderTheme ? renderTheme.company || 'This project’s theme' : null}
+              note={exampleVoiceNote({ example: project?.example, engine: appEngine, otherVoiceClips: progress.otherVoice.length })}
               playheadFrame={() => playerRef.current?.getCurrentFrame() ?? 0}
               busy={{ narrating: narratingItemId === selectedItemId, drafting: draftingItemId === selectedItemId }}
               onEdit={(item) => setSceneEditing(item)}

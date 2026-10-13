@@ -11,6 +11,8 @@ export interface ProjectSummary {
   id: string
   name: string
   createdAt: string
+  /** Which of the examples Talkie ships with this is, when it is one. */
+  example?: string
 }
 
 export interface ProjectMetadata extends ProjectSummary {
@@ -86,6 +88,7 @@ export const settingsClient = {
   mcpConnection: () => window.api.settings.mcpConnection(),
   mcpCreateToken: () => window.api.settings.mcpCreateToken(),
   mcpRevokeToken: () => window.api.settings.mcpRevokeToken(),
+  reinstallExamples: () => window.api.settings.reinstallExamples(),
   voices: () => window.api.settings.voices(),
   speechEngines: () => window.api.settings.speechEngines(),
   previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text),

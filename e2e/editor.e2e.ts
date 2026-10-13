@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, openProject, transcriptOnDisk, type Talkie } from './app'
-import { makeFixture, type Fixture } from './fixture'
+import { HTML_SCENE_SUBTITLE, makeFixture, makeFixtureWithHtmlScene, type Fixture } from './fixture'
 
 let fixture: Fixture
 let talkie: Talkie
@@ -27,6 +27,22 @@ describe('the editor', () => {
     await expect
       .poll(async () => /(\d+:\d\d)\s*\/\s*0:15/.exec(await win.locator('body').innerText())?.[1], { timeout: 10_000 })
       .not.toBe('0:00')
+  })
+
+  it('plays an HTML scene, not a black frame', async () => {
+    fixture = await makeFixtureWithHtmlScene()
+    talkie = await launchTalkie(fixture)
+    const { win } = talkie
+    await openProject(win)
+
+    // The app's own policy was once stamped over the one the asset server writes for scene
+    // pages, refusing their inline script: every HTML scene in a built app played black, and
+    // only in a built app. Paused, a scene shows its poster; the page itself plays.
+    await win.getByRole('button', { name: 'html', exact: true }).click()
+    await win.getByRole('button', { name: 'Play', exact: true }).click()
+    await expect
+      .poll(() => win.frameLocator('iframe').locator('#subtitle').textContent().catch(() => null), { timeout: 15_000 })
+      .toBe(HTML_SCENE_SUBTITLE)
   })
 
   it('saves what is typed in the script, and offers to speak it', async () => {

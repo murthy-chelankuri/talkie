@@ -38,6 +38,7 @@ export function Inspector({
   segments,
   progress,
   themeName,
+  note,
   playheadFrame,
   busy,
   onEdit,
@@ -53,6 +54,8 @@ export function Inspector({
   progress: VoiceProgress
   /** The project's theme, or null for Talkie's own look. */
   themeName: string | null
+  /** A line about the project as a whole, shown while nothing is selected. */
+  note?: string | null
   /** Where the playhead is, in frames of the whole video — read when Split is pressed. */
   playheadFrame: () => number
   busy: { narrating: boolean; drafting: boolean }
@@ -70,6 +73,12 @@ export function Inspector({
         <Row label="Length" value={formatTimecode(total / FPS)} />
         <Row label="Voice" value={timeline.length === 0 ? 'Nothing yet' : `${progress.voiced} of ${timeline.length} voiced`} />
         <Row label="Theme" value={themeName ?? 'Talkie’s own look'} />
+        {note && (
+          <p className="mt-2 flex items-start gap-2 rounded-[10px] bg-raised p-2.5 text-[11px] leading-relaxed text-text-muted">
+            <AudioLines size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+            {note}
+          </p>
+        )}
         <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
           {timeline.length === 0 ? 'Open Add in the rail to record a session or add a scene.' : 'Select a clip to see it here.'}
         </p>

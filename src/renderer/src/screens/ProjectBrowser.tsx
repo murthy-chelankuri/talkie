@@ -81,7 +81,12 @@ function ProjectCard({
                 {fullyNarrated ? 'Voiced' : `${project.narratedCount}/${project.clipCount}`}
               </span>
             )}
-            <span className="ml-auto">{formatRelativeTime(project.createdAt)}</span>
+            {project.example ? (
+              // Instead of when it was made: an example's date is only when Talkie put it here.
+              <span className="ml-auto rounded-md bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent">Example</span>
+            ) : (
+              <span className="ml-auto">{formatRelativeTime(project.createdAt)}</span>
+            )}
           </span>
           {lead && (
             <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-[9px] bg-accent-soft px-3 py-1.5 text-[13px] font-medium text-accent ring-1 ring-inset ring-accent/35">

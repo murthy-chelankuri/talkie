@@ -1,0 +1,126 @@
+[
+  {
+    "id": "c1a07a15-7897-4e3d-9352-2efed5580091",
+    "text": "What actually happens when you upload a photo? Let's follow one, end to end.",
+    "timelineItemId": "019e96d8-5d8e-4ec2-aa15-f823adf5f9bd",
+    "audioFile": "c1a07a15-7897-4e3d-9352-2efed5580091-1791866956220.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "038cfec9-66ff-49fb-85f3-2fc41edbfc62",
+    "text": "It starts on the phone. The photo goes to the API gateway, which checks who you are. The upload service gives it a name, and stores the original in object storage — then replies straight away, so you're never left waiting.",
+    "beats": [
+      {
+        "at": 0.2,
+        "text": "It starts on the phone."
+      },
+      {
+        "at": 2.5,
+        "text": "The photo goes to the API gateway, which checks who you are."
+      },
+      {
+        "at": 7.4,
+        "text": "The upload service gives it a name,"
+      },
+      {
+        "at": 10.4,
+        "text": "and stores the original in object storage — then replies straight away, so you're never left waiting."
+      }
+    ],
+    "timelineItemId": "5066de53-8f80-46e9-9369-3cf07e744522",
+    "audioFile": "038cfec9-66ff-49fb-85f3-2fc41edbfc62-1791866957530.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "d6fc1eb2-fccf-4afa-bd2c-adae084af521",
+    "text": "The slow work happens afterwards, from the stored original. A message goes onto a queue. The thumbnailer picks it up and makes the smaller sizes, and publishes them to the CDN, close to whoever's looking.",
+    "beats": [
+      {
+        "at": 0.2,
+        "text": "The slow work happens afterwards, from the stored original."
+      },
+      {
+        "at": 4,
+        "text": "A message goes onto a queue."
+      },
+      {
+        "at": 6.7,
+        "text": "The thumbnailer picks it up and makes the smaller sizes,"
+      },
+      {
+        "at": 10.8,
+        "text": "and publishes them to the CDN, close to whoever's looking."
+      }
+    ],
+    "timelineItemId": "0c6b19fe-195e-49a8-9dd2-e0cc5bf6e75e",
+    "audioFile": "d6fc1eb2-fccf-4afa-bd2c-adae084af521-1791866962821.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "1c9c7bb0-8035-43f6-93d5-a1332fcbaa3e",
+    "text": "In code, it's short. Check the user. Store the original. Queue the thumbnails. And reply. Nothing waits on the slow part.",
+    "beats": [
+      {
+        "at": 0.2,
+        "text": "In code, it's short."
+      },
+      {
+        "at": 2.1,
+        "text": "Check the user."
+      },
+      {
+        "at": 3.7,
+        "text": "Store the original."
+      },
+      {
+        "at": 5.3,
+        "text": "Queue the thumbnails."
+      },
+      {
+        "at": 6.8,
+        "text": "And reply. Nothing waits on the slow part."
+      }
+    ],
+    "timelineItemId": "fbf99b94-ca1d-4bae-97d8-89413ec5ccf8",
+    "audioFile": "1c9c7bb0-8035-43f6-93d5-a1332fcbaa3e-1791866966444.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "03646afe-76ed-448c-81ee-b2aca275ad15",
+    "text": "Built this way, uploads stay fast, a failed thumbnail is simply retried, and each piece can grow on its own.",
+    "beats": [
+      {
+        "at": 0.2,
+        "text": "Built this way,"
+      },
+      {
+        "at": 1.8,
+        "text": "uploads stay fast,"
+      },
+      {
+        "at": 3.3,
+        "text": "a failed thumbnail is simply retried,"
+      },
+      {
+        "at": 6,
+        "text": "and each piece can grow on its own."
+      }
+    ],
+    "timelineItemId": "d4d8fa92-f9f4-4650-a500-3f03340249e9",
+    "audioFile": "03646afe-76ed-448c-81ee-b2aca275ad15-1791866969243.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  },
+  {
+    "id": "b0b405aa-dcb0-438e-97ce-61a9b0911727",
+    "text": "That's one upload, end to end — drawn and narrated, step by step, in Talkie.",
+    "timelineItemId": "cd9077f9-3b89-4466-aed3-a0b972848fe8",
+    "audioFile": "b0b405aa-dcb0-438e-97ce-61a9b0911727-1791866971671.wav",
+    "voice": "af_heart",
+    "status": "narrated"
+  }
+]

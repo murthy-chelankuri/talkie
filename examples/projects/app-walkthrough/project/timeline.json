@@ -1,0 +1,92 @@
+[
+  {
+    "id": "dacbebb6-46c2-4513-9874-27f64380296d",
+    "kind": "scene",
+    "start": 0,
+    "duration": 201,
+    "data": {
+      "title": "Taskboard in a minute",
+      "layout": "title",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  },
+  {
+    "id": "e348bf43-bcb5-4870-ae05-b796b790af9b",
+    "kind": "video",
+    "start": 201,
+    "duration": 281,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/session-6b106cd7-c98c-41f1-88b5-115e09ecce52/video.mp4",
+      "trimBefore": 52,
+      "trimAfter": 333
+    }
+  },
+  {
+    "id": "2ce8b8ff-81b1-4c00-b1e4-50687415c430",
+    "kind": "video",
+    "start": 482,
+    "duration": 236,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/session-6b106cd7-c98c-41f1-88b5-115e09ecce52/video.mp4",
+      "trimBefore": 333,
+      "trimAfter": 569
+    }
+  },
+  {
+    "id": "806ea83e-be87-4c32-a188-f1c40a356297",
+    "kind": "video",
+    "start": 718,
+    "duration": 236,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/session-6b106cd7-c98c-41f1-88b5-115e09ecce52/video.mp4",
+      "trimBefore": 569,
+      "trimAfter": 805
+    }
+  },
+  {
+    "id": "84453762-7c1f-4670-b348-0a118d6696b1",
+    "kind": "video",
+    "start": 954,
+    "duration": 281,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/session-6b106cd7-c98c-41f1-88b5-115e09ecce52/video.mp4",
+      "trimBefore": 805,
+      "trimAfter": 1086
+    }
+  },
+  {
+    "id": "18c67636-40e0-4fe6-921b-a6545f0f7381",
+    "kind": "video",
+    "start": 1235,
+    "duration": 167,
+    "data": {
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/session-6b106cd7-c98c-41f1-88b5-115e09ecce52/video.mp4",
+      "trimBefore": 1086
+    }
+  },
+  {
+    "id": "b82a3d16-ee74-4d8a-a61e-a3a6d6ab32c8",
+    "kind": "scene",
+    "start": 1402,
+    "duration": 309,
+    "data": {
+      "title": "Recorded once. Narrated by Talkie.",
+      "layout": "closing",
+      "bullets": [],
+      "style": {
+        "theme": "brand",
+        "font": "serif",
+        "align": "center",
+        "size": "regular",
+        "accent": "#7ab5f0"
+      }
+    }
+  }
+]
