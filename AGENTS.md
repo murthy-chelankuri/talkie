@@ -26,7 +26,8 @@ hooks in `.githooks/` hold you to it — `npm install` points git at them. Befor
 types and the tests related to the staged files (seconds). Before a push: the types, the whole
 suite, and `npm run e2e` (a few minutes). `--no-verify` skips them once; it is not a habit.
 
-`npm install` also fetches the pinned ffmpeg and ffprobe into `vendor/ffmpeg/` (`scripts/fetchFfmpeg.mjs`); `npm run dev` checks they are there.
+`npm install` also fetches the pinned ffmpeg and ffprobe into `vendor/ffmpeg/`
+(`scripts/fetchFfmpeg.mjs`); `npm run dev` checks they are there.
 
 **The end-to-end run** (`e2e/`) exists because every change that broke something passed the
 tests nearest to it and broke a flow somewhere else: a Speak button that did nothing, Copy
@@ -409,7 +410,9 @@ the app stays the only writer.
 - Talkie's own code is **Apache-2.0**. That covers this repository and nothing else.
 - **Remotion is not open source.** Free for individuals, non-profits and companies of up to three
   people; larger for-profits need a paid licence. Cloning this does not grant one.
-- **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later) is fetched by `npm install`, and Remotion's compositor brings another (GPL-2.0-or-later) until step 3. Neither is in this repository.
+- **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later) is fetched by `npm install`,
+  and Remotion's compositor brings another (GPL-2.0-or-later) until step 3. Neither is in this
+  repository.
 - Publishing *source* carries no GPL obligation. **Shipping a built `.dmg` does**, including
   offering ffmpeg's source to every recipient. That is why no prebuilt binaries are published
   here, and why the Mac App Store is not a route (App Sandbox also blocks `say`, `afconvert`,

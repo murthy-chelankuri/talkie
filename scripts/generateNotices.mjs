@@ -55,7 +55,7 @@ const BUNDLED = [
     version: 'bundled with FFmpeg 9.0.2 and n7.1',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
-    note: 'H.264 encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x264.html',
+    note: 'H.264 encoder linked into the bundled FFmpeg builds. Source: https://www.videolan.org/developers/x264.html',
     homepage: 'https://www.videolan.org/developers/x264.html'
   },
   {
@@ -63,7 +63,7 @@ const BUNDLED = [
     version: 'bundled with FFmpeg 9.0.2 and n7.1',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
-    note: 'HEVC encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x265.html',
+    note: 'HEVC encoder linked into the bundled FFmpeg builds. Source: https://www.videolan.org/developers/x265.html',
     homepage: 'https://www.videolan.org/developers/x265.html'
   },
   {

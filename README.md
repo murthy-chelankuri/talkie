@@ -33,9 +33,9 @@ The result is `release/Talkie-<version>-arm64.dmg`, around 170MB, built for Appl
 Test the packaged app rather than only the dev build. The two differ in ways that have already
 bitten: the main bundle has to be CommonJS because Electron cannot load an ES module from inside
 an asar archive, `react` has to be a runtime dependency because `@remotion/renderer` requires it
-in the main process, and ffmpeg has to be located explicitly because it is copied out of the
-archive at build time. Each of those failed silently — the app started, reported itself ready,
-and never opened a window.
+in the main process, and Remotion's compositor has to be unpacked from the archive. Talkie's own
+ffmpeg is fetched on install and packaged as extraResources, outside it. Each of those failed
+silently — the app started, reported itself ready, and never opened a window.
 
 ### Running from source shows "Electron" in the menu bar
 

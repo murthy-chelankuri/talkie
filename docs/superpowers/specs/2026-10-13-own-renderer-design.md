@@ -28,7 +28,7 @@ starts from what this one leaves.
 | Step | PR | Done when |
 |---|---|---|
 | 1 | **The seam** — `src/video/`, every Remotion import goes through it, still delegating to Remotion | Nothing outside `src/video/` imports `remotion` or `@remotion/player`, and `@remotion/renderer`/`@remotion/bundler` only in `src/main/` and `scripts/` (steps 2–3 remove those); behaviour unchanged; all gates pass |
-| 2 | **Our own ffmpeg** — `src/main/media/`, `ffmpeg-static`/`ffprobe-static` replace the compositor's binaries | Nothing outside `src/main/media/` spawns ffmpeg; packaged build finds the binaries; all gates pass |
+| 2 | **Our own ffmpeg** — `src/main/media/`, pinned, hash-checked ffmpeg and ffprobe builds replace the compositor's binaries | Nothing outside `src/main/media/` spawns ffmpeg; packaged build finds the binaries; all gates pass |
 | 3 | **Our own export**, beside Remotion's (`TALKIE_RENDERER=remotion\|own`, default `own` once proven) | Comparison test and speed limit pass (§3) |
 | 4 | **Our own preview player** | Existing player e2e unchanged and passing; new in-step e2e passes (§4) |
 | 5 | **Remotion removed**, documentation and licensing rewritten | No `remotion` package installed; examples rebuilt and watched end to end |
@@ -189,7 +189,7 @@ the clock.
 - **Dependencies removed:** `remotion`, `@remotion/player`, `@remotion/renderer`,
   `@remotion/bundler`, the compositor packages. `licences.test.ts` fails if any `remotion`
   package is in the installed tree.
-- **README / NOTICE:** the Remotion section goes; the ffmpeg section describes `ffmpeg-static`
+- **README / NOTICE:** the Remotion section goes; the ffmpeg section describes the pinned builds (`scripts/ffmpegBuilds.json`)
   (GPL, not in the repository, fetched by npm; source-only vs installer table unchanged) and
   states what installers would need — an LGPL ffmpeg with the system encoders, and an answer for
   eSpeak NG in Kokoro.
