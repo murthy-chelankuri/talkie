@@ -71,8 +71,16 @@ This matters when binaries are distributed, not when source is:
 
 Talkie's own build is GPL-3.0-or-later, so a distributor may provide its source
 from a network location. The corresponding source is the FFmpeg 9.0.2 release
-plus the source of the x264 and x265 linked into it. `ffmpeg -buildconf` on
-vendor/ffmpeg/<system>/ffmpeg prints its exact configuration.
+plus the source of every library its `-buildconf` enables, because the build is
+statically linked. x264 and x265 are what make it GPL. The others are not
+covered by that choice: they carry their own licences, which a distributor of
+the binary must also collect and carry. For the macOS arm64 build the
+configuration names fontconfig, libaom, libass, libbluray, libdav1d,
+libfreetype, libharfbuzz, libklvanc, libmp3lame, libopenh264, libopenjpeg,
+libopus, librav1e, libsnappy, libsrt, libsvtav1, libtheora, libvmaf, libvorbis,
+libvpx, libvvenc, libwebp, libx264, libx265, libxml2, libzimg, libzvbi and
+openssl. Their licences have not been collected here. `ffmpeg -buildconf` on
+vendor/ffmpeg/<system>/ffmpeg prints the exact configuration of each build.
 
 The source links below apply to both builds:
 

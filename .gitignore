@@ -34,7 +34,7 @@ go.work.sum
 # Node / Electron
 node_modules/
 # The pinned ffmpeg and ffprobe, fetched by scripts/fetchFfmpeg.mjs on install.
-vendor/
+/vendor/
 out/
 dist/
 .vite/

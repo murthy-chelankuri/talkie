@@ -14,9 +14,10 @@ import { closeAssetServer } from './assetServer'
 /**
  * The average colour of a small patch of one frame, as [r, g, b].
  *
- * Shrunk to a single pixel and written as a PNG: the ffmpeg Remotion ships cannot write raw
- * pixels, and a one-pixel PNG is one zlib stream holding a filter byte and three colour bytes —
- * with no neighbours, every PNG filter leaves them as they are.
+ * Shrunk to a single pixel and written as a PNG. That was chosen when Remotion's narrower ffmpeg
+ * could not write raw pixels; Talkie's pinned build can, but the PNG works and is left alone. A
+ * one-pixel PNG is one zlib stream holding a filter byte and three colour bytes — with no
+ * neighbours, every PNG filter leaves them as they are.
  */
 async function patchColour(video: string, seconds: number, dir: string): Promise<number[]> {
   const png = join(dir, 'patch.png')

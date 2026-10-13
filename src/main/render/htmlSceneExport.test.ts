@@ -10,7 +10,7 @@ import { runFfmpeg } from '../media'
 import { renderProjectVideo } from './renderProject'
 import { closeAssetServer } from './assetServer'
 
-/** The average colour of a 40-pixel patch of one frame — see themedExport.test.ts for why a PNG. */
+/** The average colour of a 40-pixel patch of one frame, read with Talkie's pinned ffmpeg — see themedExport.test.ts for why a PNG. */
 async function patchColour(video: string, seconds: number, x: number, y: number, dir: string): Promise<number[]> {
   const png = join(dir, 'patch.png')
   await runFfmpeg(['-ss', String(seconds), '-i', video, '-frames:v', '1', '-vf', `crop=40:40:${x}:${y},scale=1:1,format=rgb24`, '-y', png])

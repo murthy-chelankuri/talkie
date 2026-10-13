@@ -20,7 +20,6 @@ import { join, dirname } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
-import extract from 'extract-zip'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const table = JSON.parse(readFileSync(join(root, 'scripts', 'ffmpegBuilds.json'), 'utf-8'))
@@ -29,11 +28,18 @@ const ensure = process.argv.includes('--ensure')
 const target = join(root, 'vendor', 'ffmpeg', key)
 const BINARIES = ['ffmpeg', 'ffprobe']
 
-/** Both binaries, from the build the table names. A half-finished fetch has no build.json. */
+/**
+ * Both binaries, from the build the table names. A half-finished fetch has no build.json. The
+ * hashes are compared as well as the version: a build re-pinned within one version is a
+ * different file, and comparing the version alone would keep the old one.
+ */
 function installed(build) {
   try {
     const stamp = JSON.parse(readFileSync(join(target, 'build.json'), 'utf-8'))
-    return stamp.version === build.version && BINARIES.every((name) => existsSync(join(target, name)))
+    return (
+      stamp.version === build.version &&
+      BINARIES.every((name) => stamp[name] === build[name].sha256 && existsSync(join(target, name)))
+    )
   } catch {
     return false
   }
@@ -41,7 +47,8 @@ function installed(build) {
 
 /** Downloads to `to`, hashing as it goes, and keeps the file only if it is the one pinned. */
 async function download({ url, sha256 }, to) {
-  const response = await fetch(url)
+  // A proxy that accepts the connection and then says nothing would otherwise hang an install.
+  const response = await fetch(url, { signal: AbortSignal.timeout(10 * 60_000) })
   if (!response.ok || !response.body) throw new Error(`${url} answered ${response.status}`)
   const hash = createHash('sha256')
   await pipeline(
@@ -70,7 +77,7 @@ function fail(message) {
     '',
     '  1. npm is set not to run install scripts, which is what fetches it:',
     '       npm config get ignore-scripts        # must be false',
-    `  2. ${table.source} could not be reached — a proxy or VPN may refuse it.`,
+    `  2. ${table.source} could not be reached — a proxy or VPN may refuse it. Node's download does not follow npm's proxy settings.`,
     '  3. An install that was interrupted.',
     '',
     'Then run:  node scripts/fetchFfmpeg.mjs --ensure',
@@ -91,7 +98,11 @@ if (!build) {
   console.log(`Fetching ffmpeg ${build.version} for ${key} from ${table.source}…`)
   // Beside the target, so moving the binaries in is a rename on one disk, not a copy across two.
   const staging = join(root, 'vendor', 'ffmpeg', `.staging-${process.pid}`)
+  let failure = null
   try {
+    // Loaded here so a missing devDependency is reported like any other failed fetch, rather than
+    // crashing `npm install` on an import error.
+    const { default: extract } = await import('extract-zip')
     rmSync(staging, { recursive: true, force: true })
     mkdirSync(staging, { recursive: true })
     for (const name of BINARIES) {
@@ -104,11 +115,17 @@ if (!build) {
     mkdirSync(target, { recursive: true })
     for (const name of BINARIES) renameSync(join(staging, name), join(target, name))
     // Written last: its presence is what says the fetch finished.
-    writeFileSync(join(target, 'build.json'), JSON.stringify({ version: build.version, source: table.source }, null, 2) + '\n')
+    writeFileSync(join(target, 'build.json'), JSON.stringify(
+        { version: build.version, source: table.source, ffmpeg: build.ffmpeg.sha256, ffprobe: build.ffprobe.sha256 },
+        null,
+        2
+      ) + '\n')
     console.log(`ffmpeg ${build.version} is in vendor/ffmpeg/${key}`)
   } catch (err) {
-    fail(`Could not fetch ffmpeg: ${err instanceof Error ? err.message : err}`)
+    failure = err
   } finally {
+    // Before fail(), which under --ensure exits the process and would skip this.
     rmSync(staging, { recursive: true, force: true })
   }
+  if (failure) fail(`Could not fetch ffmpeg: ${failure instanceof Error ? failure.message : failure}`)
 }

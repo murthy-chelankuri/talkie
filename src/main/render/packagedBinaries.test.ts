@@ -42,6 +42,15 @@ describe('shelling out from a packaged build', () => {
     expect(source.slice(call, call + 400)).toContain('binariesDirectory')
   })
 
+  it('fetches ffmpeg before packaging, so a build never ships without it', () => {
+    // electron-builder only logs an extraResources source that is missing and carries on, so
+    // the packaged app would start and find nothing to record or speak with.
+    const { scripts } = JSON.parse(readFileSync(join(MAIN, '..', '..', 'package.json'), 'utf-8'))
+
+    expect(scripts.package).toMatch(/^node scripts\/fetchFfmpeg\.mjs --ensure &&/)
+    expect(scripts['package:dir']).toMatch(/^node scripts\/fetchFfmpeg\.mjs --ensure &&/)
+  })
+
   it('ships Talkie’s own ffmpeg outside the archive, where src/main/media looks for it', () => {
     const builder = readFileSync(join(MAIN, '..', '..', 'electron-builder.yml'), 'utf-8')
     // packagedResources() + 'ffmpeg' is where toolPath looks in a packaged build.

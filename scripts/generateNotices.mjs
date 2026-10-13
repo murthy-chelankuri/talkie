@@ -37,7 +37,8 @@ const BUNDLED = [
     note:
       'Fetched on install from ffmpeg.martin-riedl.de, pinned by SHA-256, and used for recording, ' +
       'frame sampling, audio and measuring footage. Built with --enable-gpl --enable-version3, x264 ' +
-      'and x265. Source: https://ffmpeg.org/download.html',
+      'and x265. Statically linked, so a distributor also needs the source and licences of every other ' +
+      'library its -buildconf enables. Source: https://ffmpeg.org/download.html',
     homepage: 'https://ffmpeg.martin-riedl.de'
   },
   {

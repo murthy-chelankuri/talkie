@@ -39,8 +39,9 @@ const ONE_PIXEL_PNG_BASE64 =
 /**
  * A silent clip of a known length, standing in for a recording.
  *
- * Built from a still rather than from `lavfi`: Remotion's bundled ffmpeg is a narrow build and
- * has no `color` source in it, and this has to be the same binary the app itself measures with.
+ * Built from a still rather than from `lavfi`: this was written when Remotion's bundled ffmpeg
+ * was a narrow build with no `color` source. Talkie's pinned build has one, but the still works and
+ * is left alone; either way it runs through the same binary the app itself measures with.
  */
 async function clipOf(seconds: number, path: string): Promise<void> {
   const still = `${path}.png`

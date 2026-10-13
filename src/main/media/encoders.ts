@@ -7,12 +7,16 @@ type Encoder = { name: string; quality: Record<EncodePurpose, string[]> }
 
 /**
  * Each system's H.264 encoders, best first; the first the installed ffmpeg offers is used.
- * Hardware encoders only: they carry no licence with them, which is what keeps a build of
- * ffmpeg without the GPL ones a substitution rather than a rewrite (see gplEncoders.test.ts).
- * Windows and Linux rows arrive with project 2.
+ * The macOS row is hardware only: a hardware encoder carries no licence with it, which is what
+ * keeps a build of ffmpeg without the GPL ones a substitution rather than a rewrite (see
+ * gplEncoders.test.ts). What the other systems' rows hold, Linux's last resort included, is
+ * project 2's decision.
  */
 const H264: Partial<Record<NodeJS.Platform, Encoder[]>> = {
-  // -q:v 65 is what recordings have always been stitched at: a small file that seeks cleanly.
+  // VideoToolbox takes `-q:v`, not `-crf`, and has no `-preset` because the encoder is
+  // fixed-function. 65 is a little richer than the crf 23 it replaced, deliberately: this file is
+  // the source the final render reads, so its losses are inherited, and a hardware encode is
+  // cheap enough that the extra bits cost nothing worth counting.
   darwin: [{ name: 'h264_videotoolbox', quality: { intermediate: ['-q:v', '65'] } }]
 }
 

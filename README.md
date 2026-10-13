@@ -28,7 +28,7 @@ npm run package       # a .dmg in release/
 npm run package:dir   # just the .app, for testing the packaged build quickly
 ```
 
-The result is `release/Talkie-<version>-arm64.dmg`, around 170MB, built for Apple Silicon.
+The result is `release/Talkie-<version>-arm64.dmg`, built for Apple Silicon. It was around 170MB before Talkie carried its own ffmpeg; the pinned ffmpeg and ffprobe add about 126MB unpacked (`du -sh vendor/ffmpeg/*`), so expect the installed app to be that much larger and the disk image somewhat less, since it compresses. The figure for a current build has not been re-measured.
 
 Test the packaged app rather than only the dev build. The two differ in ways that have already
 bitten: the main bundle has to be CommonJS because Electron cannot load an ES module from inside

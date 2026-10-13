@@ -28,8 +28,9 @@ function probe(path: string): { seconds: number; audio: boolean } {
 }
 
 /**
- * The video's soundtrack, taken out as a WAV so it can be measured like a take. Through a file
- * decoded to PCM and measured here rather than by a filter, which keeps the measurement the same whatever ffmpeg build is installed.
+ * The video's soundtrack, taken out as a WAV so it can be measured like a take. It is decoded
+ * to PCM and measured here rather than by a filter, so the measurement does not depend on which
+ * ffmpeg build is installed.
  */
 function soundtrack(video: string): TakeShape {
   const wav = join(fixture.home, 'soundtrack.wav')

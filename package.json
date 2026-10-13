@@ -21,8 +21,8 @@
     "examples:rebuild": "vitest run -c vitest.examples.config.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "postinstall": "node scripts/fetchFfmpeg.mjs",
-    "package": "npm run notices && npm run build && electron-builder --mac",
-    "package:dir": "npm run build && electron-builder --mac --dir",
+    "package": "node scripts/fetchFfmpeg.mjs --ensure && npm run notices && npm run build && electron-builder --mac",
+    "package:dir": "node scripts/fetchFfmpeg.mjs --ensure && npm run build && electron-builder --mac --dir",
     "build:mcp": "vite build --config vite.mcp.config.ts",
     "build:remotion": "node scripts/bundleRemotion.mjs",
     "build:htmlscene": "node scripts/bundleHtmlScene.mjs"

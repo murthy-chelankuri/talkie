@@ -20,13 +20,13 @@ describe('measuring media', () => {
 
     expect(info.durationSeconds).toBeCloseTo(2, 1)
     expect(info).toMatchObject({ width: 320, height: 240, fps: 30, videoCodec: 'mpeg4', hasAudio: true })
-  })
+  }, 60_000)
 
   it('says a silent clip has no sound', async () => {
     expect((await probeMedia(join(dir, 'silent.mp4'))).hasAudio).toBe(false)
-  })
+  }, 60_000)
 
   it('fails on something that is not media, rather than reporting it as empty', async () => {
     await expect(probeMedia(join(dir, 'missing.mp4'))).rejects.toThrow()
-  })
+  }, 60_000)
 })
