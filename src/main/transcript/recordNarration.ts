@@ -1,7 +1,6 @@
 import { homedir } from 'os'
 import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
 import { findProjectDir } from '../project/paths'
 import {
   readTranscript,
@@ -12,7 +11,7 @@ import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
 import { RECORDED_VOICE } from './schema'
 import type { TranscriptSegment } from './schema'
-import { ffOptions } from '../render/binaries'
+import { runFfmpeg } from '../media'
 import { TAKE_LOUDNESS, measuredLoudnessFilter, singlePassLoudnessFilter } from '../render/loudness'
 
 /**
@@ -56,9 +55,7 @@ export async function saveRecordedNarration(
 
   writeFileSync(sourcePath, recording)
   try {
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: [
+    await runFfmpeg([
         '-i',
         sourcePath,
         '-af',
@@ -73,10 +70,7 @@ export async function saveRecordedNarration(
         'pcm_s16le',
         '-y',
         audioPath
-      ],
-      ...ffOptions(),
-      cancelSignal: undefined
-    })
+    ])
   } catch (err) {
     rmSync(sourcePath, { force: true })
     throw new Error(`Could not save the recording: ${err instanceof Error ? err.message : String(err)}`)

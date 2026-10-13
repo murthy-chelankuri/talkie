@@ -52,7 +52,9 @@ describe('the encoders the app asks for', () => {
   it('encodes the stitched recording with the hardware encoder', () => {
     const source = readFileSync(join(MAIN, 'capture', 'stitchRecording.ts'), 'utf-8')
 
-    expect(source).toContain('h264_videotoolbox')
+    // The choice lives in src/main/media's table now; the stitch must ask it rather than name one.
+    expect(source).toContain("h264('intermediate')")
+    expect(readFileSync(join(MAIN, 'media', 'encoders.ts'), 'utf-8')).toContain('h264_videotoolbox')
     // VideoToolbox rejects both, so their presence would mean the encoder had been changed back.
     expect(source).not.toMatch(/'-crf'/)
     expect(source).not.toMatch(/'-preset'/)

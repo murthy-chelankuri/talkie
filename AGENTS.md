@@ -26,6 +26,9 @@ hooks in `.githooks/` hold you to it — `npm install` points git at them. Befor
 types and the tests related to the staged files (seconds). Before a push: the types, the whole
 suite, and `npm run e2e` (a few minutes). `--no-verify` skips them once; it is not a habit.
 
+`npm install` also fetches the pinned ffmpeg and ffprobe into `vendor/ffmpeg/`
+(`scripts/fetchFfmpeg.mjs`); `npm run dev` checks they are there.
+
 **The end-to-end run** (`e2e/`) exists because every change that broke something passed the
 tests nearest to it and broke a flow somewhere else: a Speak button that did nothing, Copy
 buttons refused a permission, a Kokoro take with its first sentence missing. Each was only
@@ -67,13 +70,17 @@ These each cost real time to find. None are obvious from the code.
 - **Test the packaged build, not only `npm run dev`.** They differ in ways that have already
   caused silent failures. `process.cwd()` in particular is *not* the app directory once packaged —
   it is wherever the app was launched from, which is `/` from Finder. Use `__dirname`.
-- **Anything that shells out has to be told where the binaries are**, through `ffOptions()` or
-  `binariesDirectory()`. Remotion looks beside its own package, which once packaged is inside the
-  asar archive where nothing can be executed. Every `callFf` call passed it; the two
-  `getVideoMetadata` calls did not, so measuring a recording threw, the import's three-second
-  placeholder stood in for the real length, and every packaged recording arrived on the timeline
-  as three seconds of its opening. `packagedBinaries.test.ts` reads these off the source, because
-  running them in the suite only ever exercises the checkout layout — the case that always worked.
+- **ffmpeg and ffprobe are reached only through `src/main/media/`.** They are pinned builds
+  (`scripts/ffmpegBuilds.json`, GPL-3.0, nothing nonfree — `ffmpeg-static`'s macOS build calls
+  itself not redistributable, and `ffprobe-static`'s Apple Silicon binary does not run), fetched
+  into `vendor/ffmpeg/<platform>-<arch>/` and packaged into `Resources/ffmpeg/` as extraResources.
+  `toolPath()` finds them from its own folder — the path up to `app.asar`, or up to the checkout
+  — never the working directory and never `process.resourcesPath`, which the MCP server does not
+  have. It used to be every call site's job: one `getVideoMetadata` call was never told where the
+  binaries were, and every packaged recording arrived as three seconds of its opening.
+  `mediaBoundary.test.ts` fails on any other way in. Encoders come from `h264()`'s table per
+  system, hardware only. Remotion's export still uses its own compositor until step 3
+  (`render/binaries.ts`, `packagedBinaries.test.ts`).
 - **Remotion is handed a browser too**, through `browserExecutablePath()`. Left to find its own
   it works out where to download one by walking up from the working directory looking for a
   package.json — from `/` there is none, so it settles on `/.remotion` and export dies with
@@ -403,8 +410,9 @@ the app stays the only writer.
 - Talkie's own code is **Apache-2.0**. That covers this repository and nothing else.
 - **Remotion is not open source.** Free for individuals, non-profits and companies of up to three
   people; larger for-profits need a paid licence. Cloning this does not grant one.
-- **The ffmpeg inside Remotion's compositor is GPL-2.0-or-later** (`--enable-gpl`, x264, x265).
-  It is not in this repository — `npm install` fetches it.
+- **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later) is fetched by `npm install`,
+  and Remotion's compositor brings another (GPL-2.0-or-later) until step 3. Neither is in this
+  repository.
 - Publishing *source* carries no GPL obligation. **Shipping a built `.dmg` does**, including
   offering ffmpeg's source to every recipient. That is why no prebuilt binaries are published
   here, and why the Mac App Store is not a route (App Sandbox also blocks `say`, `afconvert`,

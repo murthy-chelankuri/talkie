@@ -23,13 +23,17 @@ files:
 extraResources:
   - from: licences
     to: licences
+  # Talkie's own ffmpeg and ffprobe, fetched by scripts/fetchFfmpeg.mjs. Outside the archive
+  # because nothing can be executed from inside it; src/main/media finds them here.
+  - from: vendor/ffmpeg/${platform}-${arch}
+    to: ffmpeg
   # The example projects, built by `npm run examples:rebuild` and copied into ~/Talkie/Projects on first
   # launch. Outside the archive because they are copied with plain fs calls. See installExamples.ts.
   - from: examples/projects
     to: examples
 
 # Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
-# ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver
+# ffmpeg Remotion's export renders with; Playwright's driver
 # is a node process it spawns. Both have to sit on the filesystem as real files.
 asarUnpack:
   # The MCP server is spawned by an outside agent as a plain node process, which cannot read a

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getVideoMetadata } from '@remotion/renderer'
+import { probeMedia } from '../media'
 import { createProject } from '../project/projectApi'
 import { startRecordingSession } from './recordSession'
 import { importRecordedSession } from './importRecordedSession'
@@ -38,8 +38,8 @@ describe('a recording long enough to be several scenes', () => {
 
     const scenes = await importRecordedSession(project.id, recording, baseDir)
     const src = (scenes[0].data as { src: string }).src
-    const { durationInSeconds } = await getVideoMetadata(src)
-    const totalFrames = Math.round((durationInSeconds ?? 0) * FPS)
+    const { durationSeconds } = await probeMedia(src)
+    const totalFrames = Math.round((durationSeconds ?? 0) * FPS)
 
     expect(scenes.length).toBeGreaterThan(1)
 

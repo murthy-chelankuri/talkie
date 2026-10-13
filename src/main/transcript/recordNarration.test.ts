@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
+import { runFfmpeg } from '../media'
 import { createProject, addTimelineItem, addTranscriptSegment, readTimeline } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { saveRecordedNarration } from './recordNarration'
@@ -14,18 +14,11 @@ import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remo
 async function makeWebmRecording(seconds: number): Promise<Uint8Array> {
   const dir = mkdtempSync(join(tmpdir(), 'talkie-webm-'))
   const path = join(dir, 'take.webm')
-  await RenderInternals.callFf({
-    bin: 'ffmpeg',
-    args: [
+  await runFfmpeg([
       '-f', 'lavfi',
       '-i', `sine=frequency=220:duration=${seconds}`,
       '-c:a', 'libopus', '-b:a', '48k', '-y', path
-    ],
-    indent: false,
-    logLevel: 'error',
-    binariesDirectory: null,
-    cancelSignal: undefined
-  })
+    ])
   const { readFileSync } = await import('fs')
   const bytes = new Uint8Array(readFileSync(path))
   rmSync(dir, { recursive: true, force: true })
@@ -141,16 +134,12 @@ describe('making a take sit alongside the synthesised clips', () => {
   async function makeQuietRecording(seconds: number, gain: string): Promise<Uint8Array> {
     const dir = mkdtempSync(join(tmpdir(), 'talkie-quiet-'))
     const path = join(dir, 'take.webm')
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: [
+    await runFfmpeg([
         '-f', 'lavfi',
         '-i', `sine=frequency=180:duration=${seconds}`,
         '-af', `volume=${gain}`,
         '-c:a', 'libopus', '-b:a', '48k', '-y', path
-      ],
-      indent: false, logLevel: 'error', binariesDirectory: null, cancelSignal: undefined
-    })
+      ])
     const { readFileSync } = await import('fs')
     const bytes = new Uint8Array(readFileSync(path))
     rmSync(dir, { recursive: true, force: true })
@@ -158,11 +147,7 @@ describe('making a take sit alongside the synthesised clips', () => {
   }
 
   async function integratedLoudness(path: string): Promise<number> {
-    const result = await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: ['-i', path, '-af', 'loudnorm=print_format=summary', '-f', 'null', '-'],
-      indent: false, logLevel: 'info', binariesDirectory: null, cancelSignal: undefined
-    })
+    const result = await runFfmpeg(['-i', path, '-af', 'loudnorm=print_format=summary', '-f', 'null', '-'])
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
     return Number(output.match(/Input Integrated:\s*(-?[\d.]+)/)?.[1])
   }

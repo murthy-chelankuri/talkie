@@ -11,16 +11,16 @@ import { join, relative, sep } from 'path'
  * again, so this reads the sources, tests and mocks included: a test mocking `remotion` directly
  * is testing a scene against something it no longer imports.
  *
- * The main process still exports and measures with @remotion/renderer and @remotion/bundler; steps 2
- * and 3 replace those, and narrow MAIN_PROCESS_PLACES as they go.
+ * Remotion's export (@remotion/renderer, @remotion/bundler) is all that is left of it in the main
+ * process, in src/main/render; step 3 replaces it.
  */
 const ROOT = join(__dirname, '..', '..')
 const SEAM = join('src', 'video') + sep
 const SCANNED = ['src', 'scripts', 'e2e', join('examples', 'build')]
 
-/** Export and ffmpeg, still Remotion's until steps 2 and 3, and kept to where they are used. */
+/** Export, still Remotion's until step 3, and kept to where it is used. */
 const MAIN_PROCESS_ONLY = ['@remotion/renderer', '@remotion/bundler']
-const MAIN_PROCESS_PLACES = [join('src', 'main') + sep, join('scripts') + sep]
+const MAIN_PROCESS_PLACES = [join('src', 'main', 'render') + sep, join('scripts') + sep]
 
 function sourceFiles(dir: string): string[] {
   const found: string[] = []

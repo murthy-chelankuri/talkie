@@ -2,8 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
-import { ffOptions } from './binaries'
+import { runFfmpeg } from '../media'
 import { DELIVERY_LOUDNESS, TAKE_LOUDNESS, levelExport, levelTake, measuredLoudnessFilter } from './loudness'
 import { readWavFormat } from '../tts/wavDuration'
 
@@ -21,7 +20,7 @@ afterAll(() => {
 })
 
 async function ff(args: string[]): Promise<void> {
-  await RenderInternals.callFf({ bin: 'ffmpeg', args: [...args, '-y'], ...ffOptions(), cancelSignal: undefined })
+  await runFfmpeg([...args, '-y'])
 }
 
 /** A tone at a known level stands in for a voice: loudness is measured the same way. */

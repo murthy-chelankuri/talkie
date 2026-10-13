@@ -2,14 +2,14 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 
 /**
- * Where the bundled ffmpeg and ffprobe are, if they are not where Remotion would look.
+ * Where Remotion's own compositor binaries are, for Remotion's export (renderMedia and
+ * selectComposition in renderProject.ts) and nothing else; everything Talkie runs itself goes
+ * through src/main/media. Goes with step 3 of the renderer, when Talkie's own export replaces it.
  *
  * Remotion resolves them relative to its own package, which works while the app runs from a
  * checkout. In a packaged build the code lives inside an asar archive, and a native binary
  * cannot be executed from there — electron-builder copies it out to `app.asar.unpacked`, and
- * nothing rewrites Remotion's idea of where it went. Passing the unpacked directory explicitly
- * is what makes export, frame sampling and audio conversion work in a packaged app rather than
- * failing the first time any of them is used.
+ * nothing rewrites Remotion's idea of where it went.
  */
 export function binariesDirectory(): string | null {
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath
@@ -29,9 +29,4 @@ function compositorDirectory(remotionDir: string): string | null {
 
   const candidate = join(remotionDir, `compositor-${platform}-${arch}`)
   return existsSync(candidate) ? candidate : null
-}
-
-/** The arguments every `callFf` call shares, so the binaries are found the same way everywhere. */
-export function ffOptions(): { binariesDirectory: string | null; indent: false; logLevel: 'error' } {
-  return { binariesDirectory: binariesDirectory(), indent: false, logLevel: 'error' }
 }

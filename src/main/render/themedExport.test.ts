@@ -3,30 +3,25 @@ import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import { inflateSync } from 'zlib'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
 import { createProject } from '../project/projectApi'
 import { createTheme } from '../themes/themeApi'
 import { defaultThemeDraft } from '../themes/schema'
 import { setProjectTheme } from '../themes/applyTheme'
+import { runFfmpeg } from '../media'
 import { renderProjectVideo } from './renderProject'
 import { closeAssetServer } from './assetServer'
-import { ffOptions } from './binaries'
 
 /**
  * The average colour of a small patch of one frame, as [r, g, b].
  *
- * Shrunk to a single pixel and written as a PNG: the ffmpeg Remotion ships cannot write raw
- * pixels, and a one-pixel PNG is one zlib stream holding a filter byte and three colour bytes —
- * with no neighbours, every PNG filter leaves them as they are.
+ * Shrunk to a single pixel and written as a PNG. That was chosen when Remotion's narrower ffmpeg
+ * could not write raw pixels; Talkie's pinned build can, but the PNG works and is left alone. A
+ * one-pixel PNG is one zlib stream holding a filter byte and three colour bytes — with no
+ * neighbours, every PNG filter leaves them as they are.
  */
 async function patchColour(video: string, seconds: number, dir: string): Promise<number[]> {
   const png = join(dir, 'patch.png')
-  await RenderInternals.callFf({
-    bin: 'ffmpeg',
-    args: ['-ss', String(seconds), '-i', video, '-frames:v', '1', '-vf', 'crop=40:40:0:0,scale=1:1,format=rgb24', '-y', png],
-    ...ffOptions(),
-    cancelSignal: undefined
-  })
+  await runFfmpeg(['-ss', String(seconds), '-i', video, '-frames:v', '1', '-vf', 'crop=40:40:0:0,scale=1:1,format=rgb24', '-y', png])
   const bytes = readFileSync(png)
   const data: Buffer[] = []
   for (let at = 8; at < bytes.length; ) {
