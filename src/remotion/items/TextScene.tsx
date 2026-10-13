@@ -1,4 +1,4 @@
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { Fill, interpolate, spring, useFrame, useVideoConfig } from '../../video'
 import { LogoMark } from '../LogoMark'
 import { revealFrames, type Beat } from '../revealOnBeat'
 import type { TextSceneData } from '../../main/project/timeline/schema'
@@ -19,7 +19,7 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
   const { title, bullets, style, beats, layout } = data as TextSceneData & { beats?: Beat[] }
   const project = useRenderTheme()
   const theme = resolveSceneTheme(style, project)
-  const frame = useCurrentFrame()
+  const frame = useFrame()
   const { fps } = useVideoConfig()
 
   if (layout === 'title' || layout === 'closing') {
@@ -52,7 +52,7 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
   const reveals = revealFrames(bullets.length, beats ?? [], fps)
 
   return (
-    <AbsoluteFill
+    <Fill
       style={{
         background: theme.background,
         padding: '9% 11%',
@@ -134,7 +134,7 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
           })}
         </ul>
       )}
-    </AbsoluteFill>
+    </Fill>
   )
 }
 
@@ -165,7 +165,7 @@ function Card({
   const tagline = project?.tagline && project.tagline !== title ? project.tagline : ''
 
   return (
-    <AbsoluteFill
+    <Fill
       style={{
         background: look.background,
         padding: '9% 11%',
@@ -198,6 +198,6 @@ function Card({
       {layout === 'closing' && project?.website && (
         <span style={{ fontSize: 38, color: look.accent }}>{project.website}</span>
       )}
-    </AbsoluteFill>
+    </Fill>
   )
 }

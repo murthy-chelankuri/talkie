@@ -1,4 +1,4 @@
-import { Audio, Sequence } from 'remotion'
+import { Sequence, Sound } from '../video'
 import { CaptionOverlay, type CaptionCue } from './CaptionOverlay'
 import type { TimelineItem } from './types'
 import { ITEM_REGISTRY } from './itemRegistry'
@@ -35,7 +35,7 @@ export function DemoComposition({
             {captions && captions.length > 0 && <CaptionOverlay cues={captions} />}
             {audioUrl && (
               <Sequence from={NARRATION_LEAD_IN_FRAMES}>
-                <Audio src={audioUrl} />
+                <Sound src={audioUrl} />
               </Sequence>
             )}
           </Sequence>

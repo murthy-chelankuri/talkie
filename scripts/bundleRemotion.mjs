@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { bundle } from '@remotion/bundler'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const ENTRY = join(root, 'src/remotion/index.tsx')
+const ENTRY = join(root, 'src/video/remotionEntry.tsx')
 const OUT = join(root, 'out/remotion')
 
 // Built fresh: a stale bundle is worse than none, because it renders successfully and shows the

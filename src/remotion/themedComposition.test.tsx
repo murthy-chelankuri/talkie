@@ -6,16 +6,15 @@ import { logoPlacement } from './LogoOverlay'
 import { captionLook } from './CaptionOverlay'
 import { fontFaceCss } from './ThemeFonts'
 
-// Remotion's hooks want a player around them; the frame they would report is all these need.
-vi.mock('remotion', () => ({
-  AbsoluteFill: ({ children, style }: { children?: ReactNode; style?: object }) => <div style={style}>{children}</div>,
-  Img: (props: Record<string, unknown>) => <img {...props} />,
-  useCurrentFrame: () => 60,
+// The scenes' clock wants a player around it; the frame it would report is all these need.
+vi.mock('../video', () => ({
+  Fill: ({ children, style }: { children?: ReactNode; style?: object }) => <div style={style}>{children}</div>,
+  Picture: (props: Record<string, unknown>) => <img {...props} />,
+  useFrame: () => 60,
   useVideoConfig: () => ({ fps: 30, width: 1920, height: 1080 }),
   spring: () => 1,
   interpolate: (_v: number, _i: number[], out: number[]) => out[out.length - 1],
-  delayRender: () => 1,
-  continueRender: () => undefined
+  hold: () => () => undefined
 }))
 
 const { TextScene } = await import('./items/TextScene')

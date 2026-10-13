@@ -74,7 +74,7 @@ describe('DemoComposition (real Remotion render)', () => {
     const audioUrl = `http://127.0.0.1:${port}/narration.wav`
 
     try {
-      const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/remotion/index.tsx') })
+      const bundleLocation = await bundle({ entryPoint: join(process.cwd(), 'src/video/remotionEntry.tsx') })
       const timeline = [{ id: 'a', kind: 'image', start: 0, duration: 90, data: { src: imageUrl, audioUrl } }]
       const composition = await selectComposition({ serveUrl: bundleLocation, id: COMPOSITION_ID, inputProps: { timeline } })
 

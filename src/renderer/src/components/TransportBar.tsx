@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import type { PlayerRef } from '@remotion/player'
+import type { PreviewHandle } from '../../../video/preview'
 import { Maximize2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import type { TimelineItem } from '../api/projectClient'
 import { formatTimecode, nextClipStart, previousClipStart } from '../lib/timelineLayout'
@@ -13,7 +13,7 @@ export function TransportBar({
   totalFrames,
   onSeek
 }: {
-  playerRef: RefObject<PlayerRef | null>
+  playerRef: RefObject<PreviewHandle | null>
   timeline: TimelineItem[]
   totalFrames: number
   onSeek: (frame: number) => void

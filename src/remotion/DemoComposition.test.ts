@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Sequence } from 'remotion'
+import { Sequence } from '../video'
 import { DemoComposition } from './DemoComposition'
 import { NARRATION_LEAD_IN_FRAMES } from './constants'
 import type { TimelineItem } from './types'
 
 /**
- * Remotion components need a player context to render, so rather than rendering this asserts on
+ * The composition's clock needs a player context to render, so rather than rendering this asserts on
  * the element tree the composition builds — which is where the audio offset lives.
  */
 function audioSequenceFor(item: TimelineItem): Record<string, unknown> | null {

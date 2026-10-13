@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  AbsoluteFill,
-  continueRender,
-  delayRender,
-  interpolate,
-  spring,
-  useCurrentFrame,
-  useVideoConfig
-} from 'remotion'
+import { Fill, hold, interpolate, spring, useFrame, useVideoConfig } from '../../video'
 import type { DiagramSceneData } from '../../main/project/timeline/schema'
 import { resolveSceneTheme } from '../sceneTheme'
 import { useRenderTheme } from '../renderTheme'
@@ -24,14 +16,14 @@ import { revealFrames, type Beat } from '../revealOnBeat'
 export function DiagramScene({ data }: { data: unknown }): JSX.Element {
   const { src, title, style, beats } = data as DiagramSceneData & { beats?: Beat[] }
   const theme = resolveSceneTheme(style, useRenderTheme())
-  const frame = useCurrentFrame()
+  const frame = useFrame()
   const { fps } = useVideoConfig()
   const [markup, setMarkup] = useState<string | null>(null)
 
   useEffect(() => {
     if (!src) return
     // The frame is held until the diagram is in hand, or the export would capture an empty one.
-    const handle = delayRender(`Fetching diagram ${src}`)
+    const release = hold(`Fetching diagram ${src}`)
     let cancelled = false
 
     fetch(src)
@@ -42,7 +34,7 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
       .catch(() => {
         if (!cancelled) setMarkup('')
       })
-      .finally(() => continueRender(handle))
+      .finally(release)
 
     return () => {
       cancelled = true
@@ -72,7 +64,7 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
       : reveals.filter((showAt) => frame >= showAt).length - 1
 
   return (
-    <AbsoluteFill
+    <Fill
       style={{
         background: theme.background,
         padding: title ? '6% 8% 8%' : '8%',
@@ -122,6 +114,6 @@ export function DiagramScene({ data }: { data: unknown }): JSX.Element {
           </span>
         )}
       </div>
-    </AbsoluteFill>
+    </Fill>
   )
 }
