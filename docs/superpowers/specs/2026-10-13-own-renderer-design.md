@@ -20,7 +20,7 @@ starts from what this one leaves.
 | Distribution | **Source only for now**; installers later. GPL tools are acceptable today, but no feature may *depend* on a GPL-only component, so an installer later is a substitution, not a rewrite. |
 | Approach | **A — frame-by-frame screenshots from several headless tabs**, keeping the React composition. Not a canvas rewrite (HTML scenes would still need A — two renderers), not Revideo (every scene rewritten; another dependency we do not control). |
 | Migration | **Step by step**, one PR each, Remotion kept as the reference until the last step. |
-| ffmpeg | `ffmpeg-static` + `ffprobe-static` (all three systems), behind one module, with an encoder table per system. |
+| ffmpeg | Pinned builds of ffmpeg and ffprobe (GPL-3.0, nothing nonfree) fetched and hash-checked by `scripts/fetchFfmpeg.mjs`, behind one module, with an encoder table per system. Not `ffmpeg-static`/`ffprobe-static`; see §2. |
 | Platforms | Every new piece works on macOS, Windows and Linux; only project 2's encoder rows and packaging are left. |
 
 ## The five steps
@@ -74,9 +74,7 @@ in favour of the installed-tree check.
 Today Remotion's compositor package supplies `ffmpeg` and `ffprobe`; `callFf` (22 uses) and
 `getVideoMetadata` (15) reach them, located by `binaries.ts`.
 
-- **Binaries:** `ffmpeg-static` and `ffprobe-static`. `ffmpegPath()` / `ffprobePath()` resolve
-  them, rewriting `app.asar` to `app.asar.unpacked` in a packaged build; both packages go in
-  `asarUnpack`.
+- **Binaries:** pinned FFmpeg 9.0.2 builds from ffmpeg.martin-riedl.de for macOS and Linux (arm64, x64), fetched into `vendor/ffmpeg/<platform>-<arch>/` on install and packaged into `Resources/ffmpeg/`; Windows' row (BtbN's builds) is project 2's. `ffmpegPath()`/`ffprobePath()` find them from their own folder.
 - **Calls:** `runFfmpeg(args, { onProgress?, signal? })` and `probeMedia(path)` →
   `{ durationSeconds, width, height, fps, hasAudio }` from ffprobe's JSON. The 37 call sites move
   over with their arguments unchanged.
@@ -92,14 +90,12 @@ Today Remotion's compositor package supplies `ffmpeg` and `ffprobe`; `callFf` (2
   resort.
 - **Guard:** a test fails if anything outside `src/main/media/` spawns `ffmpeg`/`ffprobe` or
   imports a binary package. `packagedBinaries.test.ts` is updated to the new paths.
-- **Install failures:** `scripts/ensureElectron.mjs` (run by `npm run dev`) also checks the
-  ffmpeg and ffprobe binaries exist, and names the same three causes — `ignore-scripts`, a proxy
-  refusing the download, a skip variable — rather than failing at the first export.
+- **Install failures:** `scripts/fetchFfmpeg.mjs` runs on install and warns if it cannot fetch; `npm run dev` runs it with `--ensure`, which fails naming the same three causes as `ensureElectron.mjs`.
 
 **First task of step 2 — a check, not an assumption:** install both packages and confirm, on this
 Mac, `ffmpeg -encoders` lists `h264_videotoolbox` and `ffmpeg -filters` lists `loudnorm`,
 `concat`, `amix`, `adelay`, `apad`. If not, fall back to a pinned ffmpeg build fetched and
-hash-checked by our own script, as the Kokoro model is. The plan records which.
+hash-checked by our own script, as the Kokoro model is. The plan records which. Done while planning step 2: `ffmpeg-static` has the encoders and filters, but its macOS build is `--enable-nonfree` and calls itself not legally redistributable, and `ffprobe-static`'s Apple Silicon binary does not run — so the fallback was taken.
 
 ## 3. Export
 

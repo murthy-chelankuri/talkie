@@ -31,18 +31,28 @@ const LICENCE_FILES = [
 const BUNDLED = [
   {
     name: 'FFmpeg',
+    version: '9.0.2',
+    license: 'GPL-3.0-or-later',
+    textFile: 'licences/GPL-3.0.txt',
+    note:
+      'Fetched on install from ffmpeg.martin-riedl.de, pinned by SHA-256, and used for recording, ' +
+      'frame sampling, audio and measuring footage. Built with --enable-gpl --enable-version3, x264 ' +
+      'and x265. Source: https://ffmpeg.org/download.html',
+    homepage: 'https://ffmpeg.martin-riedl.de'
+  },
+  {
+    name: 'FFmpeg (inside Remotion)',
     version: 'n7.1',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
     note:
-      'Shipped inside Remotion\'s compositor and used for transcoding, frame sampling and audio ' +
-      'conversion. Built with --enable-gpl, --enable-libx264 and --enable-libx265, which places ' +
-      'the binary and its libav* libraries under the GPL. Source: https://ffmpeg.org/download.html',
+      "Shipped inside Remotion's compositor and used only by Remotion's export, until Talkie's own " +
+      'replaces it. Built with --enable-gpl, --enable-libx264 and --enable-libx265.',
     homepage: 'https://ffmpeg.org'
   },
   {
     name: 'x264',
-    version: 'bundled with FFmpeg n7.1',
+    version: 'bundled with FFmpeg 9.0.2 and n7.1',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
     note: 'H.264 encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x264.html',
@@ -50,7 +60,7 @@ const BUNDLED = [
   },
   {
     name: 'x265',
-    version: 'bundled with FFmpeg n7.1',
+    version: 'bundled with FFmpeg 9.0.2 and n7.1',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
     note: 'HEVC encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x265.html',

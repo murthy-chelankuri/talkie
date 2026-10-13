@@ -209,7 +209,7 @@ someone presses the button that needs it rather than as an error afterwards.
 | For | Needs | If it is missing |
 | --- | --- | --- |
 | Recording a session | Google Chrome, Edge, or Playwright's Chromium | Install Chrome, or `npx playwright install chromium` |
-| Exporting video | Nothing — ffmpeg ships inside the app | — |
+| Exporting video | Nothing — `npm install` fetches a pinned ffmpeg | — |
 | Speaking narration | Nothing — macOS's own voices | — |
 | Recording your own voice | Microphone permission | Talkie asks the first time; after a refusal, System Settings → Privacy & Security |
 | Importing a `.pptx` | LibreOffice | `brew install --cask libreoffice`, or export the deck to PDF and import that |
@@ -244,11 +244,13 @@ own, and it is free only if you are:
 Larger for-profit organisations need a [paid company licence](https://www.remotion.pro/license).
 Remotion has said the terms change in Remotion 5.0.
 
-### The bundled ffmpeg is GPL
+### ffmpeg is GPL
 
-Remotion's compositor package ships an ffmpeg built with `--enable-gpl`, `--enable-libx264` and
-`--enable-libx265`. Those binaries are GPL-2.0-or-later. They are **not in this repository** —
-`npm install` downloads them.
+Talkie runs FFmpeg 9.0.2 from [Martin Riedl's build server](https://ffmpeg.martin-riedl.de),
+pinned and hash-checked by `scripts/fetchFfmpeg.mjs` on `npm install` — a GPL-3.0 build
+(`--enable-gpl --enable-version3`, with x264 and x265 linked in) with nothing nonfree in it. It is
+**not in this repository**. Until Talkie's own export replaces Remotion's, Remotion's compositor
+package also brings its own GPL ffmpeg, which only that export uses.
 
 The distinction that matters:
 
