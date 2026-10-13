@@ -5,6 +5,6 @@
  * business, and Windows and Linux are rows added here rather than call sites hunted down.
  */
 export { toolPath, ffmpegPath, ffprobePath, packagedResources, type MediaTool } from './binaries'
-export { runFfmpeg, runFfprobe, type ToolOutput } from './run'
+export { runFfmpeg, runFfprobe, spawnFfmpeg, type ToolOutput, type RunningTool } from './run'
 export { probeMedia, type MediaInfo } from './probe'
 export { h264, chooseH264, type EncodePurpose } from './encoders'

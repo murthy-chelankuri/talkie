@@ -12,6 +12,7 @@ import type { Caption as CaptionCue } from '../transcript/captions'
 import { FPS } from '../../remotion/constants'
 import { htmlSceneResource } from '../htmlScene/resources'
 import { injectRuntime, scenePolicy } from '../htmlScene/policy'
+import { footageFrame } from './exporter/frameSource'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -151,6 +152,30 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
           'Content-Length': body.length
         })
         res.end(body)
+        return
+      }
+
+      // A recording's frame, for the export page — see exporter/frameSource.ts. On the video's
+      // own URL, so the per-run secret and the projects-folder boundary apply exactly as they do
+      // to the video itself.
+      const query = new URL(req.url ?? '/', 'http://127.0.0.1').searchParams
+      const asked = query.get('frame')
+      if (asked !== null && ['.mp4', '.webm'].includes(extname(filePath).toLowerCase())) {
+        const frame = Number(asked)
+        if (!Number.isInteger(frame) || frame < 0) {
+          refuse()
+          return
+        }
+        footageFrame(query.get('reader') ?? '', filePath, frame).then(
+          (jpeg) => {
+            res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': jpeg.length, 'Cache-Control': 'no-store' })
+            res.end(jpeg)
+          },
+          (err: unknown) => {
+            console.error(`Could not decode frame ${frame} of ${filePath}:`, err)
+            refuse()
+          }
+        )
         return
       }
 

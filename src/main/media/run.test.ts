@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runFfmpeg, runFfprobe } from './run'
+import { runFfmpeg, runFfprobe, spawnFfmpeg } from './run'
 
 describe('running ffmpeg', () => {
   it('runs the pinned build and hands back what it printed', async () => {
@@ -24,5 +24,18 @@ describe('running ffmpeg', () => {
     setTimeout(() => controller.abort(), 200)
 
     await expect(run).rejects.toThrow()
+  }, 60_000)
+})
+
+describe('streaming through ffmpeg', () => {
+  it('takes input on stdin and finishes when it ends', async () => {
+    const running = spawnFfmpeg(['-f', 's16le', '-ar', '8000', '-ac', '1', '-i', 'pipe:0', '-f', 'null', '-'])
+    running.process.stdin.end(Buffer.alloc(16_000))
+    await expect(running.done).resolves.toBeUndefined()
+  }, 60_000)
+
+  it('fails with what ffmpeg said when it exits badly', async () => {
+    const running = spawnFfmpeg(['-i', '/no/such/file.mp4', '-f', 'null', '-'])
+    await expect(running.done).rejects.toThrow(/No such file or directory/)
   }, 60_000)
 })
