@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Player, type PlayerRef } from '@remotion/player'
+import { Preview, type PreviewHandle } from '../../../video/preview'
 import { Clapperboard, Maximize2, Minimize2 } from 'lucide-react'
 import {
   Group,
@@ -127,7 +127,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
-  const playerRef = useRef<PlayerRef>(null)
+  const playerRef = useRef<PreviewHandle>(null)
   const openedAtFrame = useRef(false)
 
   /**
@@ -968,14 +968,14 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                    of it. Absolute inset with auto margins is what fits a fixed ratio into a box
                    of any shape and centres it. */
                 <div className="absolute inset-2 m-auto aspect-video max-h-full max-w-full overflow-hidden rounded-xl bg-[#0c0d11] shadow-2xl">
-                  <Player
+                  <Preview
                     ref={playerRef}
                     component={DemoComposition}
                     inputProps={{ timeline: remotionTimeline, theme: renderTheme ?? null }}
                     durationInFrames={computeTimelineDuration(remotionTimeline)}
                     fps={FPS}
-                    compositionWidth={WIDTH}
-                    compositionHeight={HEIGHT}
+                    width={WIDTH}
+                    height={HEIGHT}
                     style={{ width: '100%', height: '100%' }}
                   />
                 </div>

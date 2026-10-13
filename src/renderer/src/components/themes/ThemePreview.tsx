@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Player } from '@remotion/player'
+import { Preview } from '../../../../video/preview'
 import { DemoComposition } from '../../../../remotion/DemoComposition'
 import { FPS, HEIGHT, WIDTH } from '../../../../remotion/constants'
 import type { TimelineItem } from '../../../../remotion/types'
@@ -58,13 +58,13 @@ export function ThemePreview({ draft, target }: { draft: ThemeDraft; target: The
   return (
     <div className="aspect-video w-full overflow-hidden rounded-lg bg-[#0c0d11] ring-1 ring-border">
       {theme && (
-        <Player
+        <Preview
           component={DemoComposition}
           inputProps={{ timeline, theme }}
           durationInFrames={timeline.length * SCENE}
           fps={FPS}
-          compositionWidth={WIDTH}
-          compositionHeight={HEIGHT}
+          width={WIDTH}
+          height={HEIGHT}
           style={{ width: '100%', height: '100%' }}
           controls
           loop

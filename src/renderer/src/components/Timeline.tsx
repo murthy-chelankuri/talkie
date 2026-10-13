@@ -7,7 +7,7 @@ import {
   type RefObject,
   type SyntheticEvent
 } from 'react'
-import type { PlayerRef } from '@remotion/player'
+import type { PreviewHandle } from '../../../video/preview'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -429,7 +429,7 @@ export function Timeline({
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
   totalFrames: number
-  playerRef: RefObject<PlayerRef | null>
+  playerRef: RefObject<PreviewHandle | null>
   selectedItemId: string | null
   onSeek: (frame: number) => void
   onSelectItem: (item: TimelineItem) => void

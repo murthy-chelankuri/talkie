@@ -5,7 +5,7 @@ import { HtmlScenePanel } from './HtmlScenePanel'
 import { ClipThumbnail } from '../Timeline'
 import { htmlSceneClient, timelineClient, type TimelineItem } from '../../api/projectClient'
 
-vi.mock('@remotion/player', () => ({ Player: () => <div data-testid="player" /> }))
+vi.mock('../../../../video/preview', () => ({ Preview: () => <div data-testid="player" /> }))
 vi.mock('./CodePanel', () => ({
   CodePanel: ({ path, value, onChange }: { path: string; value: string; onChange: (text: string) => void }) => (
     <textarea aria-label={`Code of ${path}`} value={value} onChange={(e) => onChange(e.target.value)} />

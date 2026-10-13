@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
-import type { PlayerRef } from '@remotion/player'
+import type { PreviewHandle } from '../../../video/preview'
 import { AudioLines, Mic, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 import { narrationScriptForItem, segmentsForItem } from '../lib/clipNarration'
@@ -57,7 +57,7 @@ export function ScriptView({
   /** The scene whose narration is being recorded in the user's own voice, if any. */
   recordingItemId?: string | null
   /** The preview, followed so the scene being played stays on the page. */
-  playerRef?: RefObject<PlayerRef | null>
+  playerRef?: RefObject<PreviewHandle | null>
   onSeek: (frame: number) => void
   onSelectItem: (item: TimelineItem) => void
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
@@ -166,7 +166,7 @@ export function ScriptView({
  * shown instead of it, so it listens to the player itself.
  */
 function usePlayingItem(
-  playerRef: RefObject<PlayerRef | null> | undefined,
+  playerRef: RefObject<PreviewHandle | null> | undefined,
   timeline: TimelineItem[],
   fallback: string | null
 ): string | null {

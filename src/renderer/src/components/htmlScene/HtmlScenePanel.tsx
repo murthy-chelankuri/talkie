@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Player } from '@remotion/player'
+import { Preview } from '../../../../video/preview'
 import { FolderInput, LayoutTemplate, Sparkles, TriangleAlert } from 'lucide-react'
 import {
   htmlSceneClient,
@@ -310,13 +310,13 @@ function EditHtmlScene({
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 bg-bg p-4">
           <div className="aspect-video w-full overflow-hidden rounded-xl bg-raised">
-            <Player
+            <Preview
               component={DemoComposition}
               inputProps={{ timeline, theme }}
               durationInFrames={Math.max(1, item.duration)}
               fps={FPS}
-              compositionWidth={WIDTH}
-              compositionHeight={HEIGHT}
+              width={WIDTH}
+              height={HEIGHT}
               controls
               loop
               style={{ width: '100%', height: '100%' }}
