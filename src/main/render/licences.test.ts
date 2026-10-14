@@ -21,9 +21,33 @@ describe('licence texts shipped with the app', () => {
     expect(readme).toContain(`v${installed.version}`)
   })
 
-  it('carries the GPL texts the bundled components are under', () => {
+  it('carries the GPL and LGPL texts the bundled components are under', () => {
     expect(readFileSync(join(ROOT, 'licences/GPL-2.0.txt'), 'utf-8')).toContain('Version 2, June 1991')
     expect(readFileSync(join(ROOT, 'licences/GPL-3.0.txt'), 'utf-8')).toContain('Version 3, 29 June 2007')
+    expect(readFileSync(join(ROOT, 'licences/LGPL-2.1.txt'), 'utf-8')).toContain('Version 2.1, February 1999')
+  })
+})
+
+describe('Electron and Chromium, which every build is', () => {
+  it('ships their licence texts, which electron-builder leaves behind on macOS', () => {
+    const config = readFileSync(join(ROOT, 'electron-builder.yml'), 'utf-8')
+
+    for (const file of ['LICENSE', 'LICENSES.chromium.html']) {
+      expect(config).toContain(`from: node_modules/electron/dist/${file}`)
+      expect(config).toContain(`to: licences/electron/${file}`)
+      expect(existsSync(join(ROOT, 'node_modules/electron/dist', file)), `${file} is not installed to ship`).toBe(true)
+    }
+  })
+
+  it('describes the Electron actually installed', () => {
+    const installed = JSON.parse(readFileSync(join(ROOT, 'node_modules/electron/package.json'), 'utf-8')).version
+    const notices = JSON.parse(readFileSync(join(ROOT, 'src/renderer/src/generated/notices.json'), 'utf-8')) as {
+      packages: { name: string; version: string }[]
+      bundled: { name: string; version: string }[]
+    }
+
+    expect(notices.packages.find((pkg) => pkg.name === 'electron')?.version, 'notices describe another Electron — run npm run notices').toBe(installed)
+    expect(notices.bundled.find((item) => item.name === 'FFmpeg (inside Electron)')?.version).toBe(`as built into Electron ${installed}`)
   })
 })
 

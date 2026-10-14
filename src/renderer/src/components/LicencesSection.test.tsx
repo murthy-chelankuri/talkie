@@ -59,13 +59,24 @@ describe('the generated notices themselves', () => {
     expect(notices.packages.every((pkg) => pkg.license && pkg.license !== 'Unstated')).toBe(true)
   })
 
-  it('records the GPL binaries that no package manifest mentions', () => {
+  it('records the copyleft binaries that no package manifest mentions', () => {
     const names = notices.bundled.map((item) => item.name)
 
     expect(names).toContain('FFmpeg')
     // Compiled into phonemizer, whose own manifest says Apache-2.0 — see NOTICE.
     expect(names).toContain('eSpeak NG')
-    expect(notices.bundled.every((item) => item.license.startsWith('GPL'))).toBe(true)
+    // Chromium's own media library, shipped inside Electron: LGPL, with its own source duty.
+    expect(names).toContain('FFmpeg (inside Electron)')
+    expect(notices.bundled.every((item) => /^L?GPL-/.test(item.license))).toBe(true)
+  })
+
+  it('lists the runtime the app is, which no production dependency names', () => {
+    // Electron is a dev dependency because electron-builder supplies it, yet every build is Electron.
+    const chromium = notices.packages.find((pkg) => pkg.name === 'Chromium (inside Electron)')
+
+    expect(notices.packages.find((pkg) => pkg.name === 'electron')?.text).toContain('Copyright (c) Electron contributors')
+    expect(chromium?.text).toContain('The Chromium Authors')
+    expect(chromium?.text).toContain('licences/electron/LICENSES.chromium.html')
   })
 
   it('reproduces licence text rather than only naming the licence', () => {
@@ -74,8 +85,13 @@ describe('the generated notices themselves', () => {
     expect(withText.length).toBeGreaterThan(notices.packages.length * 0.9)
   })
 
-  it('carries the GPL itself for every bundled GPL component, as the GPL asks', () => {
+  it('carries the licence itself for every bundled copyleft component, as the GPL and LGPL ask', () => {
     for (const item of notices.bundled) {
+      if (item.license.startsWith('LGPL-2.1')) {
+        expect(item.text, item.name).toContain('GNU LESSER GENERAL PUBLIC LICENSE')
+        expect(item.text, item.name).toContain('Version 2.1')
+        continue
+      }
       const version = item.license.startsWith('GPL-3') ? 'Version 3' : 'Version 2'
       expect(item.text, item.name).toContain('GNU GENERAL PUBLIC LICENSE')
       expect(item.text, item.name).toContain(version)

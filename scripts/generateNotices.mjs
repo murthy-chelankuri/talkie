@@ -23,6 +23,41 @@ const LICENCE_FILES = [
 ]
 
 /**
+ * The runtime a packaged Talkie is: Electron, and so Chromium. No production dependency names
+ * either — electron-builder supplies Electron, so it is a dev dependency — yet every build ships
+ * both, and Chromium is 779 components under their own terms, listed in a 20 MB file that is
+ * installed whole beside the app (electron-builder.yml). These entries say what that is and where.
+ * Read from the installed electron, the version electron-builder packages; without it the notices
+ * would quietly leave out the largest thing Talkie ships, so its absence stops the run.
+ */
+function electronRuntime() {
+  const dir = join(root, 'node_modules', 'electron')
+  const files = { manifest: join(dir, 'package.json'), licence: join(dir, 'dist', 'LICENSE'), chromium: join(dir, 'dist', 'LICENSES.chromium.html') }
+  for (const path of Object.values(files)) {
+    if (!existsSync(path)) throw new Error(`${path} is missing. Install Electron (npm install) before generating notices: every build ships it.`)
+  }
+  const page = readFileSync(files.chromium, 'utf8')
+  const own = /<span class="title">The Chromium Project<\/span>[\s\S]*?<pre>([\s\S]*?)<\/pre>/.exec(page)
+  if (!own) throw new Error(`Chromium's own licence was not found in ${files.chromium}`)
+  return {
+    version: JSON.parse(readFileSync(files.manifest, 'utf8')).version,
+    electronText: readFileSync(files.licence, 'utf8').trim(),
+    // Kept in Chromium's tree as a source comment; the text is the same without the markers.
+    chromiumText: decodeEntities(own[1]).replace(/^\/\/ ?/gm, '').trim(),
+    components: (page.match(/<span class="title">/g) ?? []).length
+  }
+}
+
+function decodeEntities(text) {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+}
+
+const ELECTRON = electronRuntime()
+
+/**
  * Things that ship as binaries or data rather than as npm packages with a licence field, and
  * whose terms are the ones that actually constrain how this app may be distributed. Written by
  * hand because no manifest on disk states them: the FFmpeg terms come from the binary's own
@@ -56,6 +91,19 @@ const BUNDLED = [
     textFile: 'licences/GPL-2.0.txt',
     note: 'HEVC encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x265.html',
     homepage: 'https://www.videolan.org/developers/x265.html'
+  },
+  {
+    name: 'FFmpeg (inside Electron)',
+    version: `as built into Electron ${ELECTRON.version}`,
+    license: 'LGPL-2.1-or-later',
+    textFile: 'licences/LGPL-2.1.txt',
+    note:
+      "libffmpeg.dylib, the library Chromium plays audio and video with in Talkie's window — not the " +
+      'FFmpeg above, which Talkie runs itself. LGPL, so a distributor must offer its source: ' +
+      "Chromium's third_party/ffmpeg at the revision this Electron was built from. It ships as a " +
+      'separate library Talkie does not modify, which keeps it replaceable as the LGPL asks. Its notice ' +
+      "is among Chromium's, installed at Talkie.app/Contents/Resources/licences/electron/.",
+    homepage: 'https://chromium.googlesource.com/chromium/third_party/ffmpeg'
   },
   {
     name: 'eSpeak NG',
@@ -219,6 +267,29 @@ for (const name of productionPackages()) {
     text: text && text.length <= 24000 ? text : null
   })
 }
+
+// Electron and Chromium are the app itself, so they are listed with the packages it ships.
+packages.push(
+  {
+    name: 'electron',
+    version: ELECTRON.version,
+    license: 'MIT',
+    homepage: 'https://www.electronjs.org',
+    copyright: copyrightFrom(ELECTRON.electronText),
+    text: ELECTRON.electronText
+  },
+  {
+    name: 'Chromium (inside Electron)',
+    version: `as built into Electron ${ELECTRON.version}`,
+    license: 'BSD-3-Clause AND others',
+    homepage: 'https://www.chromium.org',
+    copyright: copyrightFrom(ELECTRON.chromiumText),
+    text:
+      `${ELECTRON.chromiumText}\n\nChromium is built from ${ELECTRON.components} components, each under its own ` +
+      'licence — BSD, MIT, Apache-2.0, LGPL, MPL and others. Every one of them is installed with Talkie at ' +
+      'Talkie.app/Contents/Resources/licences/electron/LICENSES.chromium.html.'
+  }
+)
 
 const notices = {
   generatedAt: new Date().toISOString().slice(0, 10),

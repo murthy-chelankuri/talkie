@@ -259,6 +259,13 @@ been held incompatible with app store terms, and separately, App Sandbox blocks 
 Talkie does — spawning `say` and `afconvert`, driving a browser, and running the MCP server.
 Direct distribution under a Developer ID is the workable path.
 
+### Electron and Chromium
+
+Talkie is an Electron app, so a build ships Electron and Chromium — some 780 components under their
+own licences, installed with the app in `Resources/licences/electron/`. One of them, the FFmpeg
+Chromium plays media with, is LGPL: whoever distributes a build must offer its source too. See
+[NOTICE](NOTICE).
+
 ### eSpeak NG is GPL too
 
 The Kokoro voice turns text into phonemes with `phonemizer`, whose own licence says Apache-2.0
