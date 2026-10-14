@@ -7,7 +7,7 @@ import { addTimelineItem, createProject, readTimelineLenient } from '../../proje
 import { findProjectDir, projectsRootDir } from '../../project/paths'
 import { probeMedia, runFfmpeg, runFfprobe } from '../../media'
 import { closeAssetServer, getAssetServer, resolveTimelineAssetUrls } from '../assetServer'
-import type { TimelineItem } from '../../../remotion/types'
+import type { TimelineItem } from '../../../composition/types'
 import type { ExportProgress } from '../exportProgress'
 import { decodersStarted, liveDecoders } from './frameSource'
 import { exportVideo, type OwnExportInput } from './exportVideo'

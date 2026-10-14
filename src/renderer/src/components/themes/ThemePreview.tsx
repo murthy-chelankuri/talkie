@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Preview } from '../../../../video/preview'
-import { DemoComposition } from '../../../../remotion/DemoComposition'
-import { FPS, HEIGHT, WIDTH } from '../../../../remotion/constants'
-import type { TimelineItem } from '../../../../remotion/types'
+import { DemoComposition } from '../../../../composition/DemoComposition'
+import { FPS, HEIGHT, WIDTH } from '../../../../composition/constants'
+import type { TimelineItem } from '../../../../composition/types'
 import { themeClient, type RenderTheme, type ThemeDraft, type ThemeTarget } from '../../api/projectClient'
 
 const SCENE = 75

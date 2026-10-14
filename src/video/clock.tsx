@@ -3,8 +3,8 @@ import { OwnFill, OwnSequence, useOwnFrame, useOwnRenderMode, useOwnVideoConfig 
 
 /**
  * The frame clock the composition is drawn against. The host (the editor's preview or the
- * export page) owns the frame; scenes only read it. The names are the ones the scenes were written
- * against when Remotion drew them, and the behaviour behind each is held to what Remotion's was.
+ * export page) owns the frame; scenes only read it. The names are the ones the scenes were first
+ * written against, and the behaviour behind each is held to what it was then.
  */
 
 export type VideoConfig = { fps: number; width: number; height: number; durationInFrames: number }

@@ -3,7 +3,7 @@
  *
  * Brand sites serve animated SVG logos — some draw themselves in over several seconds, with CSS
  * keyframes and SMIL together. In a video both go wrong: CSS animations run on the browser's
- * clock, and Remotion renders frames out of order across several tabs, so every frame caught the
+ * clock, and the export draws frames out of order across several tabs, so every frame caught the
  * logo at a different moment — half drawn, faded, gone. SMIL set to `begin="indefinite"` waits for
  * the site's own script to start it, which never comes, so it stayed at its first frame.
  *

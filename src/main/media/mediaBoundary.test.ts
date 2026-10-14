@@ -17,8 +17,7 @@ const SCANNED = ['src', 'scripts', 'e2e', join('examples', 'build')]
 const MEDIA = join('src', 'main', 'media') + sep
 
 const FORBIDDEN: { what: string; pattern: RegExp }[] = [
-  { what: "Remotion's ffmpeg wrappers", pattern: /RenderInternals\.callFf|callFfNative|getVideoMetadata\s*\(/ },
-  { what: "Remotion's compositor binaries", pattern: /@remotion\/compositor-/ },
+  { what: "a third-party renderer's ffmpeg wrapper", pattern: /RenderInternals\.callFf|callFfNative|getVideoMetadata\s*\(/ },
   { what: 'a spawn of ffmpeg by name', pattern: /\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync|execa)\s*\(\s*['"`]ff(?:mpeg|probe)\b/ },
   { what: 'a path built to an ffmpeg binary', pattern: /\bjoin\s*\([^)]*['"`]ff(?:mpeg|probe)(?:\.exe)?['"`]\s*\)/ },
   { what: 'an ffmpeg binary package', pattern: /['"](?:ffmpeg-static|ffprobe-static|@ffmpeg-installer\/[^'"]+|@ffprobe-installer\/[^'"]+)['"]/ }

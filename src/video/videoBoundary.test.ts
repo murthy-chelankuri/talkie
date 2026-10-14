@@ -6,10 +6,11 @@ import { join, relative } from 'path'
  * Remotion is gone, and stays gone.
  *
  * Talkie drew and exported its videos with Remotion, which is source-available rather than open
- * source; it now does both with its own renderer (docs/superpowers/specs/2026-10-13-own-renderer-
- * design.md). One convenient import would bring the package and its licence back without anything
- * failing, so this reads the sources — tests and mocks included, since a test mocking `remotion` is
- * testing against something nothing imports — and the dependencies.
+ * source; it now does both with its own renderer (src/video). This is the one file in the
+ * repository that names it, on purpose. One convenient import would bring the package and its
+ * licence back without anything failing, so this reads the sources — tests and mocks included,
+ * since a test mocking `remotion` is testing against something nothing imports — the
+ * dependencies, and the licences the app ships.
  */
 const ROOT = join(__dirname, '..', '..')
 const SCANNED = ['src', 'scripts', 'e2e', join('examples', 'build')]
@@ -57,6 +58,14 @@ describe('Remotion', () => {
       )
 
     expect(offenders).toEqual([])
+  })
+
+  it('is shipped by nothing the Licences screen lists', () => {
+    const notices = JSON.parse(readFileSync(join(ROOT, 'src', 'renderer', 'src', 'generated', 'notices.json'), 'utf-8')) as {
+      packages: { name: string; license: string }[]
+    }
+
+    expect(notices.packages.filter((pkg) => isRemotion(pkg.name) || /remotion/i.test(pkg.license))).toEqual([])
   })
 
   it('is not a dependency', () => {

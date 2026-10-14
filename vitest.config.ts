@@ -15,7 +15,7 @@ export default defineConfig({
     include: [
       'src/main/**/*.test.ts',
       'src/mcp/**/*.test.ts',
-      'src/remotion/**/*.test.{ts,tsx}',
+      'src/composition/**/*.test.{ts,tsx}',
       'src/video/**/*.test.{ts,tsx}',
       'src/renderer/**/*.test.{ts,tsx}',
       'src/htmlScene/**/*.test.ts'

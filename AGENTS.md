@@ -83,8 +83,8 @@ These each cost real time to find. None are obvious from the code.
   system, hardware only: recording and export both encode with `h264_videotoolbox`.
 - **The export is handed a browser** through `browserExecutablePath()`, as an absolute path. Left
   to find one itself, a renderer works out where by walking up from the working directory — from
-  `/` there is nothing, and Remotion, which Talkie used to export with, died there with
-  `ENOENT: mkdir '/.remotion'`. `exportFromAnywhere.test.ts` moves the working directory to `/` on
+  `/` there is nothing, and the renderer Talkie used to export with died there with an `ENOENT`
+  from `mkdir`. `exportFromAnywhere.test.ts` moves the working directory to `/` on
   purpose, because running from the checkout is the case that has always worked.
 - **Export renders in Chrome's headless shell, not a full Chrome.** A full Chrome holds some
   frames for 300–750ms each whatever the scene, so more tabs, the GPU or fewer pixels all
@@ -94,15 +94,15 @@ These each cost real time to find. None are obvious from the code.
   them running with no parent, so `before-quit` cancels exports and waits (`exportJob.ts`).
 - **The export draws frames in headless tabs and pipes their screenshots to ffmpeg.**
   `exportVideo.ts` draws the composition in N tabs, screenshots each frame over CDP and pipes the
-  shots to one ffmpeg a tab (`render/exporter/`). Before Remotion was removed it was held to
-  Remotion's own output frame for frame, and four things it needed each cost real time to find.
+  shots to one ffmpeg a tab (`render/exporter/`). Before the previous renderer was removed it was held
+  to that renderer's output frame for frame, and four things it needed each cost real time to find.
   Recording frames are served as **PNG, not JPEG** (`frameSource.ts`, `assetServer.ts`) — the
   exact pixels, with none of the chroma a saturated brand loses to JPEG. Each composition frame is
   matched to the recording frame **showing at its moment, by time**: a recording is 25 fps under a
   30 fps composition *and* opens at a PTS a frame in, not zero (`probe.ts` reads `start_time`), and
   `-ss` alone overshot the frame by one often enough to show a later picture mid-animation, so the
   frame is landed on with `-copyts` and a PTS `select`. Screenshots are JPEG at **quality 80**,
-  which kept the 4:2:0 ringing on a saturated edge the size Remotion's export had. The soundtrack
+  which kept the 4:2:0 ringing on a saturated edge the size the previous renderer's export had. The soundtrack
   is padded up to a whole AAC frame, or the container ends a frame short of the picture
   (`soundtrack.ts`).
 - **The export page is built at build time**, by `scripts/bundleExportPage.mjs` into
@@ -151,16 +151,14 @@ These each cost real time to find. None are obvious from the code.
 - `src/preload/` — two bridges: `index.ts` for the editor window, `toolbar.ts` for the recording
   toolbar (five calls, nothing more).
 - `src/renderer/` — React. Reaches main only through `window.api`.
-- `src/remotion/` — the composition. Shared by the preview and the export, so what is on screen
-  is what renders. It takes its clock, holds, media and motion from `src/video/`. The folder keeps
-  the name it had when Remotion drew it; nothing in it imports Remotion.
-- `src/video/` — Talkie's own renderer (`docs/superpowers/specs/2026-10-13-own-renderer-design.md`),
-  which replaced Remotion for the preview and the export. `index.ts` is the composition's side and
+- `src/composition/` — the composition. Shared by the preview and the export, so what is on screen
+  is what renders. It takes its clock, holds, media and motion from `src/video/`.
+- `src/video/` — Talkie's own renderer, which draws both the preview and the export. `index.ts` is the composition's side and
   `preview.tsx` the editor's, kept apart so the export bundle carries no player; `own/player.tsx`
   is the player, `own/clock.tsx`, `own/media.tsx` and `own/hold.ts` what both draw with. The scenes'
-  names (`useFrame`, `Sequence`, `spring`, `interpolate` …) are Remotion's, and each is held to how
-  Remotion's behaved. `videoBoundary.test.ts` fails if any file imports or mocks Remotion, or any
-  Remotion package becomes a dependency again.
+  names (`useFrame`, `Sequence`, `spring`, `interpolate` …) are the ones they were first written
+  against, and each is held to how it behaved then. `videoBoundary.test.ts` keeps the third-party
+  renderer Talkie used to depend on from coming back — it is the one file that names it.
 - `src/mcp/` — a standalone MCP server, a **separate process**, off by default and token-gated.
 - Projects live in `~/Talkie/Projects/<id>-<slug>/` as `project.json`, `timeline.json`,
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
@@ -419,9 +417,9 @@ the app stays the only writer.
 ## Licensing — read before distributing anything
 
 - Talkie's own code is **Apache-2.0**. That covers this repository and nothing else.
-- **Remotion is gone.** Talkie used to draw and export with it — source-available, not open
-  source — and now does both itself. No Remotion package is installed, and `videoBoundary.test.ts`
-  keeps it that way.
+- **Talkie draws and exports video with its own renderer.** It used to depend on a third-party
+  renderer that is source-available rather than open source; that is gone, and
+  `videoBoundary.test.ts` keeps it that way.
 - **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later, x264 and x265 linked in) is
   fetched by `npm install`. It is not in this repository.
 - Publishing *source* carries no GPL obligation. **Shipping a built `.dmg` does**, including

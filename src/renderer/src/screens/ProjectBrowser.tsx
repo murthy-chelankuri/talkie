@@ -10,7 +10,7 @@ import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectC
 import { lastProjectId, rememberLastProject } from '../lib/lastProject'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { formatTimecode } from '../lib/timelineLayout'
-import { FPS } from '../../../remotion/constants'
+import { FPS } from '../../../composition/constants'
 import { cn } from '../lib/cn'
 import { ProjectPoster } from '../components/ProjectPoster'
 

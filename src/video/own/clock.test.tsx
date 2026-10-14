@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { OwnFill, OwnSequence, VideoRoot, useOwnFrame, useOwnVideoConfig } from './clock'
 
 /**
- * Talkie's own clock, held to how Remotion's behaved — the rules every scene was drawn against
+ * Talkie's own clock, held to the rules every scene was first drawn against
  * (see the docblocks in ../clock.tsx). These run without a browser: the frame is a prop.
  */
 function Show(): JSX.Element {

@@ -80,7 +80,7 @@ export function OwnFootage(props: FootageProps): JSX.Element | null {
  */
 function ExportFootage({ src, trimBefore, trimAfter, style }: FootageProps): JSX.Element | null {
   const sourceFrame = (trimBefore ?? 0) + useOwnFrame()
-  // Remotion's OffthreadVideo wrapped itself in a Sequence of length trimAfter: nothing after it.
+  // Nothing after trimAfter: the next scene of the same recording starts there.
   if (trimAfter !== undefined && sourceFrame >= trimAfter) return null
   const url = footageFrameUrl(src, sourceFrame, frameReader)
   return <OwnPicture key={url} src={url} style={style} label={`${nameOf(src)}, frame ${sourceFrame}`} />

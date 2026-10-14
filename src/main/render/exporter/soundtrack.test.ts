@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { probeMedia, runFfmpeg } from '../../media'
-import { NARRATION_LEAD_IN_FRAMES } from '../../../remotion/constants'
+import { NARRATION_LEAD_IN_FRAMES } from '../../../composition/constants'
 import { soundtrackArgs, takesFor } from './soundtrack'
 
 let dir: string
@@ -36,7 +36,7 @@ describe('the soundtrack', () => {
     expect((await probeMedia(out)).durationSeconds).toBeCloseTo(6, 1)
   }, 60_000)
 
-  it('is a silent track of the right length when nothing is narrated, as Remotion’s always was', async () => {
+  it('is a silent track of the right length when nothing is narrated', async () => {
     const out = join(dir, 'silent.m4a')
     await runFfmpeg(soundtrackArgs([], 90, out))
 

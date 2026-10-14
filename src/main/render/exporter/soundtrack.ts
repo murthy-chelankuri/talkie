@@ -1,8 +1,8 @@
-import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../composition/constants'
 
 /**
  * The export's sound, mixed from the timeline rather than recorded off the page: each take
- * placed where the composition plays it and cut where its clip ends, as Remotion's mix did.
+ * placed where the composition plays it and cut where its clip ends.
  * Recordings are silent, so takes are all there is.
  */
 export type Take = { path: string; startFrame: number; maxFrames: number }
@@ -22,9 +22,8 @@ const AAC_FRAME_SAMPLES = 1024
 
 /**
  * The soundtrack's length, rounded up to a whole AAC frame at or past the video. Cut at exactly
- * the video length it ends one AAC frame short of Remotion's — whose encoder pads its own tail to
- * a frame boundary — and the two files' containers then differ in length by that frame. Padded to
- * the boundary, the last frame covers the video and the lengths land together.
+ * the video length its last AAC frame stops short of the picture, and the file's sound ends a
+ * fraction of a frame before its video. Padded to the boundary, the last frame covers the video.
  */
 function soundtrackSeconds(totalFrames: number): string {
   const samples = Math.ceil(((totalFrames / FPS) * SAMPLE_RATE) / AAC_FRAME_SAMPLES) * AAC_FRAME_SAMPLES

@@ -7,9 +7,9 @@ import { browserExecutablePath } from '../capture/resolveBrowser'
  * Exporting from an app that was not started in its own directory.
  *
  * A packaged app opened from Finder runs with `/` as its working directory. Anything that works
- * out where a browser lives by walking up from there finds nothing — Remotion, which Talkie used to
- * export with, settled on `/.remotion` and export died with `ENOENT: mkdir '/.remotion'`, a message
- * that names nothing a user could act on. So the export is handed a browser outright.
+ * out where a browser lives by walking up from there finds nothing — the renderer Talkie used to
+ * export with tried to create a folder at the root and export died with an `ENOENT` from `mkdir`, a
+ * message that names nothing a user could act on. So the export is handed a browser outright.
  *
  * The suite never saw it because vitest runs from the checkout, where every such walk finds this
  * project's own package.json and resolves. So the working directory is moved here on purpose: it

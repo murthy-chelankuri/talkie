@@ -68,12 +68,6 @@ describe('the generated notices themselves', () => {
     expect(notices.bundled.every((item) => item.license.startsWith('GPL'))).toBe(true)
   })
 
-  it('ships nothing under Remotion’s licence, now that Talkie draws its videos itself', () => {
-    const remotion = notices.packages.filter((pkg) => pkg.name === 'remotion' || pkg.name.startsWith('@remotion/') || /remotion/i.test(pkg.license))
-
-    expect(remotion).toEqual([])
-  })
-
   it('reproduces licence text rather than only naming the licence', () => {
     const withText = notices.packages.filter((pkg) => pkg.text)
 

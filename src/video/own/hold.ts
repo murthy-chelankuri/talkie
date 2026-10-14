@@ -1,6 +1,6 @@
 import type { Release } from '../hold'
 
-/** Remotion's delayRender gave up after 30 s; so does this, so a stuck asset fails rather than hangs. */
+/** A hold gives up after 30 s, so a stuck asset fails the export rather than hanging it. */
 const DEFAULT_TIMEOUT_MS = 30_000
 
 type Open = { label: string; opened: number; timeoutMs: number }

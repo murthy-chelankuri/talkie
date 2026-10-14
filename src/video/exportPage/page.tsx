@@ -1,8 +1,8 @@
 import { createRoot, type Root } from 'react-dom/client'
 import { flushSync } from 'react-dom'
-import { DemoComposition } from '../../remotion/DemoComposition'
-import type { TimelineItem } from '../../remotion/types'
-import type { RenderTheme } from '../../remotion/renderTheme'
+import { DemoComposition } from '../../composition/DemoComposition'
+import type { TimelineItem } from '../../composition/types'
+import type { RenderTheme } from '../../composition/renderTheme'
 import { setFrameReader, VideoRoot, whenSettled } from '..'
 
 /**

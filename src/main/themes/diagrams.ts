@@ -1,6 +1,6 @@
 import type { VariantId } from './schema'
-import type { RenderTheme } from '../../remotion/renderTheme'
-import { VARIANT_FOR } from '../../remotion/sceneTheme'
+import type { RenderTheme } from '../../composition/renderTheme'
+import { VARIANT_FOR } from '../../composition/sceneTheme'
 
 /**
  * Raised when the way a themed diagram is drawn changes, so every one drawn the old way is drawn

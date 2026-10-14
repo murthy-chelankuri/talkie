@@ -1,5 +1,5 @@
 import { probeMedia, spawnFfmpeg, type RunningTool } from '../../media'
-import { FPS } from '../../../remotion/constants'
+import { FPS } from '../../../composition/constants'
 
 /**
  * Frames of recordings, for the export: one ffmpeg per tab per file, decoding forward from the
@@ -97,13 +97,13 @@ async function finalFrame(file: string): Promise<number> {
 function start(file: string, from: number, rate: number, startSeconds: number): Decoder {
   started++
   // Decoded at the recording's own rate — one picture per source frame, matched to a composition
-  // frame by time in serve() where the rates differ, as Remotion's frame server does rather than
+  // frame by time in serve() where the rates differ, rather than
   // resampling the stream. -ss alone is only keyframe-accurate here: seeking to a frame's own time
   // overshot it by one often enough to show a later picture through a mid-animation moment. So -ss
   // lands a couple of frames early for speed and -copyts keeps each frame's real timestamp, then
   // select hands on the first frame at `from`'s time or later — exact, whatever the seek did. PNG,
   // not JPEG: the browser is handed the exact pixels the recording holds, so the colour a saturated
-  // brand loses to lossy chroma is kept — the step Remotion's frame server also omits.
+  // brand loses to lossy chroma is kept.
   const seek = Math.max(0, startSeconds + (from - 2) / rate)
   const at = startSeconds + (from - 0.5) / rate
   const tool = spawnFfmpeg(['-v', 'error', '-ss', seek.toFixed(4), '-copyts', '-i', file, '-vf', `select=gte(t\\,${at.toFixed(6)})`, '-fps_mode', 'passthrough', '-f', 'image2pipe', '-c:v', 'png', '-compression_level', '1', 'pipe:1'])
@@ -150,9 +150,9 @@ async function serve(reader: string, file: string, frame: number): Promise<Buffe
   const rate = await rateOf(file)
   const startSeconds = await startOf(file)
   // The composition frame asked for, as a source frame: the recording's frame showing at that
-  // moment, floor from its own first timestamp as Remotion takes it, so a 25 fps recording that
-  // opens a frame in, under a 30 fps composition, lands on the same picture both ways rather than
-  // one frame off through a mid-animation moment.
+  // moment, floor from its own first timestamp, so a 25 fps recording that opens a frame in, under
+  // a 30 fps composition, lands on the right picture rather than one frame off through a
+  // mid-animation moment.
   const wanted = Math.max(0, Math.min(Math.floor((frame / FPS - startSeconds) * rate), await finalFrame(file)))
   if (isClosed(reader)) throw new Error(`Reader ${reader} was closed`)
   const key = `${reader}\u0000${file}`

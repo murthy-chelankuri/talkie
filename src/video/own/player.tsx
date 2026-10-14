@@ -16,7 +16,7 @@ import { PreviewMediaContext, type PreviewMediaEntry, type RegisterPreviewMedia 
 import type { PreviewEvents, PreviewHandle, PreviewProps } from '../preview'
 
 /**
- * Talkie's own preview player, in place of Remotion's `<Player>`. It owns the frame and advances
+ * Talkie's own preview player. It owns the frame and advances
  * it from elapsed time while playing; the composition is drawn at each frame exactly as the export
  * draws it, so what plays is what renders. Its handle and events are the seam's (../preview.tsx),
  * so the transport bar, timeline, script and the three hosts do not know it changed.

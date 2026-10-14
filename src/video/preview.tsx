@@ -4,8 +4,8 @@ import { OwnPreview } from './own/player'
 /**
  * The editor's player: the stage, the HTML scene panel and the theme preview. Talkie's own player
  * (own/player.tsx) draws the composition on Talkie's own clock; this file is the handle, the events
- * and the props the transport bar, the timeline, the script and the three hosts use — the same ones
- * they used when Remotion's `<Player>` was behind them, so none of them changed when it was replaced.
+ * and the props the transport bar, the timeline, the script and the three hosts use. None of them
+ * knows what draws the picture, so what draws it can change without them.
  */
 
 export type PreviewEvents = { frameupdate: { frame: number }; play: undefined; pause: undefined }

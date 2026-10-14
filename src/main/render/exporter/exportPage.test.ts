@@ -7,8 +7,8 @@ import { addTimelineItem, createProject, readTimelineLenient } from '../../proje
 import { projectsRootDir } from '../../project/paths'
 import { browserExecutablePath } from '../../capture/resolveBrowser'
 import { closeAssetServer, getAssetServer, resolveTimelineAssetUrls } from '../assetServer'
-import { FPS, HEIGHT, WIDTH } from '../../../remotion/constants'
-import type { TimelineItem } from '../../../remotion/types'
+import { FPS, HEIGHT, WIDTH } from '../../../composition/constants'
+import type { TimelineItem } from '../../../composition/types'
 
 // The page declares window.talkie for the web project; this one is type-checked as node, so it
 // names the two calls it makes rather than importing the page's sources.
@@ -60,7 +60,7 @@ describe('the export page', () => {
     expect(await page.locator('#root').innerText()).toContain('Second')
   }, 120_000)
 
-  it('keeps a padded scene inside the frame, laid out as Remotion’s page laid it out', async () => {
+  it('keeps a padded scene inside the frame, laid out as it was designed', async () => {
     const { page } = await openPage([{ kind: 'scene', start: 0, duration: 120, data: { title: 'Centred', layout: 'title', bullets: [] } }])
     await page.evaluate(() => (window as unknown as { talkie: TalkiePage }).talkie.seek(60))
     const box = await page.getByText('Centred').boundingBox()

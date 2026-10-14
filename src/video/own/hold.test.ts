@@ -33,7 +33,7 @@ describe('Talkie’s own holds', () => {
     await expect(whenSettled({ now: () => clock, wait })).rejects.toThrow('Fetching diagram flow.svg did not finish within 1 s')
   })
 
-  it('gives up after 30 s when no timeout was given, as Remotion did', async () => {
+  it('gives up after 30 s when no timeout was given', async () => {
     let clock = 0
     ownHold('Loading the HTML scene "Revenue"', undefined, () => clock)
     const wait = async (): Promise<void> => void (clock += 10_000)

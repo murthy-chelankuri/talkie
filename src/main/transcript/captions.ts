@@ -1,4 +1,4 @@
-import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../composition/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 import type { NarrationBeat, TranscriptSegment } from './schema'
 

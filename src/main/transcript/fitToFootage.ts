@@ -1,7 +1,7 @@
 import { existsSync, renameSync, rmSync } from 'fs'
 import { probeMedia } from '../media'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 import type { SpeechOptions } from '../tts/ttsProvider'
 import type { TimelineItem } from '../project/timeline/schema'
 

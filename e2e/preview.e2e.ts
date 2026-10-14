@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, openProject, type Talkie } from './app'
 import { CUT_FRAME, makeFixtureWithCut, type Fixture } from './fixture'
-import { FPS, NARRATION_LEAD_IN_FRAMES } from '../src/remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES } from '../src/composition/constants'
 
 let fixture: Fixture
 let talkie: Talkie

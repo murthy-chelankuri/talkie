@@ -232,12 +232,11 @@ eSpeak NG inside the Kokoro voice — are GPL, which matters the moment you hand
 app. The full picture is in [NOTICE](NOTICE), and every dependency's
 licence is listed in the app under Settings → Licences.
 
-### Remotion has been removed
+### No third-party renderer licence
 
-Earlier versions rendered video with [Remotion](https://remotion.dev), which is source-available
-rather than open source and needed a licence of your own. Talkie now draws and exports video
-with its own renderer: no Remotion package is installed, and this version needs no Remotion
-licence.
+Earlier versions rendered video with a third-party renderer that was source-available rather than
+open source and needed a licence of your own. Talkie now draws and exports video with its own
+renderer, so this version needs no such licence.
 
 ### ffmpeg is GPL
 

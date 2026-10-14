@@ -152,7 +152,7 @@ any feature does.
 
 ## 3. Not changing
 
-- The video's own look: the Remotion composition follows the *project* theme, not the app's.
+- The video's own look: the composition follows the *project* theme, not the app's.
 - Behaviour, IPC, data, and every security invariant (CSP, sandboxed HTML scenes, permissions).
 - The September spec's foundations (Tailwind, tokens via CSS variables, `ui/` primitives,
   renderer tests).

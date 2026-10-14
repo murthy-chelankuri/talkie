@@ -3,9 +3,9 @@ import { once } from 'events'
 import { randomBytes } from 'crypto'
 import { dirname, extname, join } from 'path'
 import { chromium, type Browser, type BrowserServer, type Page } from 'playwright'
-import type { TimelineItem } from '../../../remotion/types'
-import type { RenderTheme } from '../../../remotion/renderTheme'
-import { FPS, HEIGHT, WIDTH } from '../../../remotion/constants'
+import type { TimelineItem } from '../../../composition/types'
+import type { RenderTheme } from '../../../composition/renderTheme'
+import { FPS, HEIGHT, WIDTH } from '../../../composition/constants'
 import { h264, runFfmpeg, spawnFfmpeg, type RunningTool } from '../../media'
 import { browserExecutablePath } from '../../capture/resolveBrowser'
 import { drawing, encoding, type ExportProgress } from '../exportProgress'
@@ -201,9 +201,9 @@ async function captureRange(
     for (let frame = range.from; frame < range.to; frame++) {
       signal.throwIfAborted()
       await Promise.race([page.evaluate((f) => (window as unknown as { talkie: TalkiePage }).talkie.seek(f), frame), crashed])
-      // JPEG at 80, the quality Remotion captures its own frames at: higher left a saturated edge
-      // with less of the chroma ringing 4:2:0 leaves, so the two exports' buttons and brand marks
-      // differed by more than the picture test allows where nothing a viewer would see had changed.
+      // JPEG at 80: the quality the export was matched at, frame for frame, against the renderer it
+      // replaced. Higher left saturated buttons and brand marks visibly different from the exports
+      // people already had, where the 4:2:0 ringing on their edges changed.
       const { data } = await Promise.race([cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 }), crashed])
       if (!encoder.process.stdin.write(Buffer.from(data, 'base64'))) await writable(encoder, signal)
       captured()

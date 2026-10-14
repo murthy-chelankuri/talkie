@@ -12,7 +12,7 @@ type Span = { start: number; end: number }
 const ClockContext = createContext<Clock | null>(null)
 const SpanContext = createContext<Span>({ start: 0, end: Infinity })
 
-/** The layout Remotion's AbsoluteFill had, which every scene was drawn against. */
+/** The full-frame layout every scene was drawn against. */
 export const FILL_STYLE: CSSProperties = {
   position: 'absolute',
   top: 0,

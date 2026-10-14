@@ -6,8 +6,8 @@ export type EncodePurpose = 'intermediate' | 'export'
 type Encoder = { name: string; quality: Record<EncodePurpose, string[]> }
 
 /**
- * The export's quality on VideoToolbox. Provisional until Task 6 of step 3 sets it to the value
- * that brings the comparison fixtures within 10% of Remotion's file sizes, and records why here.
+ * The export's quality on VideoToolbox: the value that brought the shipped examples within 10% of
+ * the file sizes the previous renderer made, with nothing a viewer would see given up.
  */
 const EXPORT_QUALITY = '92'
 

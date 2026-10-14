@@ -26,8 +26,8 @@ const ASSET_SERVER = 'http://127.0.0.1:*'
  */
 /**
  * No `data:` in media-src: every recording and take the preview plays comes from the asset
- * server. It was there for Remotion's player, which primed its audio tags with an inline silent
- * clip; Talkie's own player does not, so it is refused like anything else nobody needs.
+ * server, and nothing primes an audio tag with an inline clip, so it is refused like anything else
+ * nobody needs.
  */
 const PRODUCTION_POLICY = [
   "default-src 'self'",

@@ -3,7 +3,7 @@ import { homedir } from 'os'
 import { basename, extname, join, normalize, sep } from 'path'
 import { findThemeDir, readTheme } from './themeApi'
 import { BUILTIN_FONTS, type FontChoice, type ThemeDraft } from './schema'
-import { themeStamp, type RenderTheme } from '../../remotion/renderTheme'
+import { themeStamp, type RenderTheme } from '../../composition/renderTheme'
 import { stillLogo } from './stillLogo'
 
 /**

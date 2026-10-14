@@ -3,7 +3,7 @@ import type { PreviewHandle } from '../../../video/preview'
 import { Maximize2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import type { TimelineItem } from '../api/projectClient'
 import { formatTimecode, nextClipStart, previousClipStart } from '../lib/timelineLayout'
-import { FPS } from '../../../remotion/constants'
+import { FPS } from '../../../composition/constants'
 import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
 

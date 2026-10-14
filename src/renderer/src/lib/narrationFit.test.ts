@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { estimatedSpokenSeconds, narrationFit, scriptParts, spokenWords, WORDS_PER_SECOND } from './narrationFit'
-import { FPS } from '../../../remotion/constants'
+import { FPS } from '../../../composition/constants'
 
 describe('how long a script takes to say', () => {
   it('counts the words said, not the timings in front of them', () => {

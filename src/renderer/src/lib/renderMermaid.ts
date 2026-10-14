@@ -1,5 +1,5 @@
 import { diagramBackground, mermaidConfigFor, normaliseSvg } from '../../../main/slides/mermaidTheme'
-import { fontFaceCss, type RenderTheme } from '../../../remotion/renderTheme'
+import { fontFaceCss, type RenderTheme } from '../../../composition/renderTheme'
 import type { VariantId } from '../../../main/themes/schema'
 
 /**

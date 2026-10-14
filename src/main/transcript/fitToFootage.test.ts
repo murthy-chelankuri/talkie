@@ -9,7 +9,7 @@ import { narrateSegment } from './narrate'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { footageFrames, hurriedBy, readFaster, roomFor, MAX_SPEED_UP } from './fitToFootage'
 import type { SpeechOptions } from '../tts/ttsProvider'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 const delivery: SpeechOptions = { voice: 'Samantha', pace: 170, sentencePauseMs: 420, clausePauseMs: 300 }
 
@@ -39,7 +39,7 @@ const ONE_PIXEL_PNG_BASE64 =
 /**
  * A silent clip of a known length, standing in for a recording.
  *
- * Built from a still rather than from `lavfi`: this was written when Remotion's bundled ffmpeg
+ * Built from a still rather than from `lavfi`: this was written when the ffmpeg in use
  * was a narrow build with no `color` source. Talkie's pinned build has one, but the still works and
  * is left alone; either way it runs through the same binary the app itself measures with.
  */

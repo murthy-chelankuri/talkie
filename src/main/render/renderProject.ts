@@ -12,8 +12,8 @@ import { findProjectDir, projectsRootDir } from '../project/paths'
 import { buildCaptions, toSrt } from '../transcript/captions'
 import { burnedCaptionsFor } from '../transcript/burnedCaptions'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { computeTimelineDuration } from '../../remotion/timelineDuration'
-import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
+import { computeTimelineDuration } from '../../composition/timelineDuration'
+import type { TimelineItem as CompositionTimelineItem } from '../../composition/types'
 import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
 import { levelExport } from './loudness'
@@ -60,12 +60,12 @@ export async function renderProjectVideo(
 
   const rootDir = projectsRootDir(baseDir)
   // Cast: project/timeline/schema.ts's zod-inferred TimelineItem treats `data` as optional
-  // (z.unknown() accepts undefined), while remotion/types.ts's hand-written TimelineItem
+  // (z.unknown() accepts undefined), while composition/types.ts's hand-written TimelineItem
   // requires it. Both describe the same real shape validated by TimelineItemSchema.superRefine
   // (every item's `data` is checked against its kind's schema, so it's always present) — the
   // optionality is a static-typing artifact of two independently-defined interfaces, not a
   // runtime possibility.
-  const rawTimeline = readTimelineLenient(id, baseDir) as unknown as RemotionTimelineItem[]
+  const rawTimeline = readTimelineLenient(id, baseDir) as unknown as CompositionTimelineItem[]
   const assetServer = await getAssetServer(rootDir)
   const narrationAudioPaths = readNarrationAudioPaths(id, baseDir)
   const timeline = resolveTimelineAssetUrls(

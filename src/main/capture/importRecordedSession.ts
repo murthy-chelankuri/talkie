@@ -9,7 +9,7 @@ import { cleanActionLog } from '../agent/cleanActionLog'
 import { findTopicBreaks } from '../agent/topicBreaks'
 import { probeMedia } from '../media'
 import { logFailure } from '../diagnostics/log'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 
 // Playwright writes its .webm progressively and does not always finalize a duration in the

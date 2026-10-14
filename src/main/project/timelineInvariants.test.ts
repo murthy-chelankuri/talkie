@@ -17,7 +17,7 @@ import {
 import { findProjectDir } from './paths'
 import { saveSlides } from '../slides/importSlides'
 import { repairNarrationDurations } from '../transcript/repairNarrationDurations'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 
 /**
  * The timeline is played back by laying clips end to end, so a gap plays as a frozen frame and

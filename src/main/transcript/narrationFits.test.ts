@@ -16,7 +16,7 @@ import { narrateSegment } from './narrate'
 import { saveRecordedNarration } from './recordNarration'
 import { repairNarrationDurations } from './repairNarrationDurations'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 /**
  * The regression that reached the user, written as the rule it broke.
