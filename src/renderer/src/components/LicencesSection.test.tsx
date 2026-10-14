@@ -17,13 +17,8 @@ describe('licences', () => {
   it('says what a copyleft licence actually asks for, not just its name', () => {
     render(<LicencesSection />)
 
-    expect(screen.getByText(/Source for the covered files must be made available/)).toBeInTheDocument()
-  })
-
-  it('is honest that Remotion is not open source', () => {
-    render(<LicencesSection />)
-
-    expect(screen.getByText(/Source-available, not open source/)).toBeInTheDocument()
+    // elkjs is EPL-2.0: file-level copyleft, said plainly rather than left as an identifier.
+    expect(screen.getByText(/Source for the covered module must be made available/)).toBeInTheDocument()
   })
 
   it('shows a package licence text only when asked for it', async () => {
@@ -73,12 +68,10 @@ describe('the generated notices themselves', () => {
     expect(notices.bundled.every((item) => item.license.startsWith('GPL'))).toBe(true)
   })
 
-  it('does not relabel the Remotion packages that really are MIT', () => {
-    const captions = notices.packages.find((pkg) => pkg.name === '@remotion/captions')
+  it('ships nothing under Remotion’s licence, now that Talkie draws its videos itself', () => {
+    const remotion = notices.packages.filter((pkg) => pkg.name === 'remotion' || pkg.name.startsWith('@remotion/') || /remotion/i.test(pkg.license))
 
-    // Folding every @remotion/* package into the proprietary licence would overstate what is
-    // actually restricted here.
-    expect(captions?.license).toBe('MIT')
+    expect(remotion).toEqual([])
   })
 
   it('reproduces licence text rather than only naming the licence', () => {

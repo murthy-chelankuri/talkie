@@ -63,8 +63,7 @@ function checkRecording(): ReadinessCheck {
 }
 
 async function checkExport(): Promise<ReadinessCheck> {
-  // Until step 3 of the renderer the export itself renders with Remotion's compositor, so this
-  // proves Talkie's ffmpeg (recording, narration, measurement), not the export's.
+  // The export encodes with Talkie's own ffmpeg, as recording, narration and measurement do.
   // ffmpeg is fetched on install and packaged beside the app, but it is a native binary that an
   // interrupted install or a packaging slip can leave missing, so it is proven rather than assumed.
   let ready = false

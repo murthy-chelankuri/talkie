@@ -1,8 +1,6 @@
 import {
-  createContext,
   forwardRef,
   useCallback,
-  useContext,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
@@ -14,6 +12,7 @@ import {
   type Ref
 } from 'react'
 import { VideoRoot } from './clock'
+import { PreviewMediaContext, type PreviewMediaEntry, type RegisterPreviewMedia } from './previewMedia'
 import type { PreviewEvents, PreviewHandle, PreviewProps } from '../preview'
 
 /**
@@ -22,25 +21,6 @@ import type { PreviewEvents, PreviewHandle, PreviewProps } from '../preview'
  * draws it, so what plays is what renders. Its handle and events are the seam's (../preview.tsx),
  * so the transport bar, timeline, script and the three hosts do not know it changed.
  */
-
-/** A `<video>` or `<audio>` the composition mounted, for the player to keep in step with the clock. */
-export type PreviewMediaEntry = {
-  el: HTMLMediaElement
-  kind: 'video' | 'audio'
-  /** Absolute composition frames: where the clip begins and ends. */
-  startFrame: number
-  endFrame: number
-  /** Frames into the file the clip starts at (a recording's lead-in; 0 for narration). */
-  trimBefore: number
-}
-
-type Register = (entry: PreviewMediaEntry) => () => void
-const MediaContext = createContext<Register | null>(null)
-
-/** How media registers with the player. A no-op off the player, so a stray render cannot throw. */
-export function usePreviewMediaRegister(): Register {
-  return useContext(MediaContext) ?? (() => () => undefined)
-}
 
 type EmitterListener = (event: { detail: unknown }) => void
 
@@ -177,7 +157,7 @@ function PlayerWith<P extends object>(
     for (const e of media.current.values()) if (e.kind === 'audio') e.el.muted = next
   }, [])
 
-  const register = useCallback<Register>((entry) => {
+  const register = useCallback<RegisterPreviewMedia>((entry) => {
     const id = nextId.current++
     entry.el.muted = entry.kind === 'video' ? true : mutedRef.current
     media.current.set(id, entry)
@@ -245,11 +225,11 @@ function PlayerWith<P extends object>(
       style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', ...style }}
     >
       <div style={{ width, height, flex: '0 0 auto', transform: `scale(${scale})`, transformOrigin: 'center center' }}>
-        <MediaContext.Provider value={register}>
+        <PreviewMediaContext.Provider value={register}>
           <VideoRoot frame={frame} fps={fps} width={width} height={height} durationInFrames={durationInFrames} mode="preview">
             <Scene {...(inputProps as Record<string, unknown>)} />
           </VideoRoot>
-        </MediaContext.Provider>
+        </PreviewMediaContext.Provider>
       </div>
       {controls && (
         <Controls

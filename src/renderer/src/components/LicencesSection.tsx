@@ -44,9 +44,7 @@ const OBLIGATIONS: Record<string, string> = {
   'EPL-2.0':
     'File-level copyleft with a patent grant. Source for the covered module must be made available.',
   'OFL-1.1':
-    'Embedding the fonts in this app is allowed. They may not be sold on their own, and the copyright notice must travel with them.',
-  'Remotion License':
-    'Source-available, not open source. Free for individuals, non-profits and for-profit companies of up to three people; larger companies need a paid company licence.'
+    'Embedding the fonts in this app is allowed. They may not be sold on their own, and the copyright notice must travel with them.'
 }
 
 /** Ordered so the ones that constrain distribution are read first, not found by scrolling. */
@@ -54,7 +52,6 @@ const PROMINENCE = [
   'GPL-2.0-or-later',
   'GPL-3.0-or-later',
   'Apache-2.0 AND GPL-3.0-or-later',
-  'Remotion License',
   'EPL-2.0',
   'MPL-2.0',
   '(MPL-2.0 OR Apache-2.0)',

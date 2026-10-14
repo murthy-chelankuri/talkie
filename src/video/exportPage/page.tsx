@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import { DemoComposition } from '../../remotion/DemoComposition'
 import type { TimelineItem } from '../../remotion/types'
 import type { RenderTheme } from '../../remotion/renderTheme'
-import { chooseOwnRenderer, setFrameReader, VideoRoot, whenSettled } from '..'
+import { setFrameReader, VideoRoot, whenSettled } from '..'
 
 /**
  * The page the export draws in: the same composition the preview plays, on Talkie's own clock.
@@ -19,8 +19,6 @@ export type ExportPageInput = {
   durationInFrames: number
   reader: string
 }
-
-chooseOwnRenderer()
 
 let root: Root | null = null
 let input: ExportPageInput | null = null

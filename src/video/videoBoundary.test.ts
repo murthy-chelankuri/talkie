@@ -1,26 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'fs'
-import { join, relative, sep } from 'path'
+import { join, relative } from 'path'
 
 /**
- * Remotion is reached through src/video and nowhere else.
+ * Remotion is gone, and stays gone.
  *
- * Talkie is replacing Remotion (docs/superpowers/specs/2026-10-13-own-renderer-design.md), and
- * that is only a change to one folder while every scene and every editor component goes through
- * it. One convenient direct import works perfectly and quietly makes the replacement a hunt
- * again, so this reads the sources, tests and mocks included: a test mocking `remotion` directly
- * is testing a scene against something it no longer imports.
- *
- * Remotion's export (@remotion/renderer, @remotion/bundler) is all that is left of it in the main
- * process, in src/main/render; step 3 replaces it.
+ * Talkie drew and exported its videos with Remotion, which is source-available rather than open
+ * source; it now does both with its own renderer (docs/superpowers/specs/2026-10-13-own-renderer-
+ * design.md). One convenient import would bring the package and its licence back without anything
+ * failing, so this reads the sources — tests and mocks included, since a test mocking `remotion` is
+ * testing against something nothing imports — and the dependencies.
  */
 const ROOT = join(__dirname, '..', '..')
-const SEAM = join('src', 'video') + sep
 const SCANNED = ['src', 'scripts', 'e2e', join('examples', 'build')]
-
-/** Export, still Remotion's until step 3, and kept to where it is used. */
-const MAIN_PROCESS_ONLY = ['@remotion/renderer', '@remotion/bundler']
-const MAIN_PROCESS_PLACES = [join('src', 'main', 'render') + sep, join('scripts') + sep]
 
 function sourceFiles(dir: string): string[] {
   const found: string[] = []
@@ -41,23 +33,36 @@ function specifiers(source: string): string[] {
 
 const isRemotion = (specifier: string): boolean => specifier === 'remotion' || specifier.startsWith('remotion/') || specifier.startsWith('@remotion/')
 
-describe('the line around Remotion', () => {
-  it('finds src/video importing Remotion, so a regex that matched nothing cannot pass', () => {
-    expect(specifiers(readFileSync(join(ROOT, 'src', 'video', 'clock.tsx'), 'utf-8'))).toContain('remotion')
-    expect(specifiers(readFileSync(join(ROOT, 'src', 'video', 'media.tsx'), 'utf-8'))).toContain('remotion')
+describe('Remotion', () => {
+  it('would be found if it came back, so a pattern that matches nothing cannot pass', () => {
+    const sample = [
+      "import { useCurrentFrame } from 'remotion'",
+      "import type { PlayerRef } from '@remotion/player'",
+      "vi.mock('@remotion/renderer', () => ({}))",
+      "const { bundle } = await import('@remotion/bundler')"
+    ].join('\n')
+
+    expect(specifiers(sample).filter(isRemotion)).toEqual(['remotion', '@remotion/player', '@remotion/renderer', '@remotion/bundler'])
   })
 
-  it('lets nothing outside src/video import or mock Remotion', () => {
+  it('is imported or mocked nowhere', () => {
     const offenders = SCANNED.flatMap((dir) => sourceFiles(join(ROOT, dir)))
       .map((file) => relative(ROOT, file))
-      .filter((file) => !file.startsWith(SEAM))
+      // This file spells them out above, to prove they would be found.
+      .filter((file) => file !== relative(ROOT, __filename))
       .flatMap((file) =>
         specifiers(readFileSync(join(ROOT, file), 'utf-8'))
           .filter(isRemotion)
-          .filter((specifier) => !(MAIN_PROCESS_ONLY.includes(specifier) && MAIN_PROCESS_PLACES.some((place) => file.startsWith(place))))
           .map((specifier) => `${file} imports ${specifier}`)
       )
 
     expect(offenders).toEqual([])
+  })
+
+  it('is not a dependency', () => {
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as Record<string, Record<string, string> | undefined>
+    const declared = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].flatMap((field) => Object.keys(pkg[field] ?? {}))
+
+    expect(declared.filter(isRemotion)).toEqual([])
   })
 })

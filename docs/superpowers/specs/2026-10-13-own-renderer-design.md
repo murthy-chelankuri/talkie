@@ -33,12 +33,17 @@ starts from what this one leaves.
 | 4 | **Our own preview player** | Existing player e2e unchanged and passing; new in-step e2e passes (§4) |
 | 5 | **Remotion removed**, documentation and licensing rewritten | No `remotion` package installed; examples rebuilt and watched end to end |
 
-Steps 1–3 are done: Talkie's own export is the default, with `TALKIE_RENDERER=remotion` the way back, and
-`npm run compare:renderer` holds both shipped fixtures to §3's limits — the same frames and length, the
-same picture at five moments a clip, the same loudness and silences, and no slower than 1.2× Remotion.
-Getting the picture to match took serving recording frames as PNG, matching each to the frame Remotion
-shows by time (the recording is 25 fps under a 30 fps composition and opens at a non-zero PTS), and
-capturing screenshots at Remotion's own JPEG quality so a saturated edge rings the same way.
+All five steps are done. Step 3 was proven by a side-by-side comparison of both shipped fixtures,
+exported each way and held to §3's limits — the same frames and length, the same picture at five
+moments a clip, the same loudness and silences, and no slower than 1.2× Remotion. Getting the picture
+to match took serving recording frames as PNG, matching each to the frame Remotion showed by time (the
+recording is 25 fps under a 30 fps composition and opens at a non-zero PTS), and capturing screenshots
+at Remotion's own JPEG quality so a saturated edge rings the same way. Step 4's player passes the
+existing playback e2e unchanged, and a new one holds `<video>` and `<audio>` within two frames of the
+clock across a cut from a recording to a narrated slide. Step 5 removed the fallback export, the
+comparison (it had nothing left to compare against) and all four packages; `videoBoundary.test.ts`
+now fails if Remotion is imported anywhere or becomes a dependency again. The examples were not
+rebuilt: they ship as projects, not rendered video, and the e2e plays them.
 
 Every PR passes `npm test`, `npm run typecheck` and `npm run e2e`, as now.
 

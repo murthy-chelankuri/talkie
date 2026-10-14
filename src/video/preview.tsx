@@ -1,5 +1,4 @@
 import type { ComponentType, CSSProperties } from 'react'
-import { chooseOwnRenderer } from './engine'
 import { OwnPreview } from './own/player'
 
 /**
@@ -8,10 +7,6 @@ import { OwnPreview } from './own/player'
  * and the props the transport bar, the timeline, the script and the three hosts use — the same ones
  * they used when Remotion's `<Player>` was behind them, so none of them changed when it was replaced.
  */
-
-// The editor draws every scene with Talkie's own renderer, as the export page does; chosen here,
-// once, before any scene renders (engine.ts).
-chooseOwnRenderer()
 
 export type PreviewEvents = { frameupdate: { frame: number }; play: undefined; pause: undefined }
 type Listener<E extends keyof PreviewEvents> = (event: { detail: PreviewEvents[E] }) => void

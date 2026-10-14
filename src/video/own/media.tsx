@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useOwnFrame, useOwnRenderMode, useOwnSpan } from './clock'
 import { ownHold, reportFailure } from './hold'
-import { usePreviewMediaRegister } from './player'
+import { usePreviewMediaRegister } from './previewMedia'
 
 let frameReader = ''
 

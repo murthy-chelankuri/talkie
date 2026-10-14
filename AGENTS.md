@@ -5,8 +5,8 @@ Notes for anyone working on this repository, human or agent. This file is the ca
 second copy that drifts.
 
 An Electron app that records a browser session silently, writes and speaks the narration, and
-exports an MP4. macOS only, Apple Silicon. React + Remotion in the renderer, Playwright for
-capture, `say` or the built-in Kokoro voice for speech.
+exports an MP4. macOS only, Apple Silicon. React in the renderer, drawn and exported by Talkie's
+own renderer (`src/video/`), Playwright for capture, `say` or the built-in Kokoro voice for speech.
 
 ## Commands
 
@@ -58,8 +58,9 @@ These each cost real time to find. None are obvious from the code.
   ES module from inside an asar archive — a packaged build starts, reports itself ready, and
   never opens a window. `electron.vite.config.ts` forces `format: 'cjs'` with a `.cjs` extension
   for both.
-- **`react` is a runtime dependency, not a dev one.** `@remotion/renderer` requires it in the
-  main process.
+- **`react` is a runtime dependency, not a dev one**, though only bundles import it. React ships
+  inside the renderer and the export page, and the Licences screen lists production dependencies
+  (`generateNotices.mjs`): moved to devDependencies it would still ship, uncredited.
 - **Electron's binary is fetched by a postinstall, and `npm run dev` checks for it first.**
   The package is a stub; without the download it throws "Electron failed to install correctly",
   which reads as a broken app rather than an unfinished install. `scripts/ensureElectron.mjs`
@@ -79,44 +80,37 @@ These each cost real time to find. None are obvious from the code.
   have. It used to be every call site's job: one `getVideoMetadata` call was never told where the
   binaries were, and every packaged recording arrived as three seconds of its opening.
   `mediaBoundary.test.ts` fails on any other way in. Encoders come from `h264()`'s table per
-  system, hardware only — the same `h264_videotoolbox` that Talkie's own export and Remotion's both
-  encode with. Remotion's own compositor is now only the fallback (`render/binaries.ts`,
-  `packagedBinaries.test.ts`).
-- **Remotion is the fallback renderer, and it is handed a browser** through `browserExecutablePath()`
-  as the own export is (below). `TALKIE_RENDERER=remotion` is the way back to it. Left to find its own
-  it works out where to download one by walking up from the working directory looking for a
-  package.json — from `/` there is none, so it settles on `/.remotion` and export dies with
-  `ENOENT: mkdir '/.remotion'`. Both `selectComposition` and `renderMedia` need it; missing
-  either fails in a packaged build and nowhere else. `exportFromAnywhere.test.ts` moves the
-  working directory to `/` on purpose, because running from the checkout is the case that has
-  always worked.
+  system, hardware only: recording and export both encode with `h264_videotoolbox`.
+- **The export is handed a browser** through `browserExecutablePath()`, as an absolute path. Left
+  to find one itself, a renderer works out where by walking up from the working directory — from
+  `/` there is nothing, and Remotion, which Talkie used to export with, died there with
+  `ENOENT: mkdir '/.remotion'`. `exportFromAnywhere.test.ts` moves the working directory to `/` on
+  purpose, because running from the checkout is the case that has always worked.
 - **Export renders in Chrome's headless shell, not a full Chrome.** A full Chrome holds some
   frames for 300–750ms each whatever the scene, so more tabs, the GPU or fewer pixels all
   changed nothing and a 55-second demo took three minutes; the shell does it in under one.
   `browserExecutablePath()` finds the shell Playwright installs beside its Chromium and falls back
   to the installed browser. An export's browsers are its own processes: quitting mid-export left
   them running with no parent, so `before-quit` cancels exports and waits (`exportJob.ts`).
-- **Talkie's own export is the default, and its frames must match Remotion's to the pixel.**
-  `exportVideo.ts` draws the composition in N headless tabs, screenshots each frame over CDP and
-  pipes the shots to one ffmpeg a tab (`render/exporter/`); `compare/compareExports.compare.ts`
-  holds it to Remotion's own output (`npm run compare:renderer`, and never a widened limit). Three
-  things each cost real time to find. Recording frames are served as **PNG, not JPEG**
-  (`frameSource.ts`, `assetServer.ts`) — the exact pixels, as Remotion's own frame server hands
-  over, with none of the chroma a saturated brand loses to JPEG. Each composition frame is matched
-  to the recording frame **showing at its moment, by time**: a recording is 25 fps under a 30 fps
-  composition *and* opens at a PTS a frame in, not zero (`probe.ts` reads `start_time`), and `-ss`
-  alone overshot the frame by one often enough to show a later picture mid-animation, so the frame
-  is landed on with `-copyts` and a PTS `select`. Screenshots are JPEG **quality 80 — Remotion's own
-  default** (`DEFAULT_JPEG_QUALITY`) — so the 4:2:0 ringing on a saturated edge is the same ringing,
-  not a brighter one the picture test flagged. The soundtrack is padded up to a whole AAC frame so
-  the container ends where Remotion's does rather than one frame short (`soundtrack.ts`).
-- **The composition is bundled at build time**, by `scripts/bundleRemotion.mjs` into `out/remotion`,
-  and resolved from `__dirname` by `remotionBundle.ts`. Export used to bundle it on demand from
-  `process.cwd()` + `src/`, and a packaged build has neither. The bundle is unpacked from the
-  archive for the same reason mermaid is: a headless browser fetches those files, and only Node
-  can read out of an asar.
-- **Native binaries cannot load from inside asar.** Remotion's compositor, Playwright, and the
-  MCP entry point are all in `asarUnpack`.
+- **The export draws frames in headless tabs and pipes their screenshots to ffmpeg.**
+  `exportVideo.ts` draws the composition in N tabs, screenshots each frame over CDP and pipes the
+  shots to one ffmpeg a tab (`render/exporter/`). Before Remotion was removed it was held to
+  Remotion's own output frame for frame, and four things it needed each cost real time to find.
+  Recording frames are served as **PNG, not JPEG** (`frameSource.ts`, `assetServer.ts`) — the
+  exact pixels, with none of the chroma a saturated brand loses to JPEG. Each composition frame is
+  matched to the recording frame **showing at its moment, by time**: a recording is 25 fps under a
+  30 fps composition *and* opens at a PTS a frame in, not zero (`probe.ts` reads `start_time`), and
+  `-ss` alone overshot the frame by one often enough to show a later picture mid-animation, so the
+  frame is landed on with `-copyts` and a PTS `select`. Screenshots are JPEG at **quality 80**,
+  which kept the 4:2:0 ringing on a saturated edge the size Remotion's export had. The soundtrack
+  is padded up to a whole AAC frame, or the container ends a frame short of the picture
+  (`soundtrack.ts`).
+- **The export page is built at build time**, by `scripts/bundleExportPage.mjs` into
+  `out/export-page`, and found from `__dirname` (`exporter/exportPage.ts`). A packaged build has no
+  `src/` to build it from on demand. It is unpacked from the archive for the same reason mermaid
+  is: a headless browser fetches those files, and only Node can read out of an asar.
+- **Native binaries cannot load from inside asar.** Playwright and the MCP entry point are in
+  `asarUnpack`.
 - **Kokoro runs in its own process, and must stay there.** `phonemizer` says Apache-2.0 but
   carries eSpeak NG (GPL-3.0) compiled inside it. Only `src/main/tts/kokoro/kokoroWorker.ts` may
   import `kokoro-js`, `phonemizer`, `@huggingface/transformers` or `onnxruntime-node`; the main
@@ -139,7 +133,7 @@ These each cost real time to find. None are obvious from the code.
   speaking, its remote host is pointed at a dead local port instead, so a cached model loads and a
   missing one fails rather than downloading mid-clip.
 - **The MCP server is an ES module, which has no `__dirname`.** The shared modules find what ships
-  beside them through it — the Remotion bundle, the HTML scene runtime — so `vite.mcp.config.ts`
+  beside them through it — the HTML scene runtime among them — so `vite.mcp.config.ts`
   defines `__dirname` and `__filename` in the bundle's banner. Without that, the built server threw
   a `ReferenceError` on the first lookup and nothing caught it, because the tests run the sources;
   `builtServer.test.ts` runs the built bundle from `/` once there is one.
@@ -158,15 +152,15 @@ These each cost real time to find. None are obvious from the code.
   toolbar (five calls, nothing more).
 - `src/renderer/` — React. Reaches main only through `window.api`.
 - `src/remotion/` — the composition. Shared by the preview and the export, so what is on screen
-  is what renders. It takes its clock, holds, media and motion from `src/video/` and never from
-  Remotion itself.
-- `src/video/` — the only way in to Remotion, which Talkie has replaced with its own renderer for
-  the preview and the default export (`docs/superpowers/specs/2026-10-13-own-renderer-design.md`).
-  `index.ts` is the composition's side and `preview.tsx` the editor's, kept apart so the export
-  bundle carries no player. `spring` and `interpolate` are already Talkie's own, matched to
-  Remotion's against sampled values. `videoBoundary.test.ts` fails on a direct import or mock of
-  Remotion anywhere else; the main process keeps `@remotion/renderer` and `@remotion/bundler` for
-  the fallback export (`TALKIE_RENDERER=remotion`).
+  is what renders. It takes its clock, holds, media and motion from `src/video/`. The folder keeps
+  the name it had when Remotion drew it; nothing in it imports Remotion.
+- `src/video/` — Talkie's own renderer (`docs/superpowers/specs/2026-10-13-own-renderer-design.md`),
+  which replaced Remotion for the preview and the export. `index.ts` is the composition's side and
+  `preview.tsx` the editor's, kept apart so the export bundle carries no player; `own/player.tsx`
+  is the player, `own/clock.tsx`, `own/media.tsx` and `own/hold.ts` what both draw with. The scenes'
+  names (`useFrame`, `Sequence`, `spring`, `interpolate` …) are Remotion's, and each is held to how
+  Remotion's behaved. `videoBoundary.test.ts` fails if any file imports or mocks Remotion, or any
+  Remotion package becomes a dependency again.
 - `src/mcp/` — a standalone MCP server, a **separate process**, off by default and token-gated.
 - Projects live in `~/Talkie/Projects/<id>-<slug>/` as `project.json`, `timeline.json`,
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
@@ -320,7 +314,7 @@ colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `
 - **A diagram is painted on its look's own background.** `diagramStamp` carries a drawing version;
   raise it when how a themed diagram is drawn changes, or ones already drawn keep the old look.
 - **Logos are drawn still, and plated where they would vanish.** Brand sites often serve animated
-  SVG logos; CSS animation runs on the clock and Remotion renders frames out of order, so
+  SVG logos; CSS animation runs on the clock and the export draws frames out of order, so
   `stillLogo.ts` settles every animation into its end state when the theme is drawn (the file stays
   as published). `LogoMark` reads the logo's colours in the browser and, on a slide or card whose
   background would hide too much of it, puts it on a plate in the theme's light or dark colour.
@@ -425,11 +419,11 @@ the app stays the only writer.
 ## Licensing — read before distributing anything
 
 - Talkie's own code is **Apache-2.0**. That covers this repository and nothing else.
-- **Remotion is not open source.** Free for individuals, non-profits and companies of up to three
-  people; larger for-profits need a paid licence. Cloning this does not grant one.
-- **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later) is fetched by `npm install`,
-  and Remotion's compositor brings another (GPL-2.0-or-later) until step 3. Neither is in this
-  repository.
+- **Remotion is gone.** Talkie used to draw and export with it — source-available, not open
+  source — and now does both itself. No Remotion package is installed, and `videoBoundary.test.ts`
+  keeps it that way.
+- **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later, x264 and x265 linked in) is
+  fetched by `npm install`. It is not in this repository.
 - Publishing *source* carries no GPL obligation. **Shipping a built `.dmg` does**, including
   offering ffmpeg's source to every recipient. That is why no prebuilt binaries are published
   here, and why the Mac App Store is not a route (App Sandbox also blocks `say`, `afconvert`,

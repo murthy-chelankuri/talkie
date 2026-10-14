@@ -26,7 +26,7 @@ const LICENCE_FILES = [
  * Things that ship as binaries or data rather than as npm packages with a licence field, and
  * whose terms are the ones that actually constrain how this app may be distributed. Written by
  * hand because no manifest on disk states them: the FFmpeg terms come from the binary's own
- * banner, and Remotion's from the licence text in its package.
+ * banner.
  */
 const BUNDLED = [
   {
@@ -36,35 +36,25 @@ const BUNDLED = [
     textFile: 'licences/GPL-3.0.txt',
     note:
       'Fetched on install from ffmpeg.martin-riedl.de, pinned by SHA-256, and used for recording, ' +
-      'frame sampling, audio and measuring footage. Built with --enable-gpl --enable-version3, x264 ' +
+      'exporting, frame sampling, audio and measuring footage. Built with --enable-gpl --enable-version3, x264 ' +
       'and x265. Statically linked, so a distributor also needs the source and licences of every other ' +
       'library its -buildconf enables. Source: https://ffmpeg.org/download.html',
     homepage: 'https://ffmpeg.martin-riedl.de'
   },
   {
-    name: 'FFmpeg (inside Remotion)',
-    version: 'n7.1',
-    license: 'GPL-2.0-or-later',
-    textFile: 'licences/GPL-2.0.txt',
-    note:
-      "Shipped inside Remotion's compositor and used only by Remotion's export, until Talkie's own " +
-      'replaces it. Built with --enable-gpl, --enable-libx264 and --enable-libx265.',
-    homepage: 'https://ffmpeg.org'
-  },
-  {
     name: 'x264',
-    version: 'bundled with FFmpeg 9.0.2 and n7.1',
+    version: 'bundled with FFmpeg 9.0.2',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
-    note: 'H.264 encoder linked into the bundled FFmpeg builds. Source: https://www.videolan.org/developers/x264.html',
+    note: 'H.264 encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x264.html',
     homepage: 'https://www.videolan.org/developers/x264.html'
   },
   {
     name: 'x265',
-    version: 'bundled with FFmpeg 9.0.2 and n7.1',
+    version: 'bundled with FFmpeg 9.0.2',
     license: 'GPL-2.0-or-later',
     textFile: 'licences/GPL-2.0.txt',
-    note: 'HEVC encoder linked into the bundled FFmpeg builds. Source: https://www.videolan.org/developers/x265.html',
+    note: 'HEVC encoder linked into the bundled FFmpeg. Source: https://www.videolan.org/developers/x265.html',
     homepage: 'https://www.videolan.org/developers/x265.html'
   },
   {
@@ -109,16 +99,25 @@ const RELABELLED = {
 }
 
 function productionPackages() {
-  const json = execFileSync('npm', ['ls', '--omit=dev', '--all', '--json'], {
-    cwd: root,
-    maxBuffer: 64 * 1024 * 1024,
-    // `npm ls` exits non-zero on peer-dependency complaints while still printing a usable tree.
-    stdio: ['ignore', 'pipe', 'ignore']
-  })
+  let json
+  try {
+    json = execFileSync('npm', ['ls', '--omit=dev', '--all', '--json'], {
+      cwd: root,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+  } catch (err) {
+    // `npm ls` exits non-zero on peer-dependency complaints and extraneous packages while still
+    // printing a usable tree, and execFileSync throws on any non-zero exit.
+    if (!err.stdout?.length) throw err
+    json = err.stdout
+  }
   const seen = new Set()
   const walk = (node) => {
     for (const [name, info] of Object.entries(node.dependencies ?? {})) {
-      if (seen.has(name)) continue
+      // Present on disk but declared by nothing here — left by another checkout sharing this
+      // node_modules, or an install not yet pruned. Nothing ships it.
+      if (seen.has(name) || info.extraneous) continue
       seen.add(name)
       walk(info)
     }
@@ -185,10 +184,6 @@ function licenceFromText(text) {
   return null
 }
 
-/** Every Remotion package is governed by the one licence, whether or not it carries a copy. */
-const REMOTION_LICENCE = licenceTextFor(join(root, 'node_modules', 'remotion'))
-const isRemotion = (name) => name === 'remotion' || name.startsWith('@remotion/')
-
 const packages = []
 for (const name of productionPackages()) {
   const dir = join(root, 'node_modules', name)
@@ -212,16 +207,7 @@ for (const name of productionPackages()) {
   const namesAFile = license && /^SEE LICEN[CS]E/i.test(license)
   if (namesAFile) license = null
 
-  // Remotion's own packages state it three different ways — a filename, the name plus a URL, or
-  // nothing at all. Only the ones that state no ordinary licence are folded together: several
-  // under the same scope really are MIT, and relabelling those would overstate what is
-  // proprietary here.
-  if (isRemotion(name) && (!license || /^Remotion Licen[cs]e/i.test(license))) {
-    license = 'Remotion License'
-    text ??= REMOTION_LICENCE
-  } else {
-    license ??= licenceFromText(text)
-  }
+  license ??= licenceFromText(text)
 
   packages.push({
     name,

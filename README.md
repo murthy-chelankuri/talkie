@@ -5,9 +5,9 @@ Record it silent. Give it a voice.
 Talkie records a browser session or imports a slide deck, writes the narration for each clip,
 speaks it, and exports an MP4.
 
-Talkie's own code is Apache-2.0. It renders video with **Remotion, which is not open source** —
-using this repository at all requires your own eligibility under Remotion's licence. Read
-[Licence](#licence) before you build on this.
+Talkie's own code is Apache-2.0, and it draws and exports video with its own renderer. A built
+app carries GPL components — ffmpeg, and eSpeak NG inside the Kokoro voice — so read
+[Licence](#licence) before you hand one to anyone.
 
 ## Running from the source
 
@@ -32,10 +32,10 @@ The result is `release/Talkie-<version>-arm64.dmg`, built for Apple Silicon. It 
 
 Test the packaged app rather than only the dev build. The two differ in ways that have already
 bitten: the main bundle has to be CommonJS because Electron cannot load an ES module from inside
-an asar archive, `react` has to be a runtime dependency because `@remotion/renderer` requires it
-in the main process, and Remotion's compositor has to be unpacked from the archive. Talkie's own
-ffmpeg is fetched on install and packaged as extraResources, outside it. Each of those failed
-silently — the app started, reported itself ready, and never opened a window.
+an asar archive, and whatever a headless browser or plain node reads — the export page, the MCP
+server — has to be unpacked from the archive. Talkie's own ffmpeg is fetched on install and
+packaged as extraResources, outside it. Each of those has failed silently in a packaged build and
+nowhere else.
 
 ### Running from source shows "Electron" in the menu bar
 
@@ -227,30 +227,24 @@ says which.
 ## Licence
 
 Talkie's own source is [Apache-2.0](LICENSE). That covers the code in this repository and
-nothing else — it cannot grant rights to the things Talkie depends on. Two of those need your
-attention before you use this. The full picture is in [NOTICE](NOTICE), and every dependency's
+nothing else — it cannot grant rights to the things Talkie depends on. Two of those — ffmpeg, and
+eSpeak NG inside the Kokoro voice — are GPL, which matters the moment you hand someone a built
+app. The full picture is in [NOTICE](NOTICE), and every dependency's
 licence is listed in the app under Settings → Licences.
 
-### Remotion is not open source
+### Remotion has been removed
 
-Video is rendered with [Remotion](https://remotion.dev), which is source-available under the
-Remotion License. Cloning this repository does not give you a Remotion licence. You need your
-own, and it is free only if you are:
-
-- an individual,
-- a non-profit or not-for-profit organisation, or
-- a for-profit company with **up to 3 employees**.
-
-Larger for-profit organisations need a [paid company licence](https://www.remotion.pro/license).
-Remotion has said the terms change in Remotion 5.0.
+Earlier versions rendered video with [Remotion](https://remotion.dev), which is source-available
+rather than open source and needed a licence of your own. Talkie now draws and exports video
+with its own renderer: no Remotion package is installed, and this version needs no Remotion
+licence.
 
 ### ffmpeg is GPL
 
 Talkie runs FFmpeg 9.0.2 from [Martin Riedl's build server](https://ffmpeg.martin-riedl.de),
 pinned and hash-checked by `scripts/fetchFfmpeg.mjs` on `npm install` — a GPL-3.0 build
 (`--enable-gpl --enable-version3`, with x264 and x265 linked in) with nothing nonfree in it. It is
-**not in this repository**. Until Talkie's own export replaces Remotion's, Remotion's compositor
-package also brings its own GPL ffmpeg, which only that export uses.
+**not in this repository**.
 
 The distinction that matters:
 
@@ -265,3 +259,11 @@ Store is not a route for this app: the GPL's no-further-restrictions clause has 
 been held incompatible with app store terms, and separately, App Sandbox blocks most of what
 Talkie does — spawning `say` and `afconvert`, driving a browser, and running the MCP server.
 Direct distribution under a Developer ID is the workable path.
+
+### eSpeak NG is GPL too
+
+The Kokoro voice turns text into phonemes with `phonemizer`, whose own licence says Apache-2.0
+but which carries eSpeak NG (GPL-3.0-or-later) compiled into it. It runs in a process of its own,
+never inside Talkie, but a built app still ships it — with the same obligation as ffmpeg, to
+offer its source to every recipient. Which eSpeak NG `phonemizer` compiled is still to be settled
+before a build is published; see [NOTICE](NOTICE).

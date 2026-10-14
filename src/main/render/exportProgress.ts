@@ -28,24 +28,7 @@ export function preparing(totalFrames = 0): ExportProgress {
   return { stage: 'preparing', fraction: 0, renderedFrames: 0, totalFrames }
 }
 
-/**
- * From Remotion's report while it draws and encodes: `progress` is its own 0–1 over both, and
- * `stitchStage` turns to `muxing` once every frame is drawn and the file is being put together.
- */
-export function rendering(
-  report: { progress: number; renderedFrames: number; stitchStage: 'encoding' | 'muxing' },
-  totalFrames: number
-): ExportProgress {
-  const allDrawn = report.renderedFrames >= totalFrames && totalFrames > 0
-  return {
-    stage: report.stitchStage === 'muxing' || allDrawn ? 'encoding' : 'rendering',
-    fraction: PREPARING + clamp(report.progress) * (1 - PREPARING - FINISHING),
-    renderedFrames: Math.min(report.renderedFrames, totalFrames),
-    totalFrames
-  }
-}
-
-/** Talkie's own export: capturing is most of the middle, the rest is joining and mixing. */
+/** Capturing frames is most of the middle; the rest is joining the runs and mixing the sound. */
 const DRAWING_SHARE = 0.9
 
 export function drawing(renderedFrames: number, totalFrames: number): ExportProgress {

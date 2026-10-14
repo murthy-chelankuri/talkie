@@ -21,7 +21,6 @@ import { redrawStaleDiagrams } from '../themes/projectDiagrams'
 import { redrawStalePosters } from '../htmlScene/htmlSceneApi'
 import { toRenderTheme } from '../themes/toRenderTheme'
 import { finishing, preparing, type ExportProgress } from './exportProgress'
-import { renderWithRemotion } from './remotionExport'
 import { exportVideo } from './exporter/exportVideo'
 
 /** `checkout-demo-2026-09-11` — the project, and when it was rendered. */
@@ -40,16 +39,6 @@ export type RenderOptions = {
   onProgress?: (progress: ExportProgress) => void
   /** Stops the export part way; it then rejects. */
   signal?: AbortSignal
-  /** Which exporter; `TALKIE_RENDERER`, then Talkie's own, when not given. */
-  renderer?: 'own' | 'remotion'
-}
-
-/** The option, then `TALKIE_RENDERER=remotion`, then Talkie's own. */
-export function chooseRenderer(
-  options: Pick<RenderOptions, 'renderer'>,
-  env: Record<string, string | undefined>
-): 'own' | 'remotion' {
-  return options.renderer ?? (env.TALKIE_RENDERER === 'remotion' ? 'remotion' : 'own')
 }
 
 export async function renderProjectVideo(
@@ -96,21 +85,17 @@ export async function renderProjectVideo(
   const totalFrames = computeTimelineDuration(rawTimeline)
   onProgress?.(preparing(totalFrames))
 
-  if (chooseRenderer(options, process.env) === 'remotion') {
-    await renderWithRemotion({ timeline, theme, totalFrames, outputPath, onProgress, signal })
-  } else {
-    await exportVideo({
-      timeline,
-      rawTimeline,
-      theme,
-      totalFrames,
-      narration: narrationAudioPaths,
-      serverUrl: assetServer.url,
-      outputPath,
-      onProgress,
-      signal
-    })
-  }
+  await exportVideo({
+    timeline,
+    rawTimeline,
+    theme,
+    totalFrames,
+    narration: narrationAudioPaths,
+    serverUrl: assetServer.url,
+    outputPath,
+    onProgress,
+    signal
+  })
 
   // The soundtrack brought to the level spoken video is delivered at, once the whole of it
   // exists to be measured. See loudness.ts.

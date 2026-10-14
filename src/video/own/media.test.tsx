@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { act, render } from '@testing-library/react'
 import { VideoRoot } from './clock'
 import { openHoldCount, resetHolds, whenSettled } from './hold'
-import { Picture, chooseOwnRenderer } from '../index'
+import { Picture } from '../index'
 import { OwnFootage, OwnPicture, OwnSound, footageFrameUrl } from './media'
 
 afterEach(() => resetHolds())
@@ -59,7 +59,6 @@ describe('Talkie’s own media', () => {
   })
 
   it('holds again for a new src on the same Picture, until that image has loaded', async () => {
-    chooseOwnRenderer()
     const loadIt = async (container: HTMLElement): Promise<void> => {
       const img = container.querySelector('img')!
       Object.defineProperty(img, 'decode', { value: () => Promise.resolve() })

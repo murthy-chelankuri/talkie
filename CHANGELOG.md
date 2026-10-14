@@ -2,6 +2,21 @@
 
 Notable changes, newest first. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+### Rendering
+
+- Talkie now draws and exports video with its own renderer. Remotion — source-available, not
+  open source — is no longer used or installed, so building or running Talkie no longer needs a
+  Remotion licence.
+- The export draws frames in headless tabs and encodes them with Talkie's own ffmpeg, on the
+  hardware encoder. It was checked against Remotion's export on the shipped examples before
+  Remotion was removed.
+- The preview plays recordings and narration as ordinary video and audio, kept within a frame of
+  the clock, and loads the next clip just before a cut so it does not stall.
+- The window's content security policy no longer allows inline (`data:`) media, which only
+  Remotion's player needed.
+
 ## 1.0.0 — 2026-09-19
 
 The first release. Talkie records a browser session silently, writes and speaks the narration,

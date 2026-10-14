@@ -15,8 +15,6 @@ import { join, relative, sep } from 'path'
 const ROOT = join(__dirname, '..', '..', '..')
 const SCANNED = ['src', 'scripts', 'e2e', join('examples', 'build')]
 const MEDIA = join('src', 'main', 'media') + sep
-/** Remotion's own export, on Remotion's compositor until step 3 replaces it. */
-const UNTIL_STEP_3 = [join('src', 'main', 'render', 'binaries.ts')]
 
 const FORBIDDEN: { what: string; pattern: RegExp }[] = [
   { what: "Remotion's ffmpeg wrappers", pattern: /RenderInternals\.callFf|callFfNative|getVideoMetadata\s*\(/ },
@@ -45,7 +43,7 @@ describe('the line around ffmpeg', () => {
   it('lets nothing outside src/main/media run ffmpeg or ffprobe its own way', () => {
     const offenders = SCANNED.flatMap((dir) => sourceFiles(join(ROOT, dir)))
       .map((file) => relative(ROOT, file))
-      .filter((file) => !file.startsWith(MEDIA) && !UNTIL_STEP_3.includes(file))
+      .filter((file) => !file.startsWith(MEDIA))
       .flatMap((file) => {
         const source = readFileSync(join(ROOT, file), 'utf-8')
         return FORBIDDEN.filter(({ pattern }) => pattern.test(source)).map(({ what }) => `${file} uses ${what}`)
