@@ -49,6 +49,7 @@
     "lucide-react": "^0.445.0",
     "mermaid": "^12.0.0",
     "pdfjs-dist": "^6.3.289",
+    "phonemizer": "file:packages/phonemizer",
     "playwright": "^1.63.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -82,6 +83,7 @@
     "talkie-mcp": "./out/mcp/talkie-mcp.mjs"
   },
   "overrides": {
+    "phonemizer": "$phonemizer",
     "sharp": "$sharp"
   }
 }

@@ -111,8 +111,8 @@ These each cost real time to find. None are obvious from the code.
   is: a headless browser fetches those files, and only Node can read out of an asar.
 - **Native binaries cannot load from inside asar.** Playwright and the MCP entry point are in
   `asarUnpack`.
-- **Kokoro runs in its own process, and must stay there.** `phonemizer` says Apache-2.0 but
-  carries eSpeak NG (GPL-3.0) compiled inside it. Only `src/main/tts/kokoro/kokoroWorker.ts` may
+- **Kokoro runs in its own process, and must stay there.** `phonemizer` carries eSpeak NG
+  (GPL-3.0) compiled inside it. Only `src/main/tts/kokoro/kokoroWorker.ts` may
   import `kokoro-js`, `phonemizer`, `@huggingface/transformers` or `onnxruntime-node`; the main
   process forks it and talks over IPC. `kokoroBoundary.test.ts` fails on any other import — a
   type-only one included. The worker is its own `electron.vite.config.ts` main entry, and those
@@ -122,6 +122,13 @@ These each cost real time to find. None are obvious from the code.
   licence. `package.json` makes `stubs/sharp` a dependency and overrides `sharp` with `$sharp`
   (a `file:` path directly in `overrides` resolves relative to transformers.js and breaks a clean
   install). `licences.test.ts` fails if libvips reappears.
+- **`phonemizer` is Talkie's own build, on purpose.** npm's ships an eSpeak NG with no known
+  source, which makes it impossible to distribute under the GPL. `packages/phonemizer` is the same
+  wrapper around eSpeak NG built from a pinned commit, overridden in the way `sharp` is; its
+  `BUILD.md` says how to rebuild it (Emscripten, about a minute) and why that commit. The app loads
+  `dist/phonemizer.cjs`, because the Kokoro worker is CommonJS. `phonemizer.test.ts` holds it to
+  the phonemes npm's produced, so a rebuild that changes how Kokoro speaks fails. kokoro-js's
+  `kokoro.web.js` bundles npm's copy whole and is left out of the app in `electron-builder.yml`.
 - **Kokoro sometimes reads a line as pure silence.** One sentence in one voice at one speed came back
   as seconds of zeros every time, and 2% faster read perfectly — a fault in the model, not the
   words. It was saved as the take, and a scene lost its first sentence. `audibleTake.ts` checks
@@ -422,13 +429,14 @@ the app stays the only writer.
   `videoBoundary.test.ts` keeps it that way.
 - **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later, x264 and x265 linked in) is
   fetched by `npm install`. It is not in this repository.
-- Publishing *source* carries no GPL obligation. **Shipping a built `.dmg` does**, including
+- Publishing *source* carries no ffmpeg obligation. **Shipping a built `.dmg` does**, including
   offering ffmpeg's source to every recipient. That is why no prebuilt binaries are published
   here, and why the Mac App Store is not a route (App Sandbox also blocks `say`, `afconvert`,
   driving a browser, and the MCP server).
-- **eSpeak NG, inside the Kokoro voice, is GPL-3.0** — the same distributor obligation as
-  ffmpeg, and one open item: `phonemizer` does not say which eSpeak NG it compiled, which has to
-  be settled before a build is published. The Kokoro weights are Apache-2.0 and are downloaded on
+- **eSpeak NG, inside the Kokoro voice, is GPL-3.0**, and unlike ffmpeg it is in the repository,
+  compiled, in `packages/phonemizer` — so passing on the source carries the obligation as well as
+  shipping a build. Its source is the pinned commit plus `packages/phonemizer/build/`, which
+  travel with it; NOTICE says so. The Kokoro weights are Apache-2.0 and are downloaded on
   first use, pinned and hash-checked, not shipped.
 - **Licence texts no package carries live in `licences/`** — the GPL v2 and v3, the LGPL v2.1,
   and ONNX Runtime's MIT notice and ThirdPartyNotices — and are installed with the app.

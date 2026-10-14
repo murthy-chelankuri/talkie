@@ -17,6 +17,10 @@ files:
   # so the other five are left behind rather than shipped and never loaded.
   - '!node_modules/onnxruntime-node/bin/napi-v3/{linux,win32}/**'
   - '!node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/**'
+  # kokoro-js's browser build carries npm's phonemizer inside it, and with it an eSpeak NG nobody
+  # can name the source of. Node loads dist/kokoro.cjs, which uses packages/phonemizer; this file
+  # is never run, and shipping it would ship that GPL binary all the same. See packages/phonemizer.
+  - '!node_modules/kokoro-js/dist/kokoro.web.js'
 
 # Licence texts no package carries — the GPL for FFmpeg and eSpeak NG, and ONNX Runtime's notices.
 # Installed at Contents/Resources/licences/, outside the archive, where a person can open them.
