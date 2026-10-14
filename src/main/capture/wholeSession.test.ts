@@ -6,7 +6,7 @@ import { probeMedia } from '../media'
 import { createProject } from '../project/projectApi'
 import { startRecordingSession } from './recordSession'
 import { importRecordedSession } from './importRecordedSession'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 
 /** A page that keeps changing, so its recording cannot be mistaken for a frozen one. */
 const TICKER = `<script>

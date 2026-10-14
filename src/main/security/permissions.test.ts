@@ -3,7 +3,7 @@ import { mayUse } from './permissions'
 
 describe('what the renderer may ask the system for', () => {
   it('lets the preview fill the screen', () => {
-    // The fullscreen button called Remotion, Remotion called the browser, and Electron refused
+    // The fullscreen button called the player, the player called the browser, and Electron refused
     // because the rule named only the microphone. Nothing happened and nothing was said.
     expect(mayUse('fullscreen')).toBe(true)
   })

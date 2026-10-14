@@ -1,18 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
-import {
-  AbsoluteFill,
-  Sequence as RemotionSequence,
-  getRemotionEnvironment,
-  useCurrentFrame,
-  useVideoConfig as useRemotionVideoConfig
-} from 'remotion'
+import { OwnFill, OwnSequence, useOwnFrame, useOwnRenderMode, useOwnVideoConfig } from './own/clock'
 
 /**
  * The frame clock the composition is drawn against. The host (the editor's preview or the
- * export) owns the frame; scenes only read it.
- *
- * Delegates to Remotion until steps 3 and 4 of the renderer replace it; the names here are the
- * ones the scenes keep.
+ * export page) owns the frame; scenes only read it. The names are the ones the scenes were first
+ * written against, and the behaviour behind each is held to what it was then.
  */
 
 export type VideoConfig = { fps: number; width: number; height: number; durationInFrames: number }
@@ -20,21 +12,20 @@ export type RenderMode = 'export' | 'preview'
 
 /** The frame, counted from the start of the nearest enclosing Sequence. */
 export function useFrame(): number {
-  return useCurrentFrame()
+  return useOwnFrame()
 }
 
 /**
  * The video's size and rate, and the enclosing Sequence's length. That length is clipped to the
- * parent Sequence's, as Remotion's is, so a nested Sequence never reports more than remains.
+ * parent Sequence's, so a nested Sequence never reports more than remains.
  */
 export function useVideoConfig(): VideoConfig {
-  const { fps, width, height, durationInFrames } = useRemotionVideoConfig()
-  return { fps, width, height, durationInFrames }
+  return useOwnVideoConfig()
 }
 
 /** Whether frames are being exported, which waits on holds, or previewed, which never does. */
 export function useRenderMode(): RenderMode {
-  return getRemotionEnvironment().isRendering ? 'export' : 'preview'
+  return useOwnRenderMode()
 }
 
 /**
@@ -46,9 +37,9 @@ export function useRenderMode(): RenderMode {
  */
 export function Sequence({ from, durationInFrames, children }: { from: number; durationInFrames?: number; children: ReactNode }): JSX.Element {
   return (
-    <RemotionSequence from={from} durationInFrames={durationInFrames}>
+    <OwnSequence from={from} durationInFrames={durationInFrames}>
       {children}
-    </RemotionSequence>
+    </OwnSequence>
   )
 }
 
@@ -59,5 +50,5 @@ export function Sequence({ from, durationInFrames, children }: { from: number; d
  * The caller's `style` is applied over that layout. `clock.test.tsx` holds it.
  */
 export function Fill({ style, children }: { style?: CSSProperties; children?: ReactNode }): JSX.Element {
-  return <AbsoluteFill style={style}>{children}</AbsoluteFill>
+  return <OwnFill style={style}>{children}</OwnFill>
 }

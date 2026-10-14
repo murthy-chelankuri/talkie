@@ -6,7 +6,7 @@
 
 **Decisions taken with the project owner (2026-09-10):** horizontal layout with a transcript track (not a vertical Descript-style script view); splitting clips is in scope; dragging the playhead scrubs the preview live.
 
-**Tech Stack:** No new dependencies. Uses the existing `@remotion/player` ref API (`seekTo`, `addEventListener('frameupdate')`), the existing `@dnd-kit` reordering, and the byte-range seeking the asset server gained in the previous change (without it, live scrubbing of a recording could not work).
+**Tech Stack:** No new dependencies. Uses the existing the preview player ref API (`seekTo`, `addEventListener('frameupdate')`), the existing `@dnd-kit` reordering, and the byte-range seeking the asset server gained in the previous change (without it, live scrubbing of a recording could not work).
 
 ## Global Constraints
 

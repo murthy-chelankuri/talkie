@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { diagramStamp, staleDiagrams } from './diagrams'
 import { MERMAID_CONFIG, mermaidConfigFor } from '../slides/mermaidTheme'
-import type { RenderTheme } from '../../remotion/renderTheme'
+import type { RenderTheme } from '../../composition/renderTheme'
 
 const theme: RenderTheme = {
   stamp: 'abc',

@@ -8,7 +8,7 @@ import { findProjectDir } from '../project/paths'
 import { saveRecordedNarration } from './recordNarration'
 import { RECORDED_VOICE } from './schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 /** A real opus/webm clip, made the way the browser would deliver one. */
 async function makeWebmRecording(seconds: number): Promise<Uint8Array> {

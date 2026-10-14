@@ -8,7 +8,7 @@ import {
   updateTranscriptSegmentAudio
 } from '../project/projectApi'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 import { RECORDED_VOICE } from './schema'
 import type { TranscriptSegment } from './schema'
 import { runFfmpeg } from '../media'

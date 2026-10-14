@@ -11,7 +11,7 @@ import {
 } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { repairNarrationDurations } from './repairNarrationDurations'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 /** A valid 16-bit mono WAV of the given length, so duration can be measured for real. */
 function writeWav(path: string, seconds: number, sampleRate = 22050): void {

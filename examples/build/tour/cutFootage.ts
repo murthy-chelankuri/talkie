@@ -17,7 +17,7 @@ export function lengthMs(video: string): number {
 /**
  * A small window, cut out of the corner it was recorded in and centred on a frame of its own.
  *
- * Written for the ffmpeg Remotion shipped, which had no `pad` or `overlay`; kept, since it draws
+ * Written for an ffmpeg that had no `pad` or `overlay`; kept, since it draws
  * the same frames with any build. A clip is drawn to cover the frame, so a toolbar left at its own
  * shape would lose its top and bottom. Its frames are laid onto the backdrop one by one instead —
  * a few seconds of a small window.

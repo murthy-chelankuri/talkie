@@ -1,9 +1,15 @@
 import { runFfmpeg } from './run'
 
-/** What an encode is for. Step 3 of the renderer adds 'export', with the quality it chooses. */
-export type EncodePurpose = 'intermediate'
+/** What an encode is for: a stitched recording, or the video someone is given. */
+export type EncodePurpose = 'intermediate' | 'export'
 
 type Encoder = { name: string; quality: Record<EncodePurpose, string[]> }
+
+/**
+ * The export's quality on VideoToolbox: the value that brought the shipped examples within 10% of
+ * the file sizes the previous renderer made, with nothing a viewer would see given up.
+ */
+const EXPORT_QUALITY = '92'
 
 /**
  * Each system's H.264 encoders, best first; the first the installed ffmpeg offers is used.
@@ -17,7 +23,7 @@ const H264: Partial<Record<NodeJS.Platform, Encoder[]>> = {
   // fixed-function. 65 is a little richer than the crf 23 it replaced, deliberately: this file is
   // the source the final render reads, so its losses are inherited, and a hardware encode is
   // cheap enough that the extra bits cost nothing worth counting.
-  darwin: [{ name: 'h264_videotoolbox', quality: { intermediate: ['-q:v', '65'] } }]
+  darwin: [{ name: 'h264_videotoolbox', quality: { intermediate: ['-q:v', '65'], export: ['-q:v', EXPORT_QUALITY] } }]
 }
 
 export function chooseH264(platform: NodeJS.Platform, offered: ReadonlySet<string>, purpose: EncodePurpose): string[] {

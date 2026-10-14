@@ -19,7 +19,7 @@
 - `reorderTimelineItems` follows the exact validation/write pattern every other mutating function in `src/main/project/projectApi.ts` already uses: parse/validate with the relevant zod schema, throw `err.issues.map(i => i.message).join('; ')` on a `ZodError`, write via `writeJsonAtomic`, default `baseDir: string = homedir()`.
 - No comments explaining what code does — only where a non-obvious constraint needs flagging.
 - This plan develops directly on `main` (explicit user instruction — no worktree) — commit directly as work progresses.
-- Out of scope (per spec §3): any change to the Remotion `<Player>`'s internals, the export pipeline's internals, or the capture/transcript/TTS pipelines' internals beyond the one named exception (`reorderTimelineItems`).
+- Out of scope (per spec §3): any change to the preview player's internals, the export pipeline's internals, or the capture/transcript/TTS pipelines' internals beyond the one named exception (`reorderTimelineItems`).
 
 ---
 
@@ -301,7 +301,7 @@ No test file for this task (see Global Constraints — Editor.tsx interaction-he
 
 ```tsx
 import { useEffect, useState } from 'react'
-import { Player } from '@remotion/player'
+import { Preview } from '../../../video/preview'
 import { Group, Panel as ResizablePanel, Separator, useDefaultLayout } from 'react-resizable-panels'
 import { CircleCheck, Circle, Download, ImagePlus } from 'lucide-react'
 import {
@@ -318,10 +318,10 @@ import { Toolbar } from '../components/ui/Toolbar'
 import { IconButton } from '../components/ui/IconButton'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
-import { DemoComposition } from '../../../remotion/DemoComposition'
-import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
-import { computeTimelineDuration } from '../../../remotion/timelineDuration'
-import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/types'
+import { DemoComposition } from '../../../composition/DemoComposition'
+import { FPS, WIDTH, HEIGHT } from '../../../composition/constants'
+import { computeTimelineDuration } from '../../../composition/timelineDuration'
+import type { TimelineItem as CompositionTimelineItem } from '../../../composition/types'
 
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
@@ -403,11 +403,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }
 
   // Cast: schema.ts's zod-inferred TimelineItem treats `data` as optional (z.unknown() accepts
-  // undefined), while remotion/types.ts's hand-written TimelineItem requires it. Both describe
+  // undefined), while composition/types.ts's hand-written TimelineItem requires it. Both describe
   // the same real shape validated by TimelineItemSchema.superRefine, so the optionality is a
   // static-typing artifact, not a runtime possibility. Same workaround as renderProject.ts /
   // timelineHandlers.ts.
-  const remotionTimeline = timeline as unknown as RemotionTimelineItem[]
+  const compositionTimeline = timeline as unknown as CompositionTimelineItem[]
 
   return (
     <div className="flex h-full flex-col">
@@ -463,8 +463,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             {timeline.length > 0 ? (
               <Player
                 component={DemoComposition}
-                inputProps={{ timeline: remotionTimeline }}
-                durationInFrames={computeTimelineDuration(remotionTimeline)}
+                inputProps={{ timeline: compositionTimeline }}
+                durationInFrames={computeTimelineDuration(compositionTimeline)}
                 fps={FPS}
                 compositionWidth={WIDTH}
                 compositionHeight={HEIGHT}

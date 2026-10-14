@@ -9,9 +9,9 @@ Third-party components
 ================================================================================
 
 The Apache-2.0 licence above covers Talkie's own source code. It does not, and
-cannot, grant rights to the third-party software Talkie depends on. Three of
-those dependencies carry terms that a user of this repository has to meet
-themselves.
+cannot, grant rights to the third-party software Talkie depends on. Two of
+those dependencies -- FFmpeg and eSpeak NG -- are GPL, and carry terms that
+anyone distributing a built application has to meet.
 
 The full list of every dependency and its licence is generated from the
 dependency tree and shown inside the app under Settings -> Licences. It is also
@@ -23,38 +23,15 @@ ONNX Runtime's notices -- are kept in licences/ and installed with every build
 at Talkie.app/Contents/Resources/licences/, where a recipient can read them.
 
 --------------------------------------------------------------------------------
-Remotion -- source-available, NOT open source
---------------------------------------------------------------------------------
-
-Talkie renders video with Remotion (https://remotion.dev), which is licensed
-under the Remotion License, not an open-source licence. Using this repository
-requires your own eligibility under those terms:
-
-  * Free for individuals, non-profit and not-for-profit organisations, and
-    for-profit companies with up to 3 employees.
-  * A paid company licence is required for larger for-profit organisations.
-    See https://www.remotion.pro/license
-
-Cloning this repository does not grant you a Remotion licence. If you are not
-eligible for Remotion's free tier, you need to obtain one before using Talkie.
-
-Remotion has also stated that its licence terms change in Remotion 5.0.
-
---------------------------------------------------------------------------------
 FFmpeg, x264, x265 -- GPL
 --------------------------------------------------------------------------------
 
-Talkie runs FFmpeg 9.0.2 as built by Martin Riedl
+Talkie records, exports and measures video with FFmpeg 9.0.2 as built by Martin Riedl
 (https://ffmpeg.martin-riedl.de), configured --enable-gpl --enable-version3
 with x264 and x265 linked in, which makes the binaries GPL-3.0-or-later.
 `npm install` fetches them, pinned by SHA-256 in scripts/ffmpegBuilds.json,
 into vendor/ffmpeg/. A packaged build carries them in
 Contents/Resources/ffmpeg/.
-
-Until Talkie's own export replaces Remotion's (step 3 of the renderer),
-Remotion's compositor package (@remotion/compositor-*) also brings an FFmpeg
-n7.1 built with --enable-gpl, --enable-libx264 and --enable-libx265
-(GPL-2.0-or-later), used only by that export.
 
 None of these binaries is part of this repository.
 
@@ -82,46 +59,25 @@ libvpx, libvvenc, libwebp, libx264, libx265, libxml2, libzimg, libzvbi and
 openssl. Their licences have not been collected here. `ffmpeg -buildconf` on
 vendor/ffmpeg/<system>/ffmpeg prints the exact configuration of each build.
 
-The source links below apply to both builds:
+The links below are upstream release pages, not corresponding source. The GPL
+asks for the source of the binary actually shipped -- FFmpeg 9.0.2 as it was
+configured and built, with its exact flags -- so a distributor has to publish
+that tree, or a tarball of it, beside the download.
 
 FFmpeg source:  https://ffmpeg.org/download.html
 x264 source:    https://www.videolan.org/developers/x264.html
 x265 source:    https://www.videolan.org/developers/x265.html
 
-For Remotion's FFmpeg n7.1: which GPL version applies, and what a source
-offer is
-------------------------------------------------------------------------
+x264 and x265 are themselves GPL-2.0-or-later; their copy of that licence is in
+licences/GPL-2.0.txt. Linked into a GPL-3.0-or-later build, they are distributed
+under version 3, which is what allows source from a network location.
 
-These binaries are "GPL-2.0-or-later", so a distributor may elect version 3.
-Anyone distributing a build of Talkie should elect GPL-3.0-or-later and say so,
-because only version 3 accepts a network location as the way to provide source.
-GPLv2 section 3 does not: it wants the source to accompany the binary, or a
-written offer valid for three years. A URL alone does not satisfy it.
-
-The links above are upstream release pages, not corresponding source. The GPL
-asks for the source of the binary actually shipped -- FFmpeg n7.1 as Remotion
-configured and built it, with its exact flags -- so a distributor has to
-publish that tree, or a tarball of it, beside the download. `ffmpeg -buildconf`
-on the binary in @remotion/compositor-darwin-arm64 prints the configuration it
-was built with.
-
-Talkie itself does not use the GPL encoders. Recording asks for
-h264_videotoolbox, and Talkie's own export will; it is the hardware encoder
-built into every Mac it runs on. That does not make the shipped binaries any
-less GPL -- they were linked with x264 and x265 and stay covered however they
-are invoked -- but it means no feature depends on them, and a build of FFmpeg
-without --enable-gpl would serve Talkie equally.
-
-Two things worth settling with Remotion before distributing any build:
-
-  * Their FFmpeg is configured --enable-gpl together with --enable-libfdk-aac.
-    fdk-aac's licence is not GPL-compatible, and FFmpeg's own build rules
-    require --enable-nonfree for that combination, which produces a binary
-    marked as not redistributable. The buildconf shows no --enable-nonfree.
-
-  * Whether a build without --enable-gpl, --enable-libx264 and --enable-libx265
-    is available, which would remove the obligations that come with Remotion's
-    binary.
+Talkie itself does not use the GPL encoders. Recording and export both ask for
+h264_videotoolbox, the hardware encoder built into every Mac Talkie runs on.
+That does not make the shipped binaries any less GPL -- they were linked with
+x264 and x265 and stay covered however they are invoked -- but it means no
+feature depends on them, and a build of FFmpeg without --enable-gpl would serve
+Talkie equally, removing these obligations.
 
 --------------------------------------------------------------------------------
 eSpeak NG -- GPL-3.0-or-later, inside the Kokoro voice
@@ -137,8 +93,7 @@ Runtime are loaded only by a separate worker program (out/main/kokoroWorker.cjs)
 that the app starts as its own process and exchanges plain messages with -- the
 same footing as the GPL FFmpeg above. Nothing in the main process, the windows
 or the MCP server imports them; src/main/tts/kokoro/kokoroBoundary.test.ts fails
-the build if anything does. Remotion, whose licence is not GPL-compatible, is
-never in the same program as eSpeak NG.
+the build if anything does.
 
 As with FFmpeg, this binds distributors of a BUILT APPLICATION, not this source
 repository, which contains no eSpeak NG code. Anyone distributing a build has to
@@ -174,12 +129,9 @@ Other notable licences
     (stubs/sharp) so none of that is installed or distributed. See
     stubs/sharp/README.md before changing that.
 
-  * MPL-2.0 (file-level copyleft): source for the covered files must be made
-    available. Affects mediabunny and its @mediabunny/aac-encoder,
-    @mediabunny/flac-encoder and @mediabunny/mp3-encoder packages, which arrive
-    with Remotion. Unmodified, this is satisfied by pointing at upstream.
-
-  * EPL-2.0 (file-level copyleft): the same duty, and affects elkjs.
+  * EPL-2.0 (file-level copyleft): source for the covered files must be made
+    available. Affects elkjs. Unmodified, this is satisfied by pointing at
+    upstream.
 
   * dompurify is "(MPL-2.0 OR Apache-2.0)" -- a choice, not a requirement.
     Talkie elects Apache-2.0, under which nothing further is owed.

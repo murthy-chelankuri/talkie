@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildCaptions, splitIntoCues, toSrt, wrapForReading } from './captions'
-import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../composition/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 import type { TranscriptSegment } from './schema'
 

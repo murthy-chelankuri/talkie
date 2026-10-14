@@ -4,7 +4,7 @@ import { join } from 'path'
 import { findProjectDir } from '../project/paths'
 import { readTimeline, readTranscript, fitClipToNarration } from '../project/projectApi'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 /**
  * Make sure every clip is long enough to finish saying what it has to say.

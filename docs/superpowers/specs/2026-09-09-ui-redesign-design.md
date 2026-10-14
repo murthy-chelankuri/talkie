@@ -5,11 +5,11 @@
 
 ## 1. Purpose & Scope
 
-Demo Editor's functionality (Plans 1-4: project management, browser-session recording, image import, Remotion preview/export, transcript editing + TTS narration) is complete and working, but the renderer has zero visual design applied — every screen is bare, unstyled HTML elements with no CSS anywhere in the codebase. This makes the app effectively unusable for real testing or demoing, despite the underlying features working correctly.
+Demo Editor's functionality (Plans 1-4: project management, browser-session recording, image import, preview/export, transcript editing + TTS narration) is complete and working, but the renderer has zero visual design applied — every screen is bare, unstyled HTML elements with no CSS anywhere in the codebase. This makes the app effectively unusable for real testing or demoing, despite the underlying features working correctly.
 
 This design covers a full UI "phase lift": introducing a real design system (Tailwind, light/dark theming, a shared component primitive library) and redesigning both existing screens — the Project Browser and the Editor — including several new interaction patterns in the Editor (resizable/collapsible panels, drag-and-drop timeline reordering, an icon-based toolbar).
 
-Explicitly out of scope: any change to the Remotion `<Player>`'s internals, the export pipeline's internals, the capture/recording pipeline's internals, or the transcript/TTS pipeline's internals (Plans 2-4). This is a UI chrome and interaction-pattern pass around already-working functionality — one small, well-isolated backend addition (timeline reordering, see §5) is the only exception.
+Explicitly out of scope: any change to the preview player's internals, the export pipeline's internals, the capture/recording pipeline's internals, or the transcript/TTS pipeline's internals (Plans 2-4). This is a UI chrome and interaction-pattern pass around already-working functionality — one small, well-isolated backend addition (timeline reordering, see §5) is the only exception.
 
 ## 2. Goals
 
@@ -22,7 +22,7 @@ Explicitly out of scope: any change to the Remotion `<Player>`'s internals, the 
 
 ## 3. Non-Goals
 
-- No changes to Remotion composition/rendering, the export pipeline, the Playwright capture pipeline, or the transcript/TTS pipeline's business logic.
+- No changes to composition/rendering, the export pipeline, the Playwright capture pipeline, or the transcript/TTS pipeline's business logic.
 - No new screens beyond the existing two (Project Browser, Editor).
 - No mobile/responsive-web support — this is a fixed-size Electron desktop window.
 - No AI-driven UI (agent system) — out of scope for this pass entirely (tracked separately, not started).

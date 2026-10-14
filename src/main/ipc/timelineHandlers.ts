@@ -22,16 +22,16 @@ import { renderProjectVideo } from '../render/renderProject'
 import { cancelExport, runExport } from '../render/exportJob'
 import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import { burnedCaptionsFor } from '../transcript/burnedCaptions'
-import type { TimelineItem as RemotionTimelineItem } from '../../remotion/types'
+import type { TimelineItem as CompositionTimelineItem } from '../../composition/types'
 
 export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('project:timeline:read', async (_event, id: string) => {
     // Cast: project/timeline/schema.ts's zod-inferred TimelineItem treats `data` as optional
-    // (z.unknown() accepts undefined), while remotion/types.ts's hand-written TimelineItem
+    // (z.unknown() accepts undefined), while composition/types.ts's hand-written TimelineItem
     // requires it. Both describe the same real shape validated by TimelineItemSchema.superRefine,
     // so the optionality is a static-typing artifact, not a runtime possibility. Same workaround
     // as renderProject.ts.
-    const timeline = readTimelineLenient(id) as unknown as RemotionTimelineItem[]
+    const timeline = readTimelineLenient(id) as unknown as CompositionTimelineItem[]
     const rootDir = projectsRootDir(homedir())
     const assetServer = await getAssetServer(rootDir)
     const narrationAudioPaths = readNarrationAudioPaths(id)

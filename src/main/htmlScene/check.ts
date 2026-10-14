@@ -2,8 +2,8 @@ import { writeFileSync } from 'fs'
 import { chromium, type Frame, type Page } from 'playwright'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { resolveBrowser } from '../capture/resolveBrowser'
-import { FPS, HEIGHT, WIDTH } from '../../remotion/constants'
-import type { RenderTheme } from '../../remotion/renderTheme'
+import { FPS, HEIGHT, WIDTH } from '../../composition/constants'
+import type { RenderTheme } from '../../composition/renderTheme'
 import { DEFAULT_SCENE_THEMES, type SceneTheme } from '../../htmlScene/protocol'
 
 /**
@@ -149,7 +149,7 @@ export async function checkHtmlScene(request: CheckRequest): Promise<CheckResult
     await gather()
 
     // Order: the middle moment drawn cold, against the same moment after the ones before it.
-    // Remotion draws frames out of order, so a scene that differs here differs in the video.
+    // The export draws frames out of order, so a scene that differs here differs in the video.
     const middle = durationSeconds / 2
     await load()
     const cold = await shoot(middle)

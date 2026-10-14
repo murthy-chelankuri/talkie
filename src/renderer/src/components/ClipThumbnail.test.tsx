@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 afterEach(() => vi.unstubAllGlobals())
 import { ClipThumbnail } from './Timeline'
 import type { TimelineItem } from '../api/projectClient'
-import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
+import { ThemeContext, type RenderTheme } from '../../../composition/renderTheme'
 
 const acme: RenderTheme = {
   stamp: 'abc',

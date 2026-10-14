@@ -27,7 +27,7 @@ describe('a logo that animates', () => {
   })
 
   it('looks the same at every moment, finished from the first frame', async () => {
-    // Remotion draws frames out of order in several tabs at once, so a logo that depends on
+    // The export draws frames out of order in several tabs at once, so a logo that depends on
     // when it is looked at is a different logo in every frame.
     const browser = await chromium.launch({ headless: true, channel: resolveBrowser()?.channel })
     try {

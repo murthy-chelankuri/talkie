@@ -14,7 +14,7 @@ import { closeAssetServer } from './assetServer'
 /**
  * The average colour of a small patch of one frame, as [r, g, b].
  *
- * Shrunk to a single pixel and written as a PNG. That was chosen when Remotion's narrower ffmpeg
+ * Shrunk to a single pixel and written as a PNG. That was chosen when a narrower ffmpeg
  * could not write raw pixels; Talkie's pinned build can, but the PNG works and is left alone. A
  * one-pixel PNG is one zlib stream holding a filter byte and three colour bytes — with no
  * neighbours, every PNG filter leaves them as they are.

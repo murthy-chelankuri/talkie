@@ -3,7 +3,7 @@ import { AudioLines, Check, ChevronsUpDown, LayoutGrid } from 'lucide-react'
 import { projectClient, type ProjectOverview } from '../api/projectClient'
 import { ProjectPoster } from './ProjectPoster'
 import { formatTimecode } from '../lib/timelineLayout'
-import { FPS } from '../../../remotion/constants'
+import { FPS } from '../../../composition/constants'
 import { Button } from './ui/Button'
 import { cn } from '../lib/cn'
 

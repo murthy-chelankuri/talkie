@@ -77,7 +77,7 @@ or a logo / brand guide.
 - **`resolveSceneTheme(style, theme)`** returns the variant's colours and the theme's fonts, or
   today's palettes when `theme` is absent.
 - **Fonts.** A `ThemeFonts` component injects `@font-face` rules for the theme's files and holds
-  the frame with `delayRender` until `document.fonts.load` resolves for both families. A
+  the frame with a hold until `document.fonts.load` resolves for both families. A
   missing file falls back to the built-in families rather than failing the render.
 - **Slides** (`TextScene`): colours and fonts from the variant. `layout: 'title'` draws the logo
   large, the company name and the project name; `layout: 'closing'` draws the logo, tagline and
@@ -107,7 +107,7 @@ or a logo / brand guide.
 **Editor** (`ThemeEditor.tsx`): left — company, tagline, website; colour swatches for each
 variant with a contrast score (passes / fails); heading and body font, each with *add font
 file*; logo with corner and where shown; highlight colour; caption style. Right — live preview
-drawn with the real composition components through `@remotion/player`: a standard slide in each
+drawn with the real composition components through the preview player: a standard slide in each
 variant, the opening card, a caption bar and a small diagram. Changes are a draft until *Save*.
 
 **Create with AI** (`CreateThemeDialog.tsx`): website, description, file — any combination.

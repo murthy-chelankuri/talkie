@@ -164,7 +164,7 @@ export type { Theme, ThemeDraft, Variant, VariantId } from '../../../main/themes
 export type { GeneratedTheme, GenerateStatus } from '../../../main/themes/generate/generateTheme'
 export type { ThemeTarget } from '../../../main/ipc/themeHandlers'
 export type { GenerateThemeRequest } from '../../../preload/index'
-export type { RenderTheme } from '../../../remotion/renderTheme'
+export type { RenderTheme } from '../../../composition/renderTheme'
 
 /**
  * Themes are edited in Settings while a project stays open behind it, and the project re-read its

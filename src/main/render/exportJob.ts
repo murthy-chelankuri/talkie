@@ -1,4 +1,3 @@
-import { makeCancelSignal, type CancelSignal } from '@remotion/renderer'
 import type { ExportProgress, ExportResult } from './exportProgress'
 import type { RenderOptions } from './renderProject'
 
@@ -15,14 +14,14 @@ export async function runExport(
 ): Promise<ExportResult> {
   if (running.has(id)) return { status: 'failed', message: 'This project is already being exported.' }
 
-  const { cancelSignal, cancel } = makeCancelSignal()
+  const controller = new AbortController()
   let cancelled = false
   const started = now()
-  const rendered = render(id, { onProgress, cancelSignal: cancelSignal as CancelSignal })
+  const rendered = render(id, { onProgress, signal: controller.signal })
   running.set(id, {
     cancel: () => {
       cancelled = true
-      cancel()
+      controller.abort()
     },
     settled: rendered.catch(() => undefined)
   })

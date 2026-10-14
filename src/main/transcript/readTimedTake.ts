@@ -4,7 +4,7 @@ import { assembleTake } from './assembleTake'
 import { placeBeats } from './narrationBeats'
 import { AIM_INSIDE, MAX_SPEED_UP, hurriedBy, roomFor } from './fitToFootage'
 import { arcFor } from '../tts/prosody'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 import type { SpeechOptions } from '../tts/ttsProvider'
 import type { NarrationBeat } from './schema'
 

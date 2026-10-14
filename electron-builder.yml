@@ -32,9 +32,8 @@ extraResources:
   - from: examples/projects
     to: examples
 
-# Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
-# ffmpeg Remotion's export renders with; Playwright's driver
-# is a node process it spawns. Both have to sit on the filesystem as real files.
+# Native binaries cannot be loaded from inside an asar archive, and Playwright's driver is a node
+# process it spawns; each has to sit on the filesystem as real files.
 asarUnpack:
   # The MCP server is spawned by an outside agent as a plain node process, which cannot read a
   # file inside an asar archive. It has to be a real file on disk for `node <path>` to work.
@@ -42,7 +41,8 @@ asarUnpack:
   # HTML scenes' runtime, libraries and templates. The MCP server reads them as plain node to serve
   # scenes it checks, and plain node cannot read inside the archive.
   - out/html-scene/**
-  - node_modules/@remotion/compositor-**/**
+  # The export page, fetched by the headless browser the export draws in. See exporter/exportPage.ts.
+  - out/export-page/**
   - node_modules/playwright/**
   - node_modules/playwright-core/**
   # Importing a deck means rasterising a PDF, which the MCP server does itself rather than
@@ -54,10 +54,6 @@ asarUnpack:
   # Drawing a diagram means reading mermaid's own files off disk and serving them to a headless
   # page, which cannot be done from inside the archive.
   - node_modules/mermaid/**
-  # The composition is served to a headless page the same way, so it cannot live in the archive
-  # either. Built by scripts/bundleRemotion.mjs — see remotionBundle.ts for why it is shipped
-  # rather than made on demand.
-  - out/remotion/**
   # Kokoro runs in a forked worker (out/main/kokoroWorker.cjs). ONNX Runtime is a native library,
   # which cannot load from inside the archive; kokoro-js reads its voice files off disk beside its
   # own code; and the rest are what those load. `sharp` is the stub in stubs/sharp — plain

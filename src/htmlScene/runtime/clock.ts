@@ -1,7 +1,7 @@
 /**
  * Video time for a page that was written against the wall clock.
  *
- * Remotion renders frames out of order across several tabs, so anything a page times by the real
+ * The export draws frames out of order across several tabs, so anything a page times by the real
  * clock lands somewhere different in every frame. Inside a scene, the clock is this one: it only
  * moves when the video says where it is, and everything that reads or waits on time reads it.
  */

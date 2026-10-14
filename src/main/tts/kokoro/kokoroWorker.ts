@@ -4,10 +4,10 @@
  * This is the only file that loads `kokoro-js`, and it runs as a separate program the app talks to
  * over a pipe — never inside the main process. The reason is a licence, not performance: Kokoro
  * turns text into phonemes with `phonemizer`, which carries eSpeak NG compiled into it, and eSpeak
- * NG is GPL-3.0. Loaded into the main process it would sit in one program with Remotion, whose
- * licence is not GPL-compatible. Run beside it and spoken to with plain messages, it is a separate
- * program shipped alongside — the same footing the GPL ffmpeg in Remotion's compositor is on. See
- * NOTICE, and `kokoroBoundary.test.ts`, which holds the line.
+ * NG is GPL-3.0. Loaded into the main process it would make it and the app one program, which the
+ * GPL would then govern as a whole. Run beside it and spoken to with plain messages, it is a
+ * separate program shipped alongside — the same footing as the GPL ffmpeg Talkie runs. See NOTICE,
+ * and `kokoroBoundary.test.ts`, which holds the line.
  *
  * Kept free of imports from the rest of the app, so the boundary is a whole file and nothing the
  * main process loads can drag this in. What it needs is handed to it in each message.

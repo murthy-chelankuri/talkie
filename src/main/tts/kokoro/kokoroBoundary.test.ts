@@ -6,10 +6,10 @@ import { join, relative } from 'path'
  * Kokoro stays in a process of its own.
  *
  * Its phonemizer carries eSpeak NG, which is GPL-3.0. Run as a separate program the app talks to
- * over a pipe, it is shipped alongside Talkie — the footing the GPL ffmpeg inside Remotion's
- * compositor is already on. Imported anywhere the main process, the windows or the MCP server
- * load, it would sit in one program with Remotion, whose licence is not GPL-compatible, and no
- * failing build or test would say so. This one does.
+ * over a pipe, it is shipped alongside Talkie — the footing the GPL ffmpeg Talkie runs is already
+ * on. Imported anywhere the main process, the windows or the MCP server load, it would make one
+ * program of it and the app, which the GPL would then govern as a whole, and no failing build or
+ * test would say so. This one does.
  *
  * Read off the source rather than run, because the mistake it guards against — one convenient
  * import — works perfectly in every other respect.

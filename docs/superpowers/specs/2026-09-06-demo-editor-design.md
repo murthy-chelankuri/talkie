@@ -31,11 +31,11 @@ extensions but are not designed here.
 Electron app, two processes:
 
 - **Main process** (Node/TypeScript): owns the filesystem, spawns Playwright
-  for capture, spawns/embeds the Remotion renderer for export, runs the agent
+  for capture, spawns/embeds a headless renderer for export, runs the agent
   host (a self-owned, provider-agnostic tool-use loop — see §8), and exposes
   all of this to the renderer as a typed `ProjectAPI` over IPC.
 - **Renderer process** (React): the editor UI — project browser, timeline,
-  transcript panel, `@remotion/player` for live preview.
+  transcript panel, the preview player for live preview.
 
 There is no backend server and no embedded database. A project is a folder of
 JSON + media files (see §4). Both the human editing through the UI and any
@@ -52,7 +52,7 @@ implementation never requires changing the registry or engine code.
 | Interface | Purpose | v1 implementation(s) | Future examples |
 |---|---|---|---|
 | `CaptureSource` | Produces timeline clips + an action log | Playwright browser session | Terminal recording, native screen capture, video file import |
-| `TimelineItem` (`kind`) | A schema + Remotion component + optional canvas overlay | `clip`, `image`, `slide`, `callout`, `caption`, `zoom`, `music` | `lower-third`, `intro`/`outro` branding |
+| `TimelineItem` (`kind`) | A schema + composition component + optional canvas overlay | `clip`, `image`, `slide`, `callout`, `caption`, `zoom`, `music` | `lower-third`, `intro`/`outro` branding |
 | `Agent` | A named, tool-scoped AI job | `transcript-writer` | `scene-splitter`, `qa-pass`, `translator` |
 | `TTSProvider` | Swappable narration backend | macOS `say` (default), pluggable ElevenLabs/OpenAI | Any future TTS vendor |
 | `LLMProvider` | Swappable model backend for agents | Anthropic (native), OpenAI-compatible (covers OpenAI + local/hosted servers) | Google, or any other native integration |
@@ -60,18 +60,18 @@ implementation never requires changing the registry or engine code.
 ### Compositor
 
 Rendering (both live preview and final export) is implemented with
-**Remotion**: every `TimelineItem.kind` has a matching React component, and
-`timeline.json` is the single composition both `@remotion/player` (preview)
-and `@remotion/renderer` (export) read. This guarantees preview/export
+**Composition**: every `TimelineItem.kind` has a matching React component, and
+`timeline.json` is the single composition both the preview player (preview)
+and the export renderer (export) read. This guarantees preview/export
 parity by construction.
 
 This is implemented behind a narrow `Compositor` interface
 (`renderFrameRange`, `renderToFile`) rather than called directly, so the
-render backend can be swapped later (e.g. if Remotion's licensing terms stop
+render backend can be swapped later (e.g. if the renderer's licensing terms stop
 fitting the team, seat count, etc.) without touching timeline data, effect
 schemas, or the editor UI.
 
-Known trade-off, accepted for v1: Remotion renders by driving headless
+Known trade-off, accepted for v1: Rendering drives headless
 Chrome frame-by-frame, so export is noticeably slower than a native
 ffmpeg-filtergraph pipeline. This is acceptable because it removes an entire
 class of preview/export-drift bugs and because export runs in the
@@ -129,7 +129,7 @@ type TimelineItem = {
 ```
 
 Each registered `kind` supplies three things: a Zod schema (validates the
-item and auto-generates its property-panel form), a Remotion component
+item and auto-generates its property-panel form), a composition component
 (render), and optionally a canvas-overlay controller (for direct
 manipulation on the preview, e.g. dragging a callout's arrow endpoint).
 Adding a new effect is: one schema, one component, no changes to the
@@ -143,7 +143,7 @@ mockup):
 - **Left rail**: project sources (recorded sessions, imported images/slides)
   and installed agents with live status (idle / running / done / needs
   review).
-- **Center**: `@remotion/player` preview.
+- **Center**: the preview player preview.
 - **Top-right**: transcript panel — one editable text block per segment,
   each linked to a timeline item.
 - **Bottom, full width**: the timeline — drag to move, drag-edge to trim,
@@ -292,7 +292,7 @@ diffable and every run re-playable and re-runnable rather than a black box.
   source item is marked errored in the library rather than silently
   discarded, and the project itself remains fully usable.
 - **Render failure**: partial render output is kept for inspection; the
-  export panel surfaces the ffmpeg/Remotion error and log tail rather than a
+  export panel surfaces the ffmpeg/renderer error and log tail rather than a
   bare "failed" message.
 - **Agent failure**: the run is marked failed in `agents/runs/`, with the
   full tool-call trace preserved for debugging. Because agents write via the
@@ -321,7 +321,7 @@ None blocking — the items below are sequencing decisions for the
 writing-plans phase, not open design questions:
 
 - Order of build: the natural walking skeleton is project
-  create/save/resume → capture → timeline/preview (Remotion) → transcript
+  create/save/resume → capture → timeline/preview → transcript
   editing → TTS → export, with the Transcript Agent as the first agent once
   the `ProjectAPI` and action log exist.
 - Exact LibreOffice invocation and packaging (bundled vs. requiring a local

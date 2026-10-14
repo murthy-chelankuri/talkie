@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { createProject } from '../project/projectApi'
 import { probeMedia } from '../media'
-import { WIDTH, HEIGHT } from '../../remotion/constants'
+import { WIDTH, HEIGHT } from '../../composition/constants'
 import { startRecordingSession } from './recordSession'
 import { readActionLog } from './actionLog'
 

@@ -6,7 +6,7 @@
 
 **Architecture:** A scene is an immutable *revision folder* under the project (`sources/html/<revisionId>/`); the clip's `src` is the absolute path of its entry page, so existing URL resolution, path repair and undo work unchanged. The asset server serves scene pages with Talkie's runtime injected and a strict CSP; the runtime replaces the page's clock and answers `seek` messages with `drawn`. `HtmlScene.tsx` hosts the iframe in preview and export; `checkHtmlScene` hosts it in headless Playwright for agents, posters and the in-app checks.
 
-**Tech Stack:** Electron, React, Remotion 4, Playwright Chromium, esbuild (runtime bundle), zod, vitest; anime.js (MIT), D3 (ISC), lottie-web (MIT), CodeMirror 6 (MIT).
+**Tech Stack:** Electron, React, Playwright Chromium, esbuild (runtime bundle), zod, vitest; anime.js (MIT), D3 (ISC), lottie-web (MIT), CodeMirror 6 (MIT).
 
 **Spec:** `docs/superpowers/specs/2026-10-10-html-scenes-design.md`
 
@@ -44,7 +44,7 @@
 | `src/htmlScene/host/host.ts` | The headless host page used by the check |
 | `src/main/render/assetServer.ts` | `__talkie/` route; CSP + injection for scene pages; `posterUrl` |
 | `src/main/security/contentSecurityPolicy.ts` | `frame-src` |
-| `src/remotion/items/HtmlScene.tsx` | The iframe host in preview and export |
+| `src/composition/items/HtmlScene.tsx` | The iframe host in preview and export |
 | `src/main/htmlScene/check.ts` | `checkHtmlScene`: frames, problems, poster, visible text |
 | `src/main/htmlScene/htmlSceneApi.ts` | Add / edit / read scenes; posters; stale posters |
 | `src/main/htmlScene/guide.ts` | The authoring guide (MCP tool + AI prompt) |
@@ -546,7 +546,7 @@ describe('a scene’s clock', () => {
 /**
  * Video time for a page that was written against the wall clock.
  *
- * Remotion renders frames out of order across several tabs, so anything a page times by the real
+ * The export draws frames out of order across several tabs, so anything a page times by the real
  * clock lands somewhere different in every frame. Inside a scene, the clock is this one: it only
  * moves when the video says where it is, and everything that reads or waits on time reads it.
  */
@@ -936,7 +936,7 @@ cpSync(join(root, 'resources/html-templates'), join(out, 'templates'), { recursi
 console.log(`HTML scene resources built into ${out}`)
 ```
 
-`package.json` scripts: `"build:htmlscene": "node scripts/bundleHtmlScene.mjs"`, and `"build": "electron-vite build && npm run build:mcp && npm run build:remotion && npm run build:htmlscene"`. `electron-builder.yml` `asarUnpack`: add `- out/html-scene/**` with the comment "The MCP server reads these as plain node, which cannot read inside the archive."
+`package.json` scripts: `"build:htmlscene": "node scripts/bundleHtmlScene.mjs"`, and `"build": "electron-vite build && npm run build:mcp && npm run build:htmlscene"`. `electron-builder.yml` `asarUnpack`: add `- out/html-scene/**` with the comment "The MCP server reads these as plain node, which cannot read inside the archive."
 
 - [ ] **Step 6: One template so the test passes** — `resources/html-templates/bar-chart/index.html` (full template content in Task 9; for now a valid page using `talkie.onFrame`).
 
@@ -1145,8 +1145,8 @@ import { chromium } from 'playwright'
 import { writeFileSync } from 'fs'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { resolveBrowser } from '../capture/resolveBrowser'
-import { FPS, WIDTH, HEIGHT } from '../../remotion/constants'
-import type { RenderTheme } from '../../remotion/renderTheme'
+import { FPS, WIDTH, HEIGHT } from '../../composition/constants'
+import type { RenderTheme } from '../../composition/renderTheme'
 import type { SceneTheme } from '../../htmlScene/protocol'
 
 /**
@@ -1253,8 +1253,8 @@ function isOneColour(png: Buffer): boolean {
 ### Task 7: `HtmlScene` in the composition
 
 **Files:**
-- Create: `src/remotion/items/HtmlScene.tsx`, `src/remotion/items/HtmlScene.test.tsx` (jsdom: renders sandboxed iframe with the right attributes; posts init on ready; posts theme on theme change)
-- Modify: `src/remotion/itemRegistry.tsx`, `src/remotion/LogoOverlay.tsx` (`isSlide` includes `html`), `src/main/render/htmlSceneExport.test.ts` (new; export determinism + fallback)
+- Create: `src/composition/items/HtmlScene.tsx`, `src/composition/items/HtmlScene.test.tsx` (jsdom: renders sandboxed iframe with the right attributes; posts init on ready; posts theme on theme change)
+- Modify: `src/composition/itemRegistry.tsx`, `src/composition/LogoOverlay.tsx` (`isSlide` includes `html`), `src/main/render/htmlSceneExport.test.ts` (new; export determinism + fallback)
 
 **Interfaces:**
 - Consumes: protocol, `useRenderTheme`, `VARIANT_FOR`, `DRAW_TIMEOUT_MS`
@@ -1271,13 +1271,13 @@ it('plays the page in a frame that may run scripts and nothing more', () => {
 })
 ```
 
-(Remotion hooks need a composition context: wrap with the same test helper `themedComposition.test.tsx` uses.)
+(The clock hooks need a composition context: wrap with the same test helper `themedComposition.test.tsx` uses.)
 
 - [ ] **Step 2: Implement**
 
 ```tsx
 import { useEffect, useRef, useState } from 'react'
-import { AbsoluteFill, continueRender, delayRender, getRemotionEnvironment, useCurrentFrame, useVideoConfig } from 'remotion'
+import { Fill, hold, useFrame, useRenderMode, useVideoConfig } from '../../video'
 import { useRenderTheme } from '../renderTheme'
 import { DRAW_TIMEOUT_MS, isSceneMessage, type SceneTheme } from '../../htmlScene/protocol'
 
@@ -1296,7 +1296,7 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
   const ref = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
-  const rendering = getRemotionEnvironment().isRendering
+  const rendering = useRenderMode() === 'export'
   const pending = useRef(new Map<number, () => void>())
   const nextId = useRef(1)
   const [loadHandle] = useState(() => (rendering ? delayRender('Loading the HTML scene') : null))
@@ -1353,7 +1353,7 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
 Register `html: HtmlScene` in `ITEM_REGISTRY`; in `LogoOverlay.logoPlacement` make `isSlide = kind === 'scene' || kind === 'diagram' || kind === 'html'`.
 
 - [ ] **Step 3: Export test** (`src/main/render/htmlSceneExport.test.ts`, 240 s, working directory `/` like `exportFromAnywhere.test.ts`): a project with one `html` clip (GOOD fixture, 60 frames) exported twice → decode a middle frame of each MP4 with the existing frame-sampling helper and compare equal; a second project whose page never answers still produces an MP4.
-- [ ] **Step 4: Run** the jsdom test, the export test, `src/remotion` tests → PASS.
+- [ ] **Step 4: Run** the jsdom test, the export test, `src/composition` tests → PASS.
 - [ ] **Step 5: Commit** — `git commit -m "Play HTML scenes in the composition, frame by frame, in a sandboxed frame"`
 
 ---
@@ -1453,7 +1453,7 @@ Channels (all `withHistory` handled inside `htmlSceneApi`):
 
 Behaviour:
 - `AddHtmlScene`: three buttons — Describe it (textarea → `htmlScene.write` → `htmlScene.add`), Template (grid from `templates`), Import (`htmlScene.import`). Shows progress and the provider's failure reason.
-- `HtmlSceneEditor`: left — tabs per text file (`CodePanel` with CodeMirror, language by extension), **Look** (Brand/Light/Dark), **Values** (`ParamsForm`: string → input, number → number input, boolean → checkbox, number[] → comma list, else JSON textarea with parse error), **Change with AI** box; right — `@remotion/player` with a one-clip timeline of the unsaved scene? **No**: unsaved files are not on disk; preview = the *saved* scene, refreshed after **Save** (Save is quick: new revision + check). Problems list from the last check. Save → `htmlScene.edit`.
+- `HtmlSceneEditor`: left — tabs per text file (`CodePanel` with CodeMirror, language by extension), **Look** (Brand/Light/Dark), **Values** (`ParamsForm`: string → input, number → number input, boolean → checkbox, number[] → comma list, else JSON textarea with parse error), **Change with AI** box; right — the preview player with a one-clip timeline of the unsaved scene? **No**: unsaved files are not on disk; preview = the *saved* scene, refreshed after **Save** (Save is quick: new revision + check). Problems list from the last check. Save → `htmlScene.edit`.
 - Thumbnail: `posterUrl` image; without one, the scene title on the theme background (as slides).
 
 - [ ] **Step 1: Failing tests** (jsdom, client mocked): add dialog offers three ways; a template click calls `fromTemplate`; editor shows file tabs and problems; changing a value and saving calls `edit` with the new params; Look change calls `edit` with style; thumbnail renders the poster image.

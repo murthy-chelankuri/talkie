@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { computeTimelineDuration } from './timelineDuration'
 
 describe('computeTimelineDuration', () => {
-  it('returns 1 for an empty timeline (Remotion cannot have a zero-length composition)', () => {
+  it('returns 1 for an empty timeline, since a video of no frames can be neither played nor exported', () => {
     expect(computeTimelineDuration([])).toBe(1)
   })
 

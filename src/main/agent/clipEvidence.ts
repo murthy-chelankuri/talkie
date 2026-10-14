@@ -7,7 +7,7 @@ import { VIDEO_TIME_LOG } from '../capture/rebaseActionLog'
 import { runFfmpeg } from '../media'
 import { cleanActionLog, type CleanAction } from './cleanActionLog'
 import { readTimeline } from '../project/projectApi'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 
 /** Enough stills to show how a clip changes, few enough to stay cheap to send. */

@@ -5,10 +5,10 @@ import type { VoiceProgress } from '../../lib/voiceProgress'
 import { segmentsForItem } from '../../lib/clipNarration'
 import { formatTimecode } from '../../lib/timelineLayout'
 import { KIND_NAMES } from '../../lib/clipKinds'
-import { FPS } from '../../../../remotion/constants'
-import { VARIANT_FOR } from '../../../../remotion/sceneTheme'
-import { computeTimelineDuration } from '../../../../remotion/timelineDuration'
-import type { TimelineItem as RemotionTimelineItem } from '../../../../remotion/types'
+import { FPS } from '../../../../composition/constants'
+import { VARIANT_FOR } from '../../../../composition/sceneTheme'
+import { computeTimelineDuration } from '../../../../composition/timelineDuration'
+import type { TimelineItem as CompositionTimelineItem } from '../../../../composition/types'
 import { Button } from '../ui/Button'
 import { IconButton } from '../ui/IconButton'
 import { Segmented } from '../ui/Segmented'
@@ -67,7 +67,7 @@ export function Inspector({
   onDelete: (item: TimelineItem) => void
 }): JSX.Element {
   if (!item) {
-    const total = computeTimelineDuration(timeline as unknown as RemotionTimelineItem[])
+    const total = computeTimelineDuration(timeline as unknown as CompositionTimelineItem[])
     return (
       <Column title="Project">
         <Row label="Length" value={formatTimecode(total / FPS)} />

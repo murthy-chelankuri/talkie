@@ -4,7 +4,7 @@ import { createRequire } from 'module'
 import { chromium } from 'playwright'
 import { resolveBrowser } from '../capture/resolveBrowser'
 import { diagramBackground, mermaidConfigFor, normaliseSvg } from './mermaidTheme'
-import { fontFaceCss, type RenderTheme } from '../../remotion/renderTheme'
+import { fontFaceCss, type RenderTheme } from '../../composition/renderTheme'
 import type { VariantId } from '../themes/schema'
 
 const require = createRequire(import.meta.url)

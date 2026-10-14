@@ -1,7 +1,7 @@
 import { renderMermaid } from './renderMermaid'
 import { sceneClient } from '../api/projectClient'
 import type { TimelineItem } from '../api/projectClient'
-import type { RenderTheme } from '../../../remotion/renderTheme'
+import type { RenderTheme } from '../../../composition/renderTheme'
 import { diagramStamp, diagramVariant, staleDiagrams } from '../../../main/themes/diagrams'
 
 /**
