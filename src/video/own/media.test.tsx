@@ -74,3 +74,27 @@ describe('Talkie’s own media', () => {
     expect(openHoldCount()).toBe(0)
   })
 })
+
+const preview = (frame: number, children: JSX.Element): JSX.Element => (
+  <VideoRoot frame={frame} fps={30} width={1920} height={1080} durationInFrames={300} mode="preview">
+    {children}
+  </VideoRoot>
+)
+
+describe('Talkie’s own media in the preview', () => {
+  it('plays a recording as a video, not a still frame', () => {
+    const view = render(preview(10, <OwnFootage src="http://h/rec.mp4" trimBefore={45} />))
+    expect(view.container.querySelector('video')!.getAttribute('src')).toBe('http://h/rec.mp4')
+    expect(view.container.querySelector('img')).toBeNull()
+  })
+
+  it('draws no video past trimAfter, where the next scene of the same recording begins', () => {
+    const view = render(preview(20, <OwnFootage src="http://h/rec.mp4" trimBefore={45} trimAfter={60} />))
+    expect(view.container.querySelector('video')).toBeNull()
+  })
+
+  it('plays narration as audio rather than nothing', () => {
+    const view = render(preview(0, <OwnSound src="http://h/a.wav" />))
+    expect(view.container.querySelector('audio')!.getAttribute('src')).toBe('http://h/a.wav')
+  })
+})

@@ -1,7 +1,14 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { join } from 'path'
-import { addScene, addTranscriptSegment, createProject } from '../src/main/project/projectApi'
+import {
+  addScene,
+  addTimelineItem,
+  addTranscriptSegment,
+  createProject,
+  updateTranscriptSegmentAudio
+} from '../src/main/project/projectApi'
+import { h264, runFfmpeg } from '../src/main/media'
 import { updateSettings } from '../src/main/settings/settingsStore'
 import { isKokoroDownloaded, kokoroCacheDir } from '../src/main/tts/kokoro/kokoroModel'
 import type { SpeechEngineId } from '../src/main/settings/schema'
@@ -53,6 +60,35 @@ export async function makeFixtureWithHtmlScene(): Promise<Fixture> {
 
 /** What the HTML scene says, to find it drawn. */
 export const HTML_SCENE_SUBTITLE = 'Drawn by a web page'
+
+/** Where the cut fixture's recording ends and its narrated slide begins, in frames. */
+export const CUT_FRAME = 90
+
+/**
+ * A recording cut straight to a slide with a spoken take: the one moment in a preview when a
+ * <video> stops and an <audio> has to start on time. The footage and the take are made with
+ * Talkie's own ffmpeg — a moving test pattern, so a frame off is a different picture, and a tone.
+ */
+export async function makeFixtureWithCut(): Promise<Fixture> {
+  const home = mkdtempSync(join(tmpdir(), 'talkie-e2e-'))
+  updateSettings({ speech: { engine: 'system' }, narration: { autoDraft: false } }, home)
+  const project = createProject(PROJECT_NAME, home)
+  const root = join(home, 'Talkie', 'Projects')
+  const dir = join(root, readdirSync(root).find((entry) => entry.startsWith(project.id))!)
+
+  const clip = join(dir, 'sources', 'cut', 'clip.mp4')
+  mkdirSync(join(dir, 'sources', 'cut'), { recursive: true })
+  await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30:duration=4', ...(await h264('intermediate')), '-pix_fmt', 'yuv420p', '-y', clip])
+  addTimelineItem(project.id, { kind: 'video', start: 0, duration: CUT_FRAME, data: { src: clip, trimBefore: 0 } }, home)
+
+  const slide = addScene(project.id, 'scene', { title: 'After the cut', bullets: ['Spoken over'] }, home)
+  const segment = addTranscriptSegment(project.id, { text: 'Spoken over the slide.', timelineItemId: slide.id }, home)
+  mkdirSync(join(dir, 'audio'), { recursive: true })
+  await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-ar', '48000', '-y', join(dir, 'audio', 'take.wav')])
+  updateTranscriptSegmentAudio(project.id, segment.id, 'take.wav', 'tone', home)
+
+  return { home, projectId: project.id, dispose: () => rmSync(home, { recursive: true, force: true }) }
+}
 
 function buildFixture(engine: SpeechEngineId): Fixture {
   const home = mkdtempSync(join(tmpdir(), 'talkie-e2e-'))

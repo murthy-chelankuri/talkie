@@ -44,7 +44,7 @@ const isRemotion = (specifier: string): boolean => specifier === 'remotion' || s
 describe('the line around Remotion', () => {
   it('finds src/video importing Remotion, so a regex that matched nothing cannot pass', () => {
     expect(specifiers(readFileSync(join(ROOT, 'src', 'video', 'clock.tsx'), 'utf-8'))).toContain('remotion')
-    expect(specifiers(readFileSync(join(ROOT, 'src', 'video', 'preview.tsx'), 'utf-8'))).toContain('@remotion/player')
+    expect(specifiers(readFileSync(join(ROOT, 'src', 'video', 'media.tsx'), 'utf-8'))).toContain('remotion')
   })
 
   it('lets nothing outside src/video import or mock Remotion', () => {

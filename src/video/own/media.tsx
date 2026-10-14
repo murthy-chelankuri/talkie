@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { useOwnFrame } from './clock'
+import { useOwnFrame, useOwnRenderMode, useOwnSpan } from './clock'
 import { ownHold, reportFailure } from './hold'
+import { usePreviewMediaRegister } from './player'
 
 let frameReader = ''
 
@@ -62,12 +63,22 @@ export function OwnPicture({ src, alt, style, label }: { src: string; alt?: stri
   return <img ref={ref} src={src} alt={alt} style={style} />
 }
 
+type FootageProps = { src: string; trimBefore?: number; trimAfter?: number; style?: CSSProperties }
+
 /**
- * A recording's frame, decoded by the asset server with Talkie's ffmpeg. An <img> of the exact
- * frame rather than a <video> seeked to it: seeking a video frame by frame is what hung on
- * Playwright's VP8 files, and the headless shell cannot decode H.264 at all.
+ * A recording. The export draws the exact frame as an <img>; the preview plays an ordinary <video>.
+ * One mode per page (clock.ts), so the branch is constant and each kind keeps its own hook order.
  */
-export function OwnFootage({ src, trimBefore, trimAfter, style }: { src: string; trimBefore?: number; trimAfter?: number; style?: CSSProperties }): JSX.Element | null {
+export function OwnFootage(props: FootageProps): JSX.Element | null {
+  return useOwnRenderMode() === 'preview' ? <PreviewFootage {...props} /> : <ExportFootage {...props} />
+}
+
+/**
+ * The export's recording frame, decoded by the asset server with Talkie's ffmpeg. An <img> of the
+ * exact frame rather than a <video> seeked to it: seeking a video frame by frame hung on Playwright's
+ * VP8 files, and the headless shell cannot decode H.264 at all.
+ */
+function ExportFootage({ src, trimBefore, trimAfter, style }: FootageProps): JSX.Element | null {
   const sourceFrame = (trimBefore ?? 0) + useOwnFrame()
   // Remotion's OffthreadVideo wrapped itself in a Sequence of length trimAfter: nothing after it.
   if (trimAfter !== undefined && sourceFrame >= trimAfter) return null
@@ -75,7 +86,39 @@ export function OwnFootage({ src, trimBefore, trimAfter, style }: { src: string;
   return <OwnPicture key={url} src={url} style={style} label={`${nameOf(src)}, frame ${sourceFrame}`} />
 }
 
-/** Nothing in the picture: the export mixes the soundtrack from the timeline (soundtrack.ts). */
-export function OwnSound(_props: { src: string }): null {
-  return null
+/** A muted <video> kept within a frame of the clock by the player (player.tsx), honouring the trims. */
+function PreviewFootage({ src, trimBefore = 0, trimAfter, style }: FootageProps): JSX.Element | null {
+  const local = useOwnFrame()
+  const { start, end } = useOwnSpan()
+  const register = usePreviewMediaRegister()
+  const ref = useRef<HTMLVideoElement>(null)
+  const endFrame = trimAfter !== undefined ? Math.min(end, start + (trimAfter - trimBefore)) : end
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    return register({ el, kind: 'video', startFrame: start, endFrame, trimBefore })
+  }, [register, start, endFrame, trimBefore])
+  // Past trimAfter nothing shows, where the next scene of the same recording begins — as the export.
+  if (trimAfter !== undefined && trimBefore + local >= trimAfter) return null
+  return <video ref={ref} src={src} style={style} playsInline preload="auto" />
+}
+
+/**
+ * Narration. The export mixes the soundtrack from the timeline (soundtrack.ts) and draws nothing;
+ * the preview plays an <audio>, which is the clock while it plays (player.tsx).
+ */
+export function OwnSound(props: { src: string }): JSX.Element | null {
+  return useOwnRenderMode() === 'preview' ? <PreviewSound {...props} /> : null
+}
+
+function PreviewSound({ src }: { src: string }): JSX.Element {
+  const { start, end } = useOwnSpan()
+  const register = usePreviewMediaRegister()
+  const ref = useRef<HTMLAudioElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    return register({ el, kind: 'audio', startFrame: start, endFrame: end, trimBefore: 0 })
+  }, [register, start, end])
+  return <audio ref={ref} src={src} preload="auto" />
 }

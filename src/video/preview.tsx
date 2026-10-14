@@ -1,11 +1,17 @@
-import { forwardRef, useImperativeHandle, useRef, type ComponentType, type CSSProperties, type ForwardedRef, type Ref } from 'react'
-import { Player, type PlayerRef } from '@remotion/player'
+import type { ComponentType, CSSProperties } from 'react'
+import { chooseOwnRenderer } from './engine'
+import { OwnPreview } from './own/player'
 
 /**
- * The editor's player: the stage, the HTML scene panel and the theme preview. Its handle and
- * events are exactly what the transport bar, the timeline and the script already use, so that
- * when step 4 of the renderer replaces what is inside, none of them change.
+ * The editor's player: the stage, the HTML scene panel and the theme preview. Talkie's own player
+ * (own/player.tsx) draws the composition on Talkie's own clock; this file is the handle, the events
+ * and the props the transport bar, the timeline, the script and the three hosts use — the same ones
+ * they used when Remotion's `<Player>` was behind them, so none of them changed when it was replaced.
  */
+
+// The editor draws every scene with Talkie's own renderer, as the export page does; chosen here,
+// once, before any scene renders (engine.ts).
+chooseOwnRenderer()
 
 export type PreviewEvents = { frameupdate: { frame: number }; play: undefined; pause: undefined }
 type Listener<E extends keyof PreviewEvents> = (event: { detail: PreviewEvents[E] }) => void
@@ -41,50 +47,4 @@ export type PreviewProps<P extends object> = {
   style?: CSSProperties
 }
 
-function PreviewWith<P extends object>(
-  { component, inputProps, durationInFrames, fps, width, height, controls, loop, autoPlay, style }: PreviewProps<P>,
-  ref: ForwardedRef<PreviewHandle>
-): JSX.Element {
-  const player = useRef<PlayerRef>(null)
-
-  // Delegates call by call rather than handing out Remotion's own handle, so the editor cannot
-  // come to rely on anything the replacement will not have.
-  useImperativeHandle(
-    ref,
-    () => ({
-      seekTo: (frame) => player.current?.seekTo(frame),
-      getCurrentFrame: () => player.current?.getCurrentFrame() ?? 0,
-      toggle: () => player.current?.toggle(),
-      isPlaying: () => player.current?.isPlaying() ?? false,
-      mute: () => player.current?.mute(),
-      unmute: () => player.current?.unmute(),
-      isMuted: () => player.current?.isMuted() ?? false,
-      requestFullscreen: () => player.current?.requestFullscreen(),
-      // Remotion's emitter is typed per event; ours are the same names and payloads.
-      addEventListener: (event, listener) => player.current?.addEventListener(event, listener as never),
-      removeEventListener: (event, listener) => player.current?.removeEventListener(event, listener as never)
-    }),
-    []
-  )
-
-  return (
-    <Player
-      ref={player}
-      // Remotion types its props as a string-keyed record; ours are the composition's own type.
-      component={component as unknown as ComponentType<Record<string, unknown>>}
-      inputProps={inputProps as unknown as Record<string, unknown>}
-      durationInFrames={durationInFrames}
-      fps={fps}
-      compositionWidth={width}
-      compositionHeight={height}
-      controls={controls}
-      loop={loop}
-      autoPlay={autoPlay}
-      style={style}
-    />
-  )
-}
-
-export const Preview = forwardRef(PreviewWith) as <P extends object>(
-  props: PreviewProps<P> & { ref?: Ref<PreviewHandle> }
-) => JSX.Element
+export const Preview = OwnPreview
