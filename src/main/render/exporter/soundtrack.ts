@@ -17,8 +17,22 @@ export function takesFor(timeline: { id: string; start: number; duration: number
 
 const seconds = (frames: number): string => (frames / FPS).toFixed(4)
 
+const SAMPLE_RATE = 48000
+const AAC_FRAME_SAMPLES = 1024
+
+/**
+ * The soundtrack's length, rounded up to a whole AAC frame at or past the video. Cut at exactly
+ * the video length it ends one AAC frame short of Remotion's — whose encoder pads its own tail to
+ * a frame boundary — and the two files' containers then differ in length by that frame. Padded to
+ * the boundary, the last frame covers the video and the lengths land together.
+ */
+function soundtrackSeconds(totalFrames: number): string {
+  const samples = Math.ceil(((totalFrames / FPS) * SAMPLE_RATE) / AAC_FRAME_SAMPLES) * AAC_FRAME_SAMPLES
+  return (samples / SAMPLE_RATE).toFixed(4)
+}
+
 export function soundtrackArgs(takes: Take[], totalFrames: number, output: string): string[] {
-  const length = ['-t', seconds(totalFrames)]
+  const length = ['-t', soundtrackSeconds(totalFrames)]
   const encode = ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2']
   if (takes.length === 0) {
     return ['-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo', ...length, ...encode, '-y', output]

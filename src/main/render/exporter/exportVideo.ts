@@ -201,7 +201,10 @@ async function captureRange(
     for (let frame = range.from; frame < range.to; frame++) {
       signal.throwIfAborted()
       await Promise.race([page.evaluate((f) => (window as unknown as { talkie: TalkiePage }).talkie.seek(f), frame), crashed])
-      const { data } = await Promise.race([cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 92 }), crashed])
+      // JPEG at 80, the quality Remotion captures its own frames at: higher left a saturated edge
+      // with less of the chroma ringing 4:2:0 leaves, so the two exports' buttons and brand marks
+      // differed by more than the picture test allows where nothing a viewer would see had changed.
+      const { data } = await Promise.race([cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 }), crashed])
       if (!encoder.process.stdin.write(Buffer.from(data, 'base64'))) await writable(encoder, signal)
       captured()
     }

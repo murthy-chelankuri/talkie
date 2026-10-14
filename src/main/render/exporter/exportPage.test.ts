@@ -59,4 +59,14 @@ describe('the export page', () => {
     expect(await page.locator('#root').innerText()).not.toContain('First')
     expect(await page.locator('#root').innerText()).toContain('Second')
   }, 120_000)
+
+  it('keeps a padded scene inside the frame, laid out as Remotion’s page laid it out', async () => {
+    const { page } = await openPage([{ kind: 'scene', start: 0, duration: 120, data: { title: 'Centred', layout: 'title', bullets: [] } }])
+    await page.evaluate(() => (window as unknown as { talkie: TalkiePage }).talkie.seek(60))
+    const box = await page.getByText('Centred').boundingBox()
+
+    // Centred in the frame, not in a frame grown by its own padding.
+    expect(Math.abs(box!.x + box!.width / 2 - WIDTH / 2)).toBeLessThan(4)
+    expect(Math.abs(box!.y + box!.height / 2 - HEIGHT / 2)).toBeLessThan(40)
+  }, 120_000)
 })

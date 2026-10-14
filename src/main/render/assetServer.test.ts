@@ -298,8 +298,8 @@ describe('asset server', () => {
       const refused = await fetch(`${server.url}/clip.mp4?frame=-1&reader=x-0`)
 
       expect(frame.status).toBe(200)
-      expect(frame.headers.get('content-type')).toBe('image/jpeg')
-      expect(body.subarray(0, 2).toString('hex')).toBe('ffd8')
+      expect(frame.headers.get('content-type')).toBe('image/png')
+      expect(body.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
       expect(refused.status).toBe(404)
     } finally {
       closeReaders('x')

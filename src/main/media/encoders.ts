@@ -9,7 +9,7 @@ type Encoder = { name: string; quality: Record<EncodePurpose, string[]> }
  * The export's quality on VideoToolbox. Provisional until Task 6 of step 3 sets it to the value
  * that brings the comparison fixtures within 10% of Remotion's file sizes, and records why here.
  */
-const EXPORT_QUALITY = '65'
+const EXPORT_QUALITY = '92'
 
 /**
  * Each system's H.264 encoders, best first; the first the installed ffmpeg offers is used.

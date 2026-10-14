@@ -23,6 +23,7 @@
     "e2e/**/*",
     "vitest.e2e.config.ts",
     "examples/build/**/*",
-    "vitest.examples.config.ts"
+    "vitest.examples.config.ts",
+    "vitest.compare.config.ts"
   ]
 }

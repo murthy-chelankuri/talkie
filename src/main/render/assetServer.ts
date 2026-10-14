@@ -188,9 +188,9 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
         }
         const frame = Number(asked)
         footageFrame(reader, filePath, frame).then(
-          (jpeg) => {
-            res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': jpeg.length, 'Cache-Control': 'no-store' })
-            res.end(jpeg)
+          (png) => {
+            res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' })
+            res.end(png)
           },
           (err: unknown) => {
             console.error(`Could not decode frame ${frame} of ${filePath}:`, err)

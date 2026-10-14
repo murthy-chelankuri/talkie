@@ -8,10 +8,10 @@ import { closeReaders, decodersStarted, footageFrame, liveDecoders } from './fra
 let dir: string
 let clip: string
 
-/** A JPEG as raw RGB, through the pinned ffmpeg, so two frames can be compared pixel by pixel. */
-async function pixels(jpeg: Buffer, name: string): Promise<Buffer> {
-  writeFileSync(join(dir, `${name}.jpg`), jpeg)
-  await runFfmpeg(['-v', 'error', '-i', join(dir, `${name}.jpg`), '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-y', join(dir, `${name}.rgb`)])
+/** An encoded frame as raw RGB, through the pinned ffmpeg, so two frames can be compared pixel by pixel. */
+async function pixels(image: Buffer, name: string): Promise<Buffer> {
+  writeFileSync(join(dir, `${name}.png`), image)
+  await runFfmpeg(['-v', 'error', '-i', join(dir, `${name}.png`), '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-y', join(dir, `${name}.rgb`)])
   return readFileSync(join(dir, `${name}.rgb`))
 }
 
@@ -38,7 +38,7 @@ describe('a recording’s frames, for the export', () => {
     await runFfmpeg(['-v', 'error', '-ss', '1.5', '-i', clip, '-frames:v', '1', '-q:v', '2', '-y', join(dir, 'ref.jpg')])
     const reference = readFileSync(join(dir, 'ref.jpg'))
 
-    expect(served.subarray(0, 2).toString('hex')).toBe('ffd8')
+    expect(served.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
     expect(meanDifference(await pixels(served, 'served'), await pixels(reference, 'reference'))).toBeLessThan(3)
   }, 60_000)
 

@@ -32,13 +32,19 @@ const decoders = new Map<string, Decoder>()
 /** Requests for one reader's file, one at a time, so a restart never pulls a decoder out from under a caller waiting on it. */
 const queues = new Map<string, Promise<unknown>>()
 const lastFrame = new Map<string, number>()
+/** Each file's own frame rate, cached: frames are decoded at it and matched to composition frames by time. */
+const rates = new Map<string, number>()
+/** Each file's first timestamp, cached: a recording that opens at a later PTS shifts which frame a moment lands on. */
+const startsAt = new Map<string, number>()
 /** Decoders whose ffmpeg has not exited yet, for tests that check nothing is left running. */
 const live = new Set<Decoder>()
 /** Prefixes an export has closed: a request already in flight for one must not start a decoder nobody will stop. */
 const closed = new Set<string>()
 let started = 0
 
-const EOI = Buffer.from([0xff, 0xd9])
+// A PNG ends with its IEND chunk: a zero-length chunk whose type and CRC are the constant bytes
+// below, so the sequence marks the end of one picture in the stream and sits nowhere else.
+const IEND = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
 
 export function decodersStarted(): number {
   return started
@@ -58,35 +64,57 @@ function stopDecoder(decoder: Decoder): void {
   decoder.tool.process.kill()
 }
 
+/** A recording's own frame rate, cached. Unknown to ffprobe, it is taken as the composition's, so the match below is the identity it was before frames were matched by time. */
+async function rateOf(file: string): Promise<number> {
+  const known = rates.get(file)
+  if (known !== undefined) return known
+  const { fps } = await probeMedia(file)
+  const rate = fps && fps > 0 ? fps : FPS
+  rates.set(file, rate)
+  return rate
+}
+
+/** A recording's first timestamp, cached. Playwright's recordings open at one frame in, not zero, which shifts every frame a moment lands on by one. */
+async function startOf(file: string): Promise<number> {
+  const known = startsAt.get(file)
+  if (known !== undefined) return known
+  const { startSeconds } = await probeMedia(file)
+  startsAt.set(file, startSeconds)
+  return startSeconds
+}
+
 async function finalFrame(file: string): Promise<number> {
   const known = lastFrame.get(file)
   if (known !== undefined) return known
   const { durationSeconds } = await probeMedia(file)
-  // A recording whose container states no length is not clamped: the decoder simply runs out,
-  // and the last frame it made is the one held.
-  const last = durationSeconds === null ? Infinity : Math.max(0, Math.floor(durationSeconds * FPS) - 1)
+  // The last frame of the recording itself, at its own rate. A recording whose container states no
+  // length is not clamped: the decoder simply runs out, and the last frame it made is the one held.
+  const last = durationSeconds === null ? Infinity : Math.max(0, Math.floor(durationSeconds * (await rateOf(file))) - 1)
   lastFrame.set(file, last)
   return last
 }
 
-function start(file: string, from: number): Decoder {
+function start(file: string, from: number, rate: number, startSeconds: number): Decoder {
   started++
-  // -ss before -i seeks to the nearest keyframe and decodes on to the exact moment; fps= then
-  // gives one picture per composition frame, whatever rate the recording was made at. The seek
-  // is half a frame early: a frame stamped at exactly `from / FPS` is dropped as "before the
-  // start" once that time is rounded up to four places, and the last frame of a file went missing.
-  const tool = spawnFfmpeg(['-v', 'error', '-ss', (Math.max(0, from - 0.5) / FPS).toFixed(4), '-i', file, '-vf', `fps=${FPS}`, '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2', 'pipe:1'])
+  // Decoded at the recording's own rate — one picture per source frame, matched to a composition
+  // frame by time in serve() where the rates differ, as Remotion's frame server does rather than
+  // resampling the stream. -ss alone is only keyframe-accurate here: seeking to a frame's own time
+  // overshot it by one often enough to show a later picture through a mid-animation moment. So -ss
+  // lands a couple of frames early for speed and -copyts keeps each frame's real timestamp, then
+  // select hands on the first frame at `from`'s time or later — exact, whatever the seek did. PNG,
+  // not JPEG: the browser is handed the exact pixels the recording holds, so the colour a saturated
+  // brand loses to lossy chroma is kept — the step Remotion's frame server also omits.
+  const seek = Math.max(0, startSeconds + (from - 2) / rate)
+  const at = startSeconds + (from - 0.5) / rate
+  const tool = spawnFfmpeg(['-v', 'error', '-ss', seek.toFixed(4), '-copyts', '-i', file, '-vf', `select=gte(t\\,${at.toFixed(6)})`, '-fps_mode', 'passthrough', '-f', 'image2pipe', '-c:v', 'png', '-compression_level', '1', 'pipe:1'])
   const decoder: Decoder = { file, next: from, frames: [], last: null, ended: false, error: null, waiting: null, tool }
   live.add(decoder)
   let pending = Buffer.alloc(0)
   tool.process.stdout.on('data', (chunk: Buffer) => {
     pending = Buffer.concat([pending, chunk])
-    // A JPEG ends at FF D9; inside one, a literal FF is always followed by 00, so that pair
-    // marks the end of a frame and nothing else (the mjpeg encoder writes no embedded thumbnail,
-    // which is the one place a second JPEG could sit inside the first).
-    for (let end = pending.indexOf(EOI); end !== -1; end = pending.indexOf(EOI)) {
-      decoder.frames.push(pending.subarray(0, end + 2))
-      pending = pending.subarray(end + 2)
+    for (let end = pending.indexOf(IEND); end !== -1; end = pending.indexOf(IEND)) {
+      decoder.frames.push(pending.subarray(0, end + IEND.length))
+      pending = pending.subarray(end + IEND.length)
     }
     if (decoder.frames.length >= MAX_BUFFERED) tool.process.stdout.pause()
     decoder.waiting?.()
@@ -119,7 +147,13 @@ function isClosed(reader: string): boolean {
 }
 
 async function serve(reader: string, file: string, frame: number): Promise<Buffer> {
-  const wanted = Math.min(frame, await finalFrame(file))
+  const rate = await rateOf(file)
+  const startSeconds = await startOf(file)
+  // The composition frame asked for, as a source frame: the recording's frame showing at that
+  // moment, floor from its own first timestamp as Remotion takes it, so a 25 fps recording that
+  // opens a frame in, under a 30 fps composition, lands on the same picture both ways rather than
+  // one frame off through a mid-animation moment.
+  const wanted = Math.max(0, Math.min(Math.floor((frame / FPS - startSeconds) * rate), await finalFrame(file)))
   if (isClosed(reader)) throw new Error(`Reader ${reader} was closed`)
   const key = `${reader}\u0000${file}`
   let decoder = decoders.get(key)
@@ -127,7 +161,7 @@ async function serve(reader: string, file: string, frame: number): Promise<Buffe
   const tooFar = decoder && wanted > decoder.next + RESTART_AHEAD
   if (!decoder || behind || tooFar) {
     if (decoder) stopDecoder(decoder)
-    decoder = start(file, wanted)
+    decoder = start(file, wanted, rate, startSeconds)
     decoders.set(key, decoder)
   }
   // The frame handed out last time, asked for again (a held frame), is still the last one taken.
