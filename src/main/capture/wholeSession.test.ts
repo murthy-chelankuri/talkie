@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getVideoMetadata } from '@remotion/renderer'
+import { probeMedia } from '../media'
 import { createProject } from '../project/projectApi'
 import { startRecordingSession } from './recordSession'
 import { importRecordedSession } from './importRecordedSession'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 
 /** A page that keeps changing, so its recording cannot be mistaken for a frozen one. */
 const TICKER = `<script>
@@ -83,8 +83,8 @@ describe('a recording of a session that moves between tabs', () => {
     // was cut into on the way in.
     expect(scenes.reduce((total, scene) => total + scene.duration, 0)).toBeGreaterThan(5 * FPS)
 
-    const { durationInSeconds } = await getVideoMetadata((item.data as { src: string }).src)
-    expect(durationInSeconds).toBeGreaterThan(5)
+    const { durationSeconds } = await probeMedia((item.data as { src: string }).src)
+    expect(durationSeconds).toBeGreaterThan(5)
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 120_000)
@@ -106,12 +106,12 @@ describe('a recording of a session that moves between tabs', () => {
     const [item] = await importRecordedSession(project.id, recording, baseDir)
     const watched = recording.clips.reduce((total, clip) => total + clip.durationMs, 0)
 
-    const { durationInSeconds, codec } = await getVideoMetadata((item.data as { src: string }).src)
+    const { durationSeconds, videoCodec } = await probeMedia((item.data as { src: string }).src)
     // Seekable H.264, and as long as the two stretches together — within a second, since the
     // browser's own recorder rounds to whole frames at each end.
-    expect(codec).toBe('h264')
-    expect(durationInSeconds).toBeGreaterThan(watched / 1000 - 1)
-    expect(durationInSeconds).toBeLessThan(watched / 1000 + 1)
+    expect(videoCodec).toBe('h264')
+    expect(durationSeconds).toBeGreaterThan(watched / 1000 - 1)
+    expect(durationSeconds).toBeLessThan(watched / 1000 + 1)
 
     rmSync(baseDir, { recursive: true, force: true })
   }, 120_000)

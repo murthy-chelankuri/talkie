@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { formatTimecode } from '../../lib/timelineLayout'
-import { FPS } from '../../../../remotion/constants'
+import { FPS } from '../../../../composition/constants'
 import { cn } from '../../lib/cn'
 import { Spinner } from '../ui/Spinner'
 

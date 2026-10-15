@@ -2,7 +2,8 @@ import { fork, type ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
-import { KOKORO_MODEL, isKokoroDownloaded, kokoroCacheDir, verifyKokoroDownload } from './kokoroModel'
+import { KOKORO_MODEL, isKokoroDownloaded, kokoroCacheDir } from './kokoroModel'
+import { fetchKokoroFiles, type Fetch } from './kokoroDownload'
 
 /**
  * The main process's side of Kokoro: it starts the worker, sends it work, and never loads the
@@ -152,23 +153,29 @@ let download: DownloadState | null = null
 /**
  * Fetch the model, once. A second call while one is running joins it rather than starting another.
  *
+ * `fetchFile` is Electron's `net.fetch` in the app — the system's proxy and keychain, which a
+ * corporate network needs; see kokoroDownload.ts. Plain `fetch` otherwise, for the tests. Once the
+ * files are in place and checked, the worker loads them, so a download that cannot be spoken with
+ * is found here rather than on the first clip.
+ *
  * Settings polls `kokoroDownloadStatus` while this runs rather than being sent events: a progress
  * bar that is a fraction of a second behind costs nothing, and polling is one channel instead of
  * a channel and a listener that must be torn down with the window.
  */
-export function downloadKokoro(baseDir: string = homedir()): Promise<void> {
+export function downloadKokoro(baseDir: string = homedir(), fetchFile: Fetch = (url) => fetch(url)): Promise<void> {
   if (download?.running) return download.promise
 
   const state: DownloadState = { promise: Promise.resolve(), running: true, loaded: 0, total: 0 }
-  state.promise = send({ kind: 'prepare', model: modelSpec(baseDir) }, (loaded, total) => {
-    state.loaded = loaded
-    state.total = total
-  })
-    .then(async () => {
-      if (!(await verifyKokoroDownload(baseDir))) {
-        throw new Error('The downloaded voice did not match the published one, and was thrown away.')
-      }
-    })
+  state.promise = fetchKokoroFiles(
+    fetchFile,
+    (loaded, total) => {
+      state.loaded = loaded
+      state.total = total
+    },
+    baseDir
+  )
+    .then(() => send({ kind: 'prepare', model: modelSpec(baseDir) }))
+    .then(() => undefined)
     .catch((err: Error) => {
       state.error = describeDownloadFailure(err.message)
       // The worker may be holding the model it just loaded from the bad file.
@@ -195,10 +202,18 @@ export function kokoroDownloadStatus(baseDir: string = homedir()): KokoroDownloa
 
 /** What went wrong with the download, in terms of what to do about it. */
 function describeDownloadFailure(message: string): string {
-  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network/i.test(message)) {
-    return 'Could not reach Hugging Face to download the voice. Check the connection and try again.'
+  // What a corporate proxy does to a fetch it will not allow: re-signs the connection with a
+  // certificate of its own, asks for credentials, or cuts it. Said as a proxy, because "check the
+  // connection" sends someone to a connection that works for everything else.
+  if (/certificate|CERT_|SELF_SIGNED|ERR_PROXY|ERR_TUNNEL|ERR_SSL|\b40[37]\b|proxy/i.test(message)) {
+    return 'A proxy or firewall stopped the download from Hugging Face. Download the files yourself and add them below.'
+  }
+  if (/fetch failed|net::ERR_|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network/i.test(message)) {
+    return 'Could not reach Hugging Face to download the voice. Try again, or download the files yourself and add them below.'
   }
   if (/ENOSPC/i.test(message)) return 'There is not enough disk space for the voice.'
-  if (/did not match the published one/.test(message)) return message
+  if (/did not match the published one/.test(message)) {
+    return `${message} Download the files yourself and add them below.`
+  }
   return `The voice could not be downloaded: ${message}`
 }

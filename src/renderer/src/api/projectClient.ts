@@ -70,6 +70,7 @@ export type { PreparedDeck } from '../../../main/slides/importSlides'
 export type { ProjectContext }
 export type { SpeechEngineDescription } from '../../../main/tts/engineRegistry'
 export type { KokoroDownload } from '../../../main/tts/kokoro/kokoroProcess'
+export type { KokoroCheck, KokoroImport, KokoroManual } from '../../../main/tts/kokoro/kokoroManual'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
 export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'
@@ -93,7 +94,11 @@ export const settingsClient = {
   speechEngines: () => window.api.settings.speechEngines(),
   previewVoice: (voice: string, text: string) => window.api.settings.previewVoice(voice, text),
   kokoroDownload: () => window.api.settings.kokoroDownload(),
-  kokoroStatus: () => window.api.settings.kokoroStatus()
+  kokoroStatus: () => window.api.settings.kokoroStatus(),
+  kokoroManual: () => window.api.settings.kokoroManual(),
+  kokoroImport: () => window.api.settings.kokoroImport(),
+  kokoroCheck: () => window.api.settings.kokoroCheck(),
+  kokoroShowFolder: () => window.api.settings.kokoroShowFolder()
 }
 
 export const agentClient = {
@@ -164,7 +169,7 @@ export type { Theme, ThemeDraft, Variant, VariantId } from '../../../main/themes
 export type { GeneratedTheme, GenerateStatus } from '../../../main/themes/generate/generateTheme'
 export type { ThemeTarget } from '../../../main/ipc/themeHandlers'
 export type { GenerateThemeRequest } from '../../../preload/index'
-export type { RenderTheme } from '../../../remotion/renderTheme'
+export type { RenderTheme } from '../../../composition/renderTheme'
 
 /**
  * Themes are edited in Settings while a project stays open behind it, and the project re-read its

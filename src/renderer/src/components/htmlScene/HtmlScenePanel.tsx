@@ -8,10 +8,10 @@ import {
   type HtmlSceneResult,
   type TimelineItem
 } from '../../api/projectClient'
-import type { RenderTheme } from '../../../../remotion/renderTheme'
-import type { TimelineItem as RemotionTimelineItem } from '../../../../remotion/types'
-import { DemoComposition } from '../../../../remotion/DemoComposition'
-import { FPS, HEIGHT, WIDTH } from '../../../../remotion/constants'
+import type { RenderTheme } from '../../../../composition/renderTheme'
+import type { TimelineItem as CompositionTimelineItem } from '../../../../composition/types'
+import { DemoComposition } from '../../../../composition/DemoComposition'
+import { FPS, HEIGHT, WIDTH } from '../../../../composition/constants'
 import { Button } from '../ui/Button'
 import { Textarea } from '../ui/Textarea'
 import { Spinner } from '../ui/Spinner'
@@ -190,7 +190,7 @@ function EditHtmlScene({
   }, [projectId, item.id])
 
   const dirty = changed.size > 0 || JSON.stringify(params) !== JSON.stringify(data.params ?? {}) || look !== (data.style?.theme ?? 'dark')
-  const timeline = useMemo(() => [{ ...item, start: 0 }] as unknown as RemotionTimelineItem[], [item])
+  const timeline = useMemo(() => [{ ...item, start: 0 }] as unknown as CompositionTimelineItem[], [item])
 
   async function save(): Promise<void> {
     if (!files) return

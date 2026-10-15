@@ -4,7 +4,7 @@
 
 **Goal:** Stand up the Electron + React + TypeScript app shell with a working `ProjectAPI` that can create, list, open, and schema-migrate projects stored on disk under `~/DemoStudio/Projects/`, plus a minimal UI to create/open a project and land in an empty editor shell.
 
-**Architecture:** Electron main process owns all filesystem access through a `ProjectAPI` module (pure Node/TypeScript, unit-testable without Electron); IPC handlers expose it to a React renderer via a `contextBridge` preload. No embedded database — a project is a folder of JSON files, written atomically. This is the walking skeleton every later plan (capture, timeline/Remotion, transcript/TTS, agents) attaches to.
+**Architecture:** Electron main process owns all filesystem access through a `ProjectAPI` module (pure Node/TypeScript, unit-testable without Electron); IPC handlers expose it to a React renderer via a `contextBridge` preload. No embedded database — a project is a folder of JSON files, written atomically. This is the walking skeleton every later plan (capture, timeline/composition, transcript/TTS, agents) attaches to.
 
 **Tech Stack:** Electron, electron-vite, React 18, TypeScript, Zod (schema validation), Vitest (unit tests).
 
@@ -25,7 +25,7 @@
 
 This is **Plan 1 of a multi-plan implementation** of the full spec (per the spec's own §11 walking-skeleton order). It is scoped to be a complete, working, testable slice on its own: create a project, see it on disk, close the app, reopen it. Anticipated later plans, each building on this one's `ProjectAPI` and file layout:
 
-- **Plan 2** — Timeline data model, `TimelineItem` kind registry, Remotion compositor (preview + export), image/PPT import.
+- **Plan 2** — Timeline data model, `TimelineItem` kind registry, video compositor (preview + export), image/PPT import.
 - **Plan 3** — Capture pipeline (Playwright recording, action log, recording toolbar).
 - **Plan 4** — Transcript panel, `TTSProvider` interface, per-segment narration.
 - **Plan 5** — Agent host (provider-agnostic tool-use loop), `LLMProvider` implementations, Transcript Agent, model settings UI.

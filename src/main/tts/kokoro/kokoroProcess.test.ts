@@ -32,6 +32,40 @@ describe('speaking through the Kokoro worker', () => {
     expect(seconds).toBeGreaterThan(1.5)
   }, 90_000)
 
+  /**
+   * Kokoro reads 510 phonemes at most and kokoro-js drops the rest without a word. This paragraph
+   * is about 800: it came back as 25 seconds of its first two thirds, read at an impossible 370
+   * words a minute, and the clip's last sentences were simply never said.
+   */
+  const LONG = [
+    'Every piece of work is a card, and every card lives in a column: what is waiting, what is in progress, and what is finished.',
+    'Drag a card from one column to the next as the work moves along, and everyone on the team sees the change straight away.',
+    'Open a card to read the whole story behind it, the comments people have left, the files they attached, and who is looking after it now.',
+    'When a deadline is close, the card turns amber, and when it has passed, it turns red, so nothing slips by quietly.',
+    'Filters along the top narrow the board to one person, one label, or one week, and the search box finds any card by a word in its title or its notes.',
+    'At the end of the week, the summary view shows what moved, what stalled, and what is still waiting for someone to pick it up.'
+  ]
+
+  /** Words a minute: Kokoro at its own pace reads at about 190, never anywhere near 300. */
+  const pace = (text: string, seconds: number): number => (text.split(/\s+/).length / seconds) * 60
+
+  it.skipIf(!downloaded)('reads every word of narration longer than Kokoro takes at once', async () => {
+    const text = LONG.join(' ')
+
+    const seconds = await speakWithKokoro(text, 'af_heart', 1, join(dir, 'long.wav'))
+
+    expect(pace(text, seconds)).toBeLessThan(260)
+  }, 180_000)
+
+  it.skipIf(!downloaded)('reads every word of one sentence too long to read at once', async () => {
+    // No full stop to cut at: it has to be cut at its commas instead.
+    const text = LONG.map((sentence) => sentence.replace(/\.$/, '')).join(', and ') + '.'
+
+    const seconds = await speakWithKokoro(text, 'af_heart', 1, join(dir, 'sentence.wav'))
+
+    expect(pace(text, seconds)).toBeLessThan(260)
+  }, 180_000)
+
   it('refuses before the voice has been downloaded, rather than starting a download mid-clip', async () => {
     const elsewhere = mkdtempSync(join(tmpdir(), 'talkie-kokoro-none-'))
     try {

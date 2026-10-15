@@ -1,16 +1,16 @@
 import type { CSSProperties } from 'react'
-import { Audio, Img, OffthreadVideo } from 'remotion'
+import { OwnFootage, OwnPicture, OwnSound } from './own/media'
 
 /**
  * Pictures, footage and sound, each held until it can be shown at the frame asked for.
  * Every `src` must already be an http URL from the asset server: the export page is served
  * over http, and Chromium will not load file:// beneath it (see resolveTimelineAssetUrls).
- *
- * Delegates to Remotion until steps 3 and 4 of the renderer.
  */
 
 export function Picture({ src, alt, style }: { src: string; alt?: string; style?: CSSProperties }): JSX.Element {
-  return <Img src={src} alt={alt} style={style} />
+  // Keyed on src: the picture opens its hold once, so a new src must be a new picture with a new hold,
+  // or a frame could be taken before the new image has loaded.
+  return <OwnPicture key={src} src={src} alt={alt} style={style} />
 }
 
 /**
@@ -18,11 +18,8 @@ export function Picture({ src, alt, style }: { src: string; alt?: string; style?
  * into the file are the value over the composition's fps, not frames of the file.
  *
  * Like `Sound`, it starts at the enclosing Sequence's first frame and stops at its last, nested
- * Sequences included.
- *
- * OffthreadVideo, not Video: an HTML5 <video> seeked frame by frame hangs on the VP8 .webm
- * files Playwright produces, so the export takes frames from the compositor instead. In the
- * preview it plays as an ordinary video.
+ * Sequences included. The export draws each exact frame as a picture; the preview plays it as an
+ * ordinary video (own/media.tsx).
  */
 export function Footage({
   src,
@@ -34,14 +31,14 @@ export function Footage({
   trimBefore?: number
   trimAfter?: number
   style?: CSSProperties
-}): JSX.Element {
-  return <OffthreadVideo src={src} trimBefore={trimBefore} trimAfter={trimAfter} style={style} />
+}): JSX.Element | null {
+  return <OwnFootage src={src} trimBefore={trimBefore} trimAfter={trimAfter} style={style} />
 }
 
 /**
  * Narration, starting at the enclosing Sequence's first frame and stopping at its last. A
  * nested Sequence ends with its parent, so a take longer than its clip is cut at the clip's end.
  */
-export function Sound({ src }: { src: string }): JSX.Element {
-  return <Audio src={src} />
+export function Sound({ src }: { src: string }): JSX.Element | null {
+  return <OwnSound src={src} />
 }

@@ -1,0 +1,1141 @@
+{
+  "capturedFrom": "phonemizer 1.2.1 from npm",
+  "cases": [
+    {
+      "voice": "en-us",
+      "text": "Here's Taskboard, a simple way to see your team's work at a glance — in one minute.",
+      "phonemes": [
+        "hˈɪɹz tˈæskboːɹd",
+        "ɐ sˈɪmpəl wˈeɪ tə sˈiː jʊɹ tˈiːmz wˈɜːk æɾə ɡlˈæns",
+        "ɪn wˈʌn mˈɪnɪt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Every piece of work is a card, and every card lives in a column: what's waiting, what's in progress, and what's finished.",
+      "phonemes": [
+        "ˈɛvɹi pˈiːs ʌv wˈɜːk ɪz ɐ kˈɑːɹd",
+        "ænd ˈɛvɹi kˈɑːɹd lˈaɪvz ɪn ɐ kˈɑːlʌm",
+        "wˌʌts wˈeɪɾɪŋ",
+        "wˌʌts ɪn pɹˈɑːɡɹɛs",
+        "ænd wʌts fˈɪnɪʃt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Adding work takes a second. Press New task, give it a name, and it lands in To do.",
+      "phonemes": [
+        "ˈædɪŋ wˈɜːk tˈeɪks ɐ sˈɛkənd",
+        "pɹˈɛs nˈuː tˈæsk",
+        "ɡˈɪv ɪɾ ɐ nˈeɪm",
+        "ænd ɪt lˈændz ɪn tə dˈuː"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "When you pick something up, press Start. The card moves across, so everyone can see who's on what.",
+      "phonemes": [
+        "wˌɛn juː pˈɪk sˈʌmθɪŋ ˈʌp",
+        "pɹˈɛs stˈɑːɹt",
+        "ðə kˈɑːɹd mˈuːvz əkɹˈɑːs",
+        "sˌoʊ ˈɛvɹɪwˌʌn kæn sˈiː hˌuːz ˌɔn wˈʌt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Finish it, and it moves to Done — and the bar along the top shows how far through the week you are.",
+      "phonemes": [
+        "fˈɪnɪʃ ɪt",
+        "ænd ɪt mˈuːvz tə dˈʌn",
+        "ænd ðə bˈɑːɹ ɐlˈɔŋ ðə tˈɑːp ʃˈoʊz hˌaʊ fˈɑːɹ θɹuː ðə wˈiːk juː ɑːɹ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "And when you just need your own list, Mine hides everything else.",
+      "phonemes": [
+        "ænd wɛn juː dʒˈʌst nˈiːd jʊɹ ˈoʊn lˈɪst",
+        "mˈaɪn hˈaɪdz ˈɛvɹɪθˌɪŋ ˈɛls"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "That walkthrough was recorded in one take, without a word said. The words came afterwards, and the picture leans in wherever a click landed.",
+      "phonemes": [
+        "ðæt wˈɔːkθɹuː wʌz ɹᵻkˈoːɹdᵻd ɪn wˈʌn tˈeɪk",
+        "wɪðˌaʊt ɐ wˈɜːd sˈɛd",
+        "ðə wˈɜːdz kˈeɪm ˈæftɚwɚdz",
+        "ænd ðə pˈɪktʃɚ lˈiːnz ɪn wɛɹˈɛvɚɹ ɐ klˈɪk lˈændᵻd"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "What actually happens when you upload a photo? Let's follow one, end to end.",
+      "phonemes": [
+        "wˌʌt ˈæktʃuːəli hˈæpənz wɛn juː ˈʌploʊd ɐ fˈoʊɾoʊ",
+        "lˈɛts fˈɑːloʊ wˌʌn",
+        "ˈɛnd tʊ ˈɛnd"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "It starts on the phone. The photo goes to the API gateway, which checks who you are. The upload service gives it a name, and stores the original in object storage — then replies straight away, so you're never left waiting.",
+      "phonemes": [
+        "ɪt stˈɑːɹts ɔnðə fˈoʊn",
+        "ðə fˈoʊɾoʊ ɡoʊz tə ðɪ ˌeɪpˌiːˈaɪ ɡˈeɪtweɪ",
+        "wˌɪtʃ tʃˈɛks hˈuː juː ɑːɹ",
+        "ðɪ ˈʌploʊd sˈɜːvɪs ɡˈɪvz ɪɾ ɐ nˈeɪm",
+        "ænd stˈoːɹz ðɪ ɚɹˈɪdʒɪnəl ɪn ˈɑːbdʒɛkt stˈoːɹɪdʒ",
+        "ðˈɛn ɹᵻplˈaɪz stɹˈeɪt ɐwˈeɪ",
+        "sˌoʊ jʊɹ nˈɛvɚ lˈɛft wˈeɪɾɪŋ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "The slow work happens afterwards, from the stored original. A message goes onto a queue. The thumbnailer picks it up and makes the smaller sizes, and publishes them to the CDN, close to whoever's looking.",
+      "phonemes": [
+        "ðə slˈoʊ wˈɜːk hˈæpənz ˈæftɚwɚdz",
+        "fɹʌmðə stˈoːɹd ɚɹˈɪdʒɪnəl",
+        "ɐ mˈɛsɪdʒ ɡoʊz ˌɑːntʊ ɐ kjˈuː",
+        "ðə θˈʌmneɪlɚ pˈɪks ɪɾ ˌʌp ænd mˌeɪks ðə smˈɔːlɚ sˈaɪzᵻz",
+        "ænd pˈʌblɪʃᵻz ðˌɛm tə ðə sˌiːdˌiːˈɛn",
+        "klˈoʊs tə huːˈɛvɚz lˈʊkɪŋ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "In code, it's short. Check the user. Store the original. Queue the thumbnails. And reply. Nothing waits on the slow part.",
+      "phonemes": [
+        "ɪn kˈoʊd",
+        "ɪts ʃˈɔːɹt",
+        "tʃˈɛk ðə jˈuːzɚ",
+        "stˈoːɹ ðɪ ɚɹˈɪdʒɪnəl",
+        "kjˈuː ðə θˈʌmneɪlz",
+        "ænd ɹᵻplˈaɪ",
+        "nˈʌθɪŋ wˈeɪts ɔnðə slˈoʊ pˈɑːɹt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Built this way, uploads stay fast, a failed thumbnail is simply retried, and each piece can grow on its own.",
+      "phonemes": [
+        "bˈɪlt ðɪs wˈeɪ",
+        "ˈʌploʊdz stˈeɪ fˈæst",
+        "ɐ fˈeɪld θˈʌmneɪl ɪz sˈɪmpli ɹˈiːtɹaɪd",
+        "ænd ˈiːtʃ pˈiːs kæn ɡɹˈoʊ ˌɔn ɪts ˈoʊn"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "That's one upload, end to end — drawn and narrated, step by step, in Talkie.",
+      "phonemes": [
+        "ðæts wˈʌn ˈʌploʊd",
+        "ˈɛnd tʊ ˈɛnd",
+        "dɹˈɔːn ænd nɚɹˈeɪɾᵻd",
+        "stˈɛp baɪ stˈɛp",
+        "ɪn tˈɔːki"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "This is Talkie. It turns a silent recording of your app into a narrated demo video. Here's one being made, from nothing.",
+      "phonemes": [
+        "ðɪs ɪz tˈɔːki",
+        "ɪt tˈɜːnz ɐ sˈaɪlənt ɹᵻkˈoːɹdɪŋ ʌv jʊɹ ˈæp ˌɪntʊ ɐ nɚɹˈeɪɾᵻd dˈɛmoʊ vˈɪdɪoʊ",
+        "hˈɪɹz wˈʌn bˌiːɪŋ mˈeɪd",
+        "fɹʌm nˈʌθɪŋ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "It takes four steps. Record the app. Write the words. Give them a voice. And export the video.",
+      "phonemes": [
+        "ɪt tˈeɪks fˈoːɹ stˈɛps",
+        "ɹˈɛkɚd ðɪ ˈæp",
+        "ɹˈaɪt ðə wˈɜːdz",
+        "ɡˈɪv ðˌɛm ɐ vˈɔɪs",
+        "ænd ˈɛkspoːɹt ðə vˈɪdɪoʊ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Everything starts with a project. Give it a name, and say in a sentence what it's about — the narration is written from that.",
+      "phonemes": [
+        "ˈɛvɹɪθˌɪŋ stˈɑːɹts wɪð ɐ pɹˈɑːdʒɛkt",
+        "ɡˈɪv ɪɾ ɐ nˈeɪm",
+        "ænd sˈeɪ ɪn ɐ sˈɛntəns wʌt ɪts ɐbˈaʊt",
+        "ðə nɚɹˈeɪʃən ɪz ɹˈɪʔn̩ fɹʌm ðˈæt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Then record your app.",
+      "phonemes": [
+        "ðˈɛn ɹᵻkˈoːɹd jʊɹ ˈæp"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Type its address, tick Show me round it, and Talkie walks the app by itself.",
+      "phonemes": [
+        "tˈaɪp ɪts ɐdɹˈɛs",
+        "tˈɪk ʃˈoʊ mˌiː ɹˈaʊnd ɪt",
+        "ænd tˈɔːki wˈɔːks ðɪ ˈæp baɪ ɪtsˈɛlf"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "The recording comes back cut into scenes, and the picture leans in wherever a click landed.",
+      "phonemes": [
+        "ðə ɹᵻkˈoːɹdɪŋ kˈʌmz bˈæk kˈʌt ˌɪntʊ sˈiːnz",
+        "ænd ðə pˈɪktʃɚ lˈiːnz ɪn wɛɹˈɛvɚɹ ɐ klˈɪk lˈændᵻd"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Press Write the words, and your AI drafts the narration for every scene.",
+      "phonemes": [
+        "pɹˈɛs ɹˈaɪt ðə wˈɜːdz",
+        "ænd jʊɹ ˌeɪˈaɪ dɹˈæfts ðə nɚɹˈeɪʃən fɔːɹ ˈɛvɹi sˈiːn"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "The script shows it all in one column. The numbers in brackets are timings: each line is spoken at that second of its scene.",
+      "phonemes": [
+        "ðə skɹˈɪpt ʃˈoʊz ɪɾ ˈɔːl ɪn wˈʌn kˈɑːlʌm",
+        "ðə nˈʌmbɚz ɪn bɹˈækɪts ɑːɹ tˈaɪmɪŋz",
+        "ˈiːtʃ lˈaɪn ɪz spˈoʊkən æt ðæt sˈɛkənd ʌv ɪts sˈiːn"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Choose a voice — the Mac’s own, or Kokoro, built in and close to a person — and press Speak.",
+      "phonemes": [
+        "tʃˈuːz ɐ vˈɔɪs",
+        "ðə mˈækz ˈoʊn",
+        "ɔːɹ kəkˈoːɹoʊ",
+        "bˈɪlt ɪn ænd klˈoʊs tʊ ɐ pˈɜːsən",
+        "ænd pɹˈɛs spˈiːk"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Every scene gets its own take, and the scene is sized to fit it.",
+      "phonemes": [
+        "ˈɛvɹi sˈiːn ɡˈɛts ɪts ˈoʊn tˈeɪk",
+        "ænd ðə sˈiːn ɪz sˈaɪzd tə fˈɪt ɪt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Not every scene is a recording. Add a slide, say what should be on it, and the AI writes it.",
+      "phonemes": [
+        "nˌɑːt ˈɛvɹi sˈiːn ɪz ɐ ɹᵻkˈoːɹdɪŋ",
+        "ˈæd ɐ slˈaɪd",
+        "sˈeɪ wʌt ʃˌʊd biː ˈɔn ɪt",
+        "ænd ðɪ ˌeɪˈaɪ ɹˈaɪts ɪt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Its points appear as they are spoken.",
+      "phonemes": [
+        "ɪts pˈɔɪnts ɐpˈɪɹ æz ðeɪ ɑːɹ spˈoʊkən"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Diagrams are written in Mermaid, and drawn box by box, in the order the narration names them.",
+      "phonemes": [
+        "dˈaɪəɡɹˌæmz ɑːɹ ɹˈɪʔn̩ ɪn mˈɜːmeɪd",
+        "ænd dɹˈɔːn bˈɑːks baɪ bˈɑːks",
+        "ɪnðɪ ˈɔːɹdɚ ðə nɚɹˈeɪʃən nˈeɪmz ðˌɛm"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "An HTML scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours.",
+      "phonemes": [
+        "ɐn ˌeɪtʃtˌiːˌɛmˈɛl sˈiːn ɪz ɐ wˈɛb pˈeɪdʒ plˈeɪd fɹˈeɪm baɪ fɹˈeɪm",
+        "stˈɑːɹt fɹʌm ɐ tˈɛmplət",
+        "ænd ˈæsk ðɪ ˌeɪˈaɪ tə mˌeɪk ɪt jˈoːɹz"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Every scene is checked before it reaches the timeline: that it runs, stays in its sandbox, and fits the frame.",
+      "phonemes": [
+        "ˈɛvɹi sˈiːn ɪz tʃˈɛkt bᵻfˌoːɹ ɪt ɹˈiːtʃᵻz ðə tˈaɪmlaɪn",
+        "ðˌɐɾɪt ɹˈʌnz",
+        "stˈeɪz ɪn ɪts sˈændbɑːks",
+        "ænd fˈɪts ðə fɹˈeɪm"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Settings decide who writes and who speaks — Claude, Copilot or a local model; the Mac’s voices or Kokoro. Recording sets the click highlight, Export can burn in captions, and System lets AI agents connect.",
+      "phonemes": [
+        "sˈɛɾɪŋz dᵻsˈaɪd hˌuː ɹˈaɪts ænd hˌuː spˈiːks",
+        "klˈɔːd",
+        "kˈoʊpaɪlət ɔːɹ ɐ lˈoʊkəl mˈɑːdəl",
+        "ðə mˈækz vˈɔɪsᵻz ɔːɹ kəkˈoːɹoʊ",
+        "ɹᵻkˈoːɹdɪŋ sˈɛts ðə klˈɪk hˈaɪlaɪt",
+        "ˈɛkspoːɹt kæn bˈɜːn ɪn kˈæpʃənz",
+        "ænd sˈɪstəm lˈɛts ˌeɪˈaɪ ˈeɪdʒənts kənˈɛkt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "A theme is a company’s look. Give Talkie a website, and it reads the real colours, fonts and logo.",
+      "phonemes": [
+        "ɐ θˈiːm ɪz ɐ kˈʌmpəniz lˈʊk",
+        "ɡˈɪv tˈɔːki ɐ wˈɛbsaɪt",
+        "ænd ɪt ɹˈiːdz ðə ɹˈiːəl kˈʌlɚz",
+        "fˈɔnts ænd lˈoʊɡoʊ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Every colour is checked so text stays readable.",
+      "phonemes": [
+        "ˈɛvɹi kˈʌlɚɹ ɪz tʃˈɛkt sˌoʊ tˈɛkst stˈeɪz ɹˈiːdəbəl"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Choose it for the project, and the whole video takes it on — with an opening and a closing card added for you.",
+      "phonemes": [
+        "tʃˈuːz ɪt fɚðə pɹˈɑːdʒɛkt",
+        "ænd ðə hˈoʊl vˈɪdɪoʊ tˈeɪks ɪɾ ˈɔn",
+        "wɪð ɐn ˈoʊpənɪŋ ænd ɐ klˈoʊzɪŋ kˈɑːɹd ˈædᵻd fɔːɹ juː"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Or just ask. The agent changes the whole project, using the same tools Talkie offers any AI agent.",
+      "phonemes": [
+        "ɔːɹ dʒˈʌst ˈæsk",
+        "ðɪ ˈeɪdʒənt tʃˈeɪndʒᵻz ðə hˈoʊl pɹˈɑːdʒɛkt",
+        "jˈuːzɪŋ ðə sˈeɪm tˈuːlz tˈɔːki ˈɔfɚz ˌɛni ˌeɪˈaɪ ˈeɪdʒənt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "And the introduction is written, placed and given its words.",
+      "phonemes": [
+        "ænd ðɪ ˌɪntɹədˈʌkʃən ɪz ɹˈɪʔn̩",
+        "plˈeɪst ænd ɡˈɪvən ɪts wˈɜːdz"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Export shows its progress, and how long is left.",
+      "phonemes": [
+        "ˈɛkspoːɹt ʃˈoʊz ɪts pɹˈɑːɡɹɛs",
+        "ænd hˌaʊ lˈɔŋ ɪz lˈɛft"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "And there is the video, with captions beside it.",
+      "phonemes": [
+        "ænd ðɛɹ ɪz ðə vˈɪdɪoʊ",
+        "wɪð kˈæpʃənz bᵻsˈaɪd ɪt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "The other examples show a product launch, an app walkthrough and an architecture explainer. Open one, change a word, and press Speak.",
+      "phonemes": [
+        "ðɪ ˈʌðɚɹ ɛɡzˈæmpəlz ʃˈoʊ ɐ pɹˈɑːdʌkt lˈɑːntʃ",
+        "ɐn ˈæp wˈɔːkθɹuː ænd ɐn ˈɑːɹkɪtˌɛktʃɚɹ ɛksplˈeɪnɚ",
+        "ˈoʊpən wˌʌn",
+        "tʃˈeɪndʒ ɐ wˈɜːd",
+        "ænd pɹˈɛs spˈiːk"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Introducing Lumen.",
+      "phonemes": [
+        "ˌɪntɹədˈuːsɪŋ lˈuːmɛn"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Your calendar fills up with other people's plans. Lumen fills it with yours.",
+      "phonemes": [
+        "jʊɹ kˈæləndɚ fˈɪlz ˌʌp wɪð ˈʌðɚ pˈiːpəlz plˈænz",
+        "lˈuːmɛn fˈɪlz ɪt wɪð jˈoːɹz"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "The average week has: twenty-three meetings, eleven hours of interruptions, and just four hours to actually think.",
+      "phonemes": [
+        "ðɪ ˈævɹɪdʒ wˈiːk hˈæz",
+        "twˈɛntiθɹˈiː mˈiːɾɪŋz",
+        "ᵻlˈɛvən ˈaʊɚz ʌv ˌɪntɚɹˈʌpʃənz",
+        "ænd dʒˈʌst fˈoːɹ ˈaʊɚz tʊ ˈæktʃuːəli θˈɪŋk"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Lumen protects your focus time automatically. Early teams got back six and a half hours a week.",
+      "phonemes": [
+        "lˈuːmɛn pɹətˈɛkts jʊɹ fˈoʊkəs tˈaɪm ˌɔːɾəmˈæɾɪkli",
+        "ˈɜːli tˈiːmz ɡɑːt bˈæk sˈɪks ænd ɐ hˈæf ˈaʊɚz ɐ wˈiːk"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Every team saw the difference. Design got five hours back. Engineering, nine — nearly twice the time to build. Sales, four. And support, six.",
+      "phonemes": [
+        "ˈɛvɹi tˈiːm sˈɔː ðə dˈɪfɹəns",
+        "dɪzˈaɪn ɡɑːt fˈaɪv ˈaʊɚz bˈæk",
+        "ˌɛndʒɪnˈɪɹɪŋ",
+        "nˈaɪn",
+        "nˌɪɹli twˈaɪs ðə tˈaɪm tə bˈɪld",
+        "sˈeɪlz",
+        "fˈoːɹ",
+        "ænd səpˈoːɹt",
+        "sˈɪks"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "No more defending your calendar by hand. Lumen moves meetings, guards deep work, and tells you when a week is overbooked — before it starts.",
+      "phonemes": [
+        "nˈoʊmˌoːɹ dᵻfˈɛndɪŋ jʊɹ kˈæləndɚ baɪ hˈænd",
+        "lˈuːmɛn mˈuːvz mˈiːɾɪŋz",
+        "ɡˈɑːɹdz dˈiːp wˈɜːk",
+        "ænd tˈɛlz juː wɛn ɐ wˈiːk ɪz ˌoʊvɚbˈʊkt",
+        "bᵻfˌoːɹ ɪt stˈɑːɹts"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Lumen. Your week, planned for you. Try it free today.",
+      "phonemes": [
+        "lˈuːmɛn",
+        "jʊɹ wˈiːk",
+        "plˈænd fɔːɹ juː",
+        "tɹˈaɪ ɪt fɹˈiː tədˈeɪ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Talkie turns a recording into a narrated video.",
+      "phonemes": [
+        "tˈɔːki tˈɜːnz ɐ ɹᵻkˈoːɹdɪŋ ˌɪntʊ ɐ nɚɹˈeɪɾᵻd vˈɪdɪoʊ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "[0.5] Every scene has its own words.\n[2.5] And its own voice.",
+      "phonemes": [
+        "zˈiəɹoʊ pɔɪnt fˈaɪv ˈɛvɹi sˈiːn hɐz ɪts ˈoʊn wˈɜːdz",
+        "tˈuː pɔɪnt fˈaɪv ænd ɪts ˈoʊn vˈɔɪs"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "A brain sitting on a circuit board, lit up in neon, with the letters A and I glowing beside it.",
+      "phonemes": [
+        "ɐ bɹˈeɪn sˈɪɾɪŋ ˌɔn ɐ sˈɜːkɪt bˈoːɹd",
+        "lˈɪt ˌʌp ɪn nˈiːɑːn",
+        "wɪððə lˈɛɾɚz ɐ ænd aɪ ɡlˈoʊɪŋ bᵻsˈaɪd ɪt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "In 2024, 3.5% of 1,200 users paid $19.99 on Oct. 14th — about £15, or €17.",
+      "phonemes": [
+        "ɪn tˈuː θˈaʊzənd twˈɛnti fˈoːɹ",
+        "θɹˈiː pɔɪnt fˈaɪv pɚsˈɛnt ʌv wˈʌn θˈaʊzənd tˈuːhˈʌndɹɪd jˈuːzɚz pˈeɪd dˈɑːlɚ nˈaɪntiːn pɔɪnt nˈaɪn nˈaɪn ˌɔn ˈɑːkt",
+        "fˈoːɹtiːnθ",
+        "ɐbˌaʊt pˈaʊnd fˈɪftiːn",
+        "ɔːɹ jˈʊɹɹoʊz sˈɛvəntˌiːn"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Call 555-0134 at 9:30am, or email hello@example.com before 5 p.m.",
+      "phonemes": [
+        "kˈɔːl fˈaɪvhˈʌndɹɪd fˈɪfti fˈaɪv dˈæʃ zˈiəɹoʊwˈʌnθɹˈiːfˈoːɹ æt nˈaɪn θˈɜːɾi ˌeɪˈɛm",
+        "ɔːɹ ˈiːmeɪl həlˈoʊ æt ɛɡzˈæmpəl dˈɑːt kˈɑːm bᵻfˌoːɹ fˈaɪv pˌiːˈɛm"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Dr. Smith read the record; he will record it. I.e., the lead pipe led nowhere.",
+      "phonemes": [
+        "dˈɑːktɚ",
+        "smˈɪθ ɹˈiːd ðə ɹˈɛkɚd",
+        "hiː wɪl ɹᵻkˈoːɹd ɪt",
+        "ˌaɪˈiː ðə lˈiːd pˈaɪp lˈɛd nˈoʊwɛɹ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Version 1.52.0 shipped on 12/12/2024: 7 fixes, 12th of them; 1st, 2nd, 3rd, 21st, 100th.",
+      "phonemes": [
+        "vˈɜːʒən wˈʌn pɔɪnt fˈaɪv tˈuːpɔɪnt zˈiəɹoʊ ʃˈɪpt ˌɔn twˈɛlv slˈæʃ twˈɛlv slˈæʃ tˈuː θˈaʊzənd twˈɛnti fˈoːɹ",
+        "sˈɛvən fˈɪksᵻz",
+        "twˈɛlfθ ʌv ðˌɛm",
+        "fˈɜːst",
+        "sˈɛkənd",
+        "θˈɜːd",
+        "twˈɛnti fˈɜːst",
+        "wˈʌnhˈʌndɹɪd θ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Wait... what?! \"Quoted,\" (parenthetical) [bracketed] — dashes – and – more.",
+      "phonemes": [
+        "wˈeɪt",
+        "wˈʌt",
+        "kwˈoʊɾᵻd",
+        "pɚɹənθˈɛɾɪkəl bɹˈækɪɾᵻd",
+        "dˈæʃᵻz",
+        "ˈænd",
+        "mˈoːɹ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "The API, the CLI, the MCP server and the UI: NASA, SQL, JSON, HTTPS and URLs.",
+      "phonemes": [
+        "ðɪ ˌeɪpˌiːˈaɪ",
+        "ðə klˈaɪ",
+        "ðɪ ˌɛmsˌiːpˈiː sˈɜːvɚ ænd ðə jˌuːˈaɪ",
+        "nˈæsɐ",
+        "ˌɛskjˌuːˈɛl",
+        "dʒˈeɪsˈɑːn",
+        "ˌeɪtʃtˌiːtˈiːpˌiːˈɛs ænd jˌuːˌɑːɹɹˈɛlz"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Read it aloud: colour, behaviour, analyse, sanitise, licence, programme, aluminium.",
+      "phonemes": [
+        "ɹˈiːd ɪɾ ɐlˈaʊd",
+        "kˈʌlɚ",
+        "bᵻhˈeɪvjɚ",
+        "ˈænɐlˌaɪz",
+        "sˈænɪtˌaɪz",
+        "lˈaɪsəns",
+        "pɹˈoʊɡɹæm",
+        "ˌæljʊmˈɪniəm"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Café naïve résumé façade coöperate jalapeño Zürich.",
+      "phonemes": [
+        "kæfˈeɪ naɪˈiːv ɹˈɛzuːmˌeɪ fəsˈɑːd kˈɑːɚpɚɹˌeɪt dʒˌælɐpˈiːnjoʊ zˈuːɹɪtʃ"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "Thirty-three thousand three hundred and thirty-three point three three.",
+      "phonemes": [
+        "θˈɜːɾiθɹˈiː θˈaʊzənd θɹˈiː hˈʌndɹɪd ænd θˈɜːɾiθɹˈiː pˈɔɪnt θɹˈiː θɹˈiː"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "One. Two! Three? Four; five: six, seven — eight.",
+      "phonemes": [
+        "wˈʌn",
+        "tˈuː",
+        "θɹˈiː",
+        "fˈoːɹ",
+        "fˈaɪv",
+        "sˈɪks",
+        "sˈɛvən",
+        "ˈeɪt"
+      ]
+    },
+    {
+      "voice": "en-us",
+      "text": "This is a much longer sentence that runs on for a while, with several clauses, because narration often does, and the phonemizer has to keep its place in all of it without dropping or repeating a single word along the way.",
+      "phonemes": [
+        "ðɪs ɪz ɐ mˈʌtʃ lˈɔŋɡɚ sˈɛntəns ðæt ɹˈʌnz ˌɔn fɚɹə wˈaɪl",
+        "wɪð sˈɛvɹəl klˈɔːzᵻz",
+        "bɪkˈʌz nɚɹˈeɪʃən ˈɔfən dˈʌz",
+        "ænd ðə fˈoʊnmaɪzɚ hɐz tə kˈiːp ɪts plˈeɪs ɪn ˈɔːl ʌv ɪt wɪðˌaʊt dɹˈɑːpɪŋ ɔːɹ ɹᵻpˈiːɾɪŋ ɐ sˈɪŋɡəl wˈɜːd ɐlˈɔŋ ðə wˈeɪ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Here's Taskboard, a simple way to see your team's work at a glance — in one minute.",
+      "phonemes": [
+        "hˈiəz tˈaskbɔːd",
+        "ɐ sˈɪmpəl wˈeɪ tə sˈiː jɔː tˈiːmz wˈɜːk atə ɡlˈans",
+        "ɪn wˈɒn mˈɪnɪt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Every piece of work is a card, and every card lives in a column: what's waiting, what's in progress, and what's finished.",
+      "phonemes": [
+        "ˈɛvɹɪ pˈiːs ɒv wˈɜːk ɪz ɐ kˈɑːd",
+        "and ˈɛvɹɪ kˈɑːd lˈaɪvz ɪn ɐ kˈɒlʌm",
+        "wˌɒts wˈeɪtɪŋ",
+        "wˌɒts ɪn pɹˈəʊɡɹɛs",
+        "and wɒts fˈɪnɪʃt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Adding work takes a second. Press New task, give it a name, and it lands in To do.",
+      "phonemes": [
+        "ˈadɪŋ wˈɜːk tˈeɪks ɐ sˈɛkənd",
+        "pɹˈɛs njˈuː tˈask",
+        "ɡˈɪv ɪt ɐ nˈeɪm",
+        "and ɪt lˈandz ɪn tə dˈuː"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "When you pick something up, press Start. The card moves across, so everyone can see who's on what.",
+      "phonemes": [
+        "wˌɛn juː pˈɪk sˈʌmθɪŋ ˈʌp",
+        "pɹˈɛs stˈɑːt",
+        "ðə kˈɑːd mˈuːvz əkɹˈɒs",
+        "sˌəʊ ˈɛvɹɪwˌɒn kan sˈiː hˌuːz ˌɒn wˈɒt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Finish it, and it moves to Done — and the bar along the top shows how far through the week you are.",
+      "phonemes": [
+        "fˈɪnɪʃ ɪt",
+        "and ɪt mˈuːvz tə dˈʌn",
+        "and ðə bˈɑːɹ ɐlˈɒŋ ðə tˈɒp ʃˈəʊz hˌaʊ fˈɑː θɹuː ðə wˈiːk juː ɑː"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "And when you just need your own list, Mine hides everything else.",
+      "phonemes": [
+        "and wɛn juː dʒˈʌst nˈiːd jɔːɹ ˈəʊn lˈɪst",
+        "mˈaɪn hˈaɪdz ˈɛvɹɪθˌɪŋ ˈɛls"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "That walkthrough was recorded in one take, without a word said. The words came afterwards, and the picture leans in wherever a click landed.",
+      "phonemes": [
+        "ðat wˈɔːkθɹuː wɒz ɹɪkˈɔːdɪd ɪn wˈɒn tˈeɪk",
+        "wɪðˌaʊt ɐ wˈɜːd sˈɛd",
+        "ðə wˈɜːdz kˈeɪm ˈaftəwədz",
+        "and ðə pˈɪktʃə lˈiːnz ɪn weəɹˈɛvəɹ ɐ klˈɪk lˈandɪd"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "What actually happens when you upload a photo? Let's follow one, end to end.",
+      "phonemes": [
+        "wˌɒt ˈaktʃuːəli hˈapənz wɛn juː ˈʌpləʊd ɐ fˈəʊtəʊ",
+        "lˈɛts fˈɒləʊ wˌɒn",
+        "ˈɛnd tʊ ˈɛnd"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "It starts on the phone. The photo goes to the API gateway, which checks who you are. The upload service gives it a name, and stores the original in object storage — then replies straight away, so you're never left waiting.",
+      "phonemes": [
+        "ɪt stˈɑːts ɒnðə fˈəʊn",
+        "ðə fˈəʊtəʊ ɡəʊz tə ðɪ ˌeɪpˌiːˈaɪ ɡˈeɪtweɪ",
+        "wˌɪtʃ tʃˈɛks hˈuː juː ɑː",
+        "ðɪ ˈʌpləʊd sˈɜːvɪs ɡˈɪvz ɪt ɐ nˈeɪm",
+        "and stˈɔːz ðɪ əɹˈɪdʒɪnəl ɪn ˈɒbdʒɛkt stˈɔːɹɪdʒ",
+        "ðˈɛn ɹɪplˈaɪz stɹˈeɪt ɐwˈeɪ",
+        "sˌəʊ jɔː nˈɛvə lˈɛft wˈeɪtɪŋ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "The slow work happens afterwards, from the stored original. A message goes onto a queue. The thumbnailer picks it up and makes the smaller sizes, and publishes them to the CDN, close to whoever's looking.",
+      "phonemes": [
+        "ðə slˈəʊ wˈɜːk hˈapənz ˈaftəwədz",
+        "fɹʌmðə stˈɔːd əɹˈɪdʒɪnəl",
+        "ɐ mˈɛsɪdʒ ɡəʊz ˌɒntʊ ɐ kjˈuː",
+        "ðə θˈʌmneɪlə pˈɪks ɪt ˌʌp and mˌeɪks ðə smˈɔːlə sˈaɪzɪz",
+        "and pˈʌblɪʃɪz ðˌɛm tə ðə sˌiːdˌiːˈɛn",
+        "klˈəʊs tə huːˈɛvəz lˈʊkɪŋ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "In code, it's short. Check the user. Store the original. Queue the thumbnails. And reply. Nothing waits on the slow part.",
+      "phonemes": [
+        "ɪn kˈəʊd",
+        "ɪts ʃˈɔːt",
+        "tʃˈɛk ðə jˈuːzə",
+        "stˈɔː ðɪ əɹˈɪdʒɪnəl",
+        "kjˈuː ðə θˈʌmneɪlz",
+        "and ɹɪplˈaɪ",
+        "nˈʌθɪŋ wˈeɪts ɒnðə slˈəʊ pˈɑːt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Built this way, uploads stay fast, a failed thumbnail is simply retried, and each piece can grow on its own.",
+      "phonemes": [
+        "bˈɪlt ðɪs wˈeɪ",
+        "ˈʌpləʊdz stˈeɪ fˈast",
+        "ɐ fˈeɪld θˈʌmneɪl ɪz sˈɪmpli ɹˈiːtɹaɪd",
+        "and ˈiːtʃ pˈiːs kan ɡɹˈəʊ ˌɒn ɪts ˈəʊn"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "That's one upload, end to end — drawn and narrated, step by step, in Talkie.",
+      "phonemes": [
+        "ðats wˈɒn ˈʌpləʊd",
+        "ˈɛnd tʊ ˈɛnd",
+        "dɹˈɔːn and nɐɹˈeɪtɪd",
+        "stˈɛp baɪ stˈɛp",
+        "ɪn tˈɔːki"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "This is Talkie. It turns a silent recording of your app into a narrated demo video. Here's one being made, from nothing.",
+      "phonemes": [
+        "ðɪs ɪz tˈɔːki",
+        "ɪt tˈɜːnz ɐ sˈaɪlənt ɹɪkˈɔːdɪŋ ɒv jɔːɹ ˈap ˌɪntʊ ɐ nɐɹˈeɪtɪd dˈɛməʊ vˈɪdɪəʊ",
+        "hˈiəz wˈɒn bˌiːɪŋ mˈeɪd",
+        "fɹɒm nˈʌθɪŋ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "It takes four steps. Record the app. Write the words. Give them a voice. And export the video.",
+      "phonemes": [
+        "ɪt tˈeɪks fˈɔː stˈɛps",
+        "ɹˈɛkɔːd ðɪ ˈap",
+        "ɹˈaɪt ðə wˈɜːdz",
+        "ɡˈɪv ðˌɛm ɐ vˈɔɪs",
+        "and ˈɛkspɔːt ðə vˈɪdɪəʊ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Everything starts with a project. Give it a name, and say in a sentence what it's about — the narration is written from that.",
+      "phonemes": [
+        "ˈɛvɹɪθˌɪŋ stˈɑːts wɪð ɐ pɹˈɒdʒɛkt",
+        "ɡˈɪv ɪt ɐ nˈeɪm",
+        "and sˈeɪ ɪn ɐ sˈɛntəns wɒt ɪts ɐbˈaʊt",
+        "ðə nɐɹˈeɪʃən ɪz ɹˈɪtən fɹɒm ðˈat"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Then record your app.",
+      "phonemes": [
+        "ðˈɛn ɹɪkˈɔːd jɔːɹ ˈap"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Type its address, tick Show me round it, and Talkie walks the app by itself.",
+      "phonemes": [
+        "tˈaɪp ɪts ɐdɹˈɛs",
+        "tˈɪk ʃˈəʊ mˌiː ɹˈaʊnd ɪt",
+        "and tˈɔːki wˈɔːks ðɪ ˈap baɪ ɪtsˈɛlf"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "The recording comes back cut into scenes, and the picture leans in wherever a click landed.",
+      "phonemes": [
+        "ðə ɹɪkˈɔːdɪŋ kˈʌmz bˈak kˈʌt ˌɪntʊ sˈiːnz",
+        "and ðə pˈɪktʃə lˈiːnz ɪn weəɹˈɛvəɹ ɐ klˈɪk lˈandɪd"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Press Write the words, and your AI drafts the narration for every scene.",
+      "phonemes": [
+        "pɹˈɛs ɹˈaɪt ðə wˈɜːdz",
+        "and jɔːɹ ˌeɪˈaɪ dɹˈafts ðə nɐɹˈeɪʃən fɔːɹ ˈɛvɹɪ sˈiːn"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "The script shows it all in one column. The numbers in brackets are timings: each line is spoken at that second of its scene.",
+      "phonemes": [
+        "ðə skɹˈɪpt ʃˈəʊz ɪt ˈɔːl ɪn wˈɒn kˈɒlʌm",
+        "ðə nˈʌmbəz ɪn bɹˈakɪts ɑː tˈaɪmɪŋz",
+        "ˈiːtʃ lˈaɪn ɪz spˈəʊkən at ðat sˈɛkənd ɒv ɪts sˈiːn"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Choose a voice — the Mac’s own, or Kokoro, built in and close to a person — and press Speak.",
+      "phonemes": [
+        "tʃˈuːz ɐ vˈɔɪs",
+        "ðə mˈakz ˈəʊn",
+        "ɔː kəkˈɔːɹəʊ",
+        "bˈɪlt ɪn and klˈəʊs tʊ ɐ pˈɜːsən",
+        "and pɹˈɛs spˈiːk"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Every scene gets its own take, and the scene is sized to fit it.",
+      "phonemes": [
+        "ˈɛvɹɪ sˈiːn ɡˈɛts ɪts ˈəʊn tˈeɪk",
+        "and ðə sˈiːn ɪz sˈaɪzd tə fˈɪt ɪt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Not every scene is a recording. Add a slide, say what should be on it, and the AI writes it.",
+      "phonemes": [
+        "nˌɒt ˈɛvɹɪ sˈiːn ɪz ɐ ɹɪkˈɔːdɪŋ",
+        "ˈad ɐ slˈaɪd",
+        "sˈeɪ wɒt ʃˌʊd biː ˈɒn ɪt",
+        "and ðɪ ˌeɪˈaɪ ɹˈaɪts ɪt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Its points appear as they are spoken.",
+      "phonemes": [
+        "ɪts pˈɔɪnts ɐpˈiəɹ az ðeɪ ɑː spˈəʊkən"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Diagrams are written in Mermaid, and drawn box by box, in the order the narration names them.",
+      "phonemes": [
+        "dˈaɪəɡɹˌamz ɑː ɹˈɪtən ɪn mˈɜːmeɪd",
+        "and dɹˈɔːn bˈɒks baɪ bˈɒks",
+        "ɪnðɪ ˈɔːdə ðə nɐɹˈeɪʃən nˈeɪmz ðˌɛm"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "An HTML scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours.",
+      "phonemes": [
+        "ɐn ˌeɪtʃtˌiːˌɛmˈɛl sˈiːn ɪz ɐ wˈɛb pˈeɪdʒ plˈeɪd fɹˈeɪm baɪ fɹˈeɪm",
+        "stˈɑːt fɹɒm ɐ tˈɛmpleɪt",
+        "and ˈask ðɪ ˌeɪˈaɪ tə mˌeɪk ɪt jˈɔːz"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Every scene is checked before it reaches the timeline: that it runs, stays in its sandbox, and fits the frame.",
+      "phonemes": [
+        "ˈɛvɹɪ sˈiːn ɪz tʃˈɛkt bɪfˌɔːɹ ɪt ɹˈiːtʃɪz ðə tˈaɪmlaɪn",
+        "ðˌatɪt ɹˈʌnz",
+        "stˈeɪz ɪn ɪts sˈandbɒks",
+        "and fˈɪts ðə fɹˈeɪm"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Settings decide who writes and who speaks — Claude, Copilot or a local model; the Mac’s voices or Kokoro. Recording sets the click highlight, Export can burn in captions, and System lets AI agents connect.",
+      "phonemes": [
+        "sˈɛtɪŋz dɪsˈaɪd hˌuː ɹˈaɪts and hˌuː spˈiːks",
+        "klˈɔːd",
+        "kˈəʊpaɪlət ɔːɹ ɐ lˈəʊkəl mˈɒdəl",
+        "ðə mˈakz vˈɔɪsɪz ɔː kəkˈɔːɹəʊ",
+        "ɹɪkˈɔːdɪŋ sˈɛts ðə klˈɪk hˈaɪlaɪt",
+        "ˈɛkspɔːt kan bˈɜːn ɪn kˈapʃənz",
+        "and sˈɪstəm lˈɛts ˌeɪˈaɪ ˈeɪdʒənts kənˈɛkt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "A theme is a company’s look. Give Talkie a website, and it reads the real colours, fonts and logo.",
+      "phonemes": [
+        "ɐ θˈiːm ɪz ɐ kˈʌmpəniz lˈʊk",
+        "ɡˈɪv tˈɔːki ɐ wˈɛbsaɪt",
+        "and ɪt ɹˈiːdz ðə ɹˈiəl kˈʌləz",
+        "fˈɒnts and lˈəʊɡəʊ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Every colour is checked so text stays readable.",
+      "phonemes": [
+        "ˈɛvɹɪ kˈʌləɹ ɪz tʃˈɛkt sˌəʊ tˈɛkst stˈeɪz ɹˈiːdəbəl"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Choose it for the project, and the whole video takes it on — with an opening and a closing card added for you.",
+      "phonemes": [
+        "tʃˈuːz ɪt fəðə pɹˈɒdʒɛkt",
+        "and ðə hˈəʊl vˈɪdɪəʊ tˈeɪks ɪt ˈɒn",
+        "wɪð ɐn ˈəʊpənɪŋ and ɐ klˈəʊzɪŋ kˈɑːd ˈadɪd fɔː juː"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Or just ask. The agent changes the whole project, using the same tools Talkie offers any AI agent.",
+      "phonemes": [
+        "ɔː dʒˈʌst ˈask",
+        "ðɪ ˈeɪdʒənt tʃˈeɪndʒɪz ðə hˈəʊl pɹˈɒdʒɛkt",
+        "jˈuːzɪŋ ðə sˈeɪm tˈuːlz tˈɔːki ˈɒfəz ˌɛni ˌeɪˈaɪ ˈeɪdʒənt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "And the introduction is written, placed and given its words.",
+      "phonemes": [
+        "and ðɪ ˌɪntɹədˈʌkʃən ɪz ɹˈɪtən",
+        "plˈeɪst and ɡˈɪvən ɪts wˈɜːdz"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Export shows its progress, and how long is left.",
+      "phonemes": [
+        "ˈɛkspɔːt ʃˈəʊz ɪts pɹˈəʊɡɹɛs",
+        "and hˌaʊ lˈɒŋ ɪz lˈɛft"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "And there is the video, with captions beside it.",
+      "phonemes": [
+        "and ðeəɹ ɪz ðə vˈɪdɪəʊ",
+        "wɪð kˈapʃənz bɪsˈaɪd ɪt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "The other examples show a product launch, an app walkthrough and an architecture explainer. Open one, change a word, and press Speak.",
+      "phonemes": [
+        "ðɪ ˈʌðəɹ ɛɡzˈampəlz ʃˈəʊ ɐ pɹˈɒdʌkt lˈɔːntʃ",
+        "ɐn ˈap wˈɔːkθɹuː and ɐn ˈɑːkɪtˌɛktʃəɹ ɛksplˈeɪnə",
+        "ˈəʊpən wˌɒn",
+        "tʃˈeɪndʒ ɐ wˈɜːd",
+        "and pɹˈɛs spˈiːk"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Introducing Lumen.",
+      "phonemes": [
+        "ˌɪntɹədjˈuːsɪŋ lˈuːmɛn"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Your calendar fills up with other people's plans. Lumen fills it with yours.",
+      "phonemes": [
+        "jɔː kˈaləndə fˈɪlz ˌʌp wɪð ˈʌðə pˈiːpəlz plˈanz",
+        "lˈuːmɛn fˈɪlz ɪt wɪð jˈɔːz"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "The average week has: twenty-three meetings, eleven hours of interruptions, and just four hours to actually think.",
+      "phonemes": [
+        "ðɪ ˈavɹɪdʒ wˈiːk hˈaz",
+        "twˈɛntiθɹˈiː mˈiːtɪŋz",
+        "ɪlˈɛvən ˈaʊəz ɒv ˌɪntəɹˈʌpʃənz",
+        "and dʒˈʌst fˈɔːɹ ˈaʊəz tʊ ˈaktʃuːəli θˈɪŋk"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Lumen protects your focus time automatically. Early teams got back six and a half hours a week.",
+      "phonemes": [
+        "lˈuːmɛn pɹətˈɛkts jɔː fˈəʊkəs tˈaɪm ˌɔːtəmˈatɪkli",
+        "ˈɜːlɪ tˈiːmz ɡɒt bˈak sˈɪks and ɐ hˈɑːf ˈaʊəz ɐ wˈiːk"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Every team saw the difference. Design got five hours back. Engineering, nine — nearly twice the time to build. Sales, four. And support, six.",
+      "phonemes": [
+        "ˈɛvɹɪ tˈiːm sˈɔː ðə dˈɪfɹəns",
+        "dɪzˈaɪn ɡɒt fˈaɪv ˈaʊəz bˈak",
+        "ˌɛndʒɪnˈiəɹɪŋ",
+        "nˈaɪn",
+        "nˌiəli twˈaɪs ðə tˈaɪm tə bˈɪld",
+        "sˈeɪlz",
+        "fˈɔː",
+        "and səpˈɔːt",
+        "sˈɪks"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "No more defending your calendar by hand. Lumen moves meetings, guards deep work, and tells you when a week is overbooked — before it starts.",
+      "phonemes": [
+        "nˈəʊmˌɔː dɪfˈɛndɪŋ jɔː kˈaləndə baɪ hˈand",
+        "lˈuːmɛn mˈuːvz mˈiːtɪŋz",
+        "ɡˈɑːdz dˈiːp wˈɜːk",
+        "and tˈɛlz juː wɛn ɐ wˈiːk ɪz ˌəʊvəbˈʊkt",
+        "bɪfˌɔːɹ ɪt stˈɑːts"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Lumen. Your week, planned for you. Try it free today.",
+      "phonemes": [
+        "lˈuːmɛn",
+        "jɔː wˈiːk",
+        "plˈand fɔː juː",
+        "tɹˈaɪ ɪt fɹˈiː tədˈeɪ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Talkie turns a recording into a narrated video.",
+      "phonemes": [
+        "tˈɔːki tˈɜːnz ɐ ɹɪkˈɔːdɪŋ ˌɪntʊ ɐ nɐɹˈeɪtɪd vˈɪdɪəʊ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "[0.5] Every scene has its own words.\n[2.5] And its own voice.",
+      "phonemes": [
+        "zˈiəɹəʊ pɔɪnt fˈaɪv ˈɛvɹɪ sˈiːn hɐz ɪts ˈəʊn wˈɜːdz",
+        "tˈuː pɔɪnt fˈaɪv and ɪts ˈəʊn vˈɔɪs"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "A brain sitting on a circuit board, lit up in neon, with the letters A and I glowing beside it.",
+      "phonemes": [
+        "ɐ bɹˈeɪn sˈɪtɪŋ ˌɒn ɐ sˈɜːkɪt bˈɔːd",
+        "lˈɪt ˌʌp ɪn nˈiːɒn",
+        "wɪððə lˈɛtəz ɐ and aɪ ɡlˈəʊɪŋ bɪsˈaɪd ɪt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "In 2024, 3.5% of 1,200 users paid $19.99 on Oct. 14th — about £15, or €17.",
+      "phonemes": [
+        "ɪn tˈuː θˈaʊzənd ən twˈɛnti fˈɔː",
+        "θɹˈiː pɔɪnt fˈaɪv pəsˈɛnt ɒv wˈɒn θˈaʊzənd tˈuːhˈʌndɹɪd jˈuːzəz pˈeɪd dˈɒlə nˈaɪntiːn pɔɪnt nˈaɪn nˈaɪn ˌɒn ˈɒkt",
+        "fˈɔːtiːnθ",
+        "ɐbˌaʊt pˈaʊnd fˈɪftiːn",
+        "ɔː jˈʊəɹəʊz sˈɛvəntˌiːn"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Call 555-0134 at 9:30am, or email hello@example.com before 5 p.m.",
+      "phonemes": [
+        "kˈɔːl fˈaɪvhˈʌndɹɪdən fˈɪfti fˈaɪv dˈaʃ zˈiəɹəʊwˈɒnθɹˈiːfˈɔː at nˈaɪn θˈɜːti ˌeɪˈɛm",
+        "ɔːɹ ˈiːmeɪl həlˈəʊ at ɛɡzˈampəl dˈɒt kˈɒm bɪfˌɔː fˈaɪv pˌiːˈɛm"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Dr. Smith read the record; he will record it. I.e., the lead pipe led nowhere.",
+      "phonemes": [
+        "dˈɒktə",
+        "smˈɪθ ɹˈiːd ðə ɹˈɛkɔːd",
+        "hiː wɪl ɹɪkˈɔːd ɪt",
+        "ˌaɪˈiː ðə lˈiːd pˈaɪp lˈɛd nˈəʊweə"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Version 1.52.0 shipped on 12/12/2024: 7 fixes, 12th of them; 1st, 2nd, 3rd, 21st, 100th.",
+      "phonemes": [
+        "vˈɜːʃən wˈɒn pɔɪnt fˈaɪv tˈuːpɔɪnt zˈiəɹəʊ ʃˈɪpt ˌɒn twˈɛlv slˈaʃ twˈɛlv slˈaʃ tˈuː θˈaʊzənd ən twˈɛnti fˈɔː",
+        "sˈɛvən fˈɪksɪz",
+        "twˈɛlfθ ɒv ðˌɛm",
+        "fˈɜːst",
+        "sˈɛkənd",
+        "θˈɜːd",
+        "twˈɛnti fˈɜːst",
+        "wˈɒnhˈʌndɹɪd θ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Wait... what?! \"Quoted,\" (parenthetical) [bracketed] — dashes – and – more.",
+      "phonemes": [
+        "wˈeɪt",
+        "wˈɒt",
+        "kwˈəʊtɪd",
+        "pəɹənθˈɛtɪkəl bɹˈakɪtɪd",
+        "dˈaʃɪz",
+        "ˈand",
+        "mˈɔː"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "The API, the CLI, the MCP server and the UI: NASA, SQL, JSON, HTTPS and URLs.",
+      "phonemes": [
+        "ðɪ ˌeɪpˌiːˈaɪ",
+        "ðə klˈaɪ",
+        "ðɪ ˌɛmsˌiːpˈiː sˈɜːvə and ðə jˌuːˈaɪ",
+        "nˈasɐ",
+        "ˌɛskjˌuːˈɛl",
+        "dʒˈeɪsˈɒn",
+        "ˌeɪtʃtˌiːtˈiːpˌiːˈɛs and jˌuːˌɑːɹˈɛlz"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Read it aloud: colour, behaviour, analyse, sanitise, licence, programme, aluminium.",
+      "phonemes": [
+        "ɹˈiːd ɪt ɐlˈaʊd",
+        "kˈʌlə",
+        "bɪhˈeɪvjə",
+        "ˈanɐlˌaɪz",
+        "sˈanɪtˌaɪz",
+        "lˈaɪsəns",
+        "pɹˈəʊɡɹam",
+        "ˌaljʊmˈɪniəm"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Café naïve résumé façade coöperate jalapeño Zürich.",
+      "phonemes": [
+        "kafˈeɪ naɪˈiːv ɹˈɛzuːmˌeɪ fəsˈɑːd kˈɒəpəɹˌeɪt dʒˌalɐpˈiːnjəʊ zˈuːɹɪtʃ"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "Thirty-three thousand three hundred and thirty-three point three three.",
+      "phonemes": [
+        "θˈɜːtiθɹˈiː θˈaʊzənd θɹˈiː hˈʌndɹɪd and θˈɜːtiθɹˈiː pˈɔɪnt θɹˈiː θɹˈiː"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "One. Two! Three? Four; five: six, seven — eight.",
+      "phonemes": [
+        "wˈɒn",
+        "tˈuː",
+        "θɹˈiː",
+        "fˈɔː",
+        "fˈaɪv",
+        "sˈɪks",
+        "sˈɛvən",
+        "ˈeɪt"
+      ]
+    },
+    {
+      "voice": "en",
+      "text": "This is a much longer sentence that runs on for a while, with several clauses, because narration often does, and the phonemizer has to keep its place in all of it without dropping or repeating a single word along the way.",
+      "phonemes": [
+        "ðɪs ɪz ɐ mˈʌtʃ lˈɒŋɡə sˈɛntəns ðat ɹˈʌnz ˌɒn fəɹə wˈaɪl",
+        "wɪð sˈɛvɹəl klˈɔːzɪz",
+        "bɪkˈɒz nɐɹˈeɪʃən ˈɒfən dˈʌz",
+        "and ðə fˈəʊnmaɪzə hɐz tə kˈiːp ɪts plˈeɪs ɪn ˈɔːl ɒv ɪt wɪðˌaʊt dɹˈɒpɪŋ ɔː ɹɪpˈiːtɪŋ ɐ sˈɪŋɡəl wˈɜːd ɐlˈɒŋ ðə wˈeɪ"
+      ]
+    }
+  ]
+}

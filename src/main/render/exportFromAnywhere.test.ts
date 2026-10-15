@@ -6,15 +6,15 @@ import { browserExecutablePath } from '../capture/resolveBrowser'
 /**
  * Exporting from an app that was not started in its own directory.
  *
- * A packaged app opened from Finder runs with `/` as its working directory. Remotion works out
- * where to keep the browser it renders with by walking up from there looking for a package.json,
- * finds none, and settles on `/.remotion` — which cannot be created. Export died with
- * `ENOENT: mkdir '/.remotion'`, a message that names nothing a user could act on.
+ * A packaged app opened from Finder runs with `/` as its working directory. Anything that works
+ * out where a browser lives by walking up from there finds nothing — the renderer Talkie used to
+ * export with tried to create a folder at the root and export died with an `ENOENT` from `mkdir`, a
+ * message that names nothing a user could act on. So the export is handed a browser outright.
  *
- * The suite never saw it because vitest runs from the checkout, where the walk finds this
- * project's own package.json one level up and everything resolves. So the working directory is
- * moved here on purpose: it is the only thing that differs between the two, and testing it any
- * other way tests the case that always worked.
+ * The suite never saw it because vitest runs from the checkout, where every such walk finds this
+ * project's own package.json and resolves. So the working directory is moved here on purpose: it
+ * is the only thing that differs between the two, and testing it any other way tests the case that
+ * always worked.
  */
 describe('exporting with the working directory somewhere unwritable', () => {
   const wasIn = process.cwd()
@@ -31,15 +31,9 @@ describe('exporting with the working directory somewhere unwritable', () => {
     expect(browser!.startsWith('/')).toBe(true)
   })
 
-  it('hands that browser to both of the calls that would otherwise fetch one', () => {
-    // Remotion only skips working out a download directory when it is given a browser outright.
-    // Miss either call and export fails in a packaged build and nowhere else.
-    const source = readFileSync(join(__dirname, 'renderProject.ts'), 'utf-8')
+  it('launches the exporter with that browser', () => {
+    const source = readFileSync(join(__dirname, 'exporter/exportVideo.ts'), 'utf-8')
 
-    for (const call of ['selectComposition(', 'renderMedia(']) {
-      const at = source.indexOf(call)
-      expect(at, `${call} is no longer called here — update this test`).toBeGreaterThan(-1)
-      expect(source.slice(at, at + 400), `${call} is missing browserExecutable`).toContain('browserExecutable')
-    }
+    expect(source).toContain('executablePath: browserExecutablePath()')
   })
 })

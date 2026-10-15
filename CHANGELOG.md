@@ -2,6 +2,21 @@
 
 Notable changes, newest first. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+### Rendering
+
+- Talkie now draws and exports video with its own renderer. The third-party renderer it used —
+  source-available, not open source — is no longer used or installed, so building or running
+  Talkie no longer needs a licence for it.
+- The export draws frames in headless tabs and encodes them with Talkie's own ffmpeg, on the
+  hardware encoder. It was checked against the previous renderer's export on the shipped
+  examples before that renderer was removed.
+- The preview plays recordings and narration as ordinary video and audio, kept within a frame of
+  the clock, and loads the next clip just before a cut so it does not stall.
+- The window's content security policy no longer allows inline (`data:`) media, which only the
+  previous player needed.
+
 ## 1.0.0 — 2026-09-19
 
 The first release. Talkie records a browser session silently, writes and speaks the narration,
@@ -63,7 +78,7 @@ and exports an MP4.
 
 ### Export
 
-- Exports an MP4 through Remotion. The preview and the export are the same composition, so what
+- Exports an MP4 through a third-party renderer. The preview and the export are the same composition, so what
   is on screen is what renders.
 - Captions can be burned into the picture, off by default.
 
@@ -98,10 +113,10 @@ macOS on Apple Silicon. Build from source with `npm install && npm run package`,
 one that built it macOS quarantines it — clear the flag once with
 `xattr -dr com.apple.quarantine /Applications/Talkie.app`.
 
-No binary is published. Remotion's compositor carries an ffmpeg built with `--enable-gpl`, x264
+No binary is published. The renderer's compositor carries an ffmpeg built with `--enable-gpl`, x264
 and x265: publishing source carries no GPL obligation, but shipping a built `.dmg` does,
 including offering ffmpeg's source to every recipient.
 
-Talkie's own code is Apache-2.0. **Remotion is not open source** — free for individuals,
-non-profits and companies of up to three people; larger for-profits need a paid licence. Cloning
-this repository does not grant one. See `NOTICE` and Settings → Licences.
+Talkie's own code is Apache-2.0. **The renderer it uses is not open source** — free for
+individuals, non-profits and companies of up to three people; larger for-profits need a paid
+licence. Cloning this repository does not grant one. See `NOTICE` and Settings → Licences.

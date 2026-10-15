@@ -1,7 +1,7 @@
 /**
- * The motion every scene is drawn with. Our own, written from the physics and from how
- * Remotion's was measured to behave (see docs/superpowers/plans/2026-10-13-own-renderer-step-1-seam.md), so that slides move exactly as
- * they did once Remotion is gone; springSamples.json holds the proof.
+ * The motion every scene is drawn with, written from the physics and from how the previous
+ * renderer's was measured to behave, so that slides move exactly as they always did;
+ * springSamples.json holds the proof.
  */
 
 export type SpringConfig = { mass: number; stiffness: number; damping: number; overshootClamping: boolean }
@@ -15,7 +15,7 @@ const SETTLED = 0.005
 function position(seconds: number, { mass, stiffness, damping }: SpringConfig): number {
   const natural = Math.sqrt(stiffness / mass)
   const ratio = damping / (2 * Math.sqrt(stiffness * mass))
-  // Anything at or past critical damping moves as critically damped. That is what Remotion's did,
+  // Anything at or past critical damping moves as critically damped. That is what the previous renderer's did,
   // and every slide Talkie draws uses damping 200, deep in that range.
   if (ratio >= 1) return 1 - Math.exp(-natural * seconds) * (1 + natural * seconds)
   const damped = natural * Math.sqrt(1 - ratio * ratio)

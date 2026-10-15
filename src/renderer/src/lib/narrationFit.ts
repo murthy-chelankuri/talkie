@@ -1,5 +1,5 @@
 import { TIMED_LINE } from '../../../main/transcript/narrationBeats'
-import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../../composition/constants'
 
 /**
  * Roughly how fast the voices read, in words a second. Measured off real takes of product

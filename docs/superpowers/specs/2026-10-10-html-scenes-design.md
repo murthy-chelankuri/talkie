@@ -18,14 +18,14 @@ they produced before anyone else does.
 | What the code may do | **Full HTML/CSS/JS**, plus libraries Talkie bundles. Safety comes from the sandbox, not from limiting the code. |
 | Ways in | All four: **agents over MCP**, **describe it in the app**, **edit the code in the app**, **import a file or folder**. |
 | How it plays | **A live sandboxed iframe driven frame by frame** (approach A). Not pre-rendered to video; never inlined into the composition. |
-| Why an iframe | It is the only thing that both keeps scene scripts away from the editor's `window.api` (and so the API keys) and gives the page a clock of its own to replace without stopping Remotion or the editor. |
+| Why an iframe | It is the only thing that both keeps scene scripts away from the editor's `window.api` (and so the API keys) and gives the page a clock of its own to replace without stopping the renderer or the editor. |
 | Theme | Honoured, not optional: colours of the scene's variant, fonts and logo arrive as CSS variables and `talkie.theme`, update live, and the check reports anything hard-coded instead. |
 | Libraries | anime.js (MIT), D3 (ISC), lottie-web (MIT), plus CSS and the Web Animations API. **No GSAP**: its licence forbids use in tools competing with Webflow's visual animation builder. |
 | Length | As for slides: follows the narration, or what was set. The page is told its duration. |
 
 ## 1. What a scene is, and where it lives
 
-A new timeline kind, `html`, registered in `src/remotion/itemRegistry.tsx` beside `scene` and
+A new timeline kind, `html`, registered in `src/composition/itemRegistry.tsx` beside `scene` and
 `diagram`. Its data (zod `HtmlSceneDataSchema`, `src/main/project/timeline/schema.ts`):
 
 ```ts
@@ -152,11 +152,11 @@ the check (section 6) finds it.
 Messages the runtime sends unprompted: `ready`, `error` (uncaught errors, rejected promises, CSP
 violations via `securitypolicyviolation`), each with a message and, where there is one, a line.
 
-**Host side** — `src/remotion/items/HtmlScene.tsx`:
+**Host side** — `src/composition/items/HtmlScene.tsx`:
 
 - renders the iframe at frame size; on load, posts `init` with fps, duration, params, theme,
   beats and the scene's variant;
-- for each frame posts `seek`; **during export** holds the frame with `delayRender` until `drawn`;
+- for each frame posts `seek`; **during export** holds the frame with a hold until `drawn`;
   **in the live preview** nothing waits;
 - a page that does not answer within **5 s** has its frame captured anyway and the error recorded
   — a broken scene never hangs an export;

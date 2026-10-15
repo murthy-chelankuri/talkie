@@ -5,7 +5,7 @@ import { join } from 'path'
 import { readTimedTake } from './readTimedTake'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { roomFor, MAX_SPEED_UP } from './fitToFootage'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 import type { SpeechOptions } from '../tts/ttsProvider'
 
 const delivery: SpeechOptions = { voice: 'Samantha', pace: 170, sentencePauseMs: 420, clausePauseMs: 300 }

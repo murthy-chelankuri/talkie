@@ -1,8 +1,7 @@
 import { systemPreferences } from 'electron'
-import { RenderInternals } from '@remotion/renderer'
 import { findInstalledBrowser, hasBundledChromium } from '../capture/resolveBrowser'
 import { findLibreOffice } from '../slides/libreOffice'
-import { ffOptions } from '../render/binaries'
+import { runFfmpeg } from '../media'
 
 export interface ReadinessCheck {
   id: 'recording' | 'voice' | 'export' | 'microphone' | 'decks'
@@ -64,16 +63,12 @@ function checkRecording(): ReadinessCheck {
 }
 
 async function checkExport(): Promise<ReadinessCheck> {
-  // ffmpeg ships inside the app, but it is a native binary and packaging can leave it
-  // unreachable, so it is worth proving rather than assuming.
+  // The export encodes with Talkie's own ffmpeg, as recording, narration and measurement do.
+  // ffmpeg is fetched on install and packaged beside the app, but it is a native binary that an
+  // interrupted install or a packaging slip can leave missing, so it is proven rather than assumed.
   let ready = false
   try {
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: ['-version'],
-      ...ffOptions(),
-      cancelSignal: undefined
-    })
+    await runFfmpeg(['-version'])
     ready = true
   } catch {
     ready = false
@@ -85,7 +80,7 @@ async function checkExport(): Promise<ReadinessCheck> {
     purpose: 'Render the finished project to MP4',
     ready,
     detail: ready ? 'Built in' : undefined,
-    fix: ready ? undefined : 'The bundled video tools could not be run. Reinstalling the app should restore them.',
+    fix: ready ? undefined : `The video tools could not be run. In a checkout, run \`node scripts/fetchFfmpeg.mjs --ensure\`; otherwise reinstall the app.`,
     required: true
   }
 }

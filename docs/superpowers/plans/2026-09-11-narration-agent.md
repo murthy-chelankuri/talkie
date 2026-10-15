@@ -10,8 +10,8 @@ layer turns a clip into the material a provider needs: a cleaned action log for 
 sampled frames for anything visual. Orchestration writes the result through the existing
 transcript API inside `withHistory`, so a drafted narration is undoable like any other edit.
 
-**Tech Stack:** Electron main process, Zod, `RenderInternals.callFf` (ffmpeg already shipped by
-Remotion), `execFile` for the Claude CLI, `fetch` for Ollama and the Anthropic API.
+**Tech Stack:** Electron main process, Zod, ffmpeg (already shipped with
+the app), `execFile` for the Claude CLI, `fetch` for Ollama and the Anthropic API.
 
 ## Global Constraints
 

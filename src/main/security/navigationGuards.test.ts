@@ -60,9 +60,9 @@ describe('where a window may navigate', () => {
   it('sends a real link to the browser instead, where it has no privileges', () => {
     const win = fakeContents()
     applyNavigationGuards(win.contents)
-    win.navigateTo('https://remotion.dev/license')
+    win.navigateTo('https://ffmpeg.org/legal.html')
 
-    expect(openExternal).toHaveBeenCalledWith('https://remotion.dev/license')
+    expect(openExternal).toHaveBeenCalledWith('https://ffmpeg.org/legal.html')
   })
 
   it('hands nothing dangerous to the operating system', () => {

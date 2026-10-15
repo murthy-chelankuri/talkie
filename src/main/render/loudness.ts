@@ -1,6 +1,5 @@
 import { readFileSync, renameSync, rmSync } from 'fs'
-import { RenderInternals } from '@remotion/renderer'
-import { ffOptions } from './binaries'
+import { runFfmpeg } from '../media'
 import { readWavFormat } from '../tts/wavDuration'
 
 /**
@@ -52,15 +51,9 @@ export async function measuredLoudnessFilter(sourcePath: string, target: Loudnes
   const base = baseFilter(target)
 
   try {
-    const result = await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      // Audio only: the null muxer would otherwise want the picture encoded too, and the ffmpeg
-      // shipped with Remotion has nothing to encode it with for that.
-      args: ['-i', sourcePath, '-vn', '-af', `${base}:print_format=json`, '-f', 'null', '-'],
-      ...ffOptions(),
-      logLevel: 'info',
-      cancelSignal: undefined
-    })
+    // Audio only: the null muxer would otherwise want the picture encoded too, which a loudness
+    // reading has no use for.
+    const result = await runFfmpeg(['-i', sourcePath, '-vn', '-af', `${base}:print_format=json`, '-f', 'null', '-'])
 
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
     const json = output.slice(output.lastIndexOf('{'), output.lastIndexOf('}') + 1)
@@ -105,9 +98,7 @@ export async function levelTake(wavPath: string, target: LoudnessTarget = TAKE_L
   const format = readWavFormat(wavPath)
   const levelled = `${wavPath}.levelled.wav`
   try {
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: [
+    await runFfmpeg([
         '-i',
         wavPath,
         '-af',
@@ -120,10 +111,7 @@ export async function levelTake(wavPath: string, target: LoudnessTarget = TAKE_L
         'pcm_s16le',
         '-y',
         levelled
-      ],
-      ...ffOptions(),
-      cancelSignal: undefined
-    })
+    ])
     // A file that came back empty is not a replacement for one that had speech in it.
     if (readFileSync(levelled).length > 44) renameSync(levelled, wavPath)
   } catch (err) {
@@ -151,9 +139,7 @@ export async function levelExport(mp4Path: string, target: LoudnessTarget = DELI
 
   const levelled = mp4Path.replace(/\.mp4$/, '.levelled.mp4')
   try {
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      args: [
+    await runFfmpeg([
         '-i',
         mp4Path,
         '-map',
@@ -175,10 +161,7 @@ export async function levelExport(mp4Path: string, target: LoudnessTarget = DELI
         '+faststart',
         '-y',
         levelled
-      ],
-      ...ffOptions(),
-      cancelSignal: undefined
-    })
+    ])
     renameSync(levelled, mp4Path)
     return true
   } catch (err) {

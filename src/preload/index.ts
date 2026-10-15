@@ -7,7 +7,7 @@ import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
-import type { RenderTheme } from '../remotion/renderTheme'
+import type { RenderTheme } from '../composition/renderTheme'
 import type { Theme, ThemeDraft } from '../main/themes/schema'
 import type { GeneratedTheme, GenerateStatus } from '../main/themes/generate/generateTheme'
 import type { ThemeTarget } from '../main/ipc/themeHandlers'
@@ -20,6 +20,7 @@ export interface GenerateThemeRequest {
   file?: { bytes: Uint8Array; fileName: string }
 }
 import type { KokoroDownload } from '../main/tts/kokoro/kokoroProcess'
+import type { KokoroCheck, KokoroImport, KokoroManual } from '../main/tts/kokoro/kokoroManual'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
 import type { AgentOutcome } from '../main/agent/projectAgent'
@@ -77,7 +78,11 @@ const settingsApi = {
   previewVoice: (voice: string, text: string): Promise<void> =>
     ipcRenderer.invoke('settings:previewVoice', voice, text),
   kokoroDownload: (): Promise<void> => ipcRenderer.invoke('settings:kokoroDownload'),
-  kokoroStatus: (): Promise<KokoroDownload> => ipcRenderer.invoke('settings:kokoroStatus')
+  kokoroStatus: (): Promise<KokoroDownload> => ipcRenderer.invoke('settings:kokoroStatus'),
+  kokoroManual: (): Promise<KokoroManual> => ipcRenderer.invoke('settings:kokoroManual'),
+  kokoroImport: (): Promise<KokoroImport | null> => ipcRenderer.invoke('settings:kokoroImport'),
+  kokoroCheck: (): Promise<KokoroCheck> => ipcRenderer.invoke('settings:kokoroCheck'),
+  kokoroShowFolder: (): Promise<string | null> => ipcRenderer.invoke('settings:kokoroShowFolder')
 }
 
 const themesApi = {

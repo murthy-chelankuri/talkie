@@ -1,36 +1,33 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { hold } from './hold'
+import { openHoldCount, resetHolds, whenSettled } from './own/hold'
 
-const delayRender = vi.fn((_label?: string, _options?: object) => 7)
-const continueRender = vi.fn((_handle: number) => undefined)
-vi.mock('remotion', () => ({ delayRender, continueRender }))
+beforeEach(() => resetHolds())
 
-const { hold } = await import('./hold')
-
-beforeEach(() => {
-  delayRender.mockClear()
-  continueRender.mockClear()
-})
+/** Long after anything was opened, so every hold has outlived its timeout. */
+const later = (): number => Date.now() + 120_000
 
 describe('a hold', () => {
-  it('keeps the frame from being taken, under the label an export failure would name', () => {
+  it('keeps the frame from being taken, under the label an export failure would name', async () => {
     hold(`Loading the theme's fonts`)
 
-    expect(delayRender).toHaveBeenCalledWith(`Loading the theme's fonts`, undefined)
+    expect(openHoldCount()).toBe(1)
+    await expect(whenSettled({ now: later })).rejects.toThrow(`Loading the theme's fonts`)
   })
 
-  it('passes on how long it may be held', () => {
+  it('passes on how long it may be held', async () => {
     hold('Fetching diagram', { timeoutMs: 30_000 })
 
-    expect(delayRender).toHaveBeenCalledWith('Fetching diagram', { timeoutInMilliseconds: 30_000 })
+    await expect(whenSettled({ now: later })).rejects.toThrow('Fetching diagram did not finish within 30 s')
   })
 
   it('lets the frame go once, however many times it is released', () => {
     // LogoMark releases when the colours arrive and again when it unmounts.
     const release = hold(`Reading the logo's colours`)
+    hold('Someone else’s')
     release()
     release()
 
-    expect(continueRender).toHaveBeenCalledTimes(1)
-    expect(continueRender).toHaveBeenCalledWith(7)
+    expect(openHoldCount()).toBe(1)
   })
 })

@@ -5,8 +5,8 @@ Notes for anyone working on this repository, human or agent. This file is the ca
 second copy that drifts.
 
 An Electron app that records a browser session silently, writes and speaks the narration, and
-exports an MP4. macOS only, Apple Silicon. React + Remotion in the renderer, Playwright for
-capture, `say` or the built-in Kokoro voice for speech.
+exports an MP4. macOS only, Apple Silicon. React in the renderer, drawn and exported by Talkie's
+own renderer (`src/video/`), Playwright for capture, `say` or the built-in Kokoro voice for speech.
 
 ## Commands
 
@@ -25,6 +25,9 @@ Run `npm test` and `npm run typecheck` before committing. Both are expected to p
 hooks in `.githooks/` hold you to it — `npm install` points git at them. Before a commit: the
 types and the tests related to the staged files (seconds). Before a push: the types, the whole
 suite, and `npm run e2e` (a few minutes). `--no-verify` skips them once; it is not a habit.
+
+`npm install` also fetches the pinned ffmpeg and ffprobe into `vendor/ffmpeg/`
+(`scripts/fetchFfmpeg.mjs`); `npm run dev` checks they are there.
 
 **The end-to-end run** (`e2e/`) exists because every change that broke something passed the
 tests nearest to it and broke a flow somewhere else: a Speak button that did nothing, Copy
@@ -55,8 +58,9 @@ These each cost real time to find. None are obvious from the code.
   ES module from inside an asar archive — a packaged build starts, reports itself ready, and
   never opens a window. `electron.vite.config.ts` forces `format: 'cjs'` with a `.cjs` extension
   for both.
-- **`react` is a runtime dependency, not a dev one.** `@remotion/renderer` requires it in the
-  main process.
+- **`react` is a runtime dependency, not a dev one**, though only bundles import it. React ships
+  inside the renderer and the export page, and the Licences screen lists production dependencies
+  (`generateNotices.mjs`): moved to devDependencies it would still ship, uncredited.
 - **Electron's binary is fetched by a postinstall, and `npm run dev` checks for it first.**
   The package is a stub; without the download it throws "Electron failed to install correctly",
   which reads as a broken app rather than an unfinished install. `scripts/ensureElectron.mjs`
@@ -67,35 +71,48 @@ These each cost real time to find. None are obvious from the code.
 - **Test the packaged build, not only `npm run dev`.** They differ in ways that have already
   caused silent failures. `process.cwd()` in particular is *not* the app directory once packaged —
   it is wherever the app was launched from, which is `/` from Finder. Use `__dirname`.
-- **Anything that shells out has to be told where the binaries are**, through `ffOptions()` or
-  `binariesDirectory()`. Remotion looks beside its own package, which once packaged is inside the
-  asar archive where nothing can be executed. Every `callFf` call passed it; the two
-  `getVideoMetadata` calls did not, so measuring a recording threw, the import's three-second
-  placeholder stood in for the real length, and every packaged recording arrived on the timeline
-  as three seconds of its opening. `packagedBinaries.test.ts` reads these off the source, because
-  running them in the suite only ever exercises the checkout layout — the case that always worked.
-- **Remotion is handed a browser too**, through `browserExecutablePath()`. Left to find its own
-  it works out where to download one by walking up from the working directory looking for a
-  package.json — from `/` there is none, so it settles on `/.remotion` and export dies with
-  `ENOENT: mkdir '/.remotion'`. Both `selectComposition` and `renderMedia` need it; missing
-  either fails in a packaged build and nowhere else. `exportFromAnywhere.test.ts` moves the
-  working directory to `/` on purpose, because running from the checkout is the case that has
-  always worked.
+- **ffmpeg and ffprobe are reached only through `src/main/media/`.** They are pinned builds
+  (`scripts/ffmpegBuilds.json`, GPL-3.0, nothing nonfree — `ffmpeg-static`'s macOS build calls
+  itself not redistributable, and `ffprobe-static`'s Apple Silicon binary does not run), fetched
+  into `vendor/ffmpeg/<platform>-<arch>/` and packaged into `Resources/ffmpeg/` as extraResources.
+  `toolPath()` finds them from its own folder — the path up to `app.asar`, or up to the checkout
+  — never the working directory and never `process.resourcesPath`, which the MCP server does not
+  have. It used to be every call site's job: one `getVideoMetadata` call was never told where the
+  binaries were, and every packaged recording arrived as three seconds of its opening.
+  `mediaBoundary.test.ts` fails on any other way in. Encoders come from `h264()`'s table per
+  system, hardware only: recording and export both encode with `h264_videotoolbox`.
+- **The export is handed a browser** through `browserExecutablePath()`, as an absolute path. Left
+  to find one itself, a renderer works out where by walking up from the working directory — from
+  `/` there is nothing, and the renderer Talkie used to export with died there with an `ENOENT`
+  from `mkdir`. `exportFromAnywhere.test.ts` moves the working directory to `/` on
+  purpose, because running from the checkout is the case that has always worked.
 - **Export renders in Chrome's headless shell, not a full Chrome.** A full Chrome holds some
   frames for 300–750ms each whatever the scene, so more tabs, the GPU or fewer pixels all
   changed nothing and a 55-second demo took three minutes; the shell does it in under one.
   `browserExecutablePath()` finds the shell Playwright installs beside its Chromium and falls back
   to the installed browser. An export's browsers are its own processes: quitting mid-export left
   them running with no parent, so `before-quit` cancels exports and waits (`exportJob.ts`).
-- **The composition is bundled at build time**, by `scripts/bundleRemotion.mjs` into `out/remotion`,
-  and resolved from `__dirname` by `remotionBundle.ts`. Export used to bundle it on demand from
-  `process.cwd()` + `src/`, and a packaged build has neither. The bundle is unpacked from the
-  archive for the same reason mermaid is: a headless browser fetches those files, and only Node
-  can read out of an asar.
-- **Native binaries cannot load from inside asar.** Remotion's compositor, Playwright, and the
-  MCP entry point are all in `asarUnpack`.
-- **Kokoro runs in its own process, and must stay there.** `phonemizer` says Apache-2.0 but
-  carries eSpeak NG (GPL-3.0) compiled inside it. Only `src/main/tts/kokoro/kokoroWorker.ts` may
+- **The export draws frames in headless tabs and pipes their screenshots to ffmpeg.**
+  `exportVideo.ts` draws the composition in N tabs, screenshots each frame over CDP and pipes the
+  shots to one ffmpeg a tab (`render/exporter/`). Before the previous renderer was removed it was held
+  to that renderer's output frame for frame, and four things it needed each cost real time to find.
+  Recording frames are served as **PNG, not JPEG** (`frameSource.ts`, `assetServer.ts`) — the
+  exact pixels, with none of the chroma a saturated brand loses to JPEG. Each composition frame is
+  matched to the recording frame **showing at its moment, by time**: a recording is 25 fps under a
+  30 fps composition *and* opens at a PTS a frame in, not zero (`probe.ts` reads `start_time`), and
+  `-ss` alone overshot the frame by one often enough to show a later picture mid-animation, so the
+  frame is landed on with `-copyts` and a PTS `select`. Screenshots are JPEG at **quality 80**,
+  which kept the 4:2:0 ringing on a saturated edge the size the previous renderer's export had. The soundtrack
+  is padded up to a whole AAC frame, or the container ends a frame short of the picture
+  (`soundtrack.ts`).
+- **The export page is built at build time**, by `scripts/bundleExportPage.mjs` into
+  `out/export-page`, and found from `__dirname` (`exporter/exportPage.ts`). A packaged build has no
+  `src/` to build it from on demand. It is unpacked from the archive for the same reason mermaid
+  is: a headless browser fetches those files, and only Node can read out of an asar.
+- **Native binaries cannot load from inside asar.** Playwright and the MCP entry point are in
+  `asarUnpack`.
+- **Kokoro runs in its own process, and must stay there.** `phonemizer` carries eSpeak NG
+  (GPL-3.0) compiled inside it. Only `src/main/tts/kokoro/kokoroWorker.ts` may
   import `kokoro-js`, `phonemizer`, `@huggingface/transformers` or `onnxruntime-node`; the main
   process forks it and talks over IPC. `kokoroBoundary.test.ts` fails on any other import — a
   type-only one included. The worker is its own `electron.vite.config.ts` main entry, and those
@@ -105,24 +122,53 @@ These each cost real time to find. None are obvious from the code.
   licence. `package.json` makes `stubs/sharp` a dependency and overrides `sharp` with `$sharp`
   (a `file:` path directly in `overrides` resolves relative to transformers.js and breaks a clean
   install). `licences.test.ts` fails if libvips reappears.
+- **`phonemizer` is Talkie's own build, on purpose.** npm's ships an eSpeak NG with no known
+  source, which makes it impossible to distribute under the GPL. `packages/phonemizer` is the same
+  wrapper around eSpeak NG built from a pinned commit, overridden in the way `sharp` is; its
+  `BUILD.md` says how to rebuild it (Emscripten, about a minute) and why that commit. The app loads
+  `dist/phonemizer.cjs`, because the Kokoro worker is CommonJS. `phonemizer.test.ts` holds it to
+  the phonemes npm's produced, so a rebuild that changes how Kokoro speaks fails. kokoro-js's
+  `kokoro.web.js` bundles npm's copy whole and is left out of the app in `electron-builder.yml`.
 - **Kokoro sometimes reads a line as pure silence.** One sentence in one voice at one speed came back
   as seconds of zeros every time, and 2% faster read perfectly — a fault in the model, not the
   words. It was saved as the take, and a scene lost its first sentence. `audibleTake.ts` checks
   every take from the file the worker wrote, asks again a shade faster or slower, and errors with
   the words if all of them are silent.
+- **Kokoro reads 510 phonemes at a time and drops the rest without a word.** About 25 seconds of
+  speech; a longer clip came back with its last sentences missing. The worker reads a take that
+  fits in one go, as before, and cuts only one that does not — at sentence ends, then commas —
+  measured with the same phonemizer (`PHONEME_BUDGET` in `kokoroWorker.ts`).
 - **The worker ends by signal, not `process.exit`.** onnxruntime-node aborts during an ordinary
   exit on macOS ("mutex lock failed"); releasing the model first does not help.
-- **transformers.js refuses to load with both model sources off**, even from a full cache. While
-  speaking, its remote host is pointed at a dead local port instead, so a cached model loads and a
-  missing one fails rather than downloading mid-clip.
+- **transformers.js refuses to load with both model sources off**, even from a full cache. Its
+  remote host is pointed at a dead local port instead, so a cached model loads and a missing one
+  fails rather than downloading.
+- **The Kokoro voice is downloaded by the main process, through Electron's `net.fetch`**
+  (`kokoroDownload.ts`), never by the worker. Node's own `fetch` ignores the Mac's proxy settings
+  and the keychain, so on a corporate network — a proxy, and a root certificate it re-signs HTTPS
+  with — it failed where the browser worked. Chromium's network stack uses both. Each file is
+  checked against `KOKORO_FILES` as it lands; the worker only loads what is already on disk.
+- **The Kokoro voice can be brought in by hand**, for a proxy that will not let the app reach
+  Hugging Face (`kokoroManual.ts`). `KOKORO_FILES` pins all four files the model is — size and
+  SHA-256 — and is the one list the download check, the hand-copy check, the import and the
+  instructions all read. The import recognises chosen files by their contents, never by name:
+  browsers rename what they save, and a proxy's "blocked" page arrives under the right name.
+  Change the model's revision and those pins change with it.
 - **The MCP server is an ES module, which has no `__dirname`.** The shared modules find what ships
-  beside them through it — the Remotion bundle, the HTML scene runtime — so `vite.mcp.config.ts`
+  beside them through it — the HTML scene runtime among them — so `vite.mcp.config.ts`
   defines `__dirname` and `__filename` in the bundle's banner. Without that, the built server threw
   a `ReferenceError` on the first lookup and nothing caught it, because the tests run the sources;
   `builtServer.test.ts` runs the built bundle from `/` once there is one.
 - **esbuild is a build tool, not part of the app.** `htmlScene/resources.ts` builds the scene runtime
   on first use only in a checkout, and loads esbuild there and only there; a packaged build ships the
   runtime already built and has no esbuild to load.
+- **Find the checkout with `checkoutRoot()`, never by counting `..` from `__dirname`.** The same
+  file runs from `src/` under the tests, from `out/main` in the app and from `out/mcp` in the MCP
+  server, so any fixed count is right for one and wrong for the rest. The export page and the HTML
+  scene runtime fall back to building from the sources when `out/` has no copy, which is exactly
+  `npm run dev` straight after a download. Counted from `out/main`, export looked two folders above
+  the repository, and the error, thrown inside the asset server, ended the app as "Talkie could not
+  start". The tests and e2e never saw it: one runs from `src/`, the other after a full build.
 - **Renderer entries are declared explicitly** in `electron.vite.config.ts` — the editor window
   and the recording toolbar. A new window needs adding there or it will not ship.
 
@@ -134,15 +180,14 @@ These each cost real time to find. None are obvious from the code.
 - `src/preload/` — two bridges: `index.ts` for the editor window, `toolbar.ts` for the recording
   toolbar (five calls, nothing more).
 - `src/renderer/` — React. Reaches main only through `window.api`.
-- `src/remotion/` — the composition. Shared by the preview and the export, so what is on screen
-  is what renders. It takes its clock, holds, media and motion from `src/video/` and never from
-  Remotion itself.
-- `src/video/` — the only way in to Remotion, which Talkie is replacing with its own renderer
-  (`docs/superpowers/specs/2026-10-13-own-renderer-design.md`). `index.ts` is the composition's
-  side and `preview.tsx` the editor's, kept apart so the export bundle carries no player.
-  `spring` and `interpolate` are already Talkie's own, matched to Remotion's against sampled
-  values. `videoBoundary.test.ts` fails on a direct import or mock of Remotion anywhere else; the
-  main process keeps `@remotion/renderer` and `@remotion/bundler` until the export is replaced.
+- `src/composition/` — the composition. Shared by the preview and the export, so what is on screen
+  is what renders. It takes its clock, holds, media and motion from `src/video/`.
+- `src/video/` — Talkie's own renderer, which draws both the preview and the export. `index.ts` is the composition's side and
+  `preview.tsx` the editor's, kept apart so the export bundle carries no player; `own/player.tsx`
+  is the player, `own/clock.tsx`, `own/media.tsx` and `own/hold.ts` what both draw with. The scenes'
+  names (`useFrame`, `Sequence`, `spring`, `interpolate` …) are the ones they were first written
+  against, and each is held to how it behaved then. `videoBoundary.test.ts` keeps the third-party
+  renderer Talkie used to depend on from coming back — it is the one file that names it.
 - `src/mcp/` — a standalone MCP server, a **separate process**, off by default and token-gated.
 - Projects live in `~/Talkie/Projects/<id>-<slug>/` as `project.json`, `timeline.json`,
   `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
@@ -296,7 +341,7 @@ colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `
 - **A diagram is painted on its look's own background.** `diagramStamp` carries a drawing version;
   raise it when how a themed diagram is drawn changes, or ones already drawn keep the old look.
 - **Logos are drawn still, and plated where they would vanish.** Brand sites often serve animated
-  SVG logos; CSS animation runs on the clock and Remotion renders frames out of order, so
+  SVG logos; CSS animation runs on the clock and the export draws frames out of order, so
   `stillLogo.ts` settles every animation into its end state when the theme is drawn (the file stays
   as published). `LogoMark` reads the logo's colours in the browser and, on a slide or card whose
   background would hide too much of it, puts it on a plate in the theme's light or dark colour.
@@ -401,20 +446,26 @@ the app stays the only writer.
 ## Licensing — read before distributing anything
 
 - Talkie's own code is **Apache-2.0**. That covers this repository and nothing else.
-- **Remotion is not open source.** Free for individuals, non-profits and companies of up to three
-  people; larger for-profits need a paid licence. Cloning this does not grant one.
-- **The ffmpeg inside Remotion's compositor is GPL-2.0-or-later** (`--enable-gpl`, x264, x265).
-  It is not in this repository — `npm install` fetches it.
-- Publishing *source* carries no GPL obligation. **Shipping a built `.dmg` does**, including
+- **Talkie draws and exports video with its own renderer.** It used to depend on a third-party
+  renderer that is source-available rather than open source; that is gone, and
+  `videoBoundary.test.ts` keeps it that way.
+- **ffmpeg is GPL**: Talkie's own (FFmpeg 9.0.2, GPL-3.0-or-later, x264 and x265 linked in) is
+  fetched by `npm install`. It is not in this repository.
+- Publishing *source* carries no ffmpeg obligation. **Shipping a built `.dmg` does**, including
   offering ffmpeg's source to every recipient. That is why no prebuilt binaries are published
   here, and why the Mac App Store is not a route (App Sandbox also blocks `say`, `afconvert`,
   driving a browser, and the MCP server).
-- **eSpeak NG, inside the Kokoro voice, is GPL-3.0** — the same distributor obligation as
-  ffmpeg, and one open item: `phonemizer` does not say which eSpeak NG it compiled, which has to
-  be settled before a build is published. The Kokoro weights are Apache-2.0 and are downloaded on
+- **eSpeak NG, inside the Kokoro voice, is GPL-3.0**, and unlike ffmpeg it is in the repository,
+  compiled, in `packages/phonemizer` — so passing on the source carries the obligation as well as
+  shipping a build. Its source is the pinned commit plus `packages/phonemizer/build/`, which
+  travel with it; NOTICE says so. The Kokoro weights are Apache-2.0 and are downloaded on
   first use, pinned and hash-checked, not shipped.
-- **Licence texts no package carries live in `licences/`** — the GPL v2 and v3, and ONNX
-  Runtime's MIT notice and ThirdPartyNotices — and are installed with the app. Replace the ONNX
+- **Licence texts no package carries live in `licences/`** — the GPL v2 and v3, the LGPL v2.1,
+  and ONNX Runtime's MIT notice and ThirdPartyNotices — and are installed with the app.
+- **Electron and Chromium are shipped, so their licences are too.** electron-builder leaves
+  Electron's `LICENSE` and Chromium's `LICENSES.chromium.html` out of a macOS app, so
+  `electron-builder.yml` copies them into `Resources/licences/electron/`. The Licences screen lists
+  both, and the LGPL FFmpeg inside Chromium (`libffmpeg.dylib`) beside the GPL binaries. Replace the ONNX
   Runtime files when `onnxruntime-node` changes version; a test checks they match.
 - See `NOTICE` and the in-app Settings → Licences screen, generated by `npm run notices`.
 

@@ -1,4 +1,5 @@
-import type { IpcMain } from 'electron'
+import { BrowserWindow, dialog, net, shell, type IpcMain } from 'electron'
+import { mkdirSync } from 'fs'
 import { sweepUnusedRevisions } from '../htmlScene/store'
 import { redrawStalePosters } from '../htmlScene/htmlSceneApi'
 import { homedir } from 'os'
@@ -28,6 +29,7 @@ import { listCopilotModels } from '../agent/copilotModels'
 import { previewVoice } from '../tts/listVoices'
 import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { downloadKokoro, kokoroDownloadStatus } from '../tts/kokoro/kokoroProcess'
+import { checkKokoroFiles, importKokoroFiles, kokoroManual } from '../tts/kokoro/kokoroManual'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
 import { runProjectAgent } from '../agent/projectAgent'
 import { setProjectTheme } from '../themes/applyTheme'
@@ -116,8 +118,31 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:speechEngines', () => describeSpeechEngines())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
   // Resolves when the download is done; Settings asks for the status meanwhile to draw progress.
-  ipcMain.handle('settings:kokoroDownload', () => downloadKokoro())
+  // Through Electron's network, not Node's: the system's proxy settings and keychain, which a
+  // corporate network needs and Node's own fetch ignores. See kokoroDownload.ts.
+  ipcMain.handle('settings:kokoroDownload', () => downloadKokoro(homedir(), (url) => net.fetch(url)))
   ipcMain.handle('settings:kokoroStatus', () => kokoroDownloadStatus())
+  // The same voice, brought in by hand where the download cannot reach Hugging Face. The files
+  // are chosen here rather than their paths taken from the window, so the window cannot name any
+  // file on disk to be read.
+  ipcMain.handle('settings:kokoroManual', () => kokoroManual())
+  ipcMain.handle('settings:kokoroImport', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const options = {
+      title: 'Choose the Kokoro files you downloaded',
+      properties: ['openFile' as const, 'multiSelections' as const]
+    }
+    const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+    if (result.canceled || result.filePaths.length === 0) return null
+    return importKokoroFiles(result.filePaths)
+  })
+  ipcMain.handle('settings:kokoroCheck', () => checkKokoroFiles())
+  ipcMain.handle('settings:kokoroShowFolder', async () => {
+    // Made first: the folder is only there once something has been downloaded into it.
+    const folder = kokoroManual().folder
+    mkdirSync(folder, { recursive: true })
+    return (await shell.openPath(folder)) || null
+  })
 
   // Drafted narration is an ordinary edit as far as undo is concerned.
   ipcMain.handle('project:agent:draftItem', (_event, projectId: string, itemId: string, force: boolean) =>

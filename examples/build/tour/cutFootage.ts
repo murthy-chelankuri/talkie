@@ -2,18 +2,14 @@ import { execFileSync } from 'child_process'
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { dirname, join } from 'path'
+import { ffmpegPath, ffprobePath } from '../../../src/main/media'
 import { writeActionLog } from '../../../src/main/capture/actionLog'
 import { HEIGHT, WIDTH, type Filmed, type Shot } from './film'
 
-/** The ffmpeg and ffprobe the export itself uses, so the build needs nothing else installed. */
-const BINARIES = dirname(require.resolve('@remotion/compositor-darwin-arm64/package.json'))
-const ENV = { ...process.env, DYLD_LIBRARY_PATH: BINARIES }
-
 export function lengthMs(video: string): number {
   const out = execFileSync(
-    join(BINARIES, 'ffprobe'),
-    ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', video],
-    { env: ENV }
+    ffprobePath(),
+    ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', video]
   ).toString()
   return Math.round(Number(out.trim()) * 1000)
 }
@@ -21,9 +17,10 @@ export function lengthMs(video: string): number {
 /**
  * A small window, cut out of the corner it was recorded in and centred on a frame of its own.
  *
- * The ffmpeg Remotion ships can crop and scale but has no `pad` or `overlay`, and a clip is drawn
- * to cover the frame, so a toolbar left at its own shape would lose its top and bottom. Its
- * frames are laid onto the backdrop one by one instead — a few seconds of a small window.
+ * Written for an ffmpeg that had no `pad` or `overlay`; kept, since it draws
+ * the same frames with any build. A clip is drawn to cover the frame, so a toolbar left at its own
+ * shape would lose its top and bottom. Its frames are laid onto the backdrop one by one instead —
+ * a few seconds of a small window.
  */
 async function framedClip(source: string, fromMs: number, ms: number, area: { width: number; height: number }, out: string): Promise<void> {
   const frames = join(dirname(out), 'frames')
@@ -32,10 +29,9 @@ async function framedClip(source: string, fromMs: number, ms: number, area: { wi
   const scale = Math.min(WIDTH / area.width, HEIGHT / area.height)
   const [width, height] = [Math.round((area.width * scale) / 2) * 2, Math.round((area.height * scale) / 2) * 2]
   execFileSync(
-    join(BINARIES, 'ffmpeg'),
+    ffmpegPath(),
     ['-v', 'error', '-y', '-ss', (fromMs / 1000).toFixed(3), '-i', source, '-t', (ms / 1000).toFixed(3),
-      '-vf', `crop=${area.width}:${area.height}:0:0,scale=${width}:${height}`, '-r', '30', join(frames, '%05d.png')],
-    { env: ENV }
+      '-vf', `crop=${area.width}:${area.height}:0:0,scale=${width}:${height}`, '-r', '30', join(frames, '%05d.png')]
   )
   const canvas = createCanvas(WIDTH, HEIGHT)
   const context = canvas.getContext('2d')
@@ -46,9 +42,8 @@ async function framedClip(source: string, fromMs: number, ms: number, area: { wi
     writeFileSync(join(frames, name), canvas.toBuffer('image/png'))
   }
   execFileSync(
-    join(BINARIES, 'ffmpeg'),
-    ['-v', 'error', '-y', '-framerate', '30', '-i', join(frames, '%05d.png'), ...ENCODE, out],
-    { env: ENV }
+    ffmpegPath(),
+    ['-v', 'error', '-y', '-framerate', '30', '-i', join(frames, '%05d.png'), ...ENCODE, out]
   )
   rmSync(frames, { recursive: true, force: true })
 }
@@ -111,7 +106,7 @@ export async function cutFootage(filmed: Filmed, outDir: string): Promise<Cut[]>
       await framedClip(video.path, from, ms, shot.area, path)
     } else {
       execFileSync(
-        join(BINARIES, 'ffmpeg'),
+        ffmpegPath(),
         [
           '-v', 'error', '-y',
           '-ss', (from / 1000).toFixed(3),
@@ -122,8 +117,7 @@ export async function cutFootage(filmed: Filmed, outDir: string): Promise<Cut[]>
           '-r', '30',
           ...ENCODE,
           path
-        ],
-        { env: ENV }
+        ]
       )
     }
     writeActionLog(

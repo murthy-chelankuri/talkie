@@ -6,7 +6,7 @@
 
 **Architecture:** Themes are JSON plus asset files, managed by `src/main/themes/themeApi.ts`. A project stores `themeId`. `toRenderTheme` turns a theme into a self-contained `RenderTheme` (colours, fonts and logo as data URLs) that the composition receives beside the timeline, for both preview and export. AI generation is a main-process pipeline: extract facts (Playwright / pdfjs), let the configured narration provider propose, fall back to rules, fetch open fonts, fix contrast.
 
-**Tech Stack:** TypeScript, zod, React, Remotion 4, Playwright (headless Chromium), pdfjs-dist, vitest + Testing Library.
+**Tech Stack:** TypeScript, zod, React, Playwright (headless Chromium), pdfjs-dist, vitest + Testing Library.
 
 **Spec:** `docs/superpowers/specs/2026-10-09-video-themes-design.md`
 
@@ -35,10 +35,10 @@
 | `src/main/themes/schema.ts` | `ThemeSchema`, `ThemeDraftSchema`, `VariantSchema`, `FontChoiceSchema`; defaults |
 | `src/main/themes/contrast.ts` | colour maths (hex ↔ OKLCH), `contrastRatio`, `fixContrast` |
 | `src/main/themes/themeApi.ts` | library storage: list/read/create/update/delete, assets, projects using a theme |
-| `src/remotion/renderTheme.ts` | `RenderTheme` type, `ThemeContext`, `themeStamp` (pure; used by main and composition) |
+| `src/composition/renderTheme.ts` | `RenderTheme` type, `ThemeContext`, `themeStamp` (pure; used by main and composition) |
 | `src/main/themes/toRenderTheme.ts` | theme on disk → `RenderTheme` with data URLs |
-| `src/remotion/sceneTheme.ts` | `resolveSceneTheme(style, theme?)` — variants with fallback to today's palettes |
-| `src/remotion/ThemeFonts.tsx`, `LogoOverlay.tsx` | font loading with `delayRender`; logo corner overlay |
+| `src/composition/sceneTheme.ts` | `resolveSceneTheme(style, theme?)` — variants with fallback to today's palettes |
+| `src/composition/ThemeFonts.tsx`, `LogoOverlay.tsx` | font loading with a hold; logo corner overlay |
 | `src/main/slides/mermaidTheme.ts` | `mermaidConfigFor(theme?)` replacing the fixed config |
 | `src/main/themes/applyTheme.ts` | `setProjectTheme` with first-time bookends |
 | `src/main/themes/generate/*.ts` | `readWebsite`, `readLogo`, `readBrandGuide`, `proposeTheme`, `ruleBasedTheme`, `resolveFonts`, `generateTheme` |
@@ -96,7 +96,7 @@ export function projectsUsingTheme(id, baseDir?): { id: string; name: string }[]
 
 ### Task 3: RenderTheme and scene variants
 
-**Files:** Create `src/remotion/renderTheme.ts`, `src/main/themes/toRenderTheme.ts`; Modify `src/remotion/sceneTheme.ts`, `src/main/project/timeline/schema.ts`, `src/renderer/src/components/SceneEditor.tsx`; Tests `src/remotion/sceneTheme.test.ts`, `src/main/themes/toRenderTheme.test.ts`, `src/main/project/timeline/sceneStyle.test.ts`
+**Files:** Create `src/composition/renderTheme.ts`, `src/main/themes/toRenderTheme.ts`; Modify `src/composition/sceneTheme.ts`, `src/main/project/timeline/schema.ts`, `src/renderer/src/components/SceneEditor.tsx`; Tests `src/composition/sceneTheme.test.ts`, `src/main/themes/toRenderTheme.test.ts`, `src/main/project/timeline/sceneStyle.test.ts`
 
 **Produces:**
 ```ts
@@ -125,14 +125,14 @@ export function resolveSceneTheme(style: SceneStyle | undefined, theme?: RenderT
 
 ### Task 4: The composition follows the theme
 
-**Files:** Modify `src/remotion/DemoComposition.tsx`, `src/remotion/index.tsx`, `src/remotion/items/TextScene.tsx`, `src/remotion/items/DiagramScene.tsx`, `src/remotion/CaptionOverlay.tsx`; Create `src/remotion/ThemeFonts.tsx`, `src/remotion/LogoOverlay.tsx`; Tests `src/remotion/themedComposition.test.tsx`
+**Files:** Modify `src/composition/DemoComposition.tsx`, `src/composition/index.tsx`, `src/composition/items/TextScene.tsx`, `src/composition/items/DiagramScene.tsx`, `src/composition/CaptionOverlay.tsx`; Create `src/composition/ThemeFonts.tsx`, `src/composition/LogoOverlay.tsx`; Tests `src/composition/themedComposition.test.tsx`
 
 - `DemoComposition({ timeline, theme })` wraps everything in `ThemeContext.Provider` and `<ThemeFonts/>`; adds `<LogoOverlay kind={item.kind} layout={…}/>` per clip.
-- `ThemeFonts`: `@font-face` for each url, `delayRender` until `document.fonts.load('1em "<family>"')` for both, `continueRender` in `finally` (a failed font must not hang the render).
+- `ThemeFonts`: `@font-face` for each url, a hold until `document.fonts.load('1em "<family>"')` for both, `continueRender` in `finally` (a failed font must not hang the render).
 - `TextScene`: theme fonts/colours via `resolveSceneTheme(style, useRenderTheme())`; `layout: 'title'` → large logo, company, title; `'closing'` → logo, tagline, website.
 - `CaptionOverlay`: background/text from `theme.variants[theme.caption]` and body font when a theme is present.
 - `LogoOverlay`: corner placement 4% inset, height 6% of frame; shows on `video`/`image` when `showOn.recordings`, on `scene`/`diagram` (standard layout) when `showOn.slides`.
-- [ ] Tests (render with Testing Library inside a Remotion-free wrapper — mock `remotion` hooks as `DemoComposition.test.ts` does): no theme → no logo, old colours; theme → logo `<img>` in the configured corner on a video clip and absent on a `title` slide; caption uses brand background when `caption: 'brand'`; `title` layout shows company name.
+- [ ] Tests (render with Testing Library inside a renderer-free wrapper — mock the clock hooks as `DemoComposition.test.ts` does): no theme → no logo, old colours; theme → logo `<img>` in the configured corner on a video clip and absent on a `title` slide; caption uses brand background when `caption: 'brand'`; `title` layout shows company name.
 - [ ] Commit `Draw slides, captions and the logo from the project's theme`.
 
 ### Task 5: Diagrams in theme colours
@@ -210,7 +210,7 @@ export function generateStatus(): GenerateStatus
 **Files:** Create `src/renderer/src/components/themes/ThemesSection.tsx`, `ThemeEditor.tsx`, `CreateThemeDialog.tsx`, `ThemePicker.tsx` + tests; Modify `SettingsDialog.tsx` (section `themes`), `AboutProjectDialog.tsx` (picker), `Editor.tsx`, `src/main/ipc/projectHandlers.ts` (settings:themes:*), `src/preload/index.ts`, `src/renderer/src/api/projectClient.ts`.
 
 IPC: `settings:themes:list`, `settings:themes:read`, `settings:themes:create`, `settings:themes:update`, `settings:themes:delete`, `settings:themes:usage`, `settings:themes:generate`, `settings:themes:generateStatus`, `settings:themes:addFont`, `settings:themes:setLogo`, `settings:themes:render` (draft → RenderTheme for the preview).
-- Editor preview: `@remotion/player` playing a 4-clip sample timeline (brand, light, dark slides + a caption) with the draft's RenderTheme.
+- Editor preview: the preview player playing a 4-clip sample timeline (brand, light, dark slides + a caption) with the draft's RenderTheme.
 - [ ] Tests: list shows themes and both buttons; editor shows a failing contrast badge for a bad pair; save sends the draft; delete confirmation lists using projects; Create with AI shows steps while running and opens the editor with the draft; About-project picker calls `setTheme`.
 - [ ] Commit `Manage themes in Settings, and choose one per project`.
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Film } from 'lucide-react'
 import type { ProjectOverview } from '../api/projectClient'
-import { FPS } from '../../../remotion/constants'
+import { FPS } from '../../../composition/constants'
 import { cn } from '../lib/cn'
 
 /**

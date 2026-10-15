@@ -7,7 +7,7 @@
  * depending on who asked for it is worse than one that cannot be drawn at all.
  */
 
-import type { RenderTheme } from '../../remotion/renderTheme'
+import type { RenderTheme } from '../../composition/renderTheme'
 import type { VariantId } from '../themes/schema'
 
 /** Colours taken from the app's own palette, so a diagram looks made by Talkie. */

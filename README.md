@@ -5,9 +5,9 @@ Record it silent. Give it a voice.
 Talkie records a browser session or imports a slide deck, writes the narration for each clip,
 speaks it, and exports an MP4.
 
-Talkie's own code is Apache-2.0. It renders video with **Remotion, which is not open source** —
-using this repository at all requires your own eligibility under Remotion's licence. Read
-[Licence](#licence) before you build on this.
+Talkie's own code is Apache-2.0, and it draws and exports video with its own renderer. A built
+app carries GPL components — ffmpeg, and eSpeak NG inside the Kokoro voice — so read
+[Licence](#licence) before you hand one to anyone.
 
 ## Running from the source
 
@@ -28,14 +28,14 @@ npm run package       # a .dmg in release/
 npm run package:dir   # just the .app, for testing the packaged build quickly
 ```
 
-The result is `release/Talkie-<version>-arm64.dmg`, around 170MB, built for Apple Silicon.
+The result is `release/Talkie-<version>-arm64.dmg`, built for Apple Silicon. It was around 170MB before Talkie carried its own ffmpeg; the pinned ffmpeg and ffprobe add about 126MB unpacked (`du -sh vendor/ffmpeg/*`), so expect the installed app to be that much larger and the disk image somewhat less, since it compresses. The figure for a current build has not been re-measured.
 
 Test the packaged app rather than only the dev build. The two differ in ways that have already
 bitten: the main bundle has to be CommonJS because Electron cannot load an ES module from inside
-an asar archive, `react` has to be a runtime dependency because `@remotion/renderer` requires it
-in the main process, and ffmpeg has to be located explicitly because it is copied out of the
-archive at build time. Each of those failed silently — the app started, reported itself ready,
-and never opened a window.
+an asar archive, and whatever a headless browser or plain node reads — the export page, the MCP
+server — has to be unpacked from the archive. Talkie's own ffmpeg is fetched on install and
+packaged as extraResources, outside it. Each of those has failed silently in a packaged build and
+nowhere else.
 
 ### Running from source shows "Electron" in the menu bar
 
@@ -116,6 +116,40 @@ default never turns finished work into work that looks unfinished.
 The picker's first option puts a project back to following the default, so the choice is reversible
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.
+
+### Getting the Kokoro voice behind a proxy
+
+Kokoro's model (163 MB) is downloaded from Hugging Face the first time it is chosen, in Settings →
+AI. The download goes through the same network as your browser — the Mac's proxy settings and the
+certificates in its keychain — so on most corporate networks it simply works. Where a proxy or
+firewall still stops it, the same files can be fetched any other way — in a browser, or on another
+machine — and handed to Talkie.
+Settings → AI → Kokoro → **Download it yourself instead** links each file and has a button to copy
+these instructions:
+
+| File | Size | Link |
+| --- | --- | --- |
+| `config.json` | 44 bytes | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/config.json](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/config.json) |
+| `tokenizer.json` | 3.5 KB | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer.json](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer.json) |
+| `tokenizer_config.json` | 113 bytes | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer_config.json](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer_config.json) |
+| `onnx/model_fp16.onnx` | 163 MB | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/onnx/model_fp16.onnx](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/onnx/model_fp16.onnx) |
+
+The weights redirect to a Hugging Face download host (`*.hf.co`), which a proxy may need to allow
+as well. Then either press **Choose downloaded files…** and pick all four — Talkie recognises each
+by its contents, whatever the browser named it — or copy them in yourself, keeping the names and
+the `onnx` folder:
+
+```
+~/Talkie/Models/onnx-community/Kokoro-82M-v1.0-ONNX/1939ad2a8e416c0acfeecc08a694d14ef25f2231/
+├── config.json
+├── tokenizer.json
+├── tokenizer_config.json
+└── onnx/model_fp16.onnx
+```
+
+and press **Check the files**. Either way each file is checked against its published SHA-256, as a
+download is, and one that does not match — often a proxy's own "blocked" page saved under the
+right name — is named and not used.
 
 ## What the export carries
 
@@ -209,8 +243,9 @@ someone presses the button that needs it rather than as an error afterwards.
 | For | Needs | If it is missing |
 | --- | --- | --- |
 | Recording a session | Google Chrome, Edge, or Playwright's Chromium | Install Chrome, or `npx playwright install chromium` |
-| Exporting video | Nothing — ffmpeg ships inside the app | — |
+| Exporting video | Nothing — `npm install` fetches a pinned ffmpeg | — |
 | Speaking narration | Nothing — macOS's own voices | — |
+| The Kokoro voice | A one-time 163 MB download from Hugging Face | Behind a proxy, [download the files by hand](#getting-the-kokoro-voice-behind-a-proxy) |
 | Recording your own voice | Microphone permission | Talkie asks the first time; after a refusal, System Settings → Privacy & Security |
 | Importing a `.pptx` | LibreOffice | `brew install --cask libreoffice`, or export the deck to PDF and import that |
 | Better drafted narration | The `claude` CLI, a local model server, or an Anthropic key | The built-in drafter needs none of them |
@@ -227,35 +262,30 @@ says which.
 ## Licence
 
 Talkie's own source is [Apache-2.0](LICENSE). That covers the code in this repository and
-nothing else — it cannot grant rights to the things Talkie depends on. Two of those need your
-attention before you use this. The full picture is in [NOTICE](NOTICE), and every dependency's
+nothing else — it cannot grant rights to the things Talkie depends on. Two of those — ffmpeg, and
+eSpeak NG inside the Kokoro voice — are GPL, which matters the moment you hand someone a built
+app. The full picture is in [NOTICE](NOTICE), and every dependency's
 licence is listed in the app under Settings → Licences.
 
-### Remotion is not open source
+### No third-party renderer licence
 
-Video is rendered with [Remotion](https://remotion.dev), which is source-available under the
-Remotion License. Cloning this repository does not give you a Remotion licence. You need your
-own, and it is free only if you are:
+Earlier versions rendered video with a third-party renderer that was source-available rather than
+open source and needed a licence of your own. Talkie now draws and exports video with its own
+renderer, so this version needs no such licence.
 
-- an individual,
-- a non-profit or not-for-profit organisation, or
-- a for-profit company with **up to 3 employees**.
+### ffmpeg is GPL
 
-Larger for-profit organisations need a [paid company licence](https://www.remotion.pro/license).
-Remotion has said the terms change in Remotion 5.0.
-
-### The bundled ffmpeg is GPL
-
-Remotion's compositor package ships an ffmpeg built with `--enable-gpl`, `--enable-libx264` and
-`--enable-libx265`. Those binaries are GPL-2.0-or-later. They are **not in this repository** —
-`npm install` downloads them.
+Talkie runs FFmpeg 9.0.2 from [Martin Riedl's build server](https://ffmpeg.martin-riedl.de),
+pinned and hash-checked by `scripts/fetchFfmpeg.mjs` on `npm install` — a GPL-3.0 build
+(`--enable-gpl --enable-version3`, with x264 and x265 linked in) with nothing nonfree in it. It is
+**not in this repository**.
 
 The distinction that matters:
 
 | What you do | What it costs you |
 | --- | --- |
-| Clone, build and run it yourself | Nothing. No GPL code is in this repo. |
-| Publish this source | Nothing. Still no GPL code in this repo. |
+| Clone, build and run it yourself | Nothing. ffmpeg is not in this repo. |
+| Publish this source | Nothing for ffmpeg. eSpeak NG is the exception — see below. |
 | **Hand someone a built app** (a `.dmg`, a release asset, a store submission) | You are distributing GPL binaries and must comply with the GPL — including offering ffmpeg's corresponding source to every recipient. |
 
 That last row is why this repository ships no prebuilt binaries. It is also why the Mac App
@@ -263,3 +293,23 @@ Store is not a route for this app: the GPL's no-further-restrictions clause has 
 been held incompatible with app store terms, and separately, App Sandbox blocks most of what
 Talkie does — spawning `say` and `afconvert`, driving a browser, and running the MCP server.
 Direct distribution under a Developer ID is the workable path.
+
+### Electron and Chromium
+
+Talkie is an Electron app, so a build ships Electron and Chromium — some 780 components under their
+own licences, installed with the app in `Resources/licences/electron/`. One of them, the FFmpeg
+Chromium plays media with, is LGPL: whoever distributes a build must offer its source too. See
+[NOTICE](NOTICE).
+
+### eSpeak NG is GPL too
+
+The Kokoro voice turns text into phonemes with eSpeak NG (GPL-3.0-or-later), through the
+`phonemizer` package. npm's phonemizer ships an eSpeak NG nobody can name the source of, so
+Talkie uses its own build of it instead, in [`packages/phonemizer`](packages/phonemizer/BUILD.md):
+the same wrapper around eSpeak NG compiled from a pinned commit, with the patches and the script
+that build it. It runs in a process of its own, never inside Talkie.
+
+Because the compiled eSpeak NG is committed, the GPL applies to sharing this repository as well as
+a built app: whoever passes on either must make its source available to recipients. That source
+is the pinned eSpeak NG commit plus what is in `packages/phonemizer/build/`; see
+[NOTICE](NOTICE).

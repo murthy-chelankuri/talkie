@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync } from 'fs'
 import { createRequire } from 'module'
 import { tmpdir } from 'os'
 import { dirname, join, sep } from 'path'
+import { requireCheckoutRoot } from '../checkoutRoot'
 
 /**
  * The runtime, the host page, the libraries and the templates, wherever this build keeps them.
@@ -45,7 +46,7 @@ function builtInCheckout(): string {
   // build — which ships the scripts already built and no esbuild — never asks for it.
   const { buildSync } = createRequire(__filename)('esbuild') as typeof import('esbuild')
   const out = mkdtempSync(join(tmpdir(), 'talkie-html-scene-'))
-  const root = join(__dirname, '..', '..', '..')
+  const root = requireCheckoutRoot('The HTML scene runtime')
   for (const [entry, file] of [['src/htmlScene/runtime/index.ts', 'runtime.js'], ['src/htmlScene/host/host.ts', 'host.js']]) {
     buildSync({ entryPoints: [join(root, entry)], bundle: true, format: 'iife', target: 'chrome120', outfile: join(out, file) })
   }
@@ -61,7 +62,7 @@ export function htmlSceneResource(name: string): { path: string; type: string } 
     return { path: join(fromShipped ? shipped : builtInCheckout(), name), type }
   }
   if (name === 'host.html') {
-    return { path: fromShipped ? join(shipped, name) : join(__dirname, '..', '..', 'htmlScene', 'host', 'host.html'), type }
+    return { path: fromShipped ? join(shipped, name) : join(requireCheckoutRoot('The HTML scene host'), 'src', 'htmlScene', 'host', 'host.html'), type }
   }
   if (name in LIBRARIES) {
     return { path: fromShipped ? join(shipped, name) : join(packageDir(LIBRARIES[name][0]), LIBRARIES[name][1]), type }
@@ -71,5 +72,5 @@ export function htmlSceneResource(name: string): { path: string; type: string } 
 
 export function templatesDir(): string {
   const shipped = join(shippedDir(), 'templates')
-  return existsSync(shipped) ? shipped : join(__dirname, '..', '..', '..', 'resources', 'html-templates')
+  return existsSync(shipped) ? shipped : join(requireCheckoutRoot('The HTML scene templates'), 'resources', 'html-templates')
 }

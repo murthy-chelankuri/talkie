@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Fill } from './clock'
 
-// Every scene was drawn against Remotion's AbsoluteFill. Whatever replaces it has to give the
+// Every scene was drawn against this layer. Whatever draws it has to give the
 // same layout, or slides lose their centring and media loses its size without any error.
 describe('Fill', () => {
   it('covers the whole frame as a column, so a slide can centre itself', () => {

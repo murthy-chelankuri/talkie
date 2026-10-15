@@ -3,15 +3,17 @@ import { randomBytes } from 'crypto'
 import { createReadStream, existsSync, readFileSync, statSync } from 'fs'
 import { dirname, extname, join, normalize, relative, sep } from 'path'
 import type { AddressInfo } from 'net'
-import type { TimelineItem } from '../../remotion/types'
+import type { TimelineItem } from '../../composition/types'
 import type { NarrationAudio } from '../project/projectApi'
 import { readActionLog } from '../capture/actionLog'
 import { VIDEO_TIME_LOG } from '../capture/rebaseActionLog'
-import { mergeFocuses, type ClickFocus } from '../../remotion/clickZoom'
+import { mergeFocuses, type ClickFocus } from '../../composition/clickZoom'
 import type { Caption as CaptionCue } from '../transcript/captions'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 import { htmlSceneResource } from '../htmlScene/resources'
 import { injectRuntime, scenePolicy } from '../htmlScene/policy'
+import { footageFrame } from './exporter/frameSource'
+import { exportPageResource } from './exporter/exportPage'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -80,6 +82,21 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
   const secret = randomBytes(16).toString('hex')
 
   return new Promise((resolve, reject) => {
+    /**
+     * Talkie's own files may be built on first use, and building can fail. That is one request
+     * that cannot be answered — the export or the scene check then says it could not load the
+     * page — not a reason to end the app: thrown inside this handler, nothing catches it but the
+     * start-up guard, which reported "Talkie could not start" and quit mid-export.
+     */
+    const lookUp = <T>(find: () => T | null): T | null => {
+      try {
+        return find()
+      } catch (err) {
+        console.error('Could not prepare one of Talkie’s own files:', err)
+        return null
+      }
+    }
+
     const server: Server = createServer((req, res) => {
       const refuse = (): void => {
         // The same answer as a missing file, so probing cannot tell a wrong guess from a wrong
@@ -107,8 +124,25 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
       // Talkie's own files for HTML scenes — the runtime, the headless host, the libraries — by name
       // from a fixed list, never by path, so nothing outside that list is reachable this way.
       const afterSecret = requestedPath.slice(secret.length + 1)
+      if (afterSecret.startsWith('/__talkie/export/')) {
+        const resource = lookUp(() => exportPageResource(afterSecret.slice('/__talkie/export/'.length)))
+        if (!resource || !existsSync(resource.path)) {
+          refuse()
+          return
+        }
+        res.writeHead(200, {
+          'Content-Type': resource.type,
+          // The export page draws from this server and nowhere else. Scenes' frames are allowed
+          // from here only, as in every other host (see CLAUDE.md's security invariants).
+          ...(resource.path.endsWith('index.html')
+            ? { 'Content-Security-Policy': "default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:*" }
+            : {})
+        })
+        createReadStream(resource.path).pipe(res)
+        return
+      }
       if (afterSecret.startsWith('/__talkie/')) {
-        const resource = htmlSceneResource(afterSecret.slice('/__talkie/'.length))
+        const resource = lookUp(() => htmlSceneResource(afterSecret.slice('/__talkie/'.length)))
         if (!resource || !existsSync(resource.path)) {
           refuse()
           return
@@ -151,6 +185,33 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
           'Content-Length': body.length
         })
         res.end(body)
+        return
+      }
+
+      // A recording's frame, for the export page — see exporter/frameSource.ts. On the video's
+      // own URL, so the per-run secret and the projects-folder boundary apply exactly as they do
+      // to the video itself.
+      const query = new URL(req.url ?? '/', 'http://127.0.0.1').searchParams
+      const asked = query.get('frame')
+      if (asked !== null && ['.mp4', '.webm'].includes(extname(filePath).toLowerCase())) {
+        // The reader names whose decoder this is, so closing an export can stop it; one with no
+        // name could never be stopped.
+        const reader = query.get('reader')
+        if (!/^\d+$/.test(asked) || !reader) {
+          refuse()
+          return
+        }
+        const frame = Number(asked)
+        footageFrame(reader, filePath, frame).then(
+          (png) => {
+            res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' })
+            res.end(png)
+          },
+          (err: unknown) => {
+            console.error(`Could not decode frame ${frame} of ${filePath}:`, err)
+            refuse()
+          }
+        )
         return
       }
 

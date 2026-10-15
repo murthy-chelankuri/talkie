@@ -31,7 +31,7 @@ import { VIDEO_TIME_LOG } from '../../src/main/capture/rebaseActionLog'
 import { takeShape } from '../../e2e/audio'
 import type { Page } from 'playwright'
 import type { TimelineItem } from '../../src/main/project/timeline/schema'
-import { FPS } from '../../src/remotion/constants'
+import { FPS } from '../../src/composition/constants'
 import type { Cut } from './tour/cutFootage'
 
 /**

@@ -5,7 +5,7 @@ import { dirname, join } from 'path'
 import { createProject, addTimelineItem } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
 import { gatherClipEvidence } from './clipEvidence'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 
 describe('gatherClipEvidence', () => {
   let baseDir: string

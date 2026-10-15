@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 
 /**
- * x264 and x265 are GPL, and they are what make Remotion's bundled ffmpeg a GPL binary. Asking
+ * x264 and x265 are GPL, and they are what make the ffmpeg Talkie ships a GPL binary. Asking
  * for them is what would put the obligation back: shipping a build would mean offering the
  * corresponding source to every recipient, and the Mac App Store would stay closed.
  *
@@ -52,15 +52,19 @@ describe('the encoders the app asks for', () => {
   it('encodes the stitched recording with the hardware encoder', () => {
     const source = readFileSync(join(MAIN, 'capture', 'stitchRecording.ts'), 'utf-8')
 
-    expect(source).toContain('h264_videotoolbox')
+    // The choice lives in src/main/media's table now; the stitch must ask it rather than name one.
+    expect(source).toContain("h264('intermediate')")
+    expect(readFileSync(join(MAIN, 'media', 'encoders.ts'), 'utf-8')).toContain('h264_videotoolbox')
     // VideoToolbox rejects both, so their presence would mean the encoder had been changed back.
     expect(source).not.toMatch(/'-crf'/)
     expect(source).not.toMatch(/'-preset'/)
   })
 
-  it('asks Remotion to render with hardware acceleration', () => {
-    const source = readFileSync(join(MAIN, 'render', 'renderProject.ts'), 'utf-8')
+  it('encodes the export with the hardware encoder', () => {
+    const source = readFileSync(join(MAIN, 'render', 'exporter', 'exportVideo.ts'), 'utf-8')
 
-    expect(source).toMatch(/hardwareAcceleration:\s*'(if-possible|required)'/)
+    expect(source).toContain("h264('export')")
+    expect(source).not.toMatch(/'-crf'/)
+    expect(source).not.toMatch(/'-preset'/)
   })
 })

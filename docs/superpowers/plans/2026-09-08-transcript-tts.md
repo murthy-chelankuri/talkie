@@ -6,14 +6,14 @@
 
 **Architecture:** A `TranscriptSegment` (Zod-validated, matching spec §4's shape) links free text to a `timelineItemId`. A `TTSProvider` interface has one v1 implementation (`sayTtsProvider`) that shells out to macOS's `say` + `afconvert` to produce a real WAV file (not the spec's illustrative `.mp3` — see Global Constraints for why). A pure WAV-header parser computes the resulting audio's duration without any new dependency, which then updates the linked timeline item's `duration` via a new `updateTimelineItemDuration` function.
 
-**Tech Stack:** macOS `say`/`afconvert` (both OS-builtin, no new npm dependency), on top of Plan 1's `ProjectAPI`, Plan 2's `TimelineItem` schema/registry and Remotion constants.
+**Tech Stack:** macOS `say`/`afconvert` (both OS-builtin, no new npm dependency), on top of Plan 1's `ProjectAPI`, Plan 2's `TimelineItem` schema/registry and composition constants.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-demo-editor-design.md`
 
 ## Global Constraints
 
 - `transcript.json` segments match spec §4's shape: `{id, text, timelineItemId, audioFile, status}`, with `status` one of `draft` | `edited` | `narrated` (spec §7).
-- Narration audio is stored as `.wav`, not the spec's illustrative `.mp3`. This is a deliberate, disclosed deviation: macOS has no reliable built-in MP3 *encoder* (only playback), while `say` → AIFF → `afconvert -f WAVE -d LEI16` → WAV is two well-established, zero-dependency macOS built-ins, and WAV is natively playable by Chromium (which Remotion's Player/renderer run on) — AIFF is not. The `audioFile` field still stores just the filename, same as spec's model; only the extension differs.
+- Narration audio is stored as `.wav`, not the spec's illustrative `.mp3`. This is a deliberate, disclosed deviation: macOS has no reliable built-in MP3 *encoder* (only playback), while `say` → AIFF → `afconvert -f WAVE -d LEI16` → WAV is two well-established, zero-dependency macOS built-ins, and WAV is natively playable by Chromium (which the preview player and the export run on) — AIFF is not. The `audioFile` field still stores just the filename, same as spec's model; only the extension differs.
 - `readTranscript`/`readTimeline` used for read-modify-write (adding/updating segments or items) must stay strict — never silently drop an item, or the next write would delete it. This mirrors the exact lesson from Plan 2's final review (a lenient read must never feed a persist path) and Plan 3's `readTimeline`.
 - All writes go through the existing `writeJsonAtomic`/Zod-validate pattern already established in `projectApi.ts` — no raw writes.
 - No comments explaining *what* code does — only where a non-obvious constraint needs flagging.
@@ -679,7 +679,7 @@ git commit -m "Add transcript and timeline-duration persistence functions"
 - Test: `src/main/transcript/narrate.test.ts`
 
 **Interfaces:**
-- Consumes: `readTranscript`, `updateTranscriptSegmentAudio`, `updateTimelineItemDuration` (Task 4), `sayTtsProvider` (Task 3), `getWavDurationSeconds` (Task 2), `FPS` (Plan 2, `src/remotion/constants.ts`), `findProjectDir` (Plan 1)
+- Consumes: `readTranscript`, `updateTranscriptSegmentAudio`, `updateTimelineItemDuration` (Task 4), `sayTtsProvider` (Task 3), `getWavDurationSeconds` (Task 2), `FPS` (Plan 2, `src/composition/constants.ts`), `findProjectDir` (Plan 1)
 - Produces: `narrateSegment(projectId: string, segmentId: string, baseDir?: string): Promise<TranscriptSegment>` — used by Task 6 (IPC handler)
 
 This is a real integration test — it runs the actual `say`/`afconvert` pipeline through `sayTtsProvider` and asserts on real files and real state changes.
@@ -741,7 +741,7 @@ import { findProjectDir } from '../project/paths'
 import { readTranscript, updateTranscriptSegmentAudio, updateTimelineItemDuration } from '../project/projectApi'
 import { sayTtsProvider } from '../tts/sayTtsProvider'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 import type { TranscriptSegment } from './schema'
 
 export async function narrateSegment(

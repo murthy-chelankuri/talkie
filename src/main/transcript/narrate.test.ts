@@ -17,7 +17,7 @@ import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
 import { updateSettings } from '../settings/settingsStore'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 describe('narrateSegment (real say + afconvert)', () => {
   it('synthesizes real audio and extends the linked timeline item to fit', async () => {

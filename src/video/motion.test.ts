@@ -3,14 +3,14 @@ import { interpolate, spring, type SpringConfig } from './motion'
 import samples from './springSamples.json'
 
 /**
- * Remotion's spring, sampled from remotion@4.0.522 while both were installed. Kept as data so
- * the motion of every slide can still be checked against what it was once Remotion is gone.
+ * The previous renderer's spring, sampled while both were installed. Kept as data so the motion
+ * of every slide can still be checked against what it always was.
  */
 type Sample = { fps: number; config: Partial<SpringConfig>; durationInFrames?: number; frames: [number, number][] }
 
 describe('a spring', () => {
   for (const sample of samples as Sample[]) {
-    it(`moves as Remotion's did for ${JSON.stringify(sample.config)} at ${sample.fps} fps over ${sample.durationInFrames ?? 'its own'} frames`, () => {
+    it(`moves as it always did for ${JSON.stringify(sample.config)} at ${sample.fps} fps over ${sample.durationInFrames ?? 'its own'} frames`, () => {
       for (const [frame, expected] of sample.frames) {
         expect(spring({ frame, fps: sample.fps, config: sample.config, durationInFrames: sample.durationInFrames })).toBeCloseTo(expected, 9)
       }
@@ -35,7 +35,7 @@ describe('interpolate', () => {
     expect(interpolate(15, [0, 10, 20], [0, 100, 0])).toBe(50)
   })
 
-  it('carries on past either end unless told to clamp, as Remotion did', () => {
+  it('carries on past either end unless told to clamp, as it always did', () => {
     expect(interpolate(2, [0, 1], [0, 10])).toBe(20)
     expect(interpolate(-1, [0, 1], [0, 10])).toBe(-10)
   })

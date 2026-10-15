@@ -17,20 +17,36 @@ files:
   # so the other five are left behind rather than shipped and never loaded.
   - '!node_modules/onnxruntime-node/bin/napi-v3/{linux,win32}/**'
   - '!node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/**'
+  # kokoro-js's browser build carries npm's phonemizer inside it, and with it an eSpeak NG nobody
+  # can name the source of. Node loads dist/kokoro.cjs, which uses packages/phonemizer; this file
+  # is never run, and shipping it would ship that GPL binary all the same. See packages/phonemizer.
+  - '!node_modules/kokoro-js/dist/kokoro.web.js'
 
 # Licence texts no package carries — the GPL for FFmpeg and eSpeak NG, and ONNX Runtime's notices.
 # Installed at Contents/Resources/licences/, outside the archive, where a person can open them.
 extraResources:
   - from: licences
     to: licences
+  # The app is Electron, and so Chromium: 779 components under their own terms, among them the
+  # LGPL FFmpeg Chromium plays media with. Electron's download carries both texts beside
+  # Electron.app, and electron-builder leaves them behind on macOS, so a packaged Talkie shipped
+  # Chromium with none of its licences. Taken from the installed electron, which is the version
+  # electron-builder packages.
+  - from: node_modules/electron/dist/LICENSE
+    to: licences/electron/LICENSE
+  - from: node_modules/electron/dist/LICENSES.chromium.html
+    to: licences/electron/LICENSES.chromium.html
+  # Talkie's own ffmpeg and ffprobe, fetched by scripts/fetchFfmpeg.mjs. Outside the archive
+  # because nothing can be executed from inside it; src/main/media finds them here.
+  - from: vendor/ffmpeg/${platform}-${arch}
+    to: ffmpeg
   # The example projects, built by `npm run examples:rebuild` and copied into ~/Talkie/Projects on first
   # launch. Outside the archive because they are copied with plain fs calls. See installExamples.ts.
   - from: examples/projects
     to: examples
 
-# Native binaries cannot be loaded from inside an asar archive. Remotion's compositor carries the
-# ffmpeg this app uses for transcoding, frame sampling and audio conversion; Playwright's driver
-# is a node process it spawns. Both have to sit on the filesystem as real files.
+# Native binaries cannot be loaded from inside an asar archive, and Playwright's driver is a node
+# process it spawns; each has to sit on the filesystem as real files.
 asarUnpack:
   # The MCP server is spawned by an outside agent as a plain node process, which cannot read a
   # file inside an asar archive. It has to be a real file on disk for `node <path>` to work.
@@ -38,7 +54,8 @@ asarUnpack:
   # HTML scenes' runtime, libraries and templates. The MCP server reads them as plain node to serve
   # scenes it checks, and plain node cannot read inside the archive.
   - out/html-scene/**
-  - node_modules/@remotion/compositor-**/**
+  # The export page, fetched by the headless browser the export draws in. See exporter/exportPage.ts.
+  - out/export-page/**
   - node_modules/playwright/**
   - node_modules/playwright-core/**
   # Importing a deck means rasterising a PDF, which the MCP server does itself rather than
@@ -50,10 +67,6 @@ asarUnpack:
   # Drawing a diagram means reading mermaid's own files off disk and serving them to a headless
   # page, which cannot be done from inside the archive.
   - node_modules/mermaid/**
-  # The composition is served to a headless page the same way, so it cannot live in the archive
-  # either. Built by scripts/bundleRemotion.mjs — see remotionBundle.ts for why it is shipped
-  # rather than made on demand.
-  - out/remotion/**
   # Kokoro runs in a forked worker (out/main/kokoroWorker.cjs). ONNX Runtime is a native library,
   # which cannot load from inside the archive; kokoro-js reads its voice files off disk beside its
   # own code; and the rest are what those load. `sharp` is the stub in stubs/sharp — plain

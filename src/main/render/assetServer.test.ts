@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { request as httpRequest } from 'http'
+import { runFfmpeg } from '../media'
+import { closeReaders } from './exporter/frameSource'
 import { getAssetServer, closeAssetServer, resolveAssetUrl, resolveTimelineAssetUrls } from './assetServer'
 
 describe('asset server', () => {
@@ -284,6 +286,26 @@ describe('asset server', () => {
 
     rmSync(rootDir, { recursive: true, force: true })
   })
+
+  it('hands the export a recording’s frame from the video’s own URL', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))
+    await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=30:duration=2', '-c:v', 'mpeg4', '-q:v', '2', '-y', join(rootDir, 'clip.mp4')])
+
+    try {
+      const server = await getAssetServer(rootDir)
+      const frame = await fetch(`${server.url}/clip.mp4?frame=3&reader=x-0`)
+      const body = Buffer.from(await frame.arrayBuffer())
+      const refused = await fetch(`${server.url}/clip.mp4?frame=-1&reader=x-0`)
+
+      expect(frame.status).toBe(200)
+      expect(frame.headers.get('content-type')).toBe('image/png')
+      expect(body.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+      expect(refused.status).toBe(404)
+    } finally {
+      closeReaders('x')
+      rmSync(rootDir, { recursive: true, force: true })
+    }
+  }, 60_000)
 
   it('serves a .wav file with the audio/wav content type', async () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'demo-editor-asset-test-'))

@@ -1,5 +1,4 @@
-import { createHash } from 'crypto'
-import { createReadStream, existsSync, rmSync, statSync } from 'fs'
+import { statSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -28,18 +27,44 @@ export const KOKORO_MODEL = {
 /** What the download is, said to the person about to start it. */
 export const KOKORO_DOWNLOAD_MB = 163
 
+export interface KokoroFile {
+  /** Where it sits inside the revision's folder, which is also its path on Hugging Face. */
+  path: string
+  bytes: number
+  sha256: string
+}
+
+/**
+ * Everything Kokoro reads at that revision, and nothing else: what a download leaves on disk.
+ *
+ * Pinned to the byte, so a copy brought in by hand can be checked as strictly as one Talkie
+ * fetched. That matters most behind a proxy, which answers a blocked request with a page of its
+ * own — saved under the right name, it looks like the file until the model fails to load.
+ */
+export const KOKORO_FILES: KokoroFile[] = [
+  { path: 'config.json', bytes: 44, sha256: 'df34b4f930b23447cd4dc410fabfb42eb3f24e803e6c3f97d618fb359380a36f' },
+  { path: 'tokenizer.json', bytes: 3497, sha256: '77a02c8e164413299b4b4c403b14f8e0e1c1b727db4d46a09d6327b861060a34' },
+  { path: 'tokenizer_config.json', bytes: 113, sha256: 'be1cb066d6ef6b074b3f15e6a6dd21ac88ff3cdaedf325f0aaed686c70f75d20' },
+  { path: `onnx/model_${KOKORO_MODEL.dtype}.onnx`, bytes: KOKORO_MODEL.weightsBytes, sha256: KOKORO_MODEL.weightsSha256 }
+]
+
+/** Where a file can be fetched by hand: the pinned revision, not whatever is newest. */
+export function kokoroFileUrl(file: KokoroFile): string {
+  return `https://huggingface.co/${KOKORO_MODEL.id}/resolve/${KOKORO_MODEL.revision}/${file.path}`
+}
+
 /** Beside the projects and the settings, so removing ~/Talkie removes this too. */
 export function kokoroCacheDir(baseDir: string = homedir()): string {
   return join(baseDir, 'Talkie', 'Models')
 }
 
 /** Where transformers.js keeps a pinned revision inside the cache: `<id>/<revision>/…`. */
-function revisionDir(baseDir: string): string {
-  return join(kokoroCacheDir(baseDir), KOKORO_MODEL.id, KOKORO_MODEL.revision)
+export function kokoroModelDir(baseDir: string = homedir()): string {
+  return revisionDir(baseDir)
 }
 
-function weightsPath(baseDir: string): string {
-  return join(revisionDir(baseDir), 'onnx', `model_${KOKORO_MODEL.dtype}.onnx`)
+function revisionDir(baseDir: string): string {
+  return join(kokoroCacheDir(baseDir), KOKORO_MODEL.id, KOKORO_MODEL.revision)
 }
 
 /**
@@ -48,34 +73,14 @@ function weightsPath(baseDir: string): string {
  * By exact size, because the weights are written to disk as they arrive: a file part way through
  * its download has the right name and most of the bytes, and anything looser than the exact size
  * called a half-written model ready. Cheap enough to ask on every clip; the hash is checked once,
- * when the download finishes — see verifyKokoroDownload.
+ * as each file arrives — see kokoroDownload.ts.
  */
 export function isKokoroDownloaded(baseDir: string = homedir()): boolean {
   try {
-    return (
-      existsSync(join(revisionDir(baseDir), 'tokenizer.json')) &&
-      statSync(weightsPath(baseDir)).size === KOKORO_MODEL.weightsBytes
-    )
+    // Every file, at its size. A download writes them all, but a copy made by hand can leave one
+    // out, and Kokoro cannot load without any of them while it is kept off the network.
+    return KOKORO_FILES.every((file) => statSync(join(revisionDir(baseDir), file.path)).size === file.bytes)
   } catch {
     return false
   }
-}
-
-/**
- * Check what arrived is what was published, and throw away anything that is not.
- *
- * A model is code the app runs on every clip; a corrupted file fails in ways that look like bugs,
- * and a substituted one is the reason pinning a revision is worth doing at all.
- */
-export async function verifyKokoroDownload(baseDir: string = homedir()): Promise<boolean> {
-  const path = weightsPath(baseDir)
-  const hash = createHash('sha256')
-  try {
-    for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer)
-  } catch {
-    return false
-  }
-  if (hash.digest('hex') === KOKORO_MODEL.weightsSha256) return true
-  rmSync(path, { force: true })
-  return false
 }

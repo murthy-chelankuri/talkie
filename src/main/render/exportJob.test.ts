@@ -41,7 +41,9 @@ describe('running an export', () => {
     const result = runExport(
       'p4',
       (_id, options) =>
-        new Promise((_resolve, reject) => options.cancelSignal?.(() => reject(new Error('renderMedia() got cancelled')))),
+        new Promise((_resolve, reject) =>
+          options.signal?.addEventListener('abort', () => reject(new Error('The export was cancelled.')))
+        ),
       vi.fn()
     )
     expect(cancelExport('p4')).toBe(true)
@@ -72,7 +74,7 @@ describe('running an export', () => {
         id,
         (_id, options) =>
           new Promise((_resolve, reject) =>
-            options.cancelSignal?.(() =>
+            options.signal?.addEventListener('abort', () =>
               setTimeout(() => {
                 stopped.push(id)
                 reject(new Error('cancelled'))

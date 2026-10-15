@@ -7,12 +7,13 @@ import { createProject } from '../project/projectApi'
 import { startRecordingSession } from './recordSession'
 import { importRecordedSession } from './importRecordedSession'
 import { readActionLog } from './actionLog'
+import { ffmpegPath } from '../media'
 import { onVideoClock, VIDEO_TIME_LOG } from './rebaseActionLog'
 
 /** What one pixel of the video is, this many seconds in. */
 function colourAt(videoPath: string, seconds: number): string {
   const raw = execFileSync(
-    'ffmpeg',
+    ffmpegPath(),
     // -ss before -i seeks without decoding everything up to that point.
     ['-ss', seconds.toFixed(3), '-i', videoPath, '-frames:v', '1', '-vf', 'crop=2:2:100:100',
       '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'],

@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
 import {
   createProject,
   addTimelineItem,
@@ -11,12 +10,13 @@ import {
   readTranscript,
   updateTranscriptSegmentAudio
 } from '../project/projectApi'
+import { runFfmpeg } from '../media'
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
 import { saveRecordedNarration } from './recordNarration'
 import { repairNarrationDurations } from './repairNarrationDurations'
 import { getWavDurationSeconds } from '../tts/wavDuration'
-import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../remotion/constants'
+import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
 /**
  * The regression that reached the user, written as the rule it broke.
@@ -49,14 +49,7 @@ function assertNarrationFits(projectId: string, baseDir: string): void {
 async function webmTake(seconds: number): Promise<Uint8Array> {
   const dir = mkdtempSync(join(tmpdir(), 'talkie-take-'))
   const path = join(dir, 'take.webm')
-  await RenderInternals.callFf({
-    bin: 'ffmpeg',
-    args: ['-f', 'lavfi', '-i', `sine=frequency=200:duration=${seconds}`, '-c:a', 'libopus', '-y', path],
-    indent: false,
-    logLevel: 'error',
-    binariesDirectory: null,
-    cancelSignal: undefined
-  })
+  await runFfmpeg(['-f', 'lavfi', '-i', `sine=frequency=200:duration=${seconds}`, '-c:a', 'libopus', '-y', path])
   const { readFileSync } = await import('fs')
   const bytes = new Uint8Array(readFileSync(path))
   rmSync(dir, { recursive: true, force: true })

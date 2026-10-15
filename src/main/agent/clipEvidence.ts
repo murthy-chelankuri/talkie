@@ -2,13 +2,12 @@ import { homedir } from 'os'
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, join } from 'path'
-import { RenderInternals } from '@remotion/renderer'
 import { readActionLog } from '../capture/actionLog'
 import { VIDEO_TIME_LOG } from '../capture/rebaseActionLog'
-import { ffOptions } from '../render/binaries'
+import { runFfmpeg } from '../media'
 import { cleanActionLog, type CleanAction } from './cleanActionLog'
 import { readTimeline } from '../project/projectApi'
-import { FPS } from '../../remotion/constants'
+import { FPS } from '../../composition/constants'
 import type { TimelineItem } from '../project/timeline/schema'
 
 /** Enough stills to show how a clip changes, few enough to stay cheap to send. */
@@ -191,13 +190,8 @@ async function sampleFrames(
     const outputPath = join(outputDir, `frame-${index}.jpg`)
 
     try {
-      await RenderInternals.callFf({
-        bin: 'ffmpeg',
-        // -ss before -i seeks without decoding everything up to that point.
-        args: ['-ss', at.toFixed(3), '-i', videoPath, '-frames:v', '1', '-q:v', '4', '-y', outputPath],
-        ...ffOptions(),
-        cancelSignal: undefined
-      })
+      // -ss before -i seeks without decoding everything up to that point.
+      await runFfmpeg(['-ss', at.toFixed(3), '-i', videoPath, '-frames:v', '1', '-q:v', '4', '-y', outputPath])
       if (existsSync(outputPath)) paths.push(outputPath)
     } catch (err) {
       // A clip we cannot sample is still worth narrating from its action log alone.

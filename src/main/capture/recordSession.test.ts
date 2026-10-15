@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync, existsSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { createProject } from '../project/projectApi'
-import { getVideoMetadata } from '@remotion/renderer'
-import { WIDTH, HEIGHT } from '../../remotion/constants'
+import { probeMedia } from '../media'
+import { WIDTH, HEIGHT } from '../../composition/constants'
 import { startRecordingSession } from './recordSession'
 import { readActionLog } from './actionLog'
 
@@ -64,7 +64,7 @@ describe('what a recording is worth looking at', () => {
     await new Promise((resolve) => setTimeout(resolve, 1200))
     const { clips } = await session.stop()
 
-    const { width, height } = await getVideoMetadata(clips[0].videoPath)
+    const { width, height } = await probeMedia(clips[0].videoPath)
     expect({ width, height }).toEqual({ width: WIDTH, height: HEIGHT })
 
     rmSync(baseDir, { recursive: true, force: true })

@@ -73,16 +73,16 @@ export const LAUNCH_ARGS = [
 ]
 
 /**
- * A browser for Remotion to render with, as a path rather than a channel.
+ * A browser for the export to render with, as a path rather than a channel.
  *
- * Handed over so it never goes looking for one of its own. Left to itself it works out where to
- * download a browser to by walking up from the current directory until it finds a package.json —
+ * Handed over so nothing goes looking for one of its own. A renderer left to itself works out where
+ * to download a browser by walking up from the current directory until it finds a package.json —
  * and an app opened from Finder is started in `/`, where there is none and nothing may be
- * written. Export failed there with `ENOENT: mkdir '/.remotion'`, which names the symptom and
+ * written. Export once failed there with an `ENOENT` from `mkdir`, which names the symptom and
  * nothing else.
  *
- * Chrome's headless shell first, when Playwright has installed one, because it is what Remotion
- * is built to render with. A full Chrome hands each tab its frames at its own pace: a third of
+ * Chrome's headless shell first, when Playwright has installed one, because it is built for
+ * drawing pages unattended. A full Chrome hands each tab its frames at its own pace: a third of
  * them waited 300–750ms to be set, whatever the scene, so adding tabs, the GPU or fewer pixels
  * changed nothing and a 55-second demo took three minutes. The shell drew the same video in 53
  * seconds. The installed browser is the fallback, so export still works where there is no shell.

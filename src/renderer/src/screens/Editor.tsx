@@ -40,7 +40,7 @@ import { useScriptFocus } from '../components/editor/useScriptFocus'
 import { diagramStamp } from '../../../main/themes/diagrams'
 import { SceneEditor } from '../components/SceneEditor'
 import { AboutProjectDialog } from '../components/AboutProjectDialog'
-import { ThemeContext, type RenderTheme } from '../../../remotion/renderTheme'
+import { ThemeContext, type RenderTheme } from '../../../composition/renderTheme'
 import { EMPTY_CONTEXT, hasProjectContext } from '../../../main/project/projectContext'
 import { TransportBar } from '../components/TransportBar'
 import { Button } from '../components/ui/Button'
@@ -52,10 +52,10 @@ import { onSettingsChanged } from '../lib/settingsChanged'
 import { settingsClient, type Voice } from '../api/projectClient'
 import { Spinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
-import { DemoComposition } from '../../../remotion/DemoComposition'
-import { FPS, WIDTH, HEIGHT } from '../../../remotion/constants'
-import { computeTimelineDuration } from '../../../remotion/timelineDuration'
-import type { TimelineItem as RemotionTimelineItem } from '../../../remotion/types'
+import { DemoComposition } from '../../../composition/DemoComposition'
+import { FPS, WIDTH, HEIGHT } from '../../../composition/constants'
+import { computeTimelineDuration } from '../../../composition/timelineDuration'
+import type { TimelineItem as CompositionTimelineItem } from '../../../composition/types'
 
 /**
  * A draft broke one of this project's rules.
@@ -749,11 +749,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }
 
   // Cast: schema.ts's zod-inferred TimelineItem treats `data` as optional (z.unknown() accepts
-  // undefined), while remotion/types.ts's hand-written TimelineItem requires it. Both describe
+  // undefined), while composition/types.ts's hand-written TimelineItem requires it. Both describe
   // the same real shape validated by TimelineItemSchema.superRefine, so the optionality is a
   // static-typing artifact, not a runtime possibility. Same workaround as renderProject.ts /
   // timelineHandlers.ts.
-  const remotionTimeline = timeline as unknown as RemotionTimelineItem[]
+  const compositionTimeline = timeline as unknown as CompositionTimelineItem[]
 
   // The timeline and the script, built once and placed either under the stage or, while the
   // script has the window, on their own.
@@ -839,7 +839,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <Timeline
           timeline={timeline}
           segments={segments}
-          totalFrames={computeTimelineDuration(remotionTimeline)}
+          totalFrames={computeTimelineDuration(compositionTimeline)}
           playerRef={playerRef}
           selectedItemId={selectedItemId}
           onSeek={handleSeek}
@@ -904,7 +904,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                   {rail.open === 'project' && project && (
                     <ProjectPanel
                       project={project}
-                      totalFrames={computeTimelineDuration(remotionTimeline)}
+                      totalFrames={computeTimelineDuration(compositionTimeline)}
                       clipCount={timeline.length}
                       narrated={progress.voiced}
                       hasContext={hasProjectContext(project.context)}
@@ -971,8 +971,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                   <Preview
                     ref={playerRef}
                     component={DemoComposition}
-                    inputProps={{ timeline: remotionTimeline, theme: renderTheme ?? null }}
-                    durationInFrames={computeTimelineDuration(remotionTimeline)}
+                    inputProps={{ timeline: compositionTimeline, theme: renderTheme ?? null }}
+                    durationInFrames={computeTimelineDuration(compositionTimeline)}
                     fps={FPS}
                     width={WIDTH}
                     height={HEIGHT}
@@ -993,7 +993,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               <TransportBar
                 playerRef={playerRef}
                 timeline={timeline}
-                totalFrames={computeTimelineDuration(remotionTimeline)}
+                totalFrames={computeTimelineDuration(compositionTimeline)}
                 onSeek={handleSeek}
               />
             )}
@@ -1032,7 +1032,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           <TransportBar
             playerRef={playerRef}
             timeline={timeline}
-            totalFrames={computeTimelineDuration(remotionTimeline)}
+            totalFrames={computeTimelineDuration(compositionTimeline)}
             onSeek={handleSeek}
           />
         )}

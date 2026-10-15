@@ -10,6 +10,7 @@ import {
   Plug,
   RotateCcw,
   Download,
+  FolderOpen,
   Scale,
   Sparkles,
   Subtitles,
@@ -27,7 +28,10 @@ import {
   type ReadinessCheck,
   type McpConnection,
   type SpeechEngineDescription,
-  type KokoroDownload
+  type KokoroDownload,
+  type KokoroCheck,
+  type KokoroImport,
+  type KokoroManual
 } from '../api/projectClient'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
@@ -679,7 +683,134 @@ function KokoroDownloadRow({
           </Button>
         </div>
       )}
+      {!status?.downloading && (
+        <KokoroManualPanel
+          // Open on its own once the download has failed: that is when it is the way forward.
+          key={status?.error ? 'failed' : 'idle'}
+          open={Boolean(status?.error)}
+          onReady={onReady}
+        />
+      )}
     </div>
+  )
+}
+
+/** What a check or an import found, in terms of what is left to do. */
+function describeKokoroFiles(result: KokoroCheck & Partial<KokoroImport>): string {
+  if (result.ready) return 'The voice is in place.'
+  const parts: string[] = []
+  if (result.placed?.length) parts.push(`Added ${result.placed.join(', ')}.`)
+  if (result.unrecognised?.length) {
+    parts.push(`Not one of the voice’s files: ${result.unrecognised.join(', ')}.`)
+  }
+  if (result.wrong.length) {
+    parts.push(`Not the published file, so not used — download it again: ${result.wrong.join(', ')}.`)
+  }
+  if (result.missing.length) parts.push(`Still needed: ${result.missing.join(', ')}.`)
+  return parts.join(' ')
+}
+
+/**
+ * The download, done by hand: for a machine whose proxy will not let the app reach Hugging Face.
+ *
+ * The links open in the browser, which is usually let through where the app is not — it is signed
+ * in to the proxy. The files can come from anywhere, though; Talkie recognises each by its
+ * contents and checks it as strictly as its own download, so nothing has to be named or placed
+ * exactly. The folder is given too, for anyone who would rather copy them in themselves.
+ */
+function KokoroManualPanel({ open, onReady }: { open: boolean; onReady: () => void | Promise<void> }): JSX.Element {
+  const [manual, setManual] = useState<KokoroManual | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ text: string; ready: boolean } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    void settingsClient.kokoroManual().then(setManual)
+  }, [])
+
+  async function settle(found: (KokoroCheck & Partial<KokoroImport>) | null): Promise<void> {
+    if (!found) return
+    setResult({ text: describeKokoroFiles(found), ready: found.ready })
+    if (found.ready) await onReady()
+  }
+
+  async function run(action: () => Promise<(KokoroCheck & Partial<KokoroImport>) | null>): Promise<void> {
+    setBusy(true)
+    try {
+      await settle(await action())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function copyInstructions(): void {
+    if (!manual) return
+    void navigator.clipboard.writeText(manual.instructions).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    })
+  }
+
+  const size = (bytes: number): string =>
+    bytes >= 1_000_000 ? `${Math.round(bytes / 1_000_000)} MB` : bytes >= 1000 ? `${(bytes / 1000).toFixed(1)} KB` : `${bytes} bytes`
+
+  return (
+    <details open={open}>
+      <summary className="cursor-pointer text-[11px] text-accent">Download it yourself instead</summary>
+      {manual && (
+        <div className="mt-2 flex flex-col gap-2.5">
+          <p className="text-[11px] leading-relaxed text-text-muted">
+            If a proxy or firewall blocks the download, open these four files in your browser — or
+            fetch them on another machine — and add them here. The largest is served from a Hugging
+            Face download host (*.hf.co), which the proxy may need to allow as well.
+          </p>
+          <ol className="flex flex-col gap-1 rounded bg-raised px-2.5 py-2">
+            {manual.files.map((file) => (
+              <li key={file.path} className="flex items-baseline justify-between gap-3 text-[11px]">
+                <a href={file.url} target="_blank" rel="noreferrer" className="truncate text-accent hover:underline">
+                  {file.path}
+                </a>
+                <span className="shrink-0 tabular-nums text-text-muted">{size(file.bytes)}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void run(settingsClient.kokoroImport)} disabled={busy}>
+              {busy ? <Spinner size="sm" label="Checking the files" /> : <Download size={14} />}
+              Choose downloaded files…
+            </Button>
+            <Button variant="ghost" onClick={copyInstructions}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'Copied' : 'Copy instructions'}
+            </Button>
+          </div>
+          <p className="text-[11px] leading-relaxed text-text-muted">
+            Pick all four at once; whatever the browser named them, each is recognised by its
+            contents and checked against the published file. Or copy them yourself into{' '}
+            <code className="break-all font-mono text-[10px] text-text">{manual.displayFolder}</code>, keeping
+            their names and the <code className="font-mono text-[10px] text-text">onnx</code> folder.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => void settingsClient.kokoroShowFolder()}>
+              <FolderOpen size={14} />
+              Show folder
+            </Button>
+            <Button variant="ghost" onClick={() => void run(settingsClient.kokoroCheck)} disabled={busy}>
+              <CheckCircle2 size={14} />
+              Check the files
+            </Button>
+          </div>
+          {result && (
+            <p
+              role="status"
+              className={cn('text-[11px] leading-relaxed', result.ready ? 'text-text' : 'text-danger')}
+            >
+              {result.text}
+            </p>
+          )}
+        </div>
+      )}
+    </details>
   )
 }
 

@@ -20,7 +20,11 @@ vi.mock('../api/projectClient', () => ({
     mcpCreateToken: vi.fn(),
     mcpRevokeToken: vi.fn(),
     kokoroDownload: vi.fn(),
-    kokoroStatus: vi.fn()
+    kokoroStatus: vi.fn(),
+    kokoroManual: vi.fn(),
+    kokoroImport: vi.fn(),
+    kokoroCheck: vi.fn(),
+    kokoroShowFolder: vi.fn()
   }
 }))
 
@@ -68,6 +72,17 @@ beforeEach(() => {
   vi.mocked(settingsClient.readiness).mockResolvedValue([check()] as never)
   vi.mocked(settingsClient.kokoroStatus).mockResolvedValue({ downloaded: false, downloading: false, loaded: 0, total: 0 } as never)
   vi.mocked(settingsClient.kokoroDownload).mockResolvedValue(undefined as never)
+  vi.mocked(settingsClient.kokoroManual).mockResolvedValue({
+    folder: '/Users/someone/Talkie/Models/onnx-community/Kokoro-82M-v1.0-ONNX/1939ad2',
+    displayFolder: '~/Talkie/Models/onnx-community/Kokoro-82M-v1.0-ONNX/1939ad2',
+    files: ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'onnx/model_fp16.onnx'].map((path, index) => ({
+      path,
+      url: `https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2/${path}`,
+      bytes: [44, 3497, 113, 163_234_740][index],
+      sha256: 'a'.repeat(64)
+    })),
+    instructions: 'Talkie: downloading the Kokoro voice by hand'
+  } as never)
   vi.mocked(settingsClient.mcpConnection).mockResolvedValue({
     serverPath: '/tmp/talkie-mcp.mjs',
     enabled: false,
@@ -125,6 +140,59 @@ describe('SettingsDialog', () => {
 
     expect(await screen.findByText(/Could not reach Hugging Face/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument()
+  })
+
+  it('opens the way to download it by hand once the download has failed, linking every file', async () => {
+    vi.mocked(settingsClient.kokoroStatus).mockResolvedValue({
+      downloaded: false,
+      downloading: false,
+      loaded: 0,
+      total: 0,
+      error: 'A proxy or firewall stopped the download from Hugging Face. Download the files yourself and add them below.'
+    } as never)
+    render(<SettingsDialog onClose={vi.fn()} />)
+
+    const weights = await screen.findByRole('link', { name: 'onnx/model_fp16.onnx' })
+    expect(weights).toBeVisible()
+    expect(weights).toHaveAttribute('href', 'https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2/onnx/model_fp16.onnx')
+    expect(screen.getAllByRole('link', { name: /json|onnx/ })).toHaveLength(4)
+    expect(screen.getByText('~/Talkie/Models/onnx-community/Kokoro-82M-v1.0-ONNX/1939ad2')).toBeInTheDocument()
+  })
+
+  it('takes the downloaded files, and makes Kokoro available once they are all there', async () => {
+    vi.mocked(settingsClient.kokoroImport).mockResolvedValue({
+      ready: true,
+      missing: [],
+      wrong: [],
+      placed: ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'onnx/model_fp16.onnx'],
+      unrecognised: []
+    } as never)
+    render(<SettingsDialog onClose={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Download it yourself instead'))
+    vi.mocked(settingsClient.speechEngines).mockClear()
+
+    await userEvent.click(screen.getByRole('button', { name: /Choose downloaded files/ }))
+
+    expect(await screen.findByText('The voice is in place.')).toBeInTheDocument()
+    await waitFor(() => expect(settingsClient.speechEngines).toHaveBeenCalled())
+  })
+
+  it('says what the chosen files left out, and which were not the voice at all', async () => {
+    vi.mocked(settingsClient.kokoroImport).mockResolvedValue({
+      ready: false,
+      missing: ['onnx/model_fp16.onnx'],
+      wrong: [],
+      placed: ['config.json'],
+      unrecognised: ['blocked.html']
+    } as never)
+    render(<SettingsDialog onClose={vi.fn()} />)
+    await userEvent.click(await screen.findByText('Download it yourself instead'))
+
+    await userEvent.click(screen.getByRole('button', { name: /Choose downloaded files/ }))
+
+    expect(
+      await screen.findByText('Added config.json. Not one of the voice’s files: blocked.html. Still needed: onnx/model_fp16.onnx.')
+    ).toBeInTheDocument()
   })
 
   it('lists the voices of the engine just chosen, not the one before it', async () => {
