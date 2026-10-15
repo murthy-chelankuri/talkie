@@ -37,6 +37,8 @@ const OBLIGATIONS: Record<string, string> = {
     'The package’s own code is Apache-2.0; the eSpeak NG compiled into it is GPL-3.0-or-later. It runs only in the Kokoro voice’s own process, apart from the rest of the app.',
   'GPL-2.0-or-later':
     'Copyleft. The source must be offered to anyone who receives the binary, and no further restrictions may be placed on their rights — which is the clause that has historically conflicted with app store terms.',
+  'LGPL-2.1-or-later':
+    'Library copyleft. The library’s source must be offered to anyone who receives it, and they must be free to swap in their own build of it — which a separate library, as this one is, allows. The rest of the app is unaffected.',
   'MPL-2.0':
     'File-level copyleft. Source for the covered files must be made available; the rest of this app is unaffected.',
   '(MPL-2.0 OR Apache-2.0)':
@@ -52,6 +54,7 @@ const PROMINENCE = [
   'GPL-2.0-or-later',
   'GPL-3.0-or-later',
   'Apache-2.0 AND GPL-3.0-or-later',
+  'LGPL-2.1-or-later',
   'EPL-2.0',
   'MPL-2.0',
   '(MPL-2.0 OR Apache-2.0)',

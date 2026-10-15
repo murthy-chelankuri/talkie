@@ -23,6 +23,15 @@ files:
 extraResources:
   - from: licences
     to: licences
+  # The app is Electron, and so Chromium: 779 components under their own terms, among them the
+  # LGPL FFmpeg Chromium plays media with. Electron's download carries both texts beside
+  # Electron.app, and electron-builder leaves them behind on macOS, so a packaged Talkie shipped
+  # Chromium with none of its licences. Taken from the installed electron, which is the version
+  # electron-builder packages.
+  - from: node_modules/electron/dist/LICENSE
+    to: licences/electron/LICENSE
+  - from: node_modules/electron/dist/LICENSES.chromium.html
+    to: licences/electron/LICENSES.chromium.html
   # Talkie's own ffmpeg and ffprobe, fetched by scripts/fetchFfmpeg.mjs. Outside the archive
   # because nothing can be executed from inside it; src/main/media finds them here.
   - from: vendor/ffmpeg/${platform}-${arch}
