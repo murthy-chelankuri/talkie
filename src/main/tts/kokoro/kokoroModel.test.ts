@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, truncateSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, truncateSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { KOKORO_FILES, KOKORO_MODEL, isKokoroDownloaded, kokoroCacheDir, verifyKokoroDownload } from './kokoroModel'
+import { KOKORO_FILES, KOKORO_MODEL, isKokoroDownloaded, kokoroCacheDir } from './kokoroModel'
 
 let baseDir: string
 
@@ -61,13 +61,4 @@ describe('knowing whether the voice is here', () => {
   it('keeps it beside the projects, so removing ~/Talkie removes it too', () => {
     expect(kokoroCacheDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Models'))
   })
-})
-
-describe('checking a download', () => {
-  it('throws away weights that are not the ones published', async () => {
-    const path = weightsOf(KOKORO_MODEL.weightsBytes)
-
-    expect(await verifyKokoroDownload(baseDir)).toBe(false)
-    expect(existsSync(path)).toBe(false)
-  }, 60_000)
 })

@@ -38,37 +38,25 @@ type KokoroVoice = NonNullable<Parameters<KokoroTTS['generate']>[1]>['voice']
 let loaded: { key: string; tts: Promise<KokoroTTS> } | null = null
 
 /**
- * The model, loaded once per process and kept.
+ * The model, loaded once per process and kept, from files already on disk.
  *
- * Loading reads a few hundred megabytes off disk; every clip after the first reuses it. Only a
- * `prepare` may fetch it from the network — a `speak` that finds it missing fails, rather than
- * quietly starting a large download in the middle of narrating a clip.
+ * Loading reads a few hundred megabytes off disk; every clip after the first reuses it. This
+ * process never fetches anything: Node's own network ignores the Mac's proxy and its keychain, so
+ * on a corporate network it could not reach Hugging Face where the browser could. The main process
+ * fetches the files through Electron's network instead (kokoroDownload.ts), and a `prepare` here
+ * only proves they load.
  */
-function model(spec: Model, allowDownload: boolean, onProgress?: (loaded: number, total: number) => void): Promise<KokoroTTS> {
+function model(spec: Model): Promise<KokoroTTS> {
   const key = `${spec.id}@${spec.revision}:${spec.dtype}`
   if (loaded?.key === key) return loaded.tts
 
   env.cacheDir = spec.cacheDir
   env.allowLocalModels = false
-  // transformers.js will not run with both sources off, even when everything is cached. So when
-  // speaking, the "remote" is a port nothing listens on: a cached model loads as normal, and a
-  // missing one fails at once instead of quietly starting a download mid-narration.
+  // transformers.js will not run with both sources off, even when everything is cached. So the
+  // "remote" is a port nothing listens on: a cached model loads as normal, and a missing one fails
+  // at once instead of quietly starting a download of its own.
   env.allowRemoteModels = true
-  env.remoteHost = allowDownload ? 'https://huggingface.co/' : 'http://127.0.0.1:9/'
-
-  // Bytes per file, summed: the model and its tokenizer come down as several files at once.
-  const files = new Map<string, { loaded: number; total: number }>()
-  const progress_callback = (event: { status: string; file?: string; loaded?: number; total?: number }): void => {
-    if (event.status !== 'progress' || !event.file || !onProgress) return
-    files.set(event.file, { loaded: event.loaded ?? 0, total: event.total ?? 0 })
-    let sumLoaded = 0
-    let sumTotal = 0
-    for (const file of files.values()) {
-      sumLoaded += file.loaded
-      sumTotal += file.total
-    }
-    onProgress(sumLoaded, sumTotal)
-  }
+  env.remoteHost = 'http://127.0.0.1:9/'
 
   // Loaded through the two halves directly rather than KokoroTTS.from_pretrained, because only
   // this way can the revision be pinned: a model that changed upstream should not change how
@@ -77,10 +65,9 @@ function model(spec: Model, allowDownload: boolean, onProgress?: (loaded: number
     StyleTextToSpeech2Model.from_pretrained(spec.id, {
       revision: spec.revision,
       dtype: spec.dtype,
-      device: 'cpu',
-      progress_callback
+      device: 'cpu'
     }),
-    AutoTokenizer.from_pretrained(spec.id, { revision: spec.revision, progress_callback })
+    AutoTokenizer.from_pretrained(spec.id, { revision: spec.revision })
   ]).then(([m, tokenizer]) => new KokoroTTS(m, tokenizer))
 
   loaded = { key, tts }
@@ -199,12 +186,12 @@ function reply(message: Reply): void {
 async function handle(request: Request): Promise<void> {
   try {
     if (request.kind === 'prepare') {
-      await model(request.model, true, (done, total) => reply({ id: request.id, kind: 'progress', loaded: done, total }))
+      await model(request.model)
       reply({ id: request.id, kind: 'done' })
       return
     }
 
-    const tts = await model(request.model, false)
+    const tts = await model(request.model)
     const { samples, sampleRate } = await speak(tts, request.text, request.voice as KokoroVoice, request.speed)
     writeFileSync(request.outputPath, toWav(samples, sampleRate))
     reply({ id: request.id, kind: 'done', seconds: samples.length / sampleRate })

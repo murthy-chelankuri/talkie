@@ -1,5 +1,4 @@
-import { createHash } from 'crypto'
-import { createReadStream, rmSync, statSync } from 'fs'
+import { statSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -68,17 +67,13 @@ function revisionDir(baseDir: string): string {
   return join(kokoroCacheDir(baseDir), KOKORO_MODEL.id, KOKORO_MODEL.revision)
 }
 
-function weightsPath(baseDir: string): string {
-  return join(revisionDir(baseDir), 'onnx', `model_${KOKORO_MODEL.dtype}.onnx`)
-}
-
 /**
  * Whether the model is on disk, whole.
  *
  * By exact size, because the weights are written to disk as they arrive: a file part way through
  * its download has the right name and most of the bytes, and anything looser than the exact size
  * called a half-written model ready. Cheap enough to ask on every clip; the hash is checked once,
- * when the download finishes — see verifyKokoroDownload.
+ * as each file arrives — see kokoroDownload.ts.
  */
 export function isKokoroDownloaded(baseDir: string = homedir()): boolean {
   try {
@@ -88,23 +83,4 @@ export function isKokoroDownloaded(baseDir: string = homedir()): boolean {
   } catch {
     return false
   }
-}
-
-/**
- * Check what arrived is what was published, and throw away anything that is not.
- *
- * A model is code the app runs on every clip; a corrupted file fails in ways that look like bugs,
- * and a substituted one is the reason pinning a revision is worth doing at all.
- */
-export async function verifyKokoroDownload(baseDir: string = homedir()): Promise<boolean> {
-  const path = weightsPath(baseDir)
-  const hash = createHash('sha256')
-  try {
-    for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer)
-  } catch {
-    return false
-  }
-  if (hash.digest('hex') === KOKORO_MODEL.weightsSha256) return true
-  rmSync(path, { force: true })
-  return false
 }

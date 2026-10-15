@@ -140,9 +140,14 @@ These each cost real time to find. None are obvious from the code.
   measured with the same phonemizer (`PHONEME_BUDGET` in `kokoroWorker.ts`).
 - **The worker ends by signal, not `process.exit`.** onnxruntime-node aborts during an ordinary
   exit on macOS ("mutex lock failed"); releasing the model first does not help.
-- **transformers.js refuses to load with both model sources off**, even from a full cache. While
-  speaking, its remote host is pointed at a dead local port instead, so a cached model loads and a
-  missing one fails rather than downloading mid-clip.
+- **transformers.js refuses to load with both model sources off**, even from a full cache. Its
+  remote host is pointed at a dead local port instead, so a cached model loads and a missing one
+  fails rather than downloading.
+- **The Kokoro voice is downloaded by the main process, through Electron's `net.fetch`**
+  (`kokoroDownload.ts`), never by the worker. Node's own `fetch` ignores the Mac's proxy settings
+  and the keychain, so on a corporate network — a proxy, and a root certificate it re-signs HTTPS
+  with — it failed where the browser worked. Chromium's network stack uses both. Each file is
+  checked against `KOKORO_FILES` as it lands; the worker only loads what is already on disk.
 - **The Kokoro voice can be brought in by hand**, for a proxy that will not let the app reach
   Hugging Face (`kokoroManual.ts`). `KOKORO_FILES` pins all four files the model is — size and
   SHA-256 — and is the one list the download check, the hand-copy check, the import and the

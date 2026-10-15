@@ -120,8 +120,10 @@ they are, and the panel then offers to re-speak them in the new voice if that is
 ### Getting the Kokoro voice behind a proxy
 
 Kokoro's model (163 MB) is downloaded from Hugging Face the first time it is chosen, in Settings →
-AI. Where a corporate proxy or firewall stops that, the same files can be fetched any other way —
-in a browser, which the proxy usually lets through, or on another machine — and handed to Talkie.
+AI. The download goes through the same network as your browser — the Mac's proxy settings and the
+certificates in its keychain — so on most corporate networks it simply works. Where a proxy or
+firewall still stops it, the same files can be fetched any other way — in a browser, or on another
+machine — and handed to Talkie.
 Settings → AI → Kokoro → **Download it yourself instead** links each file and has a button to copy
 these instructions:
 

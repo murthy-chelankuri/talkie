@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, shell, type IpcMain } from 'electron'
+import { BrowserWindow, dialog, net, shell, type IpcMain } from 'electron'
 import { mkdirSync } from 'fs'
 import { sweepUnusedRevisions } from '../htmlScene/store'
 import { redrawStalePosters } from '../htmlScene/htmlSceneApi'
@@ -118,7 +118,9 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:speechEngines', () => describeSpeechEngines())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
   // Resolves when the download is done; Settings asks for the status meanwhile to draw progress.
-  ipcMain.handle('settings:kokoroDownload', () => downloadKokoro())
+  // Through Electron's network, not Node's: the system's proxy settings and keychain, which a
+  // corporate network needs and Node's own fetch ignores. See kokoroDownload.ts.
+  ipcMain.handle('settings:kokoroDownload', () => downloadKokoro(homedir(), (url) => net.fetch(url)))
   ipcMain.handle('settings:kokoroStatus', () => kokoroDownloadStatus())
   // The same voice, brought in by hand where the download cannot reach Hugging Face. The files
   // are chosen here rather than their paths taken from the window, so the window cannot name any
