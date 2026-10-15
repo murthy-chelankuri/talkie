@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, copyFileSync } from 'fs'
 import { createRequire } from 'module'
 import { tmpdir } from 'os'
 import { join, sep } from 'path'
+import { requireCheckoutRoot } from '../../checkoutRoot'
 
 /**
  * The export page, wherever this build keeps it: out/export-page in a build (unpacked from the
@@ -19,7 +20,7 @@ function builtInCheckout(): string {
   // esbuild is a build tool: loaded only here, in a checkout, never by a packaged build.
   const { buildSync } = createRequire(__filename)('esbuild') as typeof import('esbuild')
   const out = mkdtempSync(join(tmpdir(), 'talkie-export-page-'))
-  const root = join(__dirname, '..', '..', '..', '..')
+  const root = requireCheckoutRoot('The export page')
   buildSync({
     entryPoints: [join(root, 'src/video/exportPage/page.tsx')],
     bundle: true,

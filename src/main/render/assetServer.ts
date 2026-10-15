@@ -82,6 +82,21 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
   const secret = randomBytes(16).toString('hex')
 
   return new Promise((resolve, reject) => {
+    /**
+     * Talkie's own files may be built on first use, and building can fail. That is one request
+     * that cannot be answered — the export or the scene check then says it could not load the
+     * page — not a reason to end the app: thrown inside this handler, nothing catches it but the
+     * start-up guard, which reported "Talkie could not start" and quit mid-export.
+     */
+    const lookUp = <T>(find: () => T | null): T | null => {
+      try {
+        return find()
+      } catch (err) {
+        console.error('Could not prepare one of Talkie’s own files:', err)
+        return null
+      }
+    }
+
     const server: Server = createServer((req, res) => {
       const refuse = (): void => {
         // The same answer as a missing file, so probing cannot tell a wrong guess from a wrong
@@ -110,7 +125,7 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
       // from a fixed list, never by path, so nothing outside that list is reachable this way.
       const afterSecret = requestedPath.slice(secret.length + 1)
       if (afterSecret.startsWith('/__talkie/export/')) {
-        const resource = exportPageResource(afterSecret.slice('/__talkie/export/'.length))
+        const resource = lookUp(() => exportPageResource(afterSecret.slice('/__talkie/export/'.length)))
         if (!resource || !existsSync(resource.path)) {
           refuse()
           return
@@ -127,7 +142,7 @@ function startAssetServer(rootDir: string): Promise<AssetServer> {
         return
       }
       if (afterSecret.startsWith('/__talkie/')) {
-        const resource = htmlSceneResource(afterSecret.slice('/__talkie/'.length))
+        const resource = lookUp(() => htmlSceneResource(afterSecret.slice('/__talkie/'.length)))
         if (!resource || !existsSync(resource.path)) {
           refuse()
           return

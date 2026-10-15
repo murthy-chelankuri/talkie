@@ -153,6 +153,13 @@ These each cost real time to find. None are obvious from the code.
 - **esbuild is a build tool, not part of the app.** `htmlScene/resources.ts` builds the scene runtime
   on first use only in a checkout, and loads esbuild there and only there; a packaged build ships the
   runtime already built and has no esbuild to load.
+- **Find the checkout with `checkoutRoot()`, never by counting `..` from `__dirname`.** The same
+  file runs from `src/` under the tests, from `out/main` in the app and from `out/mcp` in the MCP
+  server, so any fixed count is right for one and wrong for the rest. The export page and the HTML
+  scene runtime fall back to building from the sources when `out/` has no copy, which is exactly
+  `npm run dev` straight after a download. Counted from `out/main`, export looked two folders above
+  the repository, and the error, thrown inside the asset server, ended the app as "Talkie could not
+  start". The tests and e2e never saw it: one runs from `src/`, the other after a full build.
 - **Renderer entries are declared explicitly** in `electron.vite.config.ts` — the editor window
   and the recording toolbar. A new window needs adding there or it will not ship.
 
