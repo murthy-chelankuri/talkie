@@ -135,10 +135,17 @@ built application. Its corresponding source is:
 
 plus the two patches, the build script and the instructions in
 packages/phonemizer/build/ and packages/phonemizer/BUILD.md, which travel with
-every copy -- in a built application, in its node_modules/phonemizer. That
-archive is held by a third party; anyone distributing either form must make
-sure it stays available to recipients for as long as the GPL asks, or keep a
-copy and offer it themselves.
+every copy -- in a built application, in its node_modules/phonemizer.
+
+That archive is GitHub's, served for eSpeak NG's repository, and could go if
+that repository changed. So Talkie keeps its own copy, byte for byte the same,
+attached to a release of this repository:
+
+  https://github.com/murthy-chelankuri/talkie/releases/download/espeak-ng-source-b774a8f/espeak-ng-b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86.tar.gz
+
+It stays there for as long as Talkie distributes this build. Anyone else
+distributing either form takes on the same duty: point recipients at that
+copy, or keep one and offer it themselves.
 
 eSpeak NG source:  https://github.com/espeak-ng/espeak-ng
 

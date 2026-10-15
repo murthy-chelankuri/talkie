@@ -26,7 +26,9 @@ with it, so `kokoro-js` loads this one unchanged — the same arrangement as `st
 eSpeak NG at commit [`b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86`](https://github.com/espeak-ng/espeak-ng/tree/b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86),
 fetched as `https://github.com/espeak-ng/espeak-ng/archive/b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86.tar.gz`,
 SHA-256 `e080573e4e0f60c52b7ca9963a8ea52560500e47190bccf795f23986c299bdfd`, plus the two patches in
-`build/patches/`.
+`build/patches/`. Talkie keeps a copy of that archive, the same bytes, on its own release
+[`espeak-ng-source-b774a8f`](https://github.com/murthy-chelankuri/talkie/releases/download/espeak-ng-source-b774a8f/espeak-ng-b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86.tar.gz), so the source stays available to anyone given the build even if
+the upstream one goes. Raise a new one with the archive attached whenever the pinned commit changes.
 
 Why that commit rather than a release: it is the one npm's phonemizer was built from. Its compiled
 English data — `en_dict`, `intonations`, `phondata`, `phonindex`, `phontab`, packed into a
