@@ -114,7 +114,7 @@ const BUNDLED = [
       'Turns text into phonemes for the Kokoro voice. Compiled to JavaScript inside Talkie\'s own build ' +
       'of the phonemizer package, and runs only in Kokoro\'s separate worker process, never inside ' +
       'Talkie itself. Built from eSpeak NG commit b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86 ' +
-      '(https://github.com/espeak-ng/espeak-ng/archive/b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86.tar.gz) ' +
+      '(a copy is kept at https://github.com/murthy-chelankuri/talkie/releases/download/espeak-ng-source-b774a8f/espeak-ng-b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86.tar.gz) ' +
       'with two small patches; the patches, the build script and how to run it ship with the app in ' +
       'node_modules/phonemizer (BUILD.md).',
     homepage: 'https://github.com/espeak-ng/espeak-ng'
