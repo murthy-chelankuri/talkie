@@ -133,7 +133,11 @@ These each cost real time to find. None are obvious from the code.
   as seconds of zeros every time, and 2% faster read perfectly — a fault in the model, not the
   words. It was saved as the take, and a scene lost its first sentence. `audibleTake.ts` checks
   every take from the file the worker wrote, asks again a shade faster or slower, and errors with
-  the words if all of them are silent.
+  the words if all of them are silent. That only catches a take silent all through: a long take is
+  read in pieces (below), and in af_alloy four sentences in ten came back silent, so an
+  eighty-second take had fifty seconds of nothing and passed. The worker checks each piece too, at
+  the speeds `retrySpeeds` sends it. And "Speak N clips" carries on past a clip that fails
+  (`narrateEach.ts`) — stopping there left every later scene, and the export, without a voice.
 - **Kokoro reads 510 phonemes at a time and drops the rest without a word.** About 25 seconds of
   speech; a longer clip came back with its last sentences missing. The worker reads a take that
   fits in one go, as before, and cuts only one that does not — at sentence ends, then commas —

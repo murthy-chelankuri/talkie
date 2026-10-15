@@ -4,6 +4,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { KOKORO_MODEL, isKokoroDownloaded, kokoroCacheDir } from './kokoroModel'
 import { fetchKokoroFiles, type Fetch } from './kokoroDownload'
+import { retrySpeeds } from '../audibleTake'
 
 /**
  * The main process's side of Kokoro: it starts the worker, sends it work, and never loads the
@@ -115,7 +116,9 @@ export async function speakWithKokoro(
   if (!isKokoroDownloaded(baseDir)) {
     throw new Error('The Kokoro voice has not been downloaded yet. Download it in Settings → AI.')
   }
-  const seconds = await send({ kind: 'speak', model: modelSpec(baseDir), text, voice, speed, outputPath })
+  // A long take is read in pieces, and a piece can come back silent where the whole take would
+  // not look it; the worker asks again for that piece alone, at the same nudges audibleTake uses.
+  const seconds = await send({ kind: 'speak', model: modelSpec(baseDir), text, voice, speed, retrySpeeds: retrySpeeds(speed), outputPath })
   return seconds ?? 0
 }
 
