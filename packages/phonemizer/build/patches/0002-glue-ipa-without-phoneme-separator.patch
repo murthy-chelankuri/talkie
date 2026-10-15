@@ -1,0 +1,13 @@
+--- a/emscripten/espeakng_glue.cpp
++++ b/emscripten/espeakng_glue.cpp
+@@ -62,7 +62,9 @@
+         
+     int phoneme_options               = (1 << 1); // Use IPA
+     int use_custom_phoneme_separator  = (0 << 7);
+-    int phonemes_separator            = ' '; // Use a default value
++    /* No separator: phonemes run together within a word, one space between words, which is
++     * what phonemizer has always returned and what Kokoro was trained on. */
++    int phonemes_separator            = 0;
+ 
+     int phoneme_conf                  = phoneme_options | (phonemes_separator << 8);
+     

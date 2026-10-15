@@ -282,8 +282,8 @@ The distinction that matters:
 
 | What you do | What it costs you |
 | --- | --- |
-| Clone, build and run it yourself | Nothing. No GPL code is in this repo. |
-| Publish this source | Nothing. Still no GPL code in this repo. |
+| Clone, build and run it yourself | Nothing. ffmpeg is not in this repo. |
+| Publish this source | Nothing for ffmpeg. eSpeak NG is the exception — see below. |
 | **Hand someone a built app** (a `.dmg`, a release asset, a store submission) | You are distributing GPL binaries and must comply with the GPL — including offering ffmpeg's corresponding source to every recipient. |
 
 That last row is why this repository ships no prebuilt binaries. It is also why the Mac App
@@ -301,8 +301,13 @@ Chromium plays media with, is LGPL: whoever distributes a build must offer its s
 
 ### eSpeak NG is GPL too
 
-The Kokoro voice turns text into phonemes with `phonemizer`, whose own licence says Apache-2.0
-but which carries eSpeak NG (GPL-3.0-or-later) compiled into it. It runs in a process of its own,
-never inside Talkie, but a built app still ships it — with the same obligation as ffmpeg, to
-offer its source to every recipient. Which eSpeak NG `phonemizer` compiled is still to be settled
-before a build is published; see [NOTICE](NOTICE).
+The Kokoro voice turns text into phonemes with eSpeak NG (GPL-3.0-or-later), through the
+`phonemizer` package. npm's phonemizer ships an eSpeak NG nobody can name the source of, so
+Talkie uses its own build of it instead, in [`packages/phonemizer`](packages/phonemizer/BUILD.md):
+the same wrapper around eSpeak NG compiled from a pinned commit, with the patches and the script
+that build it. It runs in a process of its own, never inside Talkie.
+
+Because the compiled eSpeak NG is committed, the GPL applies to sharing this repository as well as
+a built app: whoever passes on either must make its source available to recipients. That source
+is the pinned eSpeak NG commit plus what is in `packages/phonemizer/build/`; see
+[NOTICE](NOTICE).
