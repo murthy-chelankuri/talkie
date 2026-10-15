@@ -82,21 +82,19 @@ export function OwnSequence({ from, durationInFrames = Infinity, children }: { f
   // The preview mounts the clip a touch early and holds it at its first frame, hidden, so its
   // <video>/<audio> are ready at the cut rather than loading into a stall. The export (and the
   // preview once the clip has started) mounts strictly within the span, exactly as before.
+  //
+  // One tree for both, so what was preloaded is what plays. They were two shapes — the early one
+  // wrapped in a clock provider the other lacked — and React took them for different trees: at the
+  // cut it threw the preloaded clip away and mounted it afresh, media unloaded and HTML scenes
+  // reloading, with a draw still pending in the one thrown away.
   const preloading = mode === 'preview' && frame < start && frame >= start - Math.round(fps * PRELOAD_SECONDS)
-  if (preloading) {
-    return (
-      <ClockContext.Provider value={{ ...clock, frame: start }}>
-        <SpanContext.Provider value={span}>
-          <div style={{ ...FILL_STYLE, visibility: 'hidden' }}>{children}</div>
-        </SpanContext.Provider>
-      </ClockContext.Provider>
-    )
-  }
-  if (frame < start || frame >= end) return null
+  if (!preloading && (frame < start || frame >= end)) return null
   return (
-    <SpanContext.Provider value={span}>
-      <div style={FILL_STYLE}>{children}</div>
-    </SpanContext.Provider>
+    <ClockContext.Provider value={preloading ? { ...clock, frame: start } : clock}>
+      <SpanContext.Provider value={span}>
+        <div style={preloading ? { ...FILL_STYLE, visibility: 'hidden' } : FILL_STYLE}>{children}</div>
+      </SpanContext.Provider>
+    </ClockContext.Provider>
   )
 }
 

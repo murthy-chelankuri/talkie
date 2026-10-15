@@ -104,6 +104,16 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
     if (ready) ref.current?.contentWindow?.postMessage({ type: 'talkie:theme', theme: sceneTheme }, '*')
   }, [ready, theme?.stamp, variant])
 
+  // A scene unmounted with draws still asked for — the end of its clip, or a preview that moved on —
+  // lets them go rather than leaving their timers to report frames nobody is waiting for any more.
+  useEffect(() => {
+    const waiting = pending.current
+    return () => {
+      for (const done of waiting.values()) done()
+      waiting.clear()
+    }
+  }, [])
+
   useEffect(() => {
     if (!ready || failed) return
     const id = nextId.current++

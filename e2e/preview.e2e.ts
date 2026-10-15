@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, openProject, type Talkie } from './app'
-import { CUT_FRAME, makeFixtureWithCut, type Fixture } from './fixture'
+import { CUT_FRAME, makeFixture, makeFixtureWithCut, type Fixture } from './fixture'
 import { FPS, NARRATION_LEAD_IN_FRAMES } from '../src/composition/constants'
 
 let fixture: Fixture
@@ -60,5 +60,30 @@ describe('the preview', () => {
     expect(audioDrift.length, 'samples of the narration playing after the cut').toBeGreaterThanOrEqual(3)
     expect(Math.max(...videoDrift), `video drift ${JSON.stringify(videoDrift)}`).toBeLessThanOrEqual(2)
     expect(Math.max(...audioDrift), `audio drift ${JSON.stringify(audioDrift)}`).toBeLessThanOrEqual(2)
+  }, 90_000)
+
+  it('plays on from scene to scene, never back, through slides and HTML scenes alike', async () => {
+    // Each of Tidewell's takes ends before its clip does, and two of its first four clips are HTML
+    // scenes. A finished take was played again when the clock reached the end of it, so the preview
+    // went round its first scene for ever; and an HTML scene mounted early was thrown away at the
+    // cut, leaving a draw it had asked for to fail five seconds later as an error in the window.
+    fixture = makeFixture()
+    talkie = await launchTalkie(fixture)
+    const { win } = talkie
+    await win.getByRole('button', { name: 'Open Tidewell product launch' }).click()
+    await win.getByRole('tablist', { name: 'Ways to work on this project' }).waitFor()
+
+    await win.getByRole('button', { name: 'Play', exact: true }).click()
+    const frames: number[] = []
+    const deadline = Date.now() + 45_000
+    while (Date.now() < deadline) {
+      frames.push(await win.evaluate(() => Number(document.querySelector('[aria-label="Playhead"]')?.getAttribute('aria-valuenow'))))
+      if (frames.at(-1)! > 700) break
+      await win.waitForTimeout(100)
+    }
+
+    const backwards = frames.flatMap((frame, i) => (i > 0 && frame < frames[i - 1] ? [`${frames[i - 1]}→${frame}`] : []))
+    expect(backwards, 'the playhead went back').toEqual([])
+    expect(frames.at(-1), 'how far it played').toBeGreaterThan(700)
   }, 90_000)
 })

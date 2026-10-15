@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createRef } from 'react'
+import { createRef, useEffect } from 'react'
 import { act, render } from '@testing-library/react'
 import { Preview, type PreviewHandle } from './preview'
+import { usePreviewMediaRegister } from './own/previewMedia'
 
 /**
  * Talkie's own preview player, driving the frame from elapsed time. The animation-frame loop and
@@ -29,6 +30,39 @@ function step(ms: number): void {
   const pending = rafQueue
   rafQueue = []
   act(() => pending.forEach((run) => run()))
+}
+
+/**
+ * A narration take as a browser plays one, as far as the player can tell: it runs on the wall
+ * clock while playing, ends at its duration, and — the part that matters — play() after it has
+ * ended starts it again from the beginning.
+ */
+class FakeTake {
+  currentTime = 0
+  paused = true
+  ended = false
+  muted = false
+  readyState = 4
+  constructor(public duration: number) {}
+  play(): Promise<void> {
+    if (this.ended) {
+      this.currentTime = 0
+      this.ended = false
+    }
+    this.paused = false
+    return Promise.resolve()
+  }
+  pause(): void {
+    this.paused = true
+  }
+  advance(seconds: number): void {
+    if (this.paused) return
+    this.currentTime = Math.min(this.duration, this.currentTime + seconds)
+    if (this.currentTime >= this.duration) {
+      this.ended = true
+      this.paused = true
+    }
+  }
 }
 
 function mount(extra: { controls?: boolean; loop?: boolean } = {}, durationInFrames = 90) {
@@ -119,6 +153,32 @@ describe('the preview player', () => {
     step(500)
     expect(player.getCurrentFrame()).toBe(0)
     expect(player.isPlaying()).toBe(true)
+  })
+
+  it('plays on past the end of a take that is shorter than its clip, rather than playing it again', () => {
+    // Narration from frame 18 for one second, in a clip that runs to frame 90: the shape of nearly
+    // every scene, a lead-in, the take, then a pause before the next.
+    const take = new FakeTake(1)
+    function Scene(): null {
+      const register = usePreviewMediaRegister()
+      useEffect(() => register({ el: take as unknown as HTMLMediaElement, kind: 'audio', startFrame: 18, endFrame: 90, trimBefore: 0 }), [register])
+      return null
+    }
+    const ref = createRef<PreviewHandle>()
+    render(<Preview ref={ref} component={Scene} inputProps={{}} durationInFrames={120} fps={30} width={1920} height={1080} />)
+    const player = ref.current!
+
+    act(() => player.seekTo(18))
+    act(() => player.toggle())
+    const seen: number[] = []
+    for (let i = 0; i < 30; i++) {
+      take.advance(0.1)
+      step(100)
+      seen.push(player.getCurrentFrame())
+    }
+
+    expect(seen.every((frame, i) => i === 0 || frame >= seen[i - 1]), `frames went backwards: ${seen.join(' ')}`).toBe(true)
+    expect(player.getCurrentFrame()).toBeGreaterThanOrEqual(90)
   })
 
   it('shows its own controls where a panel asks for them', () => {
