@@ -107,13 +107,16 @@ const BUNDLED = [
   },
   {
     name: 'eSpeak NG',
-    version: 'as compiled into phonemizer 1.2.1',
+    version: 'commit b774a8fd, built by Talkie (packages/phonemizer)',
     license: 'GPL-3.0-or-later',
     textFile: 'licences/GPL-3.0.txt',
     note:
-      'Turns text into phonemes for the Kokoro voice. Compiled to WebAssembly inside the phonemizer ' +
-      'package, whose own Apache-2.0 licence field does not cover it. Runs only in Kokoro\'s ' +
-      'separate worker process, never inside Talkie itself. Source: https://github.com/espeak-ng/espeak-ng',
+      'Turns text into phonemes for the Kokoro voice. Compiled to JavaScript inside Talkie\'s own build ' +
+      'of the phonemizer package, and runs only in Kokoro\'s separate worker process, never inside ' +
+      'Talkie itself. Built from eSpeak NG commit b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86 ' +
+      '(https://github.com/espeak-ng/espeak-ng/archive/b774a8fd712e2b43510c1cb6c2b8cd3f22fe0a86.tar.gz) ' +
+      'with two small patches; the patches, the build script and how to run it ship with the app in ' +
+      'node_modules/phonemizer (BUILD.md).',
     homepage: 'https://github.com/espeak-ng/espeak-ng'
   }
 ]
@@ -132,18 +135,6 @@ const ONNXRUNTIME_TEXT = () =>
 const VENDORED_TEXT = {
   'onnxruntime-node': ONNXRUNTIME_TEXT,
   'onnxruntime-common': ONNXRUNTIME_TEXT
-}
-
-/**
- * Packages whose manifest states less than they contain.
- *
- * phonemizer says Apache-2.0, which is true of its own JavaScript. It also carries eSpeak NG
- * compiled to WebAssembly, which is GPL-3.0-or-later — listed in BUNDLED above. Shown as its
- * manifest has it, this package would read as permissive while shipping the one GPL-3.0 component
- * in the app.
- */
-const RELABELLED = {
-  phonemizer: 'Apache-2.0 AND GPL-3.0-or-later'
 }
 
 function productionPackages() {
@@ -249,7 +240,7 @@ for (const name of productionPackages()) {
   if (String(pkg.version).endsWith('-talkie-stub')) continue
 
   let text = licenceTextFor(dir) ?? VENDORED_TEXT[name]?.() ?? null
-  let license = RELABELLED[name] ?? normaliseLicense(pkg)
+  let license = normaliseLicense(pkg)
 
   // "SEE LICENSE IN ..." names a file rather than a licence; the file is already read above.
   const namesAFile = license && /^SEE LICEN[CS]E/i.test(license)

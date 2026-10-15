@@ -1,0 +1,13 @@
+--- a/src/include/compat/wctype.h
++++ b/src/include/compat/wctype.h
+@@ -30,6 +30,10 @@
+ #include_next <wctype.h>
+ #endif
+ 
++/* The C library's <wchar.h> may declare iswalnum() and the rest itself (musl does, under
++ * _BSD_SOURCE), with a wint_t that is not ucd's codepoint_t. Included here, before the macros
++ * below rename those functions, its declarations are made under their own names. */
++#include <wchar.h>
+ #include <ucd/ucd.h>
+ 
+ #define iswalnum  ucd_isalnum

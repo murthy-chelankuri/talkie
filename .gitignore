@@ -37,6 +37,9 @@ node_modules/
 /vendor/
 out/
 dist/
+# Committed on purpose: built from eSpeak NG by packages/phonemizer/build/build.sh, which needs
+# Emscripten, so nobody else has to. See its BUILD.md.
+!packages/phonemizer/dist/
 .vite/
 
 # Packaged builds
