@@ -46,6 +46,7 @@ import { TransportBar } from '../components/TransportBar'
 import { Button } from '../components/ui/Button'
 import { planNarrationCommit, segmentsForItem } from '../lib/clipNarration'
 import { voiceProgress } from '../lib/voiceProgress'
+import { describeNarrationFailures, narrateEach } from '../lib/narrateEach'
 import { useMenuActions, useMenuState } from '../lib/menuActions'
 import { describeFidelity, type FidelityNote } from '../../../main/tts/voiceFidelity'
 import { onSettingsChanged } from '../lib/settingsChanged'
@@ -483,12 +484,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     setTranscriptError(null)
     setNarratingAll(true)
     try {
-      for (const item of needingNarration) {
-        setNarratingItemId(item.id)
-        await narrateItem(item)
-      }
+      const failures = await narrateEach(needingNarration, narrateItem, (item) => setNarratingItemId(item.id))
       await refreshSegments()
       await refreshTimeline()
+      setTranscriptError(describeNarrationFailures(failures))
     } catch (err) {
       setTranscriptError(err instanceof Error ? err.message : String(err))
     } finally {

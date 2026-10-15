@@ -26,7 +26,7 @@ interface Model {
 
 type Request =
   | { id: number; kind: 'prepare'; model: Model }
-  | { id: number; kind: 'speak'; model: Model; text: string; voice: string; speed: number; outputPath: string }
+  | { id: number; kind: 'speak'; model: Model; text: string; voice: string; speed: number; retrySpeeds?: number[]; outputPath: string }
 
 type Reply =
   | { id: number; kind: 'progress'; loaded: number; total: number }
@@ -162,11 +162,44 @@ async function piecesToRead(text: string): Promise<string[]> {
   return pieces
 }
 
-async function speak(tts: KokoroTTS, text: string, voice: KokoroVoice, speed: number): Promise<{ samples: Float32Array; sampleRate: number }> {
+/** Quieter than any voice ever is; Kokoro's faults come back as exact zeros, or as NaN. As audibleTake.ts. */
+function isSilent(samples: Float32Array): boolean {
+  for (const sample of samples) {
+    if (Number.isNaN(sample)) return true
+    if (Math.abs(sample) > 1e-4) return false
+  }
+  return true
+}
+
+/**
+ * Every piece of the take, each one checked for the silence Kokoro sometimes reads a line as.
+ *
+ * The app checks the take it is handed (audibleTake.ts), but only for a take that is silent all
+ * through, and a long take is read here in pieces: one piece of ten seconds of zeros in an
+ * eighty-second take passed, and the scene went quiet halfway. One voice did it to four sentences
+ * in ten. So each piece is checked as it is read, and a silent one asked for again at the speeds
+ * the app sends — the same nudges it would use on a whole take — and if every one is silent, it is
+ * an error naming those words rather than a take with a hole in it.
+ */
+async function speak(
+  tts: KokoroTTS,
+  text: string,
+  voice: KokoroVoice,
+  speed: number,
+  retrySpeeds: number[] = []
+): Promise<{ samples: Float32Array; sampleRate: number }> {
   const parts: Float32Array[] = []
   let sampleRate = 24_000
   for (const piece of await piecesToRead(text)) {
-    const audio = await tts.generate(piece, { voice, speed })
+    let audio = await tts.generate(piece, { voice, speed })
+    for (const retry of retrySpeeds) {
+      if (!isSilent(audio.audio)) break
+      audio = await tts.generate(piece, { voice, speed: retry })
+    }
+    if (isSilent(audio.audio) && retrySpeeds.length > 0) {
+      const words = piece.length > 60 ? `${piece.slice(0, 57)}…` : piece
+      throw new Error(`The Kokoro voice read “${words}” as silence. Try another voice, or reword the line.`)
+    }
     parts.push(audio.audio)
     sampleRate = audio.sampling_rate
   }
@@ -192,7 +225,7 @@ async function handle(request: Request): Promise<void> {
     }
 
     const tts = await model(request.model)
-    const { samples, sampleRate } = await speak(tts, request.text, request.voice as KokoroVoice, request.speed)
+    const { samples, sampleRate } = await speak(tts, request.text, request.voice as KokoroVoice, request.speed, request.retrySpeeds)
     writeFileSync(request.outputPath, toWav(samples, sampleRate))
     reply({ id: request.id, kind: 'done', seconds: samples.length / sampleRate })
   } catch (err) {

@@ -20,6 +20,11 @@ export const RETRY_NUDGES = [1.02, 0.98, 1.04]
 /** Quieter than any voice ever is — the faults come back as exact zeros, or as NaN. */
 const SILENCE = 1e-4
 
+/** The speeds to ask again at, in order, for a take asked for at `speed`. */
+export function retrySpeeds(speed: number): number[] {
+  return RETRY_NUDGES.map((nudge) => Math.round(speed * nudge * 1000) / 1000)
+}
+
 export function isSilent(samples: ArrayLike<number>): boolean {
   for (let i = 0; i < samples.length; i += 1) {
     const sample = samples[i]
@@ -38,8 +43,8 @@ export async function audibleTake<T extends { audio: ArrayLike<number> }>(
   // Nothing to say is allowed to sound like nothing.
   if (!text.trim() || !isSilent(first.audio)) return first
 
-  for (const nudge of RETRY_NUDGES) {
-    const again = await generate(Math.round(speed * nudge * 1000) / 1000)
+  for (const retry of retrySpeeds(speed)) {
+    const again = await generate(retry)
     if (!isSilent(again.audio)) return again
   }
 

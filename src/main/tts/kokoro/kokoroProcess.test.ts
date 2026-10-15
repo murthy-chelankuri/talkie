@@ -1,10 +1,11 @@
 import { afterAll, describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync } from 'fs'
+import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { isKokoroDownloaded } from './kokoroModel'
 import { speakWithKokoro, stopKokoro } from './kokoroProcess'
 import { readWavFormat } from '../wavDuration'
+import { wavSamples } from '../audibleTake'
 
 /**
  * The real worker, the real model. Skipped on a machine that has never downloaded the voice:
@@ -65,6 +66,36 @@ describe('speaking through the Kokoro worker', () => {
 
     expect(pace(text, seconds)).toBeLessThan(260)
   }, 180_000)
+
+  /** The longest stretch of the take with nothing in it, in seconds. */
+  function longestSilence(path: string): number {
+    const samples = wavSamples(readFileSync(path))
+    let longest = 0
+    let run = 0
+    for (const sample of samples) {
+      run = Math.abs(sample) < 1e-3 ? run + 1 : 0
+      longest = Math.max(longest, run)
+    }
+    return longest / 24_000
+  }
+
+  it.skipIf(!downloaded)('says every sentence of a long take, even ones the model first reads as silence', async () => {
+    // Read alone in af_alloy at its own speed, four of these sentences come back as ten seconds of
+    // zeros each. Inside an eighty-second take that was a scene going quiet halfway through, and
+    // the check on the whole take passed it, because the take as a whole was not silent.
+    const text =
+      'This scene is about reporting, and it has a great deal to say. ' +
+      Array.from(
+        { length: 9 },
+        (_, i) =>
+          `Point ${i + 1} about reporting: the team looked at how people really use it every day, found the slow parts, and made each of them quicker, clearer and easier to explain to someone new.`
+      ).join(' ')
+    const path = join(dir, 'gaps.wav')
+
+    await speakWithKokoro(text, 'af_alloy', 1, path)
+
+    expect(longestSilence(path)).toBeLessThan(2)
+  }, 300_000)
 
   it('refuses before the voice has been downloaded, rather than starting a download mid-clip', async () => {
     const elsewhere = mkdtempSync(join(tmpdir(), 'talkie-kokoro-none-'))
