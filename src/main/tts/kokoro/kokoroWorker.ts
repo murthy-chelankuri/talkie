@@ -14,6 +14,7 @@
  */
 import { writeFileSync } from 'fs'
 import { KokoroTTS } from 'kokoro-js'
+import { phonemize } from 'phonemizer'
 import { AutoTokenizer, StyleTextToSpeech2Model, env } from '@huggingface/transformers'
 
 interface Model {
@@ -120,6 +121,77 @@ function toWav(samples: Float32Array, sampleRate: number): Buffer {
   return Buffer.concat([head, data])
 }
 
+/**
+ * How much Kokoro is given to read at once, in phoneme characters.
+ *
+ * The model reads at most 510 tokens — about one phoneme each — and kokoro-js cuts anything longer
+ * off without a word: a 150-word paragraph came back as 25 seconds of its first two thirds, and
+ * the rest of the narration was simply missing from the clip. Measured here with the same
+ * phonemizer Kokoro uses, but before Kokoro's own clean-up of numbers and symbols, which can
+ * lengthen a line a little; the margin is for that.
+ */
+const PHONEME_BUDGET = 400
+
+async function phonemeLength(text: string): Promise<number> {
+  return (await phonemize(text, 'en-us')).join(' ').length
+}
+
+/** Smaller pieces of one too-long piece: clauses first, then words, so a cut falls at a pause. */
+function splitFurther(text: string): string[] {
+  const clauses = text.split(/(?<=[,;:\u2014\u2013])\s+/).filter(Boolean)
+  if (clauses.length > 1) return clauses
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length < 2) return [text]
+  const half = Math.ceil(words.length / 2)
+  return [words.slice(0, half).join(' '), words.slice(half).join(' ')]
+}
+
+/**
+ * The words in pieces Kokoro can read whole, in order.
+ *
+ * A take that fits is read in one go, as it always was — Kokoro shapes a paragraph as a paragraph,
+ * and reading every clip sentence by sentence would change how all of them sound. Only a take
+ * over the limit is cut, at sentence ends where it can be, and the pieces are packed back
+ * together as far as each will go.
+ */
+async function piecesToRead(text: string): Promise<string[]> {
+  if ((await phonemeLength(text)) <= PHONEME_BUDGET) return [text]
+
+  const queue = text.split(/(?<=[.!?\u2026])\s+|\n+/).map((each) => each.trim()).filter(Boolean)
+  const units: string[] = []
+  while (queue.length > 0) {
+    const unit = queue.shift() as string
+    const smaller = (await phonemeLength(unit)) > PHONEME_BUDGET ? splitFurther(unit) : [unit]
+    if (smaller.length > 1) queue.unshift(...smaller)
+    else units.push(unit)
+  }
+
+  const pieces: string[] = []
+  for (const unit of units) {
+    const joined = pieces.length > 0 ? `${pieces[pieces.length - 1]} ${unit}` : null
+    if (joined && (await phonemeLength(joined)) <= PHONEME_BUDGET) pieces[pieces.length - 1] = joined
+    else pieces.push(unit)
+  }
+  return pieces
+}
+
+async function speak(tts: KokoroTTS, text: string, voice: KokoroVoice, speed: number): Promise<{ samples: Float32Array; sampleRate: number }> {
+  const parts: Float32Array[] = []
+  let sampleRate = 24_000
+  for (const piece of await piecesToRead(text)) {
+    const audio = await tts.generate(piece, { voice, speed })
+    parts.push(audio.audio)
+    sampleRate = audio.sampling_rate
+  }
+  const samples = new Float32Array(parts.reduce((sum, part) => sum + part.length, 0))
+  let offset = 0
+  for (const part of parts) {
+    samples.set(part, offset)
+    offset += part.length
+  }
+  return { samples, sampleRate }
+}
+
 function reply(message: Reply): void {
   process.send?.(message)
 }
@@ -133,9 +205,9 @@ async function handle(request: Request): Promise<void> {
     }
 
     const tts = await model(request.model, false)
-    const audio = await tts.generate(request.text, { voice: request.voice as KokoroVoice, speed: request.speed })
-    writeFileSync(request.outputPath, toWav(audio.audio, audio.sampling_rate))
-    reply({ id: request.id, kind: 'done', seconds: audio.audio.length / audio.sampling_rate })
+    const { samples, sampleRate } = await speak(tts, request.text, request.voice as KokoroVoice, request.speed)
+    writeFileSync(request.outputPath, toWav(samples, sampleRate))
+    reply({ id: request.id, kind: 'done', seconds: samples.length / sampleRate })
   } catch (err) {
     reply({ id: request.id, kind: 'error', message: err instanceof Error ? err.message : String(err) })
   }

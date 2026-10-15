@@ -134,6 +134,10 @@ These each cost real time to find. None are obvious from the code.
   words. It was saved as the take, and a scene lost its first sentence. `audibleTake.ts` checks
   every take from the file the worker wrote, asks again a shade faster or slower, and errors with
   the words if all of them are silent.
+- **Kokoro reads 510 phonemes at a time and drops the rest without a word.** About 25 seconds of
+  speech; a longer clip came back with its last sentences missing. The worker reads a take that
+  fits in one go, as before, and cuts only one that does not — at sentence ends, then commas —
+  measured with the same phonemizer (`PHONEME_BUDGET` in `kokoroWorker.ts`).
 - **The worker ends by signal, not `process.exit`.** onnxruntime-node aborts during an ordinary
   exit on macOS ("mutex lock failed"); releasing the model first does not help.
 - **transformers.js refuses to load with both model sources off**, even from a full cache. While
