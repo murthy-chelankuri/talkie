@@ -14,6 +14,7 @@ own renderer (`src/video/`), Playwright for capture, `say` or the built-in Kokor
 npm run dev               # electron-vite dev
 npm test                  # vitest, the whole suite (~55s, 93 files)
 npm run e2e               # builds, then drives the built app end to end (~2 min)
+npm run e2e:long          # the long run: Kokoro narration, every example exported, a fresh clone (~30 min)
 npm run examples:rebuild  # remakes the shipped examples from their scripts (~2 min, needs Kokoro)
 npm run typecheck         # both tsconfigs — node and web
 npm run build             # electron-vite build + the MCP bundle
@@ -39,6 +40,21 @@ measured for silence (`e2e/audio.ts`), the export for length and a soundtrack. K
 model already downloaded and is skipped where there is none. Any error the window logs fails the
 test, so an error that is always there is a bug to fix, not noise to filter. When something
 breaks in a way the run missed, add the flow to it.
+
+It plays the shipped examples rather than only the fixture, because the bugs that got through were
+all in shapes only real projects have: a take that ends before its clip (the preview went round
+its first scene for ever), an HTML scene after a slide, a recording cut into scenes. It crosses
+every kind of cut in every example — slide to video, video to diagram, and so on — and fails on
+the playhead going back, stopping short, or a voiced clip playing no narration. It also starts the
+app behind a proxy that refuses Hugging Face (`e2e/proxy.e2e.ts`): the proxy being asked is the
+proof the download uses the network the browser does.
+
+**The long run** (`e2e/long/`, `npm run e2e:long`) is what takes minutes rather than seconds, so it
+is not in the push hook: run it before a release and after changing speech, export or setup.
+Several scenes of long narration spoken in Kokoro and exported, with every scene measured in the
+video's own soundtrack — a take on disk and a silent scene in the export were once both true;
+every example exported whole, at its full length, voiced where it has narration; and a fresh clone
+taken through `npm ci`, the build and an export, which is the only place install scripts run.
 
 A test that speaks through `say`, drives a browser or runs ffmpeg gets at least 60 seconds,
 and 90 where it asks for a voice macOS has to fetch and warm up first. None of them are

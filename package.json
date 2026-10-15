@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "e2e": "npm run build && vitest run -c vitest.e2e.config.ts",
+    "e2e:long": "npm run build && vitest run -c vitest.e2e-long.config.ts",
     "examples:rebuild": "vitest run -c vitest.examples.config.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "postinstall": "node scripts/fetchFfmpeg.mjs",

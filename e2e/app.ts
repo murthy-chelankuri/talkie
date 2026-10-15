@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from 'fs'
+import { createRequire } from 'module'
 import { join } from 'path'
 import { _electron, type ElectronApplication, type Page } from 'playwright'
 import { PROJECT_NAME, type Fixture } from './fixture'
@@ -18,12 +19,20 @@ export type Talkie = {
  * It is the build that ships, and the build is where the bugs this exists for lived: a refused
  * permission, a policy that blocked a file, a worker that only fails once bundled.
  */
-export async function launchTalkie(fixture: Fixture): Promise<Talkie> {
+export async function launchTalkie(
+  fixture: Fixture,
+  options: { switches?: string[]; appDir?: string } = {}
+): Promise<Talkie> {
+  // Another checkout runs with its own Electron, so it is that copy's install that is tried.
+  const appDir = options.appDir ?? join(__dirname, '..')
+  const executablePath = options.appDir ? (createRequire(join(appDir, 'package.json'))('electron') as string) : undefined
   const app = await _electron.launch({
+    ...(executablePath ? { executablePath } : {}),
     // A profile inside the fixture too: on macOS Electron finds its user-data folder from the
     // system, not HOME, so a run otherwise shares the person's own window state and storage.
-    args: ['.', `--user-data-dir=${join(fixture.home, 'profile')}`],
-    cwd: join(__dirname, '..'),
+    // Chromium switches go first, where Chromium reads them — a proxy, for one.
+    args: [...(options.switches ?? []), '.', `--user-data-dir=${join(fixture.home, 'profile')}`],
+    cwd: appDir,
     env: { ...process.env, HOME: fixture.home, TALKIE_HEADLESS: '1' }
   })
   // Finishing an export reveals it in Finder, and links open in the browser. Neither is what a

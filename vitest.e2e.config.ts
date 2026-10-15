@@ -11,6 +11,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['e2e/**/*.e2e.ts'],
+    // Minutes each: `npm run e2e:long` (vitest.e2e-long.config.ts), not every push.
+    exclude: ['e2e/long/**'],
     fileParallelism: false,
     testTimeout: 180_000,
     hookTimeout: 120_000
