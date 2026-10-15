@@ -117,6 +117,38 @@ The picker's first option puts a project back to following the default, so the c
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.
 
+### Getting the Kokoro voice behind a proxy
+
+Kokoro's model (163 MB) is downloaded from Hugging Face the first time it is chosen, in Settings →
+AI. Where a corporate proxy or firewall stops that, the same files can be fetched any other way —
+in a browser, which the proxy usually lets through, or on another machine — and handed to Talkie.
+Settings → AI → Kokoro → **Download it yourself instead** links each file and has a button to copy
+these instructions:
+
+| File | Size | Link |
+| --- | --- | --- |
+| `config.json` | 44 bytes | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/config.json](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/config.json) |
+| `tokenizer.json` | 3.5 KB | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer.json](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer.json) |
+| `tokenizer_config.json` | 113 bytes | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer_config.json](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/tokenizer_config.json) |
+| `onnx/model_fp16.onnx` | 163 MB | [https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/onnx/model_fp16.onnx](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/onnx/model_fp16.onnx) |
+
+The weights redirect to a Hugging Face download host (`*.hf.co`), which a proxy may need to allow
+as well. Then either press **Choose downloaded files…** and pick all four — Talkie recognises each
+by its contents, whatever the browser named it — or copy them in yourself, keeping the names and
+the `onnx` folder:
+
+```
+~/Talkie/Models/onnx-community/Kokoro-82M-v1.0-ONNX/1939ad2a8e416c0acfeecc08a694d14ef25f2231/
+├── config.json
+├── tokenizer.json
+├── tokenizer_config.json
+└── onnx/model_fp16.onnx
+```
+
+and press **Check the files**. Either way each file is checked against its published SHA-256, as a
+download is, and one that does not match — often a proxy's own "blocked" page saved under the
+right name — is named and not used.
+
 ## What the export carries
 
 A finished MP4 comes with a **SubRip file beside it**, built from the narration already on the
@@ -211,6 +243,7 @@ someone presses the button that needs it rather than as an error afterwards.
 | Recording a session | Google Chrome, Edge, or Playwright's Chromium | Install Chrome, or `npx playwright install chromium` |
 | Exporting video | Nothing — `npm install` fetches a pinned ffmpeg | — |
 | Speaking narration | Nothing — macOS's own voices | — |
+| The Kokoro voice | A one-time 163 MB download from Hugging Face | Behind a proxy, [download the files by hand](#getting-the-kokoro-voice-behind-a-proxy) |
 | Recording your own voice | Microphone permission | Talkie asks the first time; after a refusal, System Settings → Privacy & Security |
 | Importing a `.pptx` | LibreOffice | `brew install --cask libreoffice`, or export the deck to PDF and import that |
 | Better drafted narration | The `claude` CLI, a local model server, or an Anthropic key | The built-in drafter needs none of them |

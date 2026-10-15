@@ -132,6 +132,12 @@ These each cost real time to find. None are obvious from the code.
 - **transformers.js refuses to load with both model sources off**, even from a full cache. While
   speaking, its remote host is pointed at a dead local port instead, so a cached model loads and a
   missing one fails rather than downloading mid-clip.
+- **The Kokoro voice can be brought in by hand**, for a proxy that will not let the app reach
+  Hugging Face (`kokoroManual.ts`). `KOKORO_FILES` pins all four files the model is — size and
+  SHA-256 — and is the one list the download check, the hand-copy check, the import and the
+  instructions all read. The import recognises chosen files by their contents, never by name:
+  browsers rename what they save, and a proxy's "blocked" page arrives under the right name.
+  Change the model's revision and those pins change with it.
 - **The MCP server is an ES module, which has no `__dirname`.** The shared modules find what ships
   beside them through it — the HTML scene runtime among them — so `vite.mcp.config.ts`
   defines `__dirname` and `__filename` in the bundle's banner. Without that, the built server threw
