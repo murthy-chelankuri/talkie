@@ -14,6 +14,7 @@
  * Checked again from `dev` for the reason scripts/ensureElectron.mjs is: `ignore-scripts` skips
  * the postinstall that would have fetched it, silently.
  */
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { chmodSync, createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -42,6 +43,22 @@ function installed(build) {
     )
   } catch {
     return false
+  }
+}
+
+/**
+ * Unpacks with the system's own bsdtar (`/usr/bin/tar` on macOS, `tar.exe` on Windows 10 and
+ * later), which reads zips. It was extract-zip, which on a managed laptop — security software
+ * between it and the disk — once neither finished nor failed: its promise simply never settled,
+ * Node ran out of things to wait for and quit with "unsettled top-level await", and `npm run dev`
+ * stopped with no reason given. A child process run synchronously can only succeed or say why not.
+ */
+function unzip(zip, dir) {
+  try {
+    execFileSync('tar', ['-xf', zip, '-C', dir], { stdio: ['ignore', 'ignore', 'pipe'], timeout: 5 * 60_000 })
+  } catch (err) {
+    const said = err.stderr?.toString().trim()
+    throw new Error(`could not unpack ${zip}${said ? `: ${said}` : err.signal ? ` (stopped after ${err.signal})` : ''}`)
   }
 }
 
@@ -100,15 +117,12 @@ if (!build) {
   const staging = join(root, 'vendor', 'ffmpeg', `.staging-${process.pid}`)
   let failure = null
   try {
-    // Loaded here so a missing devDependency is reported like any other failed fetch, rather than
-    // crashing `npm install` on an import error.
-    const { default: extract } = await import('extract-zip')
     rmSync(staging, { recursive: true, force: true })
     mkdirSync(staging, { recursive: true })
     for (const name of BINARIES) {
       const zip = join(staging, `${name}.zip`)
       await download(build[name], zip)
-      await extract(zip, { dir: staging })
+      unzip(zip, staging)
       chmodSync(join(staging, name), 0o755)
     }
     rmSync(target, { recursive: true, force: true })
