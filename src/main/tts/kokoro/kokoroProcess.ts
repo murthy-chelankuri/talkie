@@ -195,8 +195,14 @@ export function kokoroDownloadStatus(baseDir: string = homedir()): KokoroDownloa
 
 /** What went wrong with the download, in terms of what to do about it. */
 function describeDownloadFailure(message: string): string {
-  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network/i.test(message)) {
-    return 'Could not reach Hugging Face to download the voice. Check the connection and try again.'
+  // What a corporate proxy does to a fetch it will not allow: re-signs the connection with a
+  // certificate of its own, asks for credentials, or cuts it. Said as a proxy, because "check the
+  // connection" sends someone to a connection that works for everything else.
+  if (/certificate|CERT_|SELF_SIGNED|\b407\b|proxy/i.test(message)) {
+    return 'A proxy or firewall stopped the download from Hugging Face. Download the files yourself and add them below.'
+  }
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network/i.test(message)) {
+    return 'Could not reach Hugging Face to download the voice. Try again, or download the files yourself and add them below.'
   }
   if (/ENOSPC/i.test(message)) return 'There is not enough disk space for the voice.'
   if (/did not match the published one/.test(message)) return message
