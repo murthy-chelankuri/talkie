@@ -1,4 +1,7 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
+import { useEffect } from 'react'
+import { render } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { OwnFill, OwnSequence, VideoRoot, useOwnFrame, useOwnVideoConfig } from './clock'
 
@@ -22,6 +25,25 @@ const at = (frame: number, children: JSX.Element): string =>
 describe('Talkie’s own clock', () => {
   it('counts frames from the start of the enclosing Sequence, and reports its length', () => {
     expect(at(40, <OwnSequence from={30} durationInFrames={60}><Show /></OwnSequence>)).toContain('<i>10/60</i>')
+  })
+
+  it('keeps a clip the preview mounted early mounted through the cut, so what it loaded is what plays', () => {
+    let mounts = 0
+    function Clip(): JSX.Element {
+      useEffect(() => void mounts++, [])
+      return <Show />
+    }
+    const preview = (frame: number): JSX.Element => (
+      <VideoRoot frame={frame} fps={30} width={1920} height={1080} durationInFrames={300} mode="preview">
+        <OwnSequence from={30} durationInFrames={60}><Clip /></OwnSequence>
+      </VideoRoot>
+    )
+    const view = render(preview(25))
+    expect(view.container.innerHTML).toContain('<i>0/60</i>')
+    view.rerender(preview(31))
+    view.rerender(preview(32))
+    expect(view.container.innerHTML).toContain('<i>2/60</i>')
+    expect(mounts).toBe(1)
   })
 
   it('mounts a Sequence only while the frame is inside it', () => {

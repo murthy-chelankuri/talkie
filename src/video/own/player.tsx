@@ -33,6 +33,15 @@ function masterFrame(entries: PreviewMediaEntry[], frame: number, fps: number): 
   return { entry: master, frame: master.startFrame + master.el.currentTime * fps - master.trimBefore }
 }
 
+/**
+ * Whether `want` seconds is at or beyond the end of the file — within a frame of it counts, since an
+ * element that has ended reports its duration and the clock is only ever a frame from it. Unknown
+ * until the element has its metadata, and then never past the end.
+ */
+function pastTheEnd(el: HTMLMediaElement, want: number, perFrame: number): boolean {
+  return Number.isFinite(el.duration) && want >= el.duration - perFrame
+}
+
 function PlayerWith<P extends object>(
   { component, inputProps, durationInFrames, fps, width, height, controls, loop, autoPlay, style }: PreviewProps<P>,
   ref: ForwardedRef<PreviewHandle>
@@ -72,13 +81,19 @@ function PlayerWith<P extends object>(
   // Puts every mounted element at the frame: those in their clip seeked there (left alone while
   // within a frame of it) and playing if the player is; those outside it paused. The master take
   // is the clock, so it is never seeked to itself.
+  //
+  // A clip usually runs on past the end of its take, so the frame can be inside the clip and past
+  // the end of the file. That element is finished, not behind: play() on media that has ended
+  // starts it again from the beginning, and the take, back to playing, became the clock again —
+  // the playhead jumped to the start of the narration at the end of every take, and the preview
+  // played the first scene over and over.
   const syncMedia = useCallback((at: number, except?: PreviewMediaEntry): void => {
     const perFrame = 1 / fpsRef.current
     for (const e of media.current.values()) {
       if (e === except) continue
-      const inClip = at >= e.startFrame && at < e.endFrame
+      const want = (at - e.startFrame + e.trimBefore) * perFrame
+      const inClip = at >= e.startFrame && at < e.endFrame && !pastTheEnd(e.el, want, perFrame)
       if (inClip) {
-        const want = (at - e.startFrame + e.trimBefore) * perFrame
         if (e.el.readyState >= 1 && Math.abs(e.el.currentTime - want) > perFrame) {
           try {
             e.el.currentTime = want
@@ -170,7 +185,10 @@ function PlayerWith<P extends object>(
     } catch {
       // Caught up once the element can seek.
     }
-    if (playingRef.current && at >= entry.startFrame && at < entry.endFrame) void entry.el.play().catch(() => undefined)
+    const want = (at - entry.startFrame + entry.trimBefore) * perFrame
+    if (playingRef.current && at >= entry.startFrame && at < entry.endFrame && !pastTheEnd(entry.el, want, perFrame)) {
+      void entry.el.play().catch(() => undefined)
+    }
     return () => void media.current.delete(id)
   }, [])
 
