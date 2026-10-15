@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from 'fs'
+import { join } from 'path'
+import type { Page } from 'playwright'
 import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, openProject, type Talkie } from './app'
 import { CUT_FRAME, makeFixture, makeFixtureWithCut, type Fixture } from './fixture'
@@ -62,28 +65,94 @@ describe('the preview', () => {
     expect(Math.max(...audioDrift), `audio drift ${JSON.stringify(audioDrift)}`).toBeLessThanOrEqual(2)
   }, 90_000)
 
-  it('plays on from scene to scene, never back, through slides and HTML scenes alike', async () => {
-    // Each of Tidewell's takes ends before its clip does, and two of its first four clips are HTML
-    // scenes. A finished take was played again when the clock reached the end of it, so the preview
-    // went round its first scene for ever; and an HTML scene mounted early was thrown away at the
-    // cut, leaving a draw it had asked for to fail five seconds later as an error in the window.
+  it('plays across every kind of cut in every example: on, never back, and voiced after it', async () => {
+    // Each bug here was seen only by playing a real project across a cut: a take that ended before
+    // its clip was played again, sending the preview round its first scene for ever; an HTML
+    // scene mounted early was thrown away at the cut and logged a frame it never drew. The fixture
+    // has none of those shapes and the examples have all of them, so the examples are what plays —
+    // across the first cut, and across each kind of cut (slide to video, video to diagram, …)
+    // once per example, which is about half of them and every pairing they contain.
     fixture = makeFixture()
     talkie = await launchTalkie(fixture)
     const { win } = talkie
-    await win.getByRole('button', { name: 'Open Tidewell product launch' }).click()
-    await win.getByRole('tablist', { name: 'Ways to work on this project' }).waitFor()
+    const problems: string[] = []
 
-    await win.getByRole('button', { name: 'Play', exact: true }).click()
-    const frames: number[] = []
-    const deadline = Date.now() + 45_000
-    while (Date.now() < deadline) {
-      frames.push(await win.evaluate(() => Number(document.querySelector('[aria-label="Playhead"]')?.getAttribute('aria-valuenow'))))
-      if (frames.at(-1)! > 700) break
-      await win.waitForTimeout(100)
+    for (const name of EXAMPLES) {
+      await win.getByRole('button', { name: `Open ${name}` }).click()
+      await win.getByRole('tablist', { name: 'Ways to work on this project' }).waitFor()
+      const { clips, voiced } = exampleOnDisk(fixture.home, name)
+
+      for (const i of cutsToCross(clips)) {
+        const cut = clips[i].start
+        const label = `${name}, ${clips[i - 1].kind} → ${clips[i].kind} at frame ${cut}`
+        await seek(win, cut - 20)
+        await win.getByRole('button', { name: 'Play', exact: true }).click()
+        const frames: number[] = []
+        let heard = false
+        const until = cut + NARRATION_LEAD_IN_FRAMES + 24
+        const deadline = Date.now() + 8_000
+        while (Date.now() < deadline) {
+          const now = await win.evaluate(() => ({
+            frame: Number(document.querySelector('[aria-label="Playhead"]')?.getAttribute('aria-valuenow')),
+            sounding: Array.from(document.querySelectorAll('audio')).some((el) => !el.paused && el.currentTime > 0)
+          }))
+          frames.push(now.frame)
+          if (now.frame > cut + NARRATION_LEAD_IN_FRAMES + 8 && now.sounding) heard = true
+          if (now.frame >= until) break
+          await win.waitForTimeout(80)
+        }
+        await win.getByRole('button', { name: 'Pause', exact: true }).click()
+
+        const back = frames.flatMap((frame, at) => (at > 0 && frame < frames[at - 1] ? [`${frames[at - 1]}→${frame}`] : []))
+        if (back.length) problems.push(`${label}: went back ${back.join(' ')}`)
+        if (frames.at(-1)! < until) problems.push(`${label}: stopped at ${frames.at(-1)}, short of ${until}`)
+        if (voiced.has(clips[i].id) && !heard) problems.push(`${label}: no narration playing after the cut`)
+      }
+      // Back by the project switcher, as a person goes from one project to the next.
+      await win.getByRole('button', { name, exact: true }).click()
+      await win.getByRole('menuitem', { name: 'All projects' }).click()
     }
 
-    const backwards = frames.flatMap((frame, i) => (i > 0 && frame < frames[i - 1] ? [`${frames[i - 1]}→${frame}`] : []))
-    expect(backwards, 'the playhead went back').toEqual([])
-    expect(frames.at(-1), 'how far it played').toBeGreaterThan(700)
-  }, 90_000)
+    expect(problems).toEqual([])
+  }, 240_000)
 })
+
+const EXAMPLES = ['Tidewell product launch', 'Taskboard walkthrough', 'Where does a photo go?', 'Meet Talkie']
+
+type Clip = { id: string; kind: string; start: number; duration: number }
+
+/** An installed example's clips, and which of them have a take. */
+function exampleOnDisk(home: string, name: string): { clips: Clip[]; voiced: Set<string> } {
+  const root = join(home, 'Talkie', 'Projects')
+  for (const entry of readdirSync(root)) {
+    const dir = join(root, entry)
+    if (JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).name !== name) continue
+    const timeline = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf8'))
+    const segments: { timelineItemId: string; audioFile?: string }[] = JSON.parse(readFileSync(join(dir, 'transcript.json'), 'utf8'))
+    return {
+      clips: Array.isArray(timeline) ? timeline : timeline.items,
+      voiced: new Set(segments.filter((segment) => segment.audioFile).map((segment) => segment.timelineItemId))
+    }
+  }
+  throw new Error(`${name} is not installed`)
+}
+
+/** The first cut, and the first of each kind of cut after it: which clip kind to which. */
+function cutsToCross(clips: Clip[]): number[] {
+  const seen = new Set<string>()
+  return clips.flatMap((clip, i) => {
+    if (i === 0) return []
+    const kind = `${clips[i - 1].kind}→${clip.kind}`
+    if (i > 1 && seen.has(kind)) return []
+    seen.add(kind)
+    return [i]
+  })
+}
+
+/** Puts the playhead at `frame` the way a person does, by clicking the transport's track. */
+async function seek(win: Page, frame: number): Promise<void> {
+  const track = win.getByRole('slider', { name: 'Playback position' })
+  const box = (await track.boundingBox())!
+  const total = Number(await track.getAttribute('aria-valuemax')) + 1
+  await win.mouse.click(box.x + (box.width * (frame + 0.5)) / total, box.y + box.height / 2)
+}

@@ -87,7 +87,7 @@ export async function makeFixtureWithCut(): Promise<Fixture> {
   await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-ar', '48000', '-y', join(dir, 'audio', 'take.wav')])
   updateTranscriptSegmentAudio(project.id, segment.id, 'take.wav', 'tone', home)
 
-  return { home, projectId: project.id, dispose: () => rmSync(home, { recursive: true, force: true }) }
+  return { home, projectId: project.id, dispose: () => rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }) }
 }
 
 function buildFixture(engine: SpeechEngineId): Fixture {
@@ -116,7 +116,7 @@ function buildFixture(engine: SpeechEngineId): Fixture {
     const item = addScene(project.id, 'scene', { title, bullets: ['One point', 'Another'] }, home)
     if (script[index]) addTranscriptSegment(project.id, { text: script[index], timelineItemId: item.id }, home)
   }
-  return { home, projectId: project.id, dispose: () => rmSync(home, { recursive: true, force: true }) }
+  return { home, projectId: project.id, dispose: () => rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }) }
 }
 
 /** Whether this machine has the Kokoro model to borrow. */
