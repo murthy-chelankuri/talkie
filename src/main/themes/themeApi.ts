@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
-import { basename, extname, join } from 'path'
+import { basename, extname, join, normalize, sep } from 'path'
+import { readFontInfo, type FontInfo } from './fontInfo'
 import { writeJsonAtomic } from '../project/atomicWrite'
 import { slugify } from '../project/slug'
 import { ROOT_NAME } from '../project/migrateStorageRoot'
@@ -160,6 +161,29 @@ export function writeAssetInto(dir: string, kind: 'logo' | 'font', fileName: str
   const name = basename(fileName).replace(/[^\w.-]+/g, '-')
   writeFileSync(join(dir, 'fonts', name), bytes)
   return `fonts/${name}`
+}
+
+/** A font file kept in a theme, and what it says it is. */
+export type ThemeFontFile = { file: string } & FontInfo
+
+/**
+ * Save a font of the person's own into a theme, read first: a file that is not a font Talkie can
+ * read would only fail later, as a video drawn in the wrong typeface with nothing said why.
+ */
+export function addFontInto(dir: string, fileName: string, bytes: Buffer): ThemeFontFile {
+  const info = readFontInfo(bytes)
+  if (!info) throw new Error(`${basename(fileName)} is not a font Talkie can read. Use the .otf, .ttf, .woff or .woff2 files the company's font came in.`)
+  return { file: writeAssetInto(dir, 'font', fileName, bytes), ...info }
+}
+
+/** What each of a theme's font files is, for listing them; a file gone or unreadable is left out. */
+export function describeFontFiles(dir: string, files: string[]): ThemeFontFile[] {
+  return files.flatMap((file) => {
+    const path = join(dir, normalize(file))
+    if (!path.startsWith(dir + sep) || !existsSync(path)) return []
+    const info = readFontInfo(readFileSync(path))
+    return info ? [{ file, ...info }] : []
+  })
 }
 
 /** Which projects would be left without their theme if this one went. */

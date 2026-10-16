@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'fs'
+import { readFontInfo } from './fontInfo'
 import { homedir } from 'os'
 import { basename, extname, join, normalize, sep } from 'path'
 import { findThemeDir, readTheme } from './themeApi'
@@ -38,14 +39,23 @@ function readInside(dir: string, relative: string): Buffer | null {
 }
 
 /**
- * A file as a data URL. A font also carries its own name, because a family arrives as several
- * files — regular, semibold — and the name ("Inter-600") is the only place its weight is written.
+ * A file as a data URL. A font also carries which face it is — its weight and whether it slants —
+ * because a family arrives as several files and each has to be declared as the one it is.
+ *
+ * Read from inside the file (fontInfo.ts). It was read off the file's name ("Inter-600"), which
+ * suits the open fonts Talkie downloads and nothing else: a company's `AcmeSans-Bold.otf` named no
+ * number, so it was declared as every weight, and its regular and bold fought over all the text.
  */
 function dataUrl(bytes: Buffer, file: string): string {
   const extension = extname(file).toLowerCase()
   const type = MIME[extension] ?? 'application/octet-stream'
-  const name = type.startsWith('font/') ? `;name=${basename(file, extname(file)).replace(/[^\w-]/g, '')}` : ''
-  return `data:${type}${name};base64,${bytes.toString('base64')}`
+  let face = ''
+  if (type.startsWith('font/')) {
+    const info = readFontInfo(bytes)
+    face = `;name=${basename(file, extname(file)).replace(/[^\w-]/g, '')}`
+    if (info) face += `;weight=${info.variable ? '100-900' : info.weight};style=${info.italic ? 'italic' : 'normal'}`
+  }
+  return `data:${type}${face};base64,${bytes.toString('base64')}`
 }
 
 /** A theme that has not been saved yet — the editor's draft — renders from wherever its files are. */

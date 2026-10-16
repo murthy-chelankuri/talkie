@@ -412,6 +412,14 @@ colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `
 - **AI themes**: `generate/` reads the site headless (one page, no clicks), the narration
   provider chooses (rules if not), fonts come only from Google Fonts' `ofl/`/`apache/`, contrast
   is fixed, and the result waits in `Themes/.drafts` until saved.
+- **A company's own fonts** go in through the editor's Fonts section (first, above the colours)
+  or "Company fonts" when creating with AI, which then replaces the open fonts it would pick. Each
+  file is read for what it is — family, weight, italic, variable — from its own name and OS/2
+  tables (`fontInfo.ts`: TTF/OTF as they are, WOFF via zlib, WOFF2 via Brotli; no font library),
+  so the family names itself and every file is declared at its real weight and slant. The weight
+  used to come from the file's name, which only Talkie's own downloads (`Inter-600`) carry: a
+  company's `AcmeSans-Bold.otf` was declared as every weight and fought its regular for the text.
+  A file that is not a readable font is refused as it is added.
 
 ## HTML scenes
 

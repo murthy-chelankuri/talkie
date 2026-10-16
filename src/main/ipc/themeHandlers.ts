@@ -2,6 +2,8 @@ import type { IpcMain } from 'electron'
 import { homedir } from 'os'
 import { join, normalize, sep } from 'path'
 import {
+  addFontInto,
+  describeFontFiles,
   deleteTheme,
   duplicateTheme,
   findThemeDir,
@@ -56,6 +58,17 @@ export function registerThemeHandlers(ipcMain: IpcMain): void {
       return writeAssetInto(dir, kind, fileName, Buffer.from(bytes))
     }
   )
+  // The person's own fonts: read as they arrive, so the family names itself and a file that is not
+  // a font is turned away there and then.
+  ipcMain.handle('settings:themes:addFont', (_event, target: ThemeTarget, fileName: string, bytes: Uint8Array) => {
+    const dir = dirFor(target)
+    if (!dir) throw new Error('There is nowhere to keep that file yet. Save the theme first.')
+    return addFontInto(dir, fileName, Buffer.from(bytes))
+  })
+  ipcMain.handle('settings:themes:fontFiles', (_event, target: ThemeTarget, files: string[]) => {
+    const dir = dirFor(target)
+    return dir ? describeFontFiles(dir, files) : []
+  })
   // The editor's preview: the draft as it stands, drawn exactly as a video would draw it.
   ipcMain.handle('settings:themes:render', (_event, draft: unknown, target: ThemeTarget) =>
     renderThemeFrom(ThemeDraftSchema.parse(draft), dirFor(target))

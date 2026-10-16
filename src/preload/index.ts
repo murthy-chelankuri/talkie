@@ -13,6 +13,7 @@ import type { RenderTheme } from '../composition/renderTheme'
 import type { Theme, ThemeDraft } from '../main/themes/schema'
 import type { GeneratedTheme, GenerateStatus } from '../main/themes/generate/generateTheme'
 import type { ThemeTarget } from '../main/ipc/themeHandlers'
+import type { ThemeFontFile } from '../main/themes/themeApi'
 
 /** A file goes over IPC as its bytes, since the window has no path the main process could open. */
 export interface GenerateThemeRequest {
@@ -99,6 +100,11 @@ const themesApi = {
   generateStatus: (): Promise<GenerateStatus> => ipcRenderer.invoke('settings:themes:generateStatus'),
   addAsset: (target: ThemeTarget, kind: 'logo' | 'font', fileName: string, bytes: Uint8Array): Promise<string> =>
     ipcRenderer.invoke('settings:themes:addAsset', target, kind, fileName, bytes),
+  /** A font of the person's own, read as it is saved: its family, face and weight come back. */
+  addFont: (target: ThemeTarget, fileName: string, bytes: Uint8Array): Promise<ThemeFontFile> =>
+    ipcRenderer.invoke('settings:themes:addFont', target, fileName, bytes),
+  fontFiles: (target: ThemeTarget, files: string[]): Promise<ThemeFontFile[]> =>
+    ipcRenderer.invoke('settings:themes:fontFiles', target, files),
   render: (draft: ThemeDraft, target: ThemeTarget): Promise<RenderTheme> =>
     ipcRenderer.invoke('settings:themes:render', draft, target)
 }

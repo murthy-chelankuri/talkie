@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Check, Copy, ImageUp, Trash2, TriangleAlert, Upload } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ImageUp, Trash2, TriangleAlert, Upload, X } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { cn } from '../../lib/cn'
@@ -7,6 +7,9 @@ import { contrastRatio } from '../../../../main/themes/contrast'
 import { ThemePreview } from './ThemePreview'
 import { themeClient, type Theme, type ThemeDraft, type ThemeTarget, type VariantId } from '../../api/projectClient'
 import { isBuiltinThemeId } from '../../../../main/themes/builtinThemes'
+import { BUILTIN_FONTS } from '../../../../main/themes/schema'
+import { describeFace } from '../../../../main/themes/fontFace'
+import type { ThemeFontFile } from '../../../../main/themes/themeApi'
 
 const VARIANTS: Array<{ id: VariantId; label: string; hint: string }> = [
   { id: 'brand', label: 'Brand', hint: 'Opening and section slides, on the brand colour' },
@@ -46,6 +49,55 @@ export function ThemeEditor({
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<{ id: string; name: string }[] | null>(null)
   const target: ThemeTarget = themeId ? { themeId } : stagingDir ? { stagingDir } : null
+  // What each of the person's font files is — family, face, weight — read from the files.
+  const [faces, setFaces] = useState<Record<'heading' | 'body', ThemeFontFile[]>>({ heading: [], body: [] })
+  const headingFiles = draft.fonts.heading.source === 'user' ? draft.fonts.heading.files : []
+  const bodyFiles = draft.fonts.body.source === 'user' ? draft.fonts.body.files : []
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([themeClient.fontFiles(target, headingFiles), themeClient.fontFiles(target, bodyFiles)]).then(([heading, body]) => {
+      if (!cancelled) setFaces({ heading, body })
+    })
+    return () => {
+      cancelled = true
+    }
+    // The file lists, by value: the target is fixed for as long as the editor is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headingFiles.join('|'), bodyFiles.join('|')])
+
+  /**
+   * The person's own font files for one role, read as they arrive. The first sets the family by
+   * the name inside it — nobody should have to know a font's exact internal name to use it.
+   */
+  async function addFonts(role: 'heading' | 'body', files: File[]): Promise<void> {
+    setError(null)
+    const added: ThemeFontFile[] = []
+    for (const file of files) {
+      try {
+        added.push(await themeClient.addFont(target, file.name, new Uint8Array(await file.arrayBuffer())))
+      } catch (err) {
+        setError(err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err))
+      }
+    }
+    if (added.length === 0) return
+    setDraft((d) => {
+      const current = d.fonts[role]
+      // The person's own files replace a downloaded or built-in font rather than joining it.
+      const mine = current.source === 'user'
+      const files = [...(mine ? current.files : []), ...added.map((face) => face.file)].filter((file, at, all) => all.indexOf(file) === at)
+      return { ...d, fonts: { ...d.fonts, [role]: { family: mine ? current.family : added[0].family, source: 'user', files } } }
+    })
+  }
+
+  function removeFont(role: 'heading' | 'body', file: string): void {
+    setDraft((d) => {
+      const current = d.fonts[role]
+      const files = current.files.filter((each) => each !== file)
+      // With the last file gone the role goes back to Talkie's own type, never to a name with no font.
+      const fallback = { family: role === 'heading' ? BUILTIN_FONTS.serif : BUILTIN_FONTS.sans, source: 'builtin' as const, files: [] }
+      return { ...d, fonts: { ...d.fonts, [role]: files.length > 0 ? { ...current, files } : fallback } }
+    })
+  }
 
   const setVariant = (id: VariantId, role: 'background' | 'heading' | 'body' | 'accent', value: string): void =>
     setDraft((d) => ({ ...d, variants: { ...d.variants, [id]: { ...d.variants[id], [role]: value } } }))
@@ -154,6 +206,31 @@ export function ThemeEditor({
         </div>
       </Group>
 
+      {/* Before the colours: a company's typeface is half of what makes a video look like theirs,
+          and it was a button below every colour, easy to miss. */}
+      <Group title="Fonts">
+        <div className="grid grid-cols-2 gap-2">
+          {(['heading', 'body'] as const).map((role) => (
+            <FontField
+              key={role}
+              role={role}
+              family={draft.fonts[role].family}
+              source={draft.fonts[role].source}
+              faces={faces[role]}
+              onFamily={(family) => setDraft((d) => ({ ...d, fonts: { ...d.fonts, [role]: { ...d.fonts[role], family } } }))}
+              onFiles={(files) => void addFonts(role, files)}
+              onRemove={(file) => removeFont(role, file)}
+              onUseForOther={
+                draft.fonts[role].source === 'user' && draft.fonts[other(role)].family !== draft.fonts[role].family
+                  ? () => setDraft((d) => ({ ...d, fonts: { ...d.fonts, [other(role)]: { ...d.fonts[role] } } }))
+                  : undefined
+              }
+              canAdd={target !== null}
+            />
+          ))}
+        </div>
+      </Group>
+
       <Group title="Colours">
         {VARIANTS.map((variant) => {
           const colours = draft.variants[variant.id]
@@ -177,23 +254,6 @@ export function ThemeEditor({
             </div>
           )
         })}
-      </Group>
-
-      <Group title="Type">
-        <div className="grid grid-cols-2 gap-2">
-          {(['heading', 'body'] as const).map((role) => (
-            <FontField
-              key={role}
-              role={role}
-              family={draft.fonts[role].family}
-              source={draft.fonts[role].source}
-              fileCount={draft.fonts[role].files.length}
-              onFamily={(family) => setDraft((d) => ({ ...d, fonts: { ...d.fonts, [role]: { ...d.fonts[role], family } } }))}
-              onFile={(file) => void addFile('font', file, role)}
-              canAdd={target !== null}
-            />
-          ))}
-        </div>
       </Group>
 
       <Group title="Logo">
@@ -367,35 +427,86 @@ function ColourField({
   )
 }
 
+const other = (role: 'heading' | 'body'): 'heading' | 'body' => (role === 'heading' ? 'body' : 'heading')
+
+/**
+ * One role's typeface: the company's own files, or Talkie's.
+ *
+ * The family names itself from the first file, every file is listed as the face it is — so a
+ * missing bold is plain to see — and the name is set in the font itself, which is the only real
+ * check that the right font arrived.
+ */
 function FontField({
   role,
   family,
   source,
-  fileCount,
+  faces,
   onFamily,
-  onFile,
+  onFiles,
+  onRemove,
+  onUseForOther,
   canAdd
 }: {
   role: 'heading' | 'body'
   family: string
   source: string
-  fileCount: number
+  faces: ThemeFontFile[]
   onFamily: (family: string) => void
-  onFile: (file: File) => void
+  onFiles: (files: File[]) => void
+  onRemove: (file: string) => void
+  onUseForOther?: () => void
   canAdd: boolean
 }): JSX.Element {
-  const where =
-    source === 'user'
-      ? `Your files (${fileCount})`
-      : source === 'google'
-        ? 'Open font, downloaded'
-        : 'Built into Talkie'
+  const where = source === 'user' ? 'Your company’s font' : source === 'google' ? 'Open font, downloaded' : 'Built into Talkie'
   return (
-    <div className="flex flex-col gap-1 rounded-xl bg-raised p-3">
-      <span className="text-[11px] capitalize text-text-muted">{role}</span>
+    <div className="flex flex-col gap-2 rounded-xl bg-raised p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[12px] capitalize text-text">{role}</span>
+        <span className="text-[10px] text-text-muted">{where}</span>
+      </div>
+      <p className="truncate text-[22px] leading-tight text-text" style={{ fontFamily: `"${family.replace(/"/g, '')}", system-ui` }} aria-hidden="true">
+        Aa — The quick brown fox
+      </p>
       <Input aria-label={`${role} font`} value={family} onChange={(e) => onFamily(e.target.value)} />
-      <span className="text-[10px] text-text-muted">{where}</span>
-      <FilePicker label="Add font file" accept=".woff2,.woff,.ttf,.otf" icon={<Upload size={13} />} onFile={onFile} disabled={!canAdd} />
+      {faces.length > 0 && (
+        <ul aria-label={`${role} font files`} className="flex flex-col gap-0.5">
+          {faces.map((face) => (
+            <li key={face.file} className="flex items-center gap-2 text-[11px] text-text-muted">
+              <span
+                className="min-w-0 flex-1 truncate text-text"
+                style={{ fontFamily: `"${family.replace(/"/g, '')}", system-ui`, fontWeight: face.variable ? undefined : face.weight, fontStyle: face.italic ? 'italic' : 'normal' }}
+              >
+                {face.variable ? `${face.face} · every weight` : describeFace(face.weight, face.italic)}
+              </span>
+              <span className="max-w-[45%] truncate">{face.file.replace(/^fonts\//, '')}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${face.file.replace(/^fonts\//, '')}`}
+                onClick={() => onRemove(face.file)}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-text-muted hover:text-danger"
+              >
+                <X size={11} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <FilePicker
+        label={source === 'user' ? 'Add more font files' : 'Upload your font files'}
+        accept=".woff2,.woff,.ttf,.otf"
+        icon={<Upload size={13} />}
+        onFiles={onFiles}
+        multiple
+        disabled={!canAdd}
+      />
+      <span className="text-[10px] leading-relaxed text-text-muted">
+        .otf, .ttf, .woff or .woff2 — add each weight you use, such as Regular and Bold.
+      </span>
+      {onUseForOther && (
+        <Button variant="ghost" size="sm" className="self-start" onClick={onUseForOther}>
+          Use for {other(role)} too
+        </Button>
+      )}
     </div>
   )
 }
@@ -405,12 +516,17 @@ function FilePicker({
   accept,
   icon,
   onFile,
+  onFiles,
+  multiple,
   disabled
 }: {
   label: string
   accept: string
   icon: ReactNode
-  onFile: (file: File) => void
+  onFile?: (file: File) => void
+  /** With `multiple`: every file chosen at once — a font family comes as several. */
+  onFiles?: (files: File[]) => void
+  multiple?: boolean
   disabled?: boolean
 }): JSX.Element {
   const input = useRef<HTMLInputElement>(null)
@@ -425,10 +541,12 @@ function FilePicker({
         type="file"
         accept={accept}
         aria-label={label}
+        multiple={multiple}
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) onFile(file)
+          const files = Array.from(e.target.files ?? [])
+          if (onFiles && files.length > 0) onFiles(files)
+          else if (files[0]) onFile?.(files[0])
           e.target.value = ''
         }}
       />
