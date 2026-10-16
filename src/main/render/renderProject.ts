@@ -16,6 +16,8 @@ import { computeTimelineDuration } from '../../composition/timelineDuration'
 import type { TimelineItem as CompositionTimelineItem } from '../../composition/types'
 import { beatsByItem } from '../transcript/captions'
 import { getAssetServer, resolveTimelineAssetUrls } from './assetServer'
+import { readVersions } from '../project/versionsStore'
+import { activeVersion, FULL_VIDEO, playable } from '../project/versions'
 import { levelExport } from './loudness'
 import { redrawStaleDiagrams } from '../themes/projectDiagrams'
 import { redrawStalePosters } from '../htmlScene/htmlSceneApi'
@@ -65,7 +67,10 @@ export async function renderProjectVideo(
   // (every item's `data` is checked against its kind's schema, so it's always present) — the
   // optionality is a static-typing artifact of two independently-defined interfaces, not a
   // runtime possibility.
-  const rawTimeline = readTimelineLenient(id, baseDir) as unknown as CompositionTimelineItem[]
+  // The version being worked on: the scenes it leaves out are not in the video. See versions.ts.
+  const versions = readVersions(id, baseDir)
+  const version = activeVersion(versions)
+  const rawTimeline = playable(readTimelineLenient(id, baseDir) as unknown as CompositionTimelineItem[], version.leftOut)
   const assetServer = await getAssetServer(rootDir)
   const narrationAudioPaths = readNarrationAudioPaths(id, baseDir)
   const timeline = resolveTimelineAssetUrls(
@@ -81,7 +86,10 @@ export async function renderProjectVideo(
   const theme = toRenderTheme(openProject(id, baseDir).themeId, baseDir)
   // Named for the project and the day it was made, because this is the file the user hands to
   // somebody: `export-1789179493000.mp4` tells its owner nothing about what it is.
-  const outputPath = join(dir, 'renders', `${exportFileName(openProject(id, baseDir).name)}.mp4`)
+  // And for the version, where it is not the whole thing: two cuts exported the same day must not
+  // overwrite each other, or be mistaken for each other once sent.
+  const named = version.id === FULL_VIDEO.id ? openProject(id, baseDir).name : `${openProject(id, baseDir).name} — ${version.name}`
+  const outputPath = join(dir, 'renders', `${exportFileName(named)}.mp4`)
   const totalFrames = computeTimelineDuration(rawTimeline)
   onProgress?.(preparing(totalFrames))
 

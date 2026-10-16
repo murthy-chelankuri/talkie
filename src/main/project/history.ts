@@ -1,16 +1,18 @@
 import { homedir } from 'os'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import { findProjectDir } from './paths'
 import { writeJsonAtomic } from './atomicWrite'
 
-// A project's editable state is two small JSON files, so the simplest correct undo is to keep
+// A project's editable state is a few small JSON files, so the simplest correct undo is to keep
 // copies of them rather than teach every operation how to reverse itself. Audio files are not
 // included: re-narrating overwrites a recording, and undo restores the text around it, not the
 // voice.
 interface Snapshot {
   timeline: unknown
   transcript: unknown
+  /** Which scenes each version leaves out; null where the project has never had a version. */
+  versions: unknown
 }
 
 interface History {
@@ -35,7 +37,8 @@ function readSnapshot(projectId: string, baseDir: string): Snapshot | null {
   try {
     return {
       timeline: JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8')),
-      transcript: JSON.parse(readFileSync(join(dir, 'transcript.json'), 'utf-8'))
+      transcript: JSON.parse(readFileSync(join(dir, 'transcript.json'), 'utf-8')),
+      versions: existsSync(join(dir, 'versions.json')) ? JSON.parse(readFileSync(join(dir, 'versions.json'), 'utf-8')) : null
     }
   } catch (err) {
     console.error(`Could not snapshot project ${projectId} for undo:`, err)
@@ -48,6 +51,10 @@ function writeSnapshot(projectId: string, snapshot: Snapshot, baseDir: string): 
   if (!dir) return
   writeJsonAtomic(join(dir, 'timeline.json'), snapshot.timeline)
   writeJsonAtomic(join(dir, 'transcript.json'), snapshot.transcript)
+  // Leaving a scene out is an edit like any other, so undo puts it back — and undoing the first
+  // version ever made leaves the project as it was, with no versions file at all.
+  if (snapshot.versions === null) rmSync(join(dir, 'versions.json'), { force: true })
+  else writeJsonAtomic(join(dir, 'versions.json'), snapshot.versions)
 }
 
 // Run one user-level action, remembering the state it started from. Nested writes inside the

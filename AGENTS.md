@@ -323,6 +323,26 @@ cannot type into; `authWall.ts` calls a page a sign-in only when it asks for an 
 has nowhere to go, so one such button used to be enough for the page to count as somewhere to
 get on to. It was never a wall, nobody was ever waited for, and the walk clicked the button.
 
+## Versions: one project, cut several ways
+
+The full walkthrough, a two-minute one, one for sales — the same clips, each version leaving some
+out (`src/main/project/versions.ts`, kept in `versions.json`, which undo snapshots with the
+timeline). One version is being worked on; it is what the preview plays and what export writes,
+and the export is named for it. No file means the full video, as every project made before this.
+
+- **A version lists what it leaves out, not what it keeps**, so a clip added later is in every
+  version until someone takes it out of one.
+- **Left-out clips stay on the timeline, dimmed, where they can be put back.** Only what plays is
+  cut: `playable()` removes them and closes the gaps, and the export renders exactly that.
+- **The timeline and the player count different frames.** The player plays the shorter video;
+  the timeline, the script and the inspector show every clip. `useEditPlayer` stands between them,
+  mapping frames both ways (`toPlayFrame` / `toEditFrame`), so nothing that shows the timeline
+  knows versions exist. The transport bar alone uses the player directly, since its length is the
+  version's. A point inside a left-out clip goes to where the next played clip starts.
+- **Agents get every verb**: `talkie_versions`, `talkie_include_clip`, `talkie_create_version`,
+  `talkie_choose_version`, `talkie_rename_version`, `talkie_delete_version`, and
+  `talkie_timeline` marks what the version leaves out.
+
 ## Narration drives the picture
 
 A timed take is a list of moments, so the visuals can follow it rather than run on a stagger of

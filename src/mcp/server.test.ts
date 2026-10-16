@@ -579,6 +579,27 @@ describe('Talkie over MCP', () => {
     })
   })
 
+  describe('versions', () => {
+    it('cuts a shorter version without losing the full one, and says what each leaves out', async () => {
+      const projectId = await newProject('Cuts')
+      for (const title of ['Intro', 'Deep dive', 'Close']) await call('talkie_add_scene', { projectId, title, bullets: [] })
+      const [, deep] = readTimeline(projectId, baseDir)
+
+      await call('talkie_create_version', { projectId, name: '2-minute' })
+      const said = await call('talkie_include_clip', { projectId, timelineItemId: deep.id, included: false })
+
+      expect(said).toMatch(/"Full video" \(id full\): [\d.]+s, plays every clip/)
+      expect(said).toMatch(/"2-minute" \(id [^)]+\) — being worked on: [\d.]+s, leaves out clip 2/)
+      const listing = await call('talkie_timeline', { projectId })
+      expect(listing).toContain('Working on the version "2-minute"')
+      expect(listing).toContain('LEFT OUT of the version "2-minute"')
+
+      // The full version is untouched, and choosing it plays everything again.
+      expect(await call('talkie_choose_version', { projectId, versionId: 'full' })).toMatch(/"Full video" \(id full\) — being worked on/)
+      expect(await call('talkie_timeline', { projectId })).not.toContain('LEFT OUT')
+    }, 60_000)
+  })
+
   describe('importing a slide deck', () => {
     it('turns every page of a PDF into a slide, notes and all', async () => {
       // Deck import had no tool at all because rasterising was done in the renderer. It is

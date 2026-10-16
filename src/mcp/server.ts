@@ -33,6 +33,15 @@ import { narrationFromText } from '../main/transcript/narrationBeats'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { prepareDeck, saveSlides } from '../main/slides/importSlides'
+import { activeVersion, playable } from '../main/project/versions'
+import {
+  chooseVersion,
+  createVersion,
+  deleteVersion,
+  readVersions,
+  renameVersion,
+  setClipIncluded
+} from '../main/project/versionsStore'
 import { rasterisePdf } from '../main/slides/rasterisePdf'
 import { drawDiagramForProject } from '../main/themes/projectDiagrams'
 import {
@@ -214,6 +223,7 @@ export function createTalkieServer(
       annotations: { readOnlyHint: true }
     },
     async ({ projectId }) => {
+      const cut = activeVersion(readVersions(projectId, baseDir))
       const timeline = readTimeline(projectId, baseDir)
       if (timeline.length === 0) return text('This project has no clips yet.')
 
@@ -231,10 +241,17 @@ export function createTalkieServer(
               segment.beats.map((beat) => `     [${beat.at.toFixed(1)}] ${beat.text}`).join('\n')
             : `\n   narration (${segment.status}), read straight through: ${segment.text}`
           : '\n   no narration yet'
-        return describeItem(item, index) + narration
+        const out = cut.leftOut.includes(item.id) ? `\n   LEFT OUT of the version "${cut.name}": not played or exported` : ''
+        return describeItem(item, index) + out + narration
       })
 
-      return text(lines.join('\n'))
+      // Which version is being worked on decides what plays and what export writes.
+      const versions = readVersions(projectId, baseDir)
+      const heading =
+        versions.versions.length > 1 || cut.leftOut.length > 0
+          ? `Working on the version "${cut.name}" (${versions.versions.length} version${versions.versions.length === 1 ? '' : 's'}; see talkie_versions).\n`
+          : ''
+      return text(heading + lines.join('\n'))
     }
   )
 
@@ -692,6 +709,117 @@ export function createTalkieServer(
         baseDir
       )
       return text(`That clip is now on screen for ${(item.duration / 30).toFixed(1)}s.`)
+    }
+  )
+
+  // ---------------------------------------------------------------- versions
+
+  const describeVersions = (projectId: string): string => {
+    const versions = readVersions(projectId, baseDir)
+    const timeline = readTimeline(projectId, baseDir)
+    const name = (clipId: string): string => {
+      const index = timeline.findIndex((item) => item.id === clipId)
+      return index === -1 ? 'a clip no longer there' : `clip ${index + 1} (${clipId})`
+    }
+    return versions.versions
+      .map((version) => {
+        const frames = playable(timeline, version.leftOut).reduce((end, item) => Math.max(end, item.start + item.duration), 0)
+        const marker = version.id === versions.active ? ' — being worked on' : ''
+        const out = version.leftOut.length ? `leaves out ${version.leftOut.map(name).join(', ')}` : 'plays every clip'
+        return `"${version.name}" (id ${version.id})${marker}: ${(frames / 30).toFixed(1)}s, ${out}`
+      })
+      .join('\n')
+  }
+
+  tool(
+    'talkie_versions',
+    {
+      title: 'The versions of a project',
+      description:
+        'A project can be cut several ways from the same clips — the full walkthrough, a two-minute ' +
+        'one, one for a particular audience. Each version leaves some clips out; one is being worked ' +
+        'on, and it is what the preview plays and talkie_export writes. Left-out clips stay in the ' +
+        'project and can be put back. Lists every version, how long it runs, and what it leaves out.',
+      inputSchema: { projectId: z.string() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ projectId }) => text(describeVersions(projectId))
+  )
+
+  tool(
+    'talkie_include_clip',
+    {
+      title: 'Put a clip in the version, or leave it out',
+      description:
+        'Leave a clip out of the version being worked on, or put it back. Nothing is deleted: the ' +
+        'clip and its narration stay in the project, and other versions are not changed. To make a ' +
+        'shorter cut without losing the full one, make a version with talkie_create_version first.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string().describe('The clip id, from talkie_timeline'),
+        included: z.boolean().describe('false leaves it out of this version; true puts it back')
+      }
+    },
+    async ({ projectId, timelineItemId, included }) => {
+      if (!readTimeline(projectId, baseDir).some((item) => item.id === timelineItemId)) return text(`No clip found with id ${timelineItemId}.`)
+      withHistory(projectId, () => setClipIncluded(projectId, timelineItemId, included, baseDir), baseDir)
+      return text(describeVersions(projectId))
+    }
+  )
+
+  tool(
+    'talkie_create_version',
+    {
+      title: 'Make a new version',
+      description:
+        'Make a new version of the project, starting as a copy of the one being worked on, and work ' +
+        'on it from now — so leaving clips out of it does not change the version it came from.',
+      inputSchema: { projectId: z.string(), name: z.string().describe('What this cut is, e.g. "2-minute" or "For sales"') }
+    },
+    async ({ projectId, name }) => {
+      withHistory(projectId, () => createVersion(projectId, name, baseDir), baseDir)
+      return text(describeVersions(projectId))
+    }
+  )
+
+  tool(
+    'talkie_choose_version',
+    {
+      title: 'Work on another version',
+      description: 'Switch to another version: it becomes what the preview plays and what talkie_export writes.',
+      inputSchema: { projectId: z.string(), versionId: z.string().describe('From talkie_versions') }
+    },
+    async ({ projectId, versionId }) => {
+      withHistory(projectId, () => chooseVersion(projectId, versionId, baseDir), baseDir)
+      return text(describeVersions(projectId))
+    }
+  )
+
+  tool(
+    'talkie_rename_version',
+    {
+      title: 'Rename a version',
+      description: 'Give a version another name. Names are kept distinct; a taken one gets a number.',
+      inputSchema: { projectId: z.string(), versionId: z.string().describe('From talkie_versions'), name: z.string() }
+    },
+    async ({ projectId, versionId, name }) => {
+      withHistory(projectId, () => renameVersion(projectId, versionId, name, baseDir), baseDir)
+      return text(describeVersions(projectId))
+    }
+  )
+
+  tool(
+    'talkie_delete_version',
+    {
+      title: 'Delete a version',
+      description:
+        'Remove a version. Its clips are not touched — only the record of which it left out. The ' +
+        'last version cannot be deleted.',
+      inputSchema: { projectId: z.string(), versionId: z.string().describe('From talkie_versions') }
+    },
+    async ({ projectId, versionId }) => {
+      withHistory(projectId, () => deleteVersion(projectId, versionId, baseDir), baseDir)
+      return text(describeVersions(projectId))
     }
   )
 
@@ -1560,7 +1688,8 @@ export function createTalkieServer(
     },
     async ({ projectId }) => {
       const path = await renderProjectVideo(projectId, baseDir)
-      return text(`Exported to ${path}`)
+      const cut = activeVersion(readVersions(projectId, baseDir))
+      return text(`Exported the version "${cut.name}" to ${path}`)
     }
   )
 
