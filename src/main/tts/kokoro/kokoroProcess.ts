@@ -30,13 +30,21 @@ interface Pending {
 }
 
 /**
- * The built worker sits beside the main bundle. Run from source — the test suite — there is no
- * build, and the TypeScript is run directly: Node strips the types itself.
+ * The built worker sits beside the main bundle, in out/main. The MCP server runs this same code
+ * from out/mcp, where there is no worker: it looked only beside itself, fell back to a TypeScript
+ * file that exists only in src/, and every narration an agent asked for ended "Kokoro stopped
+ * unexpectedly (exit code 1)" while the app spoke the same words. So it looks in out/main too —
+ * in a packaged build that is app.asar.unpacked/out/main, unpacked because the server is plain
+ * node. Run from source — the test suite — there is no build, and the TypeScript is run
+ * directly: Node strips the types itself.
  */
-export function workerPath(): string {
-  const built = join(__dirname, 'kokoroWorker.cjs')
-  return existsSync(built) ? built : join(__dirname, 'kokoroWorker.ts')
+export function workerPath(fromDir: string = __dirname): string {
+  const built = [join(fromDir, 'kokoroWorker.cjs'), join(fromDir, '..', 'main', 'kokoroWorker.cjs')].find((path) => existsSync(path))
+  return built ?? join(fromDir, 'kokoroWorker.ts')
 }
+
+/** The end of what the worker wrote before it died — "exit code 1" alone says nothing about why. */
+const STDERR_KEPT = 2000
 
 let child: ChildProcess | null = null
 let nextId = 1
@@ -51,10 +59,20 @@ function settleAll(error: Error): void {
 function worker(): ChildProcess {
   if (child && child.connected) return child
 
-  const started = fork(workerPath(), [], {
+  const path = workerPath()
+  if (!existsSync(path)) throw new Error(`Kokoro cannot start: its worker is not at ${path}. Run npm run build.`)
+  const started = fork(path, [], {
     // In the packaged app process.execPath is Electron; this makes it behave as plain Node.
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-    stdio: ['ignore', 'inherit', 'inherit', 'ipc']
+    // Both piped and passed on to stderr: the MCP server talks to its agent over stdout, and
+    // anything the worker printed there would arrive as a broken message.
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc']
+  })
+  let stderr = ''
+  started.stdout?.on('data', (chunk: Buffer) => process.stderr.write(chunk))
+  started.stderr?.on('data', (chunk: Buffer) => {
+    process.stderr.write(chunk)
+    stderr = (stderr + chunk.toString()).slice(-STDERR_KEPT)
   })
 
   started.on('message', (reply: Reply) => {
@@ -71,11 +89,19 @@ function worker(): ChildProcess {
 
   started.on('exit', (code) => {
     if (child === started) child = null
-    if (pending.size > 0) settleAll(new Error(`Kokoro stopped unexpectedly (exit code ${code}).`))
+    if (pending.size === 0) return
+    const why = lastError(stderr)
+    settleAll(new Error(`Kokoro stopped unexpectedly (exit code ${code})${why ? `: ${why}` : '.'}`))
   })
 
   child = started
   return started
+}
+
+/** The line that names the failure — Node prints "Error: …" under a stack of file paths. */
+export function lastError(stderr: string): string {
+  const lines = stderr.split('\n').map((line) => line.trim()).filter(Boolean)
+  return lines.find((line) => /^\w*Error\b/.test(line)) ?? lines[lines.length - 1] ?? ''
 }
 
 function send(
@@ -84,11 +110,13 @@ function send(
 ): Promise<number | undefined> {
   if (idleTimer) clearTimeout(idleTimer)
 
+  // Started first, so a worker that cannot start leaves nothing waiting on it.
+  const running = worker()
   const id = nextId++
   const result = new Promise<number | undefined>((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress })
   })
-  worker().send({ ...message, id })
+  running.send({ ...message, id })
 
   const rearm = (): void => {
     if (pending.size > 0) return
