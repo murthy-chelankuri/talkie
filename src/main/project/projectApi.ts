@@ -200,6 +200,21 @@ export function deleteProject(id: string, baseDir: string = homedir()): void {
   rmSync(dir, { recursive: true, force: true })
 }
 
+/**
+ * A deck page imported as an editable slide, read back as the picture of the page it is.
+ *
+ * For a while a deck arrived as slides of words read off each page, each keeping the page itself
+ * as `picture` to show instead. That was taken back out: a deck comes in as its pages, as it did
+ * before. Decks imported in between still hold those slides, and their pages are what was meant
+ * to be seen — so each is read as the image clip it would have been, and saved that way the next
+ * time the timeline is written. The words that were read off it go; the deck still has them.
+ */
+function asDeckPicture(item: unknown): unknown {
+  const candidate = item as { kind?: string; data?: { picture?: unknown } } | null
+  if (candidate?.kind !== 'scene' || typeof candidate.data?.picture !== 'string') return item
+  return { ...candidate, kind: 'image', data: { src: candidate.data.picture } }
+}
+
 export function readTimeline(id: string, baseDir: string = homedir()): TimelineItem[] {
   const dir = findProjectDir(id, baseDir)
   if (!dir || !existsSync(join(dir, 'timeline.json'))) {
@@ -208,7 +223,7 @@ export function readTimeline(id: string, baseDir: string = homedir()): TimelineI
 
   const raw = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
   try {
-    return raw.map((item: unknown) => TimelineItemSchema.parse(item))
+    return raw.map((item: unknown) => TimelineItemSchema.parse(asDeckPicture(item)))
   } catch (err) {
     if (err instanceof z.ZodError) {
       throw new Error(err.issues.map((issue) => issue.message).join('; '))
@@ -227,7 +242,7 @@ export function readTimelineLenient(id: string, baseDir: string = homedir()): Ti
   const items: TimelineItem[] = []
   for (const item of raw) {
     try {
-      items.push(TimelineItemSchema.parse(item))
+      items.push(TimelineItemSchema.parse(asDeckPicture(item)))
     } catch (err) {
       console.error(`Skipping invalid timeline item in project ${id}:`, err)
     }

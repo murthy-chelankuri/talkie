@@ -1,8 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, readTimeline, readTranscript, addTimelineItem } from '../project/projectApi'
+import { createProject, readTimeline, readTimelineLenient, readTranscript, addTimelineItem } from '../project/projectApi'
+import { findProjectDir } from '../project/paths'
 import { prepareDeck, saveSlides } from './importSlides'
 
 const DECK = join(__dirname, 'fixtures', 'two-slides-with-notes.pptx')
@@ -38,6 +39,22 @@ describe('saveSlides', () => {
     const src = (readTimeline(project.id, baseDir)[0].data as { src: string }).src
     expect(existsSync(src)).toBe(true)
     expect(readFileSync(src)).toEqual(Buffer.from(PNG))
+  })
+
+  it('reads a page imported as an editable slide back as the picture of the page', () => {
+    // Decks were briefly imported as slides of words keeping their page; that was taken out, and
+    // a deck imported then is shown as its pages again rather than as the words read off them.
+    const project = createProject('Deck', baseDir)
+    const [image] = saveSlides(project.id, [{ png: PNG }], [], baseDir)
+    const src = (image.data as { src: string }).src
+    const dir = findProjectDir(project.id, baseDir)!
+    writeFileSync(
+      join(dir, 'timeline.json'),
+      JSON.stringify([{ ...image, kind: 'scene', data: { title: 'Q3', bullets: [], style: {}, picture: src, showPicture: false } }])
+    )
+
+    expect(readTimeline(project.id, baseDir)).toEqual([{ ...image, kind: 'image', data: { src } }])
+    expect(readTimelineLenient(project.id, baseDir)).toEqual([{ ...image, kind: 'image', data: { src } }])
   })
 
   it('turns speaker notes into that slide\'s narration', () => {
