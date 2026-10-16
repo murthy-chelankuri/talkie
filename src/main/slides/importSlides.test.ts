@@ -1,8 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createProject, readTimeline, readTranscript, addTimelineItem, updateSceneData } from '../project/projectApi'
+import { createProject, readTimeline, readTimelineLenient, readTranscript, addTimelineItem } from '../project/projectApi'
+import { findProjectDir } from '../project/paths'
 import { prepareDeck, saveSlides } from './importSlides'
 
 const DECK = join(__dirname, 'fixtures', 'two-slides-with-notes.pptx')
@@ -30,57 +31,30 @@ describe('saveSlides', () => {
     expect(timeline[1].start).toBe(timeline[0].start + timeline[0].duration)
   })
 
-  it('keeps each page as a picture in the project, for the slide to show instead of its words', () => {
+  it('writes the slide images into the project', () => {
     const project = createProject('Deck', baseDir)
 
     saveSlides(project.id, [{ png: PNG }], [], baseDir)
 
-    const picture = (readTimeline(project.id, baseDir)[0].data as { picture: string }).picture
-    expect(existsSync(picture)).toBe(true)
-    expect(readFileSync(picture)).toEqual(Buffer.from(PNG))
+    const src = (readTimeline(project.id, baseDir)[0].data as { src: string }).src
+    expect(existsSync(src)).toBe(true)
+    expect(readFileSync(src)).toEqual(Buffer.from(PNG))
   })
 
-  it('makes each page an editable slide of the words read off it', () => {
+  it('reads a page imported as an editable slide back as the picture of the page', () => {
+    // Decks were briefly imported as slides of words keeping their page; that was taken out, and
+    // a deck imported then is shown as its pages again rather than as the words read off them.
     const project = createProject('Deck', baseDir)
-
-    saveSlides(project.id, [{ png: PNG, text: { title: 'Q3 results', bullets: ['Revenue up 18%'] } }], [], baseDir)
-
-    const [slide] = readTimeline(project.id, baseDir)
-    expect(slide.kind).toBe('scene')
-    expect(slide.data).toMatchObject({ title: 'Q3 results', bullets: ['Revenue up 18%'] })
-    expect((slide.data as { showPicture?: boolean }).showPicture).toBeUndefined()
-  })
-
-  it('takes a .pptx’s own words over what was read off its PDF', () => {
-    const project = createProject('Deck', baseDir)
-
-    saveSlides(
-      project.id,
-      [{ png: PNG, text: { title: 'How it works Capture a session', bullets: [] } }],
-      [],
-      baseDir,
-      [{ title: 'How it works', bullets: ['Capture a session'] }]
+    const [image] = saveSlides(project.id, [{ png: PNG }], [], baseDir)
+    const src = (image.data as { src: string }).src
+    const dir = findProjectDir(project.id, baseDir)!
+    writeFileSync(
+      join(dir, 'timeline.json'),
+      JSON.stringify([{ ...image, kind: 'scene', data: { title: 'Q3', bullets: [], style: {}, picture: src, showPicture: false } }])
     )
 
-    expect(readTimeline(project.id, baseDir)[0].data).toMatchObject({ title: 'How it works', bullets: ['Capture a session'] })
-  })
-
-  it('shows a page with no words on it as the page, since there is nothing to edit', () => {
-    const project = createProject('Deck', baseDir)
-
-    saveSlides(project.id, [{ png: PNG, text: { title: '', bullets: [] } }], [], baseDir)
-
-    expect(readTimeline(project.id, baseDir)[0].data).toMatchObject({ showPicture: true })
-  })
-
-  it('keeps the page when the slide is edited, whatever address the window sent it back as', () => {
-    const project = createProject('Deck', baseDir)
-    const [slide] = saveSlides(project.id, [{ png: PNG, text: { title: 'Old', bullets: [] } }], [], baseDir)
-    const picture = (slide.data as { picture: string }).picture
-
-    updateSceneData(project.id, slide.id, { title: 'New', bullets: [], picture: 'http://127.0.0.1:1234/secret/x.png', showPicture: true }, baseDir)
-
-    expect(readTimeline(project.id, baseDir)[0].data).toMatchObject({ title: 'New', picture, showPicture: true })
+    expect(readTimeline(project.id, baseDir)).toEqual([{ ...image, kind: 'image', data: { src } }])
+    expect(readTimelineLenient(project.id, baseDir)).toEqual([{ ...image, kind: 'image', data: { src } }])
   })
 
   it('turns speaker notes into that slide\'s narration', () => {

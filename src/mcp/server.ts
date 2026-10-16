@@ -82,9 +82,7 @@ function text(body: string): { content: [{ type: 'text'; text: string }] } {
 
 function describeItem(item: TimelineItem, index: number): string {
   const seconds = (item.duration / 30).toFixed(1)
-  const data = item.data as
-    | { title?: string; source?: string; trimBefore?: number; trimAfter?: number; picture?: string; showPicture?: boolean }
-    | null
+  const data = item.data as { title?: string; source?: string; trimBefore?: number; trimAfter?: number } | null
   const name =
     item.kind === 'scene' || item.kind === 'diagram' || item.kind === 'html'
       ? richTextToPlain(data?.title ?? '') || 'untitled'
@@ -98,10 +96,7 @@ function describeItem(item: TimelineItem, index: number): string {
       ? `, recording ${from.toFixed(1)}–${((data?.trimAfter ?? 0) / 30 || from + item.duration / 30).toFixed(1)}s`
       : ''
 
-  // A slide from a deck can be showing its words or its original page; which, is what is on screen.
-  const page = item.kind === 'scene' && data?.picture ? (data.showPicture ? ', from a deck, showing its original page' : ', from a deck, showing its words') : ''
-
-  return `${index + 1}. ${item.kind} — ${name} (${seconds}s${window}${page}, id ${item.id})`
+  return `${index + 1}. ${item.kind} — ${name} (${seconds}s${window}, id ${item.id})`
 }
 
 /**
@@ -1128,7 +1123,7 @@ export function createTalkieServer(
 
       const added = withHistory(
         projectId,
-        () => saveSlides(projectId, pages, deck.notes, baseDir, deck.texts),
+        () => saveSlides(projectId, pages, deck.notes, baseDir),
         baseDir
       )
       const withNotes = deck.notes.filter((note) => note.trim()).length
@@ -1137,9 +1132,7 @@ export function createTalkieServer(
         `Imported ${added.length} slide${added.length === 1 ? '' : 's'} from ${deck.name}` +
           `${withNotes > 0 ? `, ${withNotes} with speaker notes as narration` : ''}.\n` +
           'They are at the end of the timeline — use talkie_move_clip to place them, and ' +
-          'talkie_set_duration to say how long each holds. Each is an editable slide holding the words ' +
-          'read off its page, with the page itself kept: talkie_edit_slide changes the words, and its ' +
-          'showPicture: true shows the page as it was instead.'
+          'talkie_set_duration to say how long each holds.'
       )
     }
   )
@@ -1394,23 +1387,17 @@ export function createTalkieServer(
         'Rewrite the words on a slide that is already in the project. This changes the picture ' +
         'on screen, which is not the same thing as talkie_set_narration — that changes what is ' +
         'said over it. Asked to reword an opening, you almost certainly want both. Only works ' +
-        'on a slide; a recorded clip shows whatever was recorded. A slide imported from a deck ' +
-        'also keeps the page it came from: showPicture: true shows that page as it was instead of ' +
-        'the words, and false brings the words back.',
+        'on a slide; a recorded clip shows whatever was recorded.',
       inputSchema: {
         projectId: z.string(),
         timelineItemId: z.string().describe('The slide id, from talkie_timeline'),
-        title: z.string().optional().describe('Left out, the title stays as it is'),
+        title: z.string(),
         bullets: z.array(z.string()).optional().describe('A few short lines, or none at all'),
         style: SceneStyleSchema.partial().optional().describe(STYLE_HELP),
-        layout: LayoutInput.optional(),
-        showPicture: z
-          .boolean()
-          .optional()
-          .describe('For a slide imported from a deck: show its original page (true) or its words (false)')
+        layout: LayoutInput.optional()
       }
     },
-    async ({ projectId, timelineItemId, title, bullets, style, layout, showPicture }) => {
+    async ({ projectId, timelineItemId, title, bullets, style, layout }) => {
       const item = readTimeline(projectId, baseDir).find((candidate) => candidate.id === timelineItemId)
       if (!item) return text(`No clip found with id ${timelineItemId}.`)
       if (item.kind !== 'scene') {
@@ -1422,10 +1409,7 @@ export function createTalkieServer(
 
       // Merged rather than replaced: leaving the bullets out should keep them, not silently
       // empty the slide — and leaving the layout out should not turn an opening card into a slide.
-      const current = item.data as Record<string, unknown> & { title: string; bullets?: string[]; style?: object; picture?: string }
-      if (showPicture !== undefined && !current.picture) {
-        return text('That slide was written in Talkie, not imported from a deck, so it has no page to show instead.')
-      }
+      const current = item.data as Record<string, unknown> & { bullets?: string[]; style?: object }
       withHistory(
         projectId,
         () =>
@@ -1434,19 +1418,17 @@ export function createTalkieServer(
             timelineItemId,
             {
               ...current,
-              title: title ?? current.title,
+              title,
               bullets: bullets ?? current.bullets ?? [],
               style: { ...current.style, ...style },
-              ...(layout ? { layout } : {}),
-              ...(showPicture !== undefined ? { showPicture } : {})
+              ...(layout ? { layout } : {})
             },
             baseDir
           ),
         baseDir
       )
 
-      if (showPicture) return text('The slide now shows its original page from the deck.')
-      return text(`The slide now reads "${title ?? current.title}".`)
+      return text(`The slide now reads "${title}".`)
     }
   )
 

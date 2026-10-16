@@ -1,4 +1,4 @@
-import { Fill, interpolate, Picture, spring, useFrame, useVideoConfig } from '../../video'
+import { Fill, interpolate, spring, useFrame, useVideoConfig } from '../../video'
 import { LogoMark } from '../LogoMark'
 import { revealFrames, type Beat } from '../revealOnBeat'
 import type { TextSceneData } from '../../main/project/timeline/schema'
@@ -16,21 +16,11 @@ import { useRenderTheme, type RenderTheme } from '../renderTheme'
  * each one waits for the sentence about it — see revealOnBeat.ts.
  */
 export function TextScene({ data }: { data: unknown }): JSX.Element {
-  const { title, bullets, style, beats, layout, picture, showPicture } = data as TextSceneData & { beats?: Beat[] }
+  const { title, bullets, style, beats, layout } = data as TextSceneData & { beats?: Beat[] }
   const project = useRenderTheme()
   const theme = resolveSceneTheme(style, project)
   const frame = useFrame()
   const { fps } = useVideoConfig()
-
-  // An imported slide shown as the page it was. Fitted rather than filled: a 4:3 deck cropped to
-  // 16:9 loses its title off the top, and that is the deck's own design this is chosen to keep.
-  if (showPicture && picture) {
-    return (
-      <Fill style={{ background: theme.background }}>
-        <Picture src={picture} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-      </Fill>
-    )
-  }
 
   if (layout === 'title' || layout === 'closing') {
     return <Card layout={layout} title={title} look={theme} project={project} frame={frame} fps={fps} />

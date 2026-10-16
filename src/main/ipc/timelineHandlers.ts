@@ -22,8 +22,7 @@ import {
 } from '../project/versionsStore'
 import { beatsByItem } from '../transcript/captions'
 import { withHistory } from '../project/history'
-import { prepareDeck, saveSlides, type PreparedDeck, type SlidePage } from '../slides/importSlides'
-import type { SlideText } from '../slides/slideText'
+import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
 import { describeExport, openExport, showExportInFinder } from '../render/revealExport'
 import { addScene, updateSceneData, writeDiagramSvg } from '../project/projectApi'
 import { writeScene, type SceneRequest } from '../agent/writeScene'
@@ -152,8 +151,8 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
   // Rasterising happens in the renderer, where a canvas exists, so the pages come back here.
   ipcMain.handle(
     'project:import:saveSlides',
-    (_event, id: string, pages: SlidePage[], notes: string[], texts: SlideText[] = []) =>
-      withHistory(id, () => saveSlides(id, pages, notes, undefined, texts))
+    (_event, id: string, pages: Array<{ png: Uint8Array }>, notes: string[]) =>
+      withHistory(id, () => saveSlides(id, pages, notes))
   )
 
   // Versions: which scenes each cut of the video leaves out (versions.ts). Each change is one

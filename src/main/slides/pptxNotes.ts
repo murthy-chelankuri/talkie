@@ -25,7 +25,7 @@ export async function readPptxNotes(pptxPath: string): Promise<string[]> {
  * Slides are numbered by their file name, not by the order they appear in. `presentation.xml`
  * holds the real order, via relationship ids — so slide10 can come before slide2.
  */
-export async function readSlideOrder(pptxPath: string): Promise<string[]> {
+async function readSlideOrder(pptxPath: string): Promise<string[]> {
   const presentation = await readEntry(pptxPath, 'ppt/presentation.xml')
   const rels = await readEntry(pptxPath, 'ppt/_rels/presentation.xml.rels')
   if (!presentation || !rels) return []
@@ -83,7 +83,7 @@ export function extractNotesText(xml: string): string {
   return paragraphs.join('\n')
 }
 
-export function decodeXml(value: string): string {
+function decodeXml(value: string): string {
   return value
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -94,7 +94,7 @@ export function decodeXml(value: string): string {
 }
 
 /** Read one file out of the zip without unpacking the whole archive. */
-export async function readEntry(zipPath: string, entry: string): Promise<string | null> {
+async function readEntry(zipPath: string, entry: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync('unzip', ['-p', zipPath, entry], {
       maxBuffer: 32 * 1024 * 1024,

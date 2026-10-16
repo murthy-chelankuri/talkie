@@ -1,5 +1,3 @@
-import type { SlidePage } from '../../../main/slides/importSlides'
-import type { SlideText } from '../../../main/slides/slideText'
 import type { TimelineItem } from '../../../main/project/timeline/schema'
 import type { Versions } from '../../../main/project/versions'
 import { notifySettingsChanged } from '../lib/settingsChanged'
@@ -60,8 +58,8 @@ export const projectClient = {
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
   importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id),
   chooseDeck: (id: string) => window.api.project.chooseDeck(id),
-  saveSlides: (id: string, pages: SlidePage[], notes: string[], texts: SlideText[] = []) =>
-    window.api.project.saveSlides(id, pages, notes, texts)
+  saveSlides: (id: string, pages: Array<{ png: Uint8Array }>, notes: string[]) =>
+    window.api.project.saveSlides(id, pages, notes)
 }
 
 export type { Settings } from '../../../main/settings/schema'

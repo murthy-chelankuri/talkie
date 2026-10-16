@@ -124,9 +124,7 @@ export function listProjectOverviews(baseDir: string = homedir()): ProjectOvervi
  * wrote beside the page.
  */
 function posterOf(item: TimelineItem): Pick<ProjectOverview, 'posterPath' | 'posterKind' | 'posterTrimBefore'> | null {
-  const data = item.data as { src?: string; trimBefore?: number; picture?: string }
-  // An imported slide has its page, words or not: the nearest thing it has to a still.
-  if (item.kind === 'scene' && data?.picture) return { posterPath: data.picture, posterKind: 'image' }
+  const data = item.data as { src?: string; trimBefore?: number }
   if (!data?.src) return null
   if (item.kind === 'video') {
     return { posterPath: data.src, posterKind: 'video', ...(data.trimBefore ? { posterTrimBefore: data.trimBefore } : {}) }
@@ -202,6 +200,21 @@ export function deleteProject(id: string, baseDir: string = homedir()): void {
   rmSync(dir, { recursive: true, force: true })
 }
 
+/**
+ * A deck page imported as an editable slide, read back as the picture of the page it is.
+ *
+ * For a while a deck arrived as slides of words read off each page, each keeping the page itself
+ * as `picture` to show instead. That was taken back out: a deck comes in as its pages, as it did
+ * before. Decks imported in between still hold those slides, and their pages are what was meant
+ * to be seen — so each is read as the image clip it would have been, and saved that way the next
+ * time the timeline is written. The words that were read off it go; the deck still has them.
+ */
+function asDeckPicture(item: unknown): unknown {
+  const candidate = item as { kind?: string; data?: { picture?: unknown } } | null
+  if (candidate?.kind !== 'scene' || typeof candidate.data?.picture !== 'string') return item
+  return { ...candidate, kind: 'image', data: { src: candidate.data.picture } }
+}
+
 export function readTimeline(id: string, baseDir: string = homedir()): TimelineItem[] {
   const dir = findProjectDir(id, baseDir)
   if (!dir || !existsSync(join(dir, 'timeline.json'))) {
@@ -210,7 +223,7 @@ export function readTimeline(id: string, baseDir: string = homedir()): TimelineI
 
   const raw = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
   try {
-    return raw.map((item: unknown) => TimelineItemSchema.parse(item))
+    return raw.map((item: unknown) => TimelineItemSchema.parse(asDeckPicture(item)))
   } catch (err) {
     if (err instanceof z.ZodError) {
       throw new Error(err.issues.map((issue) => issue.message).join('; '))
@@ -229,7 +242,7 @@ export function readTimelineLenient(id: string, baseDir: string = homedir()): Ti
   const items: TimelineItem[] = []
   for (const item of raw) {
     try {
-      items.push(TimelineItemSchema.parse(item))
+      items.push(TimelineItemSchema.parse(asDeckPicture(item)))
     } catch (err) {
       console.error(`Skipping invalid timeline item in project ${id}:`, err)
     }
@@ -315,16 +328,6 @@ function normaliseScene(kind: string, data: unknown): unknown {
   return schema ? schema.parse(data) : data
 }
 
-/**
- * An imported slide's picture stays the file it was imported as, whatever an edit sends back.
- * The window only ever sees it as an asset-server address, which would not survive a restart, and
- * nothing edits the picture itself — only whether it is shown.
- */
-function keepImportedPicture(item: TimelineItem, data: unknown): unknown {
-  const picture = item.kind === 'scene' ? (item.data as { picture?: string }).picture : undefined
-  return picture && data && typeof data === 'object' ? { ...data, picture } : data
-}
-
 /** Replace a scene's content, leaving its place and length on the timeline alone. */
 export function updateSceneData(
   id: string,
@@ -343,10 +346,7 @@ export function updateSceneData(
     throw new Error(`No timeline item found with id ${timelineItemId}`)
   }
 
-  const updated = TimelineItemSchema.parse({
-    ...timeline[index],
-    data: normaliseScene(timeline[index].kind, keepImportedPicture(timeline[index], data))
-  })
+  const updated = TimelineItemSchema.parse({ ...timeline[index], data: normaliseScene(timeline[index].kind, data) })
   timeline[index] = updated
   writeJsonAtomic(join(dir, 'timeline.json'), timeline)
   return updated

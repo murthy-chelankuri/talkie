@@ -558,7 +558,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       pendingNotesRef.current = []
 
       setDeckProgress('Adding slides to the timeline…')
-      await projectClient.saveSlides(projectId, pages, notes, deck.status === 'ready' ? deck.texts : [])
+      await projectClient.saveSlides(projectId, pages, notes)
       await refreshTimeline()
       await refreshSegments()
     } catch (err) {

@@ -360,14 +360,11 @@ export function resolveTimelineAssetUrls(
       : undefined
 
     if (!SRC_MEDIA_KINDS.has(item.kind)) {
-      // An imported slide's page, kept to be shown in place of its words when asked.
-      const picture = item.kind === 'scene' ? (item.data as { picture?: string }).picture : undefined
-      return audioUrl || captions || beats || picture
+      return audioUrl || captions || beats
         ? {
             ...item,
             data: {
               ...(item.data as object),
-              ...(picture ? { picture: resolveAssetUrl(picture, rootDir, serverUrl) } : {}),
               ...(audioUrl ? { audioUrl } : {}),
               ...(captions ? { captions } : {}),
               ...(beats ? { beats } : {})
