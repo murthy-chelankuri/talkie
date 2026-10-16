@@ -76,6 +76,13 @@ export const AGENT_TOOLS = [
   'talkie_move_clip',
   'talkie_split_clip',
   'talkie_delete_clip',
+  // Cutting it different ways: "make a two-minute version" is exactly what someone asks for
+  'talkie_versions',
+  'talkie_include_clip',
+  'talkie_create_version',
+  'talkie_choose_version',
+  'talkie_rename_version',
+  'talkie_delete_version',
   // Taking it back
   'talkie_undo',
   'talkie_redo'

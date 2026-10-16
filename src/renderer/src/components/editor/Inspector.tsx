@@ -46,7 +46,9 @@ export function Inspector({
   onNarrate,
   onDraft,
   onSplit,
-  onDelete
+  onDelete,
+  version,
+  onToggleIncluded
 }: {
   item: TimelineItem | null
   timeline: TimelineItem[]
@@ -65,12 +67,19 @@ export function Inspector({
   onDraft: (item: TimelineItem) => void
   onSplit: (item: TimelineItem, atFrame: number) => void
   onDelete: (item: TimelineItem) => void
+  /** The version being worked on: its name, how long it plays, and what it leaves out. */
+  version?: { name: string; frames: number; leftOut: readonly string[] }
+  onToggleIncluded?: (item: TimelineItem, included: boolean) => void
 }): JSX.Element {
   if (!item) {
-    const total = computeTimelineDuration(timeline as unknown as CompositionTimelineItem[])
+    // The length of what plays and exports, which is the version's when it leaves scenes out.
+    const total = version?.leftOut.length ? version.frames : computeTimelineDuration(timeline as unknown as CompositionTimelineItem[])
     return (
       <Column title="Project">
         <Row label="Length" value={formatTimecode(total / FPS)} />
+        {version && version.leftOut.length > 0 && (
+          <Row label={version.name} value={`${version.leftOut.length} scene${version.leftOut.length === 1 ? '' : 's'} left out`} />
+        )}
         <Row label="Voice" value={timeline.length === 0 ? 'Nothing yet' : `${progress.voiced} of ${timeline.length} voiced`} />
         <Row label="Theme" value={themeName ?? 'Talkie’s own look'} />
         {note && (
@@ -119,6 +128,19 @@ export function Inspector({
       )}
       <Row label="Length" value={formatTimecode(item.duration / FPS)} />
       <Row label="Voice" value={voice ?? 'No voice yet'} />
+      {version && onToggleIncluded && (
+        <label className="flex items-center justify-between gap-3 text-[12px]">
+          <span className="text-text-muted">In {version.name}</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-label={`In the version ${version.name}`}
+            checked={!version.leftOut.includes(item.id)}
+            onChange={(event) => onToggleIncluded(item, event.target.checked)}
+            className="h-4 w-4 accent-[var(--color-accent-fill)]"
+          />
+        </label>
+      )}
 
       {(data.check?.problems.length ?? 0) > 0 && (
         <section aria-label="What the check found" className="flex flex-col gap-1 rounded-[10px] bg-danger-bg p-2.5">

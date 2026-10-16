@@ -1,6 +1,7 @@
 import type { SlidePage } from '../../../main/slides/importSlides'
 import type { SlideText } from '../../../main/slides/slideText'
 import type { TimelineItem } from '../../../main/project/timeline/schema'
+import type { Versions } from '../../../main/project/versions'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
 import type { ProjectContext } from '../../../main/project/projectContext'
@@ -120,7 +121,15 @@ export const timelineClient = {
   split: (id: string, timelineItemId: string, atFrame: number): Promise<TimelineItem[]> =>
     window.api.timeline.split(id, timelineItemId, atFrame),
   remove: (id: string, timelineItemId: string): Promise<TimelineItem[]> =>
-    window.api.timeline.remove(id, timelineItemId)
+    window.api.timeline.remove(id, timelineItemId),
+  versions: (id: string): Promise<Versions> => window.api.timeline.versions(id),
+  include: (id: string, timelineItemId: string, included: boolean): Promise<Versions> =>
+    window.api.timeline.include(id, timelineItemId, included),
+  createVersion: (id: string, name: string): Promise<Versions> => window.api.timeline.createVersion(id, name),
+  chooseVersion: (id: string, versionId: string): Promise<Versions> => window.api.timeline.chooseVersion(id, versionId),
+  renameVersion: (id: string, versionId: string, name: string): Promise<Versions> =>
+    window.api.timeline.renameVersion(id, versionId, name),
+  deleteVersion: (id: string, versionId: string): Promise<Versions> => window.api.timeline.deleteVersion(id, versionId)
 }
 
 export type { SceneRequest, SceneResult } from '../../../main/agent/writeScene'

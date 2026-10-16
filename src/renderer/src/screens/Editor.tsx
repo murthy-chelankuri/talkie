@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Preview, type PreviewHandle } from '../../../video/preview'
+import { activeVersion, NO_VERSIONS, playable, type Versions } from '../../../main/project/versions'
+import { useEditPlayer } from '../lib/editPlayer'
+import { VersionPicker } from '../components/VersionPicker'
 import { Clapperboard, Maximize2, Minimize2 } from 'lucide-react'
 import {
   Group,
@@ -88,6 +91,8 @@ const RAIL_TITLES: Record<RailPanelId, string> = {
 export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [project, setProject] = useState<ProjectMetadata | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
+  // Which cut of the video is being worked on, and the scenes it leaves out. See versions.ts.
+  const [versions, setVersions] = useState<Versions>(NO_VERSIONS)
   const [error, setError] = useState<string | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [exportState, setExportState] = useState<ExportState>({ status: 'idle' })
@@ -129,6 +134,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PreviewHandle>(null)
+  const leftOut = activeVersion(versions).leftOut
+  // The player plays the version; everything that shows the whole timeline sees it through this.
+  const editPlayerRef = useEditPlayer(playerRef, timeline, leftOut)
   const openedAtFrame = useRef(false)
 
   /**
@@ -146,7 +154,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     const settled = Math.min(SETTLED_FRAME, Math.max(0, Math.floor(first.duration / 2)))
     if (settled > 0) {
       // A frame late enough for the entrance to have played, and the player has to exist first.
-      requestAnimationFrame(() => playerRef.current?.seekTo(first.start + settled))
+      requestAnimationFrame(() => editPlayerRef.current?.seekTo(first.start + settled))
     }
     openedAtFrame.current = true
   }, [timeline])
@@ -203,12 +211,14 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     Promise.all([
       projectClient.open(projectId),
       timelineClient.read(projectId),
-      transcriptClient.read(projectId)
+      transcriptClient.read(projectId),
+      timelineClient.versions(projectId)
     ])
-      .then(([openedProject, items, transcript]) => {
+      .then(([openedProject, items, transcript, cuts]) => {
         setProject(openedProject)
         setTimeline(items)
         setSegments(transcript)
+        setVersions(cuts)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }, [projectId])
@@ -253,6 +263,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   async function refreshTimeline(): Promise<void> {
     const items = await timelineClient.read(projectId)
     setTimeline(items)
+    // Undo can put a scene back as well as a clip, so the versions are read with the timeline.
+    setVersions(await timelineClient.versions(projectId))
     setHistory(await projectClient.historyState(projectId))
 
     // An agent can write mermaid source but cannot draw it — there is no browser where it
@@ -265,14 +277,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   }
 
   const refreshEverything = useCallback(async (): Promise<void> => {
-    const [items, transcript, state] = await Promise.all([
+    const [items, transcript, state, cuts] = await Promise.all([
       timelineClient.read(projectId),
       transcriptClient.read(projectId),
-      projectClient.historyState(projectId)
+      projectClient.historyState(projectId),
+      timelineClient.versions(projectId)
     ])
     setTimeline(items)
     setSegments(transcript)
     setHistory(state)
+    setVersions(cuts)
   }, [projectId])
 
   const handleUndo = useCallback(async (): Promise<void> => {
@@ -406,7 +420,29 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [handleUndo, handleRedo])
 
+  /** A point on the whole timeline, from the timeline or the script. */
   const handleSeek = useCallback((frame: number): void => {
+    editPlayerRef.current?.seekTo(frame)
+  }, [editPlayerRef])
+
+  /**
+   * Leaving a scene out, putting it back, or switching version: the same moment stays under the
+   * playhead where it can — the player's frame means something else once the video is cut
+   * differently, so it is read off the whole timeline before and put back after.
+   */
+  async function handleVersionChange(change: () => Promise<Versions>): Promise<void> {
+    const at = editPlayerRef.current?.getCurrentFrame() ?? 0
+    try {
+      setVersions(await change())
+      setHistory(await projectClient.historyState(projectId))
+      requestAnimationFrame(() => editPlayerRef.current?.seekTo(at))
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  /** A point in the video this version plays, from the transport bar. */
+  const handlePlaySeek = useCallback((frame: number): void => {
     playerRef.current?.seekTo(frame)
   }, [])
 
@@ -752,7 +788,10 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // the same real shape validated by TimelineItemSchema.superRefine, so the optionality is a
   // static-typing artifact, not a runtime possibility. Same workaround as renderProject.ts /
   // timelineHandlers.ts.
-  const compositionTimeline = timeline as unknown as CompositionTimelineItem[]
+  // What plays: the scenes this version keeps, closed up. The timeline itself shows them all.
+  const playTimeline = playable(timeline, leftOut)
+  const compositionTimeline = playTimeline as unknown as CompositionTimelineItem[]
+  const wholeTimeline = timeline as unknown as CompositionTimelineItem[]
 
   // The timeline and the script, built once and placed either under the stage or, while the
   // script has the window, on their own.
@@ -827,7 +866,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             recordingItemId={recordingItemId}
             onRecord={handleRecord}
             onStopRecording={handleStopRecording}
-            playerRef={playerRef}
+            playerRef={editPlayerRef}
             onSeek={handleSeek}
             onSelectItem={handleSelectClip}
             onCommit={handleNarrationCommit}
@@ -838,8 +877,19 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <Timeline
           timeline={timeline}
           segments={segments}
-          totalFrames={computeTimelineDuration(compositionTimeline)}
-          playerRef={playerRef}
+          totalFrames={computeTimelineDuration(wholeTimeline)}
+          playerRef={editPlayerRef}
+          leftOut={leftOut}
+          onToggleIncluded={(item, included) => void handleVersionChange(() => timelineClient.include(projectId, item.id, included))}
+          versionPicker={
+            <VersionPicker
+              versions={versions}
+              onChoose={(versionId) => void handleVersionChange(() => timelineClient.chooseVersion(projectId, versionId))}
+              onCreate={(name) => void handleVersionChange(() => timelineClient.createVersion(projectId, name))}
+              onRename={(versionId, name) => void handleVersionChange(() => timelineClient.renameVersion(projectId, versionId, name))}
+              onDelete={(versionId) => void handleVersionChange(() => timelineClient.deleteVersion(projectId, versionId))}
+            />
+          }
           selectedItemId={selectedItemId}
           onSeek={handleSeek}
           onSelectItem={handleSelectClip}
@@ -991,9 +1041,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
             {timeline.length > 0 && (
               <TransportBar
                 playerRef={playerRef}
-                timeline={timeline}
+                timeline={playTimeline}
                 totalFrames={computeTimelineDuration(compositionTimeline)}
-                onSeek={handleSeek}
+                onSeek={handlePlaySeek}
               />
             )}
           </div>
@@ -1007,7 +1057,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               progress={progress}
               themeName={renderTheme ? renderTheme.company || 'This project’s theme' : null}
               note={exampleVoiceNote({ example: project?.example, engine: appEngine, otherVoiceClips: progress.otherVoice.length })}
-              playheadFrame={() => playerRef.current?.getCurrentFrame() ?? 0}
+              playheadFrame={() => editPlayerRef.current?.getCurrentFrame() ?? 0}
               busy={{ narrating: narratingItemId === selectedItemId, drafting: draftingItemId === selectedItemId }}
               onEdit={(item) => setSceneEditing(item)}
               onLook={handleLook}
@@ -1015,6 +1065,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               onDraft={(item) => void handleDraft(item)}
               onSplit={(item, atFrame) => void handleSplit(item, atFrame)}
               onDelete={(item) => void handleDeleteClip(item)}
+              version={{ name: activeVersion(versions).name, frames: computeTimelineDuration(compositionTimeline), leftOut }}
+              onToggleIncluded={(item, included) => void handleVersionChange(() => timelineClient.include(projectId, item.id, included))}
             />
           </div>
         </div>
@@ -1030,9 +1082,9 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         {timeline.length > 0 && (
           <TransportBar
             playerRef={playerRef}
-            timeline={timeline}
+            timeline={playTimeline}
             totalFrames={computeTimelineDuration(compositionTimeline)}
-            onSeek={handleSeek}
+            onSeek={handlePlaySeek}
           />
         )}
         <div className="min-h-0 flex-1">{workPane}</div>

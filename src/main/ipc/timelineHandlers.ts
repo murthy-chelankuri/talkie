@@ -12,6 +12,14 @@ import {
 } from '../project/projectApi'
 import { readTranscript } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
+import {
+  chooseVersion,
+  createVersion,
+  deleteVersion,
+  readVersions,
+  renameVersion,
+  setClipIncluded
+} from '../project/versionsStore'
 import { beatsByItem } from '../transcript/captions'
 import { withHistory } from '../project/history'
 import { prepareDeck, saveSlides, type PreparedDeck, type SlidePage } from '../slides/importSlides'
@@ -132,5 +140,22 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     'project:import:saveSlides',
     (_event, id: string, pages: SlidePage[], notes: string[], texts: SlideText[] = []) =>
       withHistory(id, () => saveSlides(id, pages, notes, undefined, texts))
+  )
+
+  // Versions: which scenes each cut of the video leaves out (versions.ts). Each change is one
+  // undo step, the same as any other edit.
+  ipcMain.handle('project:versions:read', (_event, id: string) => readVersions(id))
+  ipcMain.handle('project:versions:include', (_event, id: string, itemId: string, included: boolean) =>
+    withHistory(id, () => setClipIncluded(id, itemId, included))
+  )
+  ipcMain.handle('project:versions:create', (_event, id: string, name: string) => withHistory(id, () => createVersion(id, name)))
+  ipcMain.handle('project:versions:choose', (_event, id: string, versionId: string) =>
+    withHistory(id, () => chooseVersion(id, versionId))
+  )
+  ipcMain.handle('project:versions:rename', (_event, id: string, versionId: string, name: string) =>
+    withHistory(id, () => renameVersion(id, versionId, name))
+  )
+  ipcMain.handle('project:versions:delete', (_event, id: string, versionId: string) =>
+    withHistory(id, () => deleteVersion(id, versionId))
   )
 }

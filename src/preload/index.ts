@@ -5,6 +5,7 @@ import type { HtmlSceneData } from '../main/project/timeline/schema'
 import type { ProjectMetadata, ProjectSummary, ProjectOverview } from '../main/project/schema'
 import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
+import type { Versions } from '../main/project/versions'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
 import type { RenderTheme } from '../composition/renderTheme'
@@ -154,7 +155,15 @@ const timelineApi = {
   split: (id: string, timelineItemId: string, atFrame: number): Promise<TimelineItem[]> =>
     ipcRenderer.invoke('project:timeline:split', id, timelineItemId, atFrame),
   remove: (id: string, timelineItemId: string): Promise<TimelineItem[]> =>
-    ipcRenderer.invoke('project:timeline:delete', id, timelineItemId)
+    ipcRenderer.invoke('project:timeline:delete', id, timelineItemId),
+  versions: (id: string): Promise<Versions> => ipcRenderer.invoke('project:versions:read', id),
+  include: (id: string, timelineItemId: string, included: boolean): Promise<Versions> =>
+    ipcRenderer.invoke('project:versions:include', id, timelineItemId, included),
+  createVersion: (id: string, name: string): Promise<Versions> => ipcRenderer.invoke('project:versions:create', id, name),
+  chooseVersion: (id: string, versionId: string): Promise<Versions> => ipcRenderer.invoke('project:versions:choose', id, versionId),
+  renameVersion: (id: string, versionId: string, name: string): Promise<Versions> =>
+    ipcRenderer.invoke('project:versions:rename', id, versionId, name),
+  deleteVersion: (id: string, versionId: string): Promise<Versions> => ipcRenderer.invoke('project:versions:delete', id, versionId)
 }
 
 const renderApi = {

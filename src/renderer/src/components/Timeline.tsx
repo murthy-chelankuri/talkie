@@ -13,6 +13,8 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable 
 import { CSS } from '@dnd-kit/utilities'
 import {
   AudioLines,
+  Eye,
+  EyeOff,
   Film,
   Mic,
   Image as ImageIcon,
@@ -354,7 +356,9 @@ function ClipBlock({
   width,
   selected,
   onSelect,
-  onEditScene
+  onEditScene,
+  leftOut,
+  onToggleIncluded
 }: {
   item: TimelineItem
   left: number
@@ -362,11 +366,15 @@ function ClipBlock({
   selected: boolean
   onSelect: (item: TimelineItem) => void
   onEditScene: (item: TimelineItem) => void
+  /** Left out of the version being worked on: still here to put back, but not played. */
+  leftOut: boolean
+  onToggleIncluded?: (item: TimelineItem, included: boolean) => void
 }): JSX.Element {
   const isScene = item.kind === 'scene' || item.kind === 'diagram'
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
 
   return (
+    <>
     <button
       type="button"
       ref={setNodeRef}
@@ -375,7 +383,7 @@ function ClipBlock({
         width,
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1
+        opacity: isDragging ? 0.5 : leftOut ? 0.38 : 1
       }}
       {...attributes}
       {...listeners}
@@ -395,8 +403,40 @@ function ClipBlock({
         {CLIP_ICONS[item.kind] ?? <ImageIcon size={10} />}
         {item.kind === 'scene' ? 'slide' : item.kind}
       </span>
+      {leftOut && (
+        <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-[11px] font-medium uppercase tracking-wide text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">
+          Left out
+        </span>
+      )}
     </button>
+    {/* Beside the clip rather than in it: the clip is a button, and one button cannot hold
+        another. Hidden while dragging, when it would be left behind. */}
+    {onToggleIncluded && !isDragging && width >= 44 && (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={!leftOut}
+        aria-label={`Include ${clipName(item)} in this version`}
+        title={leftOut ? 'Left out of this version — click to put it back' : 'In this version — click to leave it out'}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => onToggleIncluded(item, leftOut)}
+        style={{ left: left + width - 26 }}
+        className={cn(
+          'absolute top-1 z-10 flex h-[22px] w-[22px] items-center justify-center rounded-md border-0 p-0',
+          leftOut ? 'bg-black/70 text-white/70 hover:text-white' : 'bg-black/55 text-white hover:bg-black/75'
+        )}
+      >
+        {leftOut ? <EyeOff size={12} /> : <Eye size={12} />}
+      </button>
+    )}
+    </>
   )
+}
+
+/** What a clip is called, for the screen reader's sake: its title, or its kind. */
+function clipName(item: TimelineItem): string {
+  const title = (item.data as { title?: string } | null)?.title
+  return title ? richTextToPlain(title) : item.kind === 'scene' ? 'this slide' : `this ${item.kind}`
 }
 
 export function Timeline({
@@ -429,7 +469,10 @@ export function Timeline({
   canUndo,
   canRedo,
   onUndo,
-  onRedo
+  onRedo,
+  leftOut = [],
+  onToggleIncluded,
+  versionPicker
 }: {
   timeline: TimelineItem[]
   segments: TranscriptSegment[]
@@ -462,6 +505,11 @@ export function Timeline({
   canRedo: boolean
   onUndo: () => void | Promise<void>
   onRedo: () => void | Promise<void>
+  /** The clips the version being worked on leaves out. See versions.ts. */
+  leftOut?: readonly string[]
+  onToggleIncluded?: (item: TimelineItem, included: boolean) => void
+  /** Which version is being worked on, at the start of the toolbar. */
+  versionPicker?: React.ReactNode
 }): JSX.Element {
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_PIXELS_PER_SECOND)
   // Whether the user has taken the zoom into their own hands. Until they do, the timeline fits
@@ -622,6 +670,7 @@ export function Timeline({
           above, and the project summary shows the second. Saying either again only crowds the
           actions, which are what this row is for. */}
       <div className="flex items-center gap-3 px-3 py-2">
+        {versionPicker}
         {confirmingDelete && itemUnderPlayhead ? (
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-text-muted">
@@ -764,6 +813,8 @@ export function Timeline({
                     onEditScene={onEditScene}
                     selected={item.id === selectedItemId}
                     onSelect={onSelectItem}
+                    leftOut={leftOut.includes(item.id)}
+                    onToggleIncluded={onToggleIncluded}
                   />
                 ))}
               </SortableContext>
