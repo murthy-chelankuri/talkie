@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ProjectBrowser } from './screens/ProjectBrowser'
 import { Editor } from './screens/Editor'
 import { AppShell } from './components/AppShell'
+import { RewriteStatus } from './components/RewriteStatus'
 import { ProjectSwitcher } from './components/ProjectSwitcher'
 import { projectClient, type ProjectSummary } from './api/projectClient'
 import { useMenuActions, useMenuState } from './lib/menuActions'
@@ -50,6 +51,7 @@ export default function App(): JSX.Element {
       ) : (
         <ProjectBrowser onOpen={setOpenProject} createRequest={createRequest} />
       )}
+      <RewriteStatus />
     </AppShell>
   )
 }

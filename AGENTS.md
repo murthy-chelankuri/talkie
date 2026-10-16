@@ -290,6 +290,16 @@ implementation to keep in step.
   dies with it, so `project:agent:instruct` wraps the run in a single `withHistory` on the app's
   side and the editor re-reads from disk afterwards. This is the documented no-locking hazard at
   its sharpest: nothing should write to the project while a run is going.
+- **Scenes can be pointed at.** Asking about one scene was what people most wanted and could not
+  say. The panel offers the clip selected on the timeline and lists every scene; the picked ones
+  go with every turn, described the way `talkie_timeline` numbers them (`describeScenes`).
+- **A run can be stopped** (`stopProjectAgent`, an abort signal on the CLI). What it already
+  changed stays, inside the one undo step.
+
+Rewrites from the right-click menu (Rephrase, Proofread, …) take seconds, so the window is told
+as they start and end (`menu:rewrite`, `RewriteStatus.tsx`): the field is held, a note says what
+is happening, and the answer goes back into the selection as it was. It used to be typed into
+whatever had focus when the answer arrived.
 
 ## Recording an app automatically
 

@@ -5,6 +5,7 @@ import type { HtmlSceneData } from '../main/project/timeline/schema'
 import type { ProjectMetadata, ProjectSummary, ProjectOverview } from '../main/project/schema'
 import type { HistoryState } from '../main/project/history'
 import type { TimelineItem } from '../main/project/timeline/schema'
+import type { RewriteEvent } from '../main/menu/editContextMenu'
 import type { Versions } from '../main/project/versions'
 import type { TranscriptSegment } from '../main/transcript/schema'
 import type { Settings } from '../main/settings/schema'
@@ -104,8 +105,10 @@ const themesApi = {
 
 const agentApi = {
   /** One instruction, run against the whole project. See projectAgent.ts. */
-  instruct: (projectId: string, instruction: string, resumeSessionId?: string): Promise<AgentOutcome> =>
-    ipcRenderer.invoke('project:agent:instruct', projectId, instruction, resumeSessionId),
+  instruct: (projectId: string, instruction: string, resumeSessionId?: string, scenes: string[] = []): Promise<AgentOutcome> =>
+    ipcRenderer.invoke('project:agent:instruct', projectId, instruction, resumeSessionId, scenes),
+  /** Stops the run going on for this project; what it changed stays, as one undo step. */
+  stop: (projectId: string): Promise<boolean> => ipcRenderer.invoke('project:agent:stop', projectId),
   draftItem: (projectId: string, itemId: string, force = false): Promise<DraftResult> =>
     ipcRenderer.invoke('project:agent:draftItem', projectId, itemId, force),
   draftAll: (projectId: string, force = false): Promise<DraftResult[]> =>
@@ -217,6 +220,12 @@ const menuApi = {
     const listener = (_event: unknown, action: MenuAction): void => callback(action)
     ipcRenderer.on('menu:action', listener)
     return () => ipcRenderer.removeListener('menu:action', listener)
+  },
+  /** A rewrite from the right-click menu, as it starts, finishes or fails. See RewriteStatus.tsx. */
+  onRewrite: (callback: (event: RewriteEvent) => void): (() => void) => {
+    const listener = (_event: unknown, rewrite: RewriteEvent): void => callback(rewrite)
+    ipcRenderer.on('menu:rewrite', listener)
+    return () => ipcRenderer.removeListener('menu:rewrite', listener)
   }
 }
 

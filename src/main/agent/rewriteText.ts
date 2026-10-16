@@ -21,6 +21,14 @@ export interface RewriteRequest {
   pace?: number
 }
 
+/** What is happening while each runs, for the window to say. */
+export const REWRITE_DOING: Record<RewriteStyle, string> = {
+  rephrase: 'Rephrasing',
+  proofread: 'Proofreading',
+  concise: 'Making it concise',
+  fit: 'Fitting it to the clip'
+}
+
 export const REWRITE_LABELS: Record<RewriteStyle, string> = {
   rephrase: 'Rephrase',
   proofread: 'Proofread',

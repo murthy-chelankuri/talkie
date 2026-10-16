@@ -6,7 +6,8 @@ import { findCli } from './findCli'
 import { INSTALL_HINT as COPILOT_INSTALL_HINT } from './copilotCliProvider'
 import { grantRunToken } from '../settings/mcpAccess'
 import { readSettings } from '../settings/settingsStore'
-import { openProject } from '../project/projectApi'
+import { openProject, readTimeline, readTranscript } from '../project/projectApi'
+import { richTextToPlain } from '../project/timeline/richText'
 import { describeProjectContext } from '../project/projectContext'
 
 const execFileAsync = promisify(execFile)
@@ -113,6 +114,46 @@ export interface AgentRequest {
    * "that" was.
    */
   resumeSessionId?: string
+  /**
+   * The clips the person means, picked beside the box. "Make this shorter" in a project of
+   * twenty scenes is a guess without them, and asking about one scene was the commonest thing
+   * people wanted and could not say.
+   */
+  scenes?: string[]
+}
+
+const KIND_NAMES: Record<string, string> = { scene: 'slide', video: 'recording', image: 'picture', diagram: 'diagram', html: 'HTML scene' }
+
+/**
+ * The scenes the person picked, described the way talkie_timeline numbers them, so the agent
+ * starts from the right clips rather than hunting for which ones "this" meant. Every turn carries
+ * it: the picked scenes can change between messages.
+ */
+export function describeScenes(projectId: string, sceneIds: string[], baseDir: string = homedir()): string {
+  if (sceneIds.length === 0) return ''
+  const timeline = readTimeline(projectId, baseDir)
+  const transcript = readTranscript(projectId, baseDir)
+  const time = (frames: number): string => {
+    const seconds = Math.round(frames / 30)
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+  }
+  const lines = sceneIds.flatMap((id) => {
+    const index = timeline.findIndex((item) => item.id === id)
+    if (index === -1) return []
+    const item = timeline[index]
+    const title = richTextToPlain((item.data as { title?: string } | null)?.title ?? '')
+    const narration = transcript.find((segment) => segment.timelineItemId === id)?.text.trim()
+    return [
+      `- Scene ${index + 1} (clip id ${id}): ${KIND_NAMES[item.kind] ?? item.kind}${title ? ` "${title}"` : ''}, ` +
+        `${time(item.start)}–${time(item.start + item.duration)}. ` +
+        (narration ? `Narration now: "${narration.length > 400 ? `${narration.slice(0, 400)}…` : narration}"` : 'No narration yet.')
+    ]
+  })
+  if (lines.length === 0) return ''
+  return [
+    `They are asking about ${lines.length === 1 ? 'this scene' : 'these scenes'} in particular. "This" and "here" mean ${lines.length === 1 ? 'it' : 'them'}; change ${lines.length === 1 ? 'it' : 'them'} and leave the rest alone unless they say otherwise:`,
+    ...lines
+  ].join('\n')
 }
 
 export function buildAgentPrompt(
@@ -196,9 +237,9 @@ export async function runProjectAgent(
   const { token, withdraw } = grantRunToken(baseDir)
   // A turn that carries on says only what is new; the first one has to set the scene.
   const carryingOn = Boolean(request.resumeSessionId)
-  const prompt = carryingOn
-    ? request.instruction
-    : buildAgentPrompt(request.projectId, request.instruction, project)
+  const focus = describeScenes(request.projectId, request.scenes ?? [], baseDir)
+  const instruction = focus ? `${focus}\n\n${request.instruction}` : request.instruction
+  const prompt = carryingOn ? instruction : buildAgentPrompt(request.projectId, instruction, project)
   const mcpServers = {
     talkie: {
       command: 'node',
@@ -209,20 +250,40 @@ export async function runProjectAgent(
     }
   }
 
+  const stop = new AbortController()
+  running.set(request.projectId, stop)
   try {
     const { said, sessionId, costUsd } =
       narration.provider === 'claude-cli'
-        ? await runClaude(binary, prompt, mcpServers, request.resumeSessionId, narration.claudeCli.model)
-        : await runCopilot(binary, prompt, mcpServers, request.resumeSessionId, narration.copilotCli.model)
+        ? await runClaude(binary, prompt, mcpServers, request.resumeSessionId, narration.claudeCli.model, stop.signal)
+        : await runCopilot(binary, prompt, mcpServers, request.resumeSessionId, narration.copilotCli.model, stop.signal)
 
     return said.trim()
       ? { status: 'done', say: said.trim(), sessionId, costUsd }
       : { status: 'failed', reason: 'The agent finished without saying what it did.' }
   } catch (err) {
+    if (stop.signal.aborted) {
+      return { status: 'failed', reason: 'Stopped. Anything it had already changed is still there — Undo takes the whole run back.' }
+    }
     return { status: 'failed', reason: whyItFailed(err) }
   } finally {
+    if (running.get(request.projectId) === stop) running.delete(request.projectId)
     withdraw()
   }
+}
+
+/** The run going on for each project, so it can be stopped. */
+const running = new Map<string, AbortController>()
+
+/**
+ * Stop the run on a project. A run can take minutes and there was no way out of one: the button
+ * that looked like Stop was disabled. What it already changed stays, as one undo step.
+ */
+export function stopProjectAgent(projectId: string): boolean {
+  const run = running.get(projectId)
+  if (!run) return false
+  run.abort()
+  return true
 }
 
 type McpServers = Record<string, { command: string; args: string[]; env: Record<string, string> }>
@@ -232,9 +293,10 @@ async function runClaude(
   prompt: string,
   mcpServers: McpServers,
   resumeSessionId?: string,
-  model?: string
+  model?: string,
+  signal?: AbortSignal
 ): Promise<AgentSaid> {
-  const running = execFileAsync(
+  const child = execFileAsync(
     binary,
     [
       '-p',
@@ -251,12 +313,12 @@ async function runClaude(
       '--allowedTools',
       AGENT_TOOLS.map((tool) => `mcp__talkie__${tool}`).join(',')
     ],
-    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 }
+    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, signal }
   )
 
   // Closed at once, or the CLI waits three seconds for input that is never coming.
-  running.child.stdin?.end()
-  const { stdout } = await running
+  child.child.stdin?.end()
+  const { stdout } = await child
   return readResult(stdout)
 }
 
@@ -280,11 +342,12 @@ async function runCopilot(
   prompt: string,
   mcpServers: McpServers,
   resumeSessionId?: string,
-  model?: string
+  model?: string,
+  signal?: AbortSignal
 ): Promise<AgentSaid> {
   const sessionId = resumeSessionId ?? randomUUID()
 
-  const running = execFileAsync(
+  const child = execFileAsync(
     binary,
     [
       '-p',
@@ -302,11 +365,11 @@ async function runCopilot(
       ...AGENT_TOOLS.flatMap((tool) => ['--available-tools', `talkie-${tool}`]),
       ...AGENT_TOOLS.flatMap((tool) => ['--allow-tool', `talkie(${tool})`])
     ],
-    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 }
+    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, signal }
   )
 
-  running.child.stdin?.end()
-  const { stdout } = await running
+  child.child.stdin?.end()
+  const { stdout } = await child
   return { said: stdout.trim(), sessionId }
 }
 
