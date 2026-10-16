@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { execFileSync } from 'child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -595,7 +595,17 @@ describe('Talkie over MCP', () => {
       expect(said).toContain('2 slides')
       const timeline = readTimeline(projectId, baseDir)
       expect(timeline).toHaveLength(2)
-      expect(timeline.every((item) => item.kind === 'image')).toBe(true)
+      // Editable slides of the words on each page, each keeping the page itself.
+      expect(timeline.map((item) => item.kind)).toEqual(['scene', 'scene'])
+      expect(timeline.map((item) => (item.data as { title: string }).title)).toEqual(['One', 'Two'])
+      expect(timeline.every((item) => existsSync((item.data as { picture: string }).picture))).toBe(true)
+
+      // And the page can be shown in place of the words, and the words brought back.
+      await call('talkie_edit_slide', { projectId, timelineItemId: timeline[0].id, showPicture: true })
+      expect(readTimeline(projectId, baseDir)[0].data).toMatchObject({ title: 'One', showPicture: true })
+      expect(await call('talkie_timeline', { projectId })).toContain('from a deck, showing its original page')
+      await call('talkie_edit_slide', { projectId, timelineItemId: timeline[0].id, showPicture: false })
+      expect(readTimeline(projectId, baseDir)[0].data).toMatchObject({ showPicture: false })
 
       rmSync(dir, { recursive: true, force: true })
     }, 60_000)

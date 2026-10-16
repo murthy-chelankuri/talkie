@@ -22,6 +22,10 @@ export interface SceneDraft {
   bullets: string[]
   source: string
   style: SceneStyle
+  /** The page an imported slide came from, as the window can load it. Never edited here. */
+  picture?: string
+  /** Show that page rather than the words. */
+  showPicture: boolean
 }
 
 const DEFAULT_STYLE: SceneStyle = {
@@ -40,6 +44,8 @@ function draftFrom(item: TimelineItem | null): { kind: SceneKind; draft: SceneDr
     bullets?: string[]
     source?: string
     style?: SceneStyle
+    picture?: string
+    showPicture?: boolean
   }
 
   return {
@@ -48,7 +54,9 @@ function draftFrom(item: TimelineItem | null): { kind: SceneKind; draft: SceneDr
       title: data.title ?? '',
       bullets: data.bullets ?? [],
       source: data.source ?? STARTER_DIAGRAM,
-      style: { ...DEFAULT_STYLE, ...(data.style ?? {}) }
+      style: { ...DEFAULT_STYLE, ...(data.style ?? {}) },
+      ...(data.picture ? { picture: data.picture } : {}),
+      showPicture: Boolean(data.picture && data.showPicture)
     }
   }
 }
@@ -161,14 +169,17 @@ export function SceneEditor({
     try {
       let data: unknown
       if (kind === 'scene') {
-        if (!richTextToPlain(draft.title).trim()) {
+        // Shown as its page, a slide is read off the page; the words wait for when they are shown.
+        if (!draft.showPicture && !richTextToPlain(draft.title).trim()) {
           setError('A slide needs a title — it is the only thing guaranteed to be read.')
           return
         }
         data = {
           title: draft.title.trim(),
           bullets: draft.bullets.filter((line) => richTextToPlain(line).trim()),
-          style: draft.style
+          style: draft.style,
+          // The picture itself stays as imported on the other side; only which is shown is sent.
+          ...(draft.picture ? { showPicture: draft.showPicture } : {})
         }
       } else {
         if (!svg) {
@@ -257,6 +268,36 @@ export function SceneEditor({
           <div className="flex w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto border-r border-border p-4">
             {kind === 'scene' ? (
               <>
+                {draft.picture && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-text">Show</span>
+                    {/* An imported slide keeps both: the words to edit, and the page as the deck had it. */}
+                    <div role="group" aria-label="Show this slide as" className="flex items-center gap-1 rounded-[10px] bg-raised p-0.5">
+                      {[
+                        { picture: false, label: 'Words' },
+                        { picture: true, label: 'Original page' }
+                      ].map((option) => (
+                        <button
+                          key={option.label}
+                          type="button"
+                          aria-pressed={draft.showPicture === option.picture}
+                          onClick={() => setDraft((d) => ({ ...d, showPicture: option.picture }))}
+                          className={cn(
+                            'flex-1 rounded-md border-0 px-2.5 py-1 text-[12px] transition-colors',
+                            draft.showPicture === option.picture ? 'bg-accent text-accent-foreground' : 'bg-transparent text-text-muted'
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[11px] leading-relaxed text-text-muted">
+                      {draft.showPicture
+                        ? 'The page is shown as it was in the deck. The words below are kept for when you switch back.'
+                        : 'Edit the words read off the page. Switch to the original page where its design matters — a chart, a photo.'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[13px] font-medium text-text">Title</span>
                   <RichTextField
@@ -564,7 +605,9 @@ function ScenePreview({
       className="aspect-video max-h-full w-full overflow-hidden rounded-lg shadow-lg ring-1 ring-border"
       style={{ background: look.background }}
     >
-      {kind === 'scene' ? (
+      {kind === 'scene' && draft.showPicture && draft.picture ? (
+        <img src={draft.picture} alt="The original page" className="h-full w-full object-contain" />
+      ) : kind === 'scene' ? (
         <div
           className="flex h-full flex-col justify-center px-[9%]"
           style={{ textAlign: look.align, alignItems: centred ? 'center' : 'stretch' }}

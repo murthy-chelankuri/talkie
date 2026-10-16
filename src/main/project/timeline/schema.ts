@@ -52,7 +52,16 @@ export const TextSceneDataSchema = z.object({
    */
   layout: z.enum(['standard', 'title', 'closing']).default('standard'),
   bullets: z.array(z.string()).default([]),
-  style: SceneStyleSchema.default({})
+  style: SceneStyleSchema.default({}),
+  /**
+   * The page as it was in the deck, for a slide that was imported: an absolute path to its picture.
+   * The words above were read off it, so the slide can be edited; the picture is kept so it can
+   * be shown instead wherever the deck's own design matters more — a chart, a photo, a layout
+   * that a heading and points cannot hold. Never changed once imported.
+   */
+  picture: z.string().optional(),
+  /** Show the picture rather than the words. Only means anything where there is a picture. */
+  showPicture: z.boolean().optional()
 })
 
 /**

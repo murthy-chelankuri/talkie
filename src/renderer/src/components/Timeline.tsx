@@ -140,7 +140,7 @@ function VideoThumbnail({ src, startSeconds }: { src: string; startSeconds: numb
 
 export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | null {
   const data = item.data as
-    | { src?: string; trimBefore?: number; title?: string; bullets?: string[]; style?: SceneStyle }
+    | { src?: string; trimBefore?: number; title?: string; bullets?: string[]; style?: SceneStyle; picture?: string; showPicture?: boolean }
     | null
     | undefined
   // The same colours and type the slide is drawn in, so a thumbnail follows the project's theme
@@ -150,6 +150,11 @@ export function ClipThumbnail({ item }: { item: TimelineItem }): JSX.Element | n
   // An HTML scene shows its poster — a still drawn by the check — once it has one.
   if (item.kind === 'html' && (data as { posterUrl?: string } | null)?.posterUrl) {
     return <img src={(data as { posterUrl: string }).posterUrl} alt="" className="pointer-events-none h-full w-full object-cover" />
+  }
+
+  // A slide from a deck shown as its page shows the page here too.
+  if (item.kind === 'scene' && data?.showPicture && data.picture) {
+    return <img src={data.picture} alt="" className="pointer-events-none h-full w-full object-cover" style={{ background: look.background }} />
   }
 
   // A slide has no picture to show, so it shows what it says.

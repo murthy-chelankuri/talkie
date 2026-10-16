@@ -273,6 +273,14 @@ implementation to keep in step.
   window should not pay for a native canvas it does not need, and the server has no window. Both
   are in `asarUnpack` — the canvas is native, and plain `node` cannot read either from inside
   the archive.
+- **A deck arrives as slides that can be edited, each keeping its page.** A page is a `scene` —
+  title and points, in the project's theme — with the page's picture beside the words
+  (`picture`), shown instead when `showPicture` is set: the deck's own design wins where a chart
+  or a photo matters. The words come from a .pptx's own XML (`pptxSlides.ts`, which names the
+  title box) or are read off a PDF by position and size (`slideText.ts`, pure, so the window and
+  the MCP server share it). A page with nothing to read starts as its picture. The picture is
+  never edited, and `updateSceneData` keeps the stored path whatever an edit sends back — the
+  window only ever holds it as an asset-server URL.
 - **The whole run is one undo step.** The agent writes from a child process whose own history
   dies with it, so `project:agent:instruct` wraps the run in a single `withHistory` on the app's
   side and the editor re-reads from disk afterwards. This is the documented no-locking hazard at
