@@ -150,7 +150,8 @@ const htmlSceneApi = {
   templates: (): Promise<(HtmlTemplate & { thumbnail: string | null })[]> => ipcRenderer.invoke('project:htmlScene:templates'),
   fromTemplate: (id: string, templateId: string, title: string): Promise<HtmlSceneResult> =>
     ipcRenderer.invoke('project:htmlScene:fromTemplate', id, templateId, title),
-  describe: (id: string, instruction: string): Promise<HtmlSceneWriteResult> => ipcRenderer.invoke('project:htmlScene:describe', id, instruction),
+  describe: (id: string, instruction: string, seconds?: number): Promise<HtmlSceneWriteResult> =>
+    ipcRenderer.invoke('project:htmlScene:describe', id, instruction, seconds),
   change: (id: string, itemId: string, instruction: string): Promise<HtmlSceneWriteResult> =>
     ipcRenderer.invoke('project:htmlScene:change', id, itemId, instruction)
 }

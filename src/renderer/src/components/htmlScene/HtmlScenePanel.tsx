@@ -18,6 +18,8 @@ import { Spinner } from '../ui/Spinner'
 import { cn } from '../../lib/cn'
 import { CodePanel } from './CodePanel'
 import { ParamsForm } from './ParamsForm'
+import { Input } from '../ui/Input'
+import { lengthInDescription, parseLength } from '../../lib/sceneLength'
 import { Working } from '../ui/Working'
 
 const LOOKS = [
@@ -72,6 +74,7 @@ const CATEGORIES = ['Slides', 'Diagrams', 'Data', 'Motion', 'Code']
  */
 function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated: (result: HtmlSceneResult) => Promise<void> }): JSX.Element {
   const [description, setDescription] = useState('')
+  const [length, setLength] = useState('')
   const [templates, setTemplates] = useState<Template[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -146,8 +149,31 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
           onChange={(e) => setDescription(e.target.value)}
           className="min-h-[4.5rem] text-[13px]"
         />
+        <label className="flex items-center gap-2 text-[12px] text-text-muted">
+          Length
+          <Input
+            aria-label="Length"
+            value={length}
+            placeholder={lengthInDescription(description) ? describeSeconds(lengthInDescription(description)!) : '5s'}
+            onChange={(e) => setLength(e.target.value)}
+            className="h-7 w-28 text-[12px]"
+          />
+          <span>
+            {length.trim() && !parseLength(length)
+              ? 'Try 10s, 2 min or 1:30'
+              : 'The page is paced for it. Long, busy scenes take a model a few minutes to write.'}
+          </span>
+        </label>
         <div className="flex items-center gap-3">
-          <Button size="sm" disabled={busy !== null || !description.trim()} onClick={() => void run('describe', () => htmlSceneClient.describe(projectId, description.trim()))}>
+          <Button
+            size="sm"
+            disabled={busy !== null || !description.trim() || Boolean(length.trim() && !parseLength(length))}
+            onClick={() =>
+              void run('describe', () =>
+                htmlSceneClient.describe(projectId, description.trim(), parseLength(length) ?? lengthInDescription(description) ?? undefined)
+              )
+            }
+          >
             {busy === 'describe' ? <Spinner size="sm" /> : <Sparkles size={13} />}
             {busy === 'describe' ? 'Writing…' : 'Make it'}
           </Button>
@@ -440,4 +466,12 @@ function EditHtmlScene({
       </footer>
     </>
   )
+}
+
+/** "5 min", "1 min 30s", "12s" — the length a description asked for, as a hint in the box. */
+function describeSeconds(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  const rest = Math.round(seconds % 60)
+  if (minutes === 0) return `${rest}s`
+  return rest === 0 ? `${minutes} min` : `${minutes} min ${rest}s`
 }

@@ -65,6 +65,28 @@ describe('starting an HTML scene', () => {
     expect(await screen.findByRole('tab', { name: 'Content', selected: true })).toBeInTheDocument()
   })
 
+  it('makes a scene as long as the description asks, when the length box is left empty', async () => {
+    vi.mocked(htmlSceneClient.describe).mockResolvedValue({ status: 'failed', reason: 'stop here' })
+    render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={() => {}} onClose={() => {}} />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Describe the scene' }), 'a complex 5 min animation about FSD')
+    expect(screen.getByRole('textbox', { name: 'Length' })).toHaveAttribute('placeholder', '5 min')
+    await userEvent.click(screen.getByRole('button', { name: /Make it/ }))
+
+    expect(htmlSceneClient.describe).toHaveBeenCalledWith('p', 'a complex 5 min animation about FSD', 300)
+  })
+
+  it('takes a length typed in the box over one in the description', async () => {
+    vi.mocked(htmlSceneClient.describe).mockResolvedValue({ status: 'failed', reason: 'stop here' })
+    render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={() => {}} onClose={() => {}} />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Describe the scene' }), 'a 5 min animation')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Length' }), '1:30')
+    await userEvent.click(screen.getByRole('button', { name: /Make it/ }))
+
+    expect(htmlSceneClient.describe).toHaveBeenCalledWith('p', 'a 5 min animation', 90)
+  })
+
   it('says why, when the model could not write one', async () => {
     vi.mocked(htmlSceneClient.describe).mockResolvedValue({ status: 'failed', reason: 'Choose a model in Settings, under AI.' })
     render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={() => {}} onClose={() => {}} />)

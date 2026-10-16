@@ -6,7 +6,8 @@ import {
   targetWordCount,
   type NarrationProvider,
   type NarrationRequest,
-  type ProviderAvailability
+  type ProviderAvailability,
+  type CompleteBudget
 } from './narrationProvider'
 import { readSettings } from '../settings/settingsStore'
 
@@ -111,8 +112,8 @@ export const localProvider: NarrationProvider = {
     return { available: true }
   },
 
-  async complete(prompt: string): Promise<string> {
-    return askLocal([{ role: 'user', content: prompt }])
+  async complete(prompt: string, budget?: CompleteBudget): Promise<string> {
+    return askLocal([{ role: 'user', content: prompt }], budget)
   },
 
   async draft(request: NarrationRequest): Promise<string> {
@@ -126,7 +127,7 @@ export const localProvider: NarrationProvider = {
 }
 
 /** One request to the local server, shared by drafting narration and answering a plain prompt. */
-async function askLocal(messages: unknown[]): Promise<string> {
+async function askLocal(messages: unknown[], budget?: CompleteBudget): Promise<string> {
   const server = await findLocalServer()
   if (!server) throw new Error('No local model server is reachable.')
 
@@ -137,8 +138,8 @@ async function askLocal(messages: unknown[]): Promise<string> {
   const response = await fetch(`${server.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
-    body: JSON.stringify({ model, max_tokens: MAX_ANSWER_TOKENS, messages })
+    signal: AbortSignal.timeout(budget?.timeoutMs ?? DRAFT_TIMEOUT_MS),
+    body: JSON.stringify({ model, max_tokens: budget?.maxTokens ? budget.maxTokens + REASONING_HEADROOM_TOKENS : MAX_ANSWER_TOKENS, messages })
   })
 
   if (!response.ok) {

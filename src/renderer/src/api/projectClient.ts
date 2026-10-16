@@ -219,6 +219,6 @@ export const htmlSceneClient = {
   import: (id: string) => window.api.htmlScene.import(id),
   templates: () => window.api.htmlScene.templates(),
   fromTemplate: (id: string, templateId: string, title: string) => window.api.htmlScene.fromTemplate(id, templateId, title),
-  describe: (id: string, instruction: string) => window.api.htmlScene.describe(id, instruction),
+  describe: (id: string, instruction: string, seconds?: number) => window.api.htmlScene.describe(id, instruction, seconds),
   change: (id: string, itemId: string, instruction: string) => window.api.htmlScene.change(id, itemId, instruction)
 }

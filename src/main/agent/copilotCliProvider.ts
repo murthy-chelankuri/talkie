@@ -6,7 +6,8 @@ import {
   cleanDraft,
   type NarrationProvider,
   type NarrationRequest,
-  type ProviderAvailability
+  type ProviderAvailability,
+  type CompleteBudget
 } from './narrationProvider'
 import { readSettings } from '../settings/settingsStore'
 
@@ -48,8 +49,8 @@ export const copilotCliProvider: NarrationProvider = {
     }
   },
 
-  async complete(prompt: string): Promise<string> {
-    return cleanDraft(await runCopilot(prompt, []))
+  async complete(prompt: string, budget?: CompleteBudget): Promise<string> {
+    return cleanDraft(await runCopilot(prompt, [], budget?.timeoutMs))
   },
 
   async draft(request: NarrationRequest): Promise<string> {
@@ -58,7 +59,7 @@ export const copilotCliProvider: NarrationProvider = {
   }
 }
 
-async function runCopilot(prompt: string, framePaths: string[]): Promise<string> {
+async function runCopilot(prompt: string, framePaths: string[], timeoutMs: number = TIMEOUT_MS): Promise<string> {
   const binary = await findCli('copilot')
   if (!binary) throw new Error(INSTALL_HINT)
 
@@ -81,7 +82,7 @@ async function runCopilot(prompt: string, framePaths: string[]): Promise<string>
 
   try {
     const { stdout } = await execFileAsync(binary, args, {
-      timeout: TIMEOUT_MS,
+      timeout: timeoutMs,
       maxBuffer: 8 * 1024 * 1024
     })
 
