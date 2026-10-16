@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import type { PreviewHandle } from '../../../video/preview'
-import { Maximize2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { Check, Copy, Maximize2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import type { TimelineItem } from '../api/projectClient'
-import { formatTimecode, nextClipStart, previousClipStart } from '../lib/timelineLayout'
+import { formatPreciseTimecode, formatSceneSeconds, formatTimecode, nextClipStart, previousClipStart, sceneAt } from '../lib/timelineLayout'
 import { FPS } from '../../../composition/constants'
 import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
@@ -10,11 +10,14 @@ import { IconButton } from './ui/IconButton'
 export function TransportBar({
   playerRef,
   timeline,
+  sceneOrder,
   totalFrames,
   onSeek
 }: {
   playerRef: RefObject<PreviewHandle | null>
   timeline: TimelineItem[]
+  /** Every clip's id as the script numbers them, left-out ones included, so "Scene 3" is one scene everywhere. */
+  sceneOrder: string[]
   totalFrames: number
   onSeek: (frame: number) => void
 }): JSX.Element {
@@ -24,6 +27,31 @@ export function TransportBar({
   const trackRef = useRef<HTMLDivElement | null>(null)
   const fillRef = useRef<HTMLDivElement | null>(null)
   const timecodeRef = useRef<HTMLSpanElement | null>(null)
+  const sceneNameRef = useRef<HTMLSpanElement | null>(null)
+  const sceneTimeRef = useRef<HTMLSpanElement | null>(null)
+  const sceneFillRef = useRef<HTMLSpanElement | null>(null)
+  const timelineRef = useRef(timeline)
+  timelineRef.current = timeline
+  const sceneOrderRef = useRef(sceneOrder)
+  sceneOrderRef.current = sceneOrder
+  const [copied, setCopied] = useState(false)
+
+  // The scene clock is painted the same way as the timecode, and from the same frames.
+  function paintScene(frame: number): void {
+    const scene = sceneAt(timelineRef.current, frame)
+    if (sceneNameRef.current) {
+      sceneNameRef.current.textContent = scene ? `Scene ${sceneOrderRef.current.indexOf(scene.clip.id) + 1}` : 'No scene'
+    }
+    if (sceneTimeRef.current) {
+      sceneTimeRef.current.textContent = scene
+        ? `${formatSceneSeconds(scene.offset / FPS)}s of ${formatSceneSeconds(scene.duration / FPS)}s`
+        : ''
+    }
+    if (sceneFillRef.current) {
+      sceneFillRef.current.style.transform = `scaleX(${scene ? Math.min(scene.offset / scene.duration, 1) : 0})`
+    }
+  }
+
 
   // Playback position is written straight to the DOM. Putting it in state would re-render this
   // bar thirty times a second and starve the Player, which is what made narration stutter before.
@@ -35,7 +63,8 @@ export function TransportBar({
       frameRef.current = frame
       const progress = totalFrames > 0 ? Math.min(frame / totalFrames, 1) : 0
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${progress})`
-      if (timecodeRef.current) timecodeRef.current.textContent = formatTimecode(frame / FPS)
+      if (timecodeRef.current) timecodeRef.current.textContent = formatPreciseTimecode(frame / FPS)
+      paintScene(frame)
     }
 
     const onFrame = ({ detail }: { detail: { frame: number } }): void => paint(detail.frame)
@@ -55,6 +84,9 @@ export function TransportBar({
       player.removeEventListener('pause', onPause)
     }
   }, [playerRef, totalFrames])
+
+  // A scene lengthened, moved or left out changes where the playhead stands in it, playing or not.
+  useEffect(() => paintScene(frameRef.current), [timeline, sceneOrder])
 
   function seekFromPointer(event: ReactPointerEvent<HTMLDivElement>): void {
     const track = trackRef.current
@@ -94,11 +126,46 @@ export function TransportBar({
         <SkipForward size={15} />
       </IconButton>
 
-      <span className="flex shrink-0 items-baseline gap-1 text-xs tabular-nums text-text-muted">
+      {/* Tenths here too: in whole seconds the video read 0:02 beside a scene at 2.9, and the two
+          clocks looked as if they disagreed about the same moment. */}
+      <span aria-label="Time in the video" className="flex shrink-0 items-baseline gap-1 text-xs tabular-nums text-text-muted">
         <span ref={timecodeRef} className="text-text">
-          {formatTimecode(0)}
-        </span>
+          {formatPreciseTimecode(0)}
+        </span>{' '}
         <span>/ {formatTimecode(totalFrames / FPS)}</span>
+      </span>
+
+      {/* The scene's own clock, boxed apart from the video's with a bar of its own, so it reads as
+          the time inside one scene — where narration timings count from — not a second reading of
+          the video's. */}
+      <span
+        title="Time inside the scene being played. A narration timing like [2.9] counts from the start of its scene."
+        className="relative flex shrink-0 items-center gap-1.5 overflow-hidden rounded-md bg-raised py-0.5 pl-2 pr-0.5"
+      >
+        <span role="group" aria-label="Time in this scene" className="flex items-baseline gap-1.5 text-xs tabular-nums">
+          <span ref={sceneNameRef} className="text-[11px] font-medium text-accent">
+            No scene
+          </span>{' '}
+          <span ref={sceneTimeRef} className="text-text" />
+        </span>
+        <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-surface">
+          <span ref={sceneFillRef} className="block h-full w-full origin-left scale-x-0 bg-accent" />
+        </span>
+        <IconButton
+          aria-label={copied ? 'Copied' : 'Copy this moment as a narration timing'}
+          title="Copy this moment as a timing, to paste at the start of a narration line"
+          className="h-6 w-6"
+          onClick={() => {
+            const scene = sceneAt(timelineRef.current, frameRef.current)
+            if (!scene) return
+            void navigator.clipboard.writeText(`[${formatSceneSeconds(scene.offset / FPS)}] `).then(() => {
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            })
+          }}
+        >
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+        </IconButton>
       </span>
 
       <div

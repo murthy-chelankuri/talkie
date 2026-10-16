@@ -31,6 +31,13 @@ export function formatTimecode(seconds: number): string {
   return `${minutes}:${String(whole % 60).padStart(2, '0')}`
 }
 
+/** "0:02.9" — the video's time to the tenth, the same precision as the scene clock beside it. */
+export function formatPreciseTimecode(seconds: number): string {
+  const tenths = Math.floor(Math.max(seconds, 0) * 10)
+  const whole = Math.floor(tenths / 10)
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}.${tenths % 10}`
+}
+
 export interface ClipBounds {
   start: number
   duration: number
@@ -46,6 +53,31 @@ export function previousClipStart(clips: ClipBounds[], frame: number): number | 
 
   const earlier = [...starts].reverse().find((start) => start < frame)
   return earlier ?? null
+}
+
+/** The scene a frame falls in, how far in it is, and how long the scene is. */
+export interface ScenePosition<T extends ClipBounds> {
+  clip: T
+  offset: number
+  duration: number
+}
+
+// Narration is timed from the start of its own clip (`[4.2]` is 4.2 seconds into the scene), so
+// the clock that helps write it counts from there rather than from the start of the video.
+export function sceneAt<T extends ClipBounds>(clips: T[], frame: number): ScenePosition<T> | null {
+  const sorted = [...clips].sort((a, b) => a.start - b.start)
+  for (let index = sorted.length - 1; index >= 0; index--) {
+    const clip = sorted[index]
+    if (clip.start > frame) continue
+    if (frame >= clip.start + clip.duration) return null
+    return { clip, offset: frame - clip.start, duration: clip.duration }
+  }
+  return null
+}
+
+/** Seconds in tenths, the precision a timing in the narration is written to: "4.2". */
+export function formatSceneSeconds(seconds: number): string {
+  return (Math.floor(Math.max(seconds, 0) * 10) / 10).toFixed(1)
 }
 
 export function nextClipStart(clips: ClipBounds[], frame: number): number | null {
