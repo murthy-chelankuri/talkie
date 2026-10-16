@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { HtmlSceneInput } from '../main/htmlScene/htmlSceneApi'
+import type { HtmlTemplate } from '../main/htmlScene/templates'
 import type { HtmlSceneResult, HtmlSceneWriteResult } from '../main/ipc/htmlSceneHandlers'
 import type { HtmlSceneData } from '../main/project/timeline/schema'
 import type { ProjectMetadata, ProjectSummary, ProjectOverview } from '../main/project/schema'
@@ -146,7 +147,7 @@ const htmlSceneApi = {
   check: (id: string, itemId: string, atSeconds?: number[]): Promise<{ problems: string[]; frames: { atSeconds: number; url: string }[] }> =>
     ipcRenderer.invoke('project:htmlScene:check', id, itemId, atSeconds),
   import: (id: string): Promise<HtmlSceneResult | null> => ipcRenderer.invoke('project:htmlScene:import', id),
-  templates: (): Promise<{ id: string; name: string; description: string }[]> => ipcRenderer.invoke('project:htmlScene:templates'),
+  templates: (): Promise<(HtmlTemplate & { thumbnail: string | null })[]> => ipcRenderer.invoke('project:htmlScene:templates'),
   fromTemplate: (id: string, templateId: string, title: string): Promise<HtmlSceneResult> =>
     ipcRenderer.invoke('project:htmlScene:fromTemplate', id, templateId, title),
   describe: (id: string, instruction: string): Promise<HtmlSceneWriteResult> => ipcRenderer.invoke('project:htmlScene:describe', id, instruction),

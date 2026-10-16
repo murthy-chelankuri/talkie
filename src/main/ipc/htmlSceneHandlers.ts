@@ -9,7 +9,7 @@ import {
   type HtmlSceneInput,
   type HtmlSceneOutcome
 } from '../htmlScene/htmlSceneApi'
-import { listTemplates, templateFiles } from '../htmlScene/templates'
+import { listTemplates, templateFiles, templateThumbnail } from '../htmlScene/templates'
 import { writeHtmlScene } from '../htmlScene/writeHtmlScene'
 import type { TimelineItem } from '../project/timeline/schema'
 
@@ -86,9 +86,18 @@ export function registerHtmlSceneHandlers(ipcMain: IpcMain, getWindow: () => Bro
     const path = result.filePaths[0]
     return summarise(await addHtmlScene(id, { importPath: path, title: basename(path, extname(path)) }))
   })
-  ipcMain.handle('project:htmlScene:templates', () => listTemplates())
+  ipcMain.handle('project:htmlScene:templates', () =>
+    listTemplates().map((template) => ({ ...template, thumbnail: templateThumbnail(template.id) }))
+  )
+  // With the values the template declares, so the new scene's form has every field from the start.
   ipcMain.handle('project:htmlScene:fromTemplate', async (_event, id: string, templateId: string, title: string) =>
-    summarise(await addHtmlScene(id, { files: templateFiles(templateId) as Record<string, string>, title }))
+    summarise(
+      await addHtmlScene(id, {
+        files: templateFiles(templateId) as Record<string, string>,
+        title,
+        params: listTemplates().find((template) => template.id === templateId)?.values ?? {}
+      })
+    )
   )
   ipcMain.handle('project:htmlScene:describe', (_event, id: string, instruction: string) =>
     writeChecked(id, instruction, (written) => addHtmlScene(id, { title: written.title, files: written.files, prompt: instruction }))
