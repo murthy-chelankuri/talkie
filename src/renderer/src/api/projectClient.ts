@@ -202,6 +202,8 @@ export const themeClient = {
   generate: (...args: Parameters<Window['api']['themes']['generate']>) => window.api.themes.generate(...args),
   generateStatus: () => window.api.themes.generateStatus(),
   addAsset: (...args: Parameters<Window['api']['themes']['addAsset']>) => announcing(window.api.themes.addAsset(...args)),
+  addFont: (...args: Parameters<Window['api']['themes']['addFont']>) => window.api.themes.addFont(...args),
+  fontFiles: (...args: Parameters<Window['api']['themes']['fontFiles']>) => window.api.themes.fontFiles(...args),
   render: (...args: Parameters<Window['api']['themes']['render']>) => window.api.themes.render(...args)
 }
 

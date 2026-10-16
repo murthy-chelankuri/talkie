@@ -50,11 +50,23 @@ export function themeStamp(theme: Pick<Theme, 'variants' | 'fonts'>): string {
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
-/** "Inter-600" → 600; a file whose name says nothing covers every weight. */
+/**
+ * The weight a font file is drawn at. A weight in its name ("Inter-600") is the one Talkie gave the
+ * open fonts it downloads — some are one variable file saved once per weight, so the name is what
+ * tells them apart. Otherwise the weight read from inside the file (`;weight=700`, or `100-900` for
+ * a variable font; see toRenderTheme.ts), and failing both, every weight.
+ */
 function weightOf(url: string): string {
   const name = /;name=([\w-]+)/.exec(url)?.[1] ?? ''
-  const weight = /(?:^|[-_])([1-9]00)(?:$|[-_])/.exec(name)?.[1]
-  return weight ?? '100 900'
+  const named = /(?:^|[-_])([1-9]00)(?:$|[-_])/.exec(name)?.[1]
+  if (named) return named
+  const read = /;weight=(\d+(?:-\d+)?)/.exec(url)?.[1]
+  return read ? read.replace('-', ' ') : '100 900'
+}
+
+/** Italic where the file says it slants. */
+function styleOf(url: string): string {
+  return /;style=italic/.test(url) ? 'italic' : 'normal'
 }
 
 /** The @font-face rules for the families a theme brings files for. Empty when it brings none. */
@@ -69,7 +81,7 @@ export function fontFaceCss(theme: RenderTheme): string {
       if (seen.has(key)) continue
       seen.add(key)
       rules.push(
-        `@font-face{font-family:"${family.replace(/"/g, '')}";src:url(${url});font-weight:${weightOf(url)};font-style:normal;font-display:block}`
+        `@font-face{font-family:"${family.replace(/"/g, '')}";src:url(${url});font-weight:${weightOf(url)};font-style:${styleOf(url)};font-display:block}`
       )
     }
   }

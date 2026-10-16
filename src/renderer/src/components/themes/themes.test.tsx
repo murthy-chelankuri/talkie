@@ -21,6 +21,8 @@ vi.mock('../../api/projectClient', () => ({
     generate: vi.fn(),
     generateStatus: vi.fn(),
     addAsset: vi.fn(),
+    addFont: vi.fn(),
+    fontFiles: vi.fn(),
     render: vi.fn()
   }
 }))
@@ -33,6 +35,7 @@ beforeEach(() => {
   vi.mocked(themeClient.list).mockResolvedValue([acme] as never)
   vi.mocked(themeClient.usage).mockResolvedValue([] as never)
   vi.mocked(themeClient.generateStatus).mockResolvedValue({ running: true, step: 'Reading acme.com…' } as never)
+  vi.mocked(themeClient.fontFiles).mockResolvedValue([] as never)
 })
 
 describe('the theme library', () => {
@@ -115,6 +118,68 @@ describe('editing a theme', () => {
     await userEvent.click(screen.getByRole('button', { name: /Save theme/ }))
 
     expect(themeClient.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Acme' }), '/drafts/x')
+  })
+
+  describe('the company’s own fonts', () => {
+    const faces = {
+      'AcmeSans-Regular.otf': { file: 'fonts/AcmeSans-Regular.otf', family: 'Acme Sans', face: 'Regular', weight: 400, italic: false, variable: false },
+      'AcmeSans-Bold.otf': { file: 'fonts/AcmeSans-Bold.otf', family: 'Acme Sans', face: 'Bold', weight: 700, italic: false, variable: false }
+    } as const
+    const font = (name: keyof typeof faces): File => new File(['x'], name, { type: 'font/otf' })
+
+    beforeEach(() => {
+      // jsdom's File has no arrayBuffer(); the browser's does.
+      File.prototype.arrayBuffer ??= function (this: File): Promise<ArrayBuffer> {
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as ArrayBuffer)
+          reader.readAsArrayBuffer(this)
+        })
+      }
+      vi.mocked(themeClient.addFont).mockImplementation((async (_target: unknown, name: keyof typeof faces) => faces[name]) as never)
+      vi.mocked(themeClient.fontFiles).mockImplementation((async (_target: unknown, files: string[]) =>
+        Object.values(faces).filter((face) => files.includes(face.file))) as never)
+    })
+
+    it('takes several files at once, names the family from them, and lists each as the face it is', async () => {
+      render(<ThemeEditor initial={defaultThemeDraft('Acme')} themeId="t1" onDone={() => {}} />)
+
+      await userEvent.upload(screen.getAllByLabelText('Upload your font files')[0], [font('AcmeSans-Regular.otf'), font('AcmeSans-Bold.otf')])
+
+      expect(screen.getByRole('textbox', { name: 'heading font' })).toHaveValue('Acme Sans')
+      const listed = await screen.findByRole('list', { name: 'heading font files' })
+      expect(listed).toHaveTextContent('Regular')
+      expect(listed).toHaveTextContent('Bold')
+      await userEvent.click(screen.getByRole('button', { name: /Save theme/ }))
+      expect(themeClient.update).toHaveBeenCalledWith(
+        't1',
+        expect.objectContaining({
+          fonts: expect.objectContaining({
+            heading: { family: 'Acme Sans', source: 'user', files: ['fonts/AcmeSans-Regular.otf', 'fonts/AcmeSans-Bold.otf'] }
+          })
+        })
+      )
+    })
+
+    it('uses the same font for the body in one press, and falls back to Talkie’s own when the last file goes', async () => {
+      render(<ThemeEditor initial={defaultThemeDraft('Acme')} themeId="t1" onDone={() => {}} />)
+      await userEvent.upload(screen.getAllByLabelText('Upload your font files')[0], [font('AcmeSans-Regular.otf')])
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Use for body too' }))
+      expect(screen.getByRole('textbox', { name: 'body font' })).toHaveValue('Acme Sans')
+
+      await userEvent.click(await screen.findAllByRole('button', { name: 'Remove AcmeSans-Regular.otf' }).then((all) => all[0]))
+      expect(screen.getByRole('textbox', { name: 'heading font' })).not.toHaveValue('Acme Sans')
+    })
+
+    it('says why a file that is not a font was turned away', async () => {
+      vi.mocked(themeClient.addFont).mockRejectedValue(new Error('notes.pdf is not a font Talkie can read.') as never)
+      render(<ThemeEditor initial={defaultThemeDraft('Acme')} themeId="t1" onDone={() => {}} />)
+
+      await userEvent.upload(screen.getAllByLabelText('Upload your font files')[0], [new File(['x'], 'notes.otf')], { applyAccept: false })
+
+      expect(await screen.findByText(/not a font Talkie can read/)).toBeInTheDocument()
+    })
   })
 
   it('names the projects that use a theme before deleting it', async () => {
