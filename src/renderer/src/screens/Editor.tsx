@@ -1055,6 +1055,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               <TransportBar
                 playerRef={playerRef}
                 timeline={playTimeline}
+                sceneOrder={timeline.map((clip) => clip.id)}
                 totalFrames={computeTimelineDuration(compositionTimeline)}
                 onSeek={handlePlaySeek}
               />
@@ -1096,6 +1097,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           <TransportBar
             playerRef={playerRef}
             timeline={playTimeline}
+            sceneOrder={timeline.map((clip) => clip.id)}
             totalFrames={computeTimelineDuration(compositionTimeline)}
             onSeek={handlePlaySeek}
           />

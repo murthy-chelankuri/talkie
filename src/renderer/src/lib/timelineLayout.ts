@@ -48,6 +48,31 @@ export function previousClipStart(clips: ClipBounds[], frame: number): number | 
   return earlier ?? null
 }
 
+/** The scene a frame falls in, how far in it is, and how long the scene is. */
+export interface ScenePosition<T extends ClipBounds> {
+  clip: T
+  offset: number
+  duration: number
+}
+
+// Narration is timed from the start of its own clip (`[4.2]` is 4.2 seconds into the scene), so
+// the clock that helps write it counts from there rather than from the start of the video.
+export function sceneAt<T extends ClipBounds>(clips: T[], frame: number): ScenePosition<T> | null {
+  const sorted = [...clips].sort((a, b) => a.start - b.start)
+  for (let index = sorted.length - 1; index >= 0; index--) {
+    const clip = sorted[index]
+    if (clip.start > frame) continue
+    if (frame >= clip.start + clip.duration) return null
+    return { clip, offset: frame - clip.start, duration: clip.duration }
+  }
+  return null
+}
+
+/** Seconds in tenths, the precision a timing in the narration is written to: "4.2". */
+export function formatSceneSeconds(seconds: number): string {
+  return (Math.floor(Math.max(seconds, 0) * 10) / 10).toFixed(1)
+}
+
 export function nextClipStart(clips: ClipBounds[], frame: number): number | null {
   return clips.map((clip) => clip.start).sort((a, b) => a - b).find((start) => start > frame) ?? null
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import type { PreviewHandle } from '../../../video/preview'
-import { Maximize2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { Check, Copy, Maximize2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import type { TimelineItem } from '../api/projectClient'
-import { formatTimecode, nextClipStart, previousClipStart } from '../lib/timelineLayout'
+import { formatSceneSeconds, formatTimecode, nextClipStart, previousClipStart, sceneAt } from '../lib/timelineLayout'
 import { FPS } from '../../../composition/constants'
 import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
@@ -10,11 +10,14 @@ import { IconButton } from './ui/IconButton'
 export function TransportBar({
   playerRef,
   timeline,
+  sceneOrder,
   totalFrames,
   onSeek
 }: {
   playerRef: RefObject<PreviewHandle | null>
   timeline: TimelineItem[]
+  /** Every clip's id as the script numbers them, left-out ones included, so "Scene 3" is one scene everywhere. */
+  sceneOrder: string[]
   totalFrames: number
   onSeek: (frame: number) => void
 }): JSX.Element {
@@ -24,6 +27,21 @@ export function TransportBar({
   const trackRef = useRef<HTMLDivElement | null>(null)
   const fillRef = useRef<HTMLDivElement | null>(null)
   const timecodeRef = useRef<HTMLSpanElement | null>(null)
+  const sceneRef = useRef<HTMLSpanElement | null>(null)
+  const timelineRef = useRef(timeline)
+  timelineRef.current = timeline
+  const sceneOrderRef = useRef(sceneOrder)
+  sceneOrderRef.current = sceneOrder
+  const [copied, setCopied] = useState(false)
+
+  // The scene clock is painted the same way as the timecode, and from the same frames.
+  function paintScene(frame: number): void {
+    if (!sceneRef.current) return
+    const scene = sceneAt(timelineRef.current, frame)
+    sceneRef.current.textContent = scene
+      ? `Scene ${sceneOrderRef.current.indexOf(scene.clip.id) + 1} · ${formatSceneSeconds(scene.offset / FPS)} / ${formatSceneSeconds(scene.duration / FPS)}s`
+      : 'No scene'
+  }
 
   // Playback position is written straight to the DOM. Putting it in state would re-render this
   // bar thirty times a second and starve the Player, which is what made narration stutter before.
@@ -36,6 +54,7 @@ export function TransportBar({
       const progress = totalFrames > 0 ? Math.min(frame / totalFrames, 1) : 0
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${progress})`
       if (timecodeRef.current) timecodeRef.current.textContent = formatTimecode(frame / FPS)
+      paintScene(frame)
     }
 
     const onFrame = ({ detail }: { detail: { frame: number } }): void => paint(detail.frame)
@@ -55,6 +74,9 @@ export function TransportBar({
       player.removeEventListener('pause', onPause)
     }
   }, [playerRef, totalFrames])
+
+  // A scene lengthened, moved or left out changes where the playhead stands in it, playing or not.
+  useEffect(() => paintScene(frameRef.current), [timeline, sceneOrder])
 
   function seekFromPointer(event: ReactPointerEvent<HTMLDivElement>): void {
     const track = trackRef.current
@@ -99,6 +121,27 @@ export function TransportBar({
           {formatTimecode(0)}
         </span>
         <span>/ {formatTimecode(totalFrames / FPS)}</span>
+      </span>
+
+      <span className="flex shrink-0 items-center gap-0.5">
+        <span ref={sceneRef} aria-label="Time in this scene" className="text-xs tabular-nums text-text-muted">
+          No scene
+        </span>
+        <IconButton
+          aria-label={copied ? 'Copied' : 'Copy this moment as a narration timing'}
+          title="Copy this moment as a timing, to paste at the start of a narration line"
+          className="h-6 w-6"
+          onClick={() => {
+            const scene = sceneAt(timelineRef.current, frameRef.current)
+            if (!scene) return
+            void navigator.clipboard.writeText(`[${formatSceneSeconds(scene.offset / FPS)}] `).then(() => {
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            })
+          }}
+        >
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+        </IconButton>
       </span>
 
       <div

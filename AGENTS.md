@@ -235,6 +235,11 @@ and `narrationFromText` reads them back on the way in — in the IPC handlers an
 route stores them the same way. Before that, editing narration anywhere cleared `beats` and
 silently turned a timed take into one flat block.
 
+The play controls carry a scene clock beside the video's — "Scene 3 · 4.2 / 12.0s" — because a
+timing counts from the start of its clip and the video's clock does not: writing `[4.2]` meant
+subtracting the scene's start in your head. It reads in tenths, floored so it is never ahead of the picture,
+numbers scenes as the script does (left-out ones included), and copies the moment as `[4.2] `.
+
 **What is typed stays as typed.** The store keeps words tidied (`[2]` as `[2.0]`), and the
 editors once put that copy back into the box after every autosave — with the full stop each line
 was given and its line breaks joined — so whoever was typing found full stops appearing under the

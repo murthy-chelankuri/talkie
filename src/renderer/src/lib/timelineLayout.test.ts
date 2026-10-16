@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   chooseTickIntervalSeconds,
+  formatSceneSeconds,
   formatTimecode,
+  sceneAt,
   frameAtOffset,
   nextClipStart,
   offsetAtFrame,
@@ -93,5 +95,29 @@ describe('nextClipStart', () => {
 
   it('has nowhere to go from the last clip', () => {
     expect(nextClipStart(clips, 150)).toBeNull()
+  })
+})
+
+describe('the scene clock', () => {
+  const clips = [
+    { id: 'b', start: 150, duration: 300 },
+    { id: 'a', start: 0, duration: 150 }
+  ]
+
+  it('counts from the start of the scene the frame is in, not from the start of the video', () => {
+    expect(sceneAt(clips, 276)).toEqual({ clip: clips[0], offset: 126, duration: 300 })
+    expect(sceneAt(clips, 0)?.clip.id).toBe('a')
+    expect(sceneAt(clips, 150)?.clip.id).toBe('b')
+  })
+
+  it('finds no scene in a gap or past the end', () => {
+    expect(sceneAt([{ start: 0, duration: 30 }, { start: 60, duration: 30 }], 45)).toBeNull()
+    expect(sceneAt(clips, 450)).toBeNull()
+  })
+
+  it('reads in tenths of a second, as a timing in the narration is written, never ahead of the picture', () => {
+    expect(formatSceneSeconds(4.2)).toBe('4.2')
+    expect(formatSceneSeconds(4.29)).toBe('4.2')
+    expect(formatSceneSeconds(12)).toBe('12.0')
   })
 })
