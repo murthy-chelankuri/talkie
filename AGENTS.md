@@ -442,8 +442,13 @@ or edit the code; agents use five MCP tools and get the frames back as images.
   compete with Webflow's animation builder).
 - **Adding a scene in the app adds an HTML scene.** Its templates cover what Slide and Diagram did
   (`slide`, `quote`, `steps`, `timeline`, beside the charts and motion ones), so the dialog no longer
-  offers those kinds; slides and diagrams already in a project still open in their own editors, and
-  agents keep `talkie_add_scene` and `talkie_add_diagram`. Each template declares its values in a
+  offers those kinds; slides and diagrams already in a project still open in their own editors.
+  Agents are steered the same way: `talkie_html_templates` lists the templates with their values,
+  `talkie_add_html_scene` takes `template`, and `talkie_add_scene` / `talkie_add_diagram` say they are
+  for a theme's cards, a classic slide asked for by name, and structures no template holds. The
+  scene guide asks every page to declare its values, and a page added without values starts with
+  the ones it declares — so what an agent or "Describe it" writes is editable in the form too.
+  Each template declares its values in a
   `talkie-values` JSON block (a scene made from it starts with them — without them its form said
   there was nothing to change) and its gallery group in `talkie:category`, and carries a
   `thumbnail.png` for the gallery, never copied into a scene. A new template needs all three, and

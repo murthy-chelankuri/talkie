@@ -66,6 +66,7 @@ import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
 import { addHtmlScene, checkSceneItem, editHtmlScene, readHtmlScene } from '../main/htmlScene/htmlSceneApi'
+import { listTemplates, templateFiles } from '../main/htmlScene/templates'
 import { HTML_SCENE_GUIDE } from '../main/htmlScene/guide'
 import type { CheckResult } from '../main/htmlScene/check'
 import * as recording from './recordingSession'
@@ -1040,10 +1041,12 @@ export function createTalkieServer(
   tool(
     'talkie_add_scene',
     {
-      title: 'Add a slide',
+      title: 'Add a classic slide',
       description:
-        'Add a title slide to the end of the timeline — for an opening, a summary, or a point ' +
-        'that no screen recording shows. Keep the lines short: they are read on screen, not aloud.',
+        'Add one of Talkie\'s classic text slides to the end of the timeline. New scenes in Talkie are HTML ' +
+        'scenes: for a slide, use talkie_add_html_scene with template "slide" (or "quote"), which is what the ' +
+        'person adds and edits in the app. Use this only for a theme\'s opening or closing card (layout), or ' +
+        'when asked for a classic slide. Keep the lines short: they are read on screen, not aloud.',
       inputSchema: {
         projectId: z.string(),
         title: z.string(),
@@ -1182,13 +1185,16 @@ export function createTalkieServer(
     {
       title: 'Add an HTML scene',
       description:
-        'Put a web page on the timeline as a scene — a chart, kinetic type, a code walkthrough, anything a ' +
-        'browser can draw — played frame by frame in the project\'s theme. Give files (path → contents, at ' +
-        'least index.html), or path: an absolute .html file or folder to import. Read talkie_html_scene_guide ' +
-        'first. Returns what the check found and the frames it drew.',
+        'Put a scene on the timeline — the way every new scene is made in Talkie, slides and diagrams ' +
+        'included. Easiest: template (an id from talkie_html_templates — slide, steps, timeline, quote, ' +
+        'bar-chart…) with params, the values it declares, changed to say what this scene says; values left ' +
+        'out keep the template\'s. Or write a page: files (path → contents, at least index.html, declaring ' +
+        'its values in a talkie-values block), or path: an absolute .html file or folder to import. Read ' +
+        'talkie_html_scene_guide before writing one. Returns what the check found and the frames it drew.',
       inputSchema: {
         projectId: z.string(),
         title: z.string(),
+        template: z.string().optional().describe('A template id from talkie_html_templates, instead of files or path'),
         files: z.record(z.string()).optional().describe('Files by path inside the scene, e.g. {"index.html": "..."}'),
         path: z.string().optional().describe('An absolute path to an .html file or a folder to import instead'),
         params: z.record(z.unknown()).optional().describe('Named values the page reads as talkie.params'),
@@ -1198,15 +1204,20 @@ export function createTalkieServer(
         prompt: z.string().optional().describe('What it was made to show, kept for later changes and for narration')
       }
     },
-    async ({ projectId, title, files, path, params, style, durationSeconds, position, prompt }) => {
-      if (!files && !path) return text('Give files, or a path to import.')
+    async ({ projectId, title, template, files, path, params, style, durationSeconds, position, prompt }) => {
+      if (!template && !files && !path) return text('Give a template, files, or a path to import.')
+      const starting = template ? listTemplates().find((each) => each.id === template) : undefined
+      if (template && !starting) {
+        return text(`There is no template called ${template}. talkie_html_templates lists them: ${listTemplates().map((each) => each.id).join(', ')}.`)
+      }
       const outcome = await addHtmlScene(
         projectId,
         {
           title,
-          ...(files ? { files } : {}),
-          ...(path ? { importPath: absolute(path) } : {}),
-          params,
+          ...(starting ? { files: templateFiles(starting.id) as Record<string, string> } : files ? { files } : {}),
+          ...(path && !starting ? { importPath: absolute(path) } : {}),
+          // A template's values, with whatever was given over them.
+          params: starting ? { ...starting.values, ...(params ?? {}) } : params,
           style,
           prompt,
           position,
@@ -1216,6 +1227,26 @@ export function createTalkieServer(
       )
       return sceneReply(`Added "${title}" (clip id ${outcome.item.id}).`, outcome.check, outcome.warnings)
     }
+  )
+
+  tool(
+    'talkie_html_templates',
+    {
+      title: 'Templates for scenes',
+      description:
+        'The ready-made scenes a new one can start from — slides, diagrams (steps, timeline), data (charts, ' +
+        'counters), motion and code — each in the project\'s theme, timed to its narration, and with the ' +
+        'values it reads. Start a scene from one with talkie_add_html_scene (template, params): it is what ' +
+        'the app adds, so the person edits it the same way, through a form.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () =>
+      text(
+        listTemplates()
+          .map((template) => `${template.id} (${template.category}) — ${template.name}: ${template.description}\n   values: ${JSON.stringify(template.values)}`)
+          .join('\n')
+      )
   )
 
   tool(
@@ -1288,10 +1319,12 @@ export function createTalkieServer(
   tool(
     'talkie_add_diagram',
     {
-      title: 'Add a diagram',
+      title: 'Add a mermaid diagram',
       description:
-        'Add a diagram written as mermaid source — a flow, a sequence, an architecture. Better ' +
-        'than describing a structure in words over a screen recording that does not show it. ' +
+        'Add a diagram written as mermaid source. For a few steps in order, or dates along a line, use ' +
+        'talkie_add_html_scene with template "steps" or "timeline" instead — what the person adds and edits ' +
+        'in the app. Mermaid is for structures those cannot hold: a sequence, an architecture, a branching ' +
+        'flow. Better than describing a structure in words over a screen recording that does not show it. ' +
         'It is drawn straight away, so a syntax error comes back here rather than surfacing as ' +
         'a blank clip later. The source is kept, so it stays editable.',
       inputSchema: {
