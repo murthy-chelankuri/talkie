@@ -33,26 +33,37 @@ import { getAssetServer, resolveTimelineAssetUrls } from '../render/assetServer'
 import { burnedCaptionsFor } from '../transcript/burnedCaptions'
 import type { TimelineItem as CompositionTimelineItem } from '../../composition/types'
 
+/**
+ * The timeline as the window needs it: every file it plays — recordings, pictures, diagrams, pages,
+ * takes — as an asset-server address, since the window cannot load the files themselves.
+ *
+ * Every handler that hands the window a timeline goes through this. Reordering once returned the
+ * timeline as it is on disk instead, and the editor showed it: after a drag, every recording,
+ * picture and HTML scene in the preview pointed at a bare file path and stayed blank, while the
+ * slides between them — which have no media — drew as before.
+ */
+async function timelineForWindow(id: string): Promise<CompositionTimelineItem[]> {
+  // Cast: project/timeline/schema.ts's zod-inferred TimelineItem treats `data` as optional
+  // (z.unknown() accepts undefined), while composition/types.ts's hand-written TimelineItem
+  // requires it. Both describe the same real shape validated by TimelineItemSchema.superRefine,
+  // so the optionality is a static-typing artifact, not a runtime possibility. Same workaround
+  // as renderProject.ts.
+  const timeline = readTimelineLenient(id) as unknown as CompositionTimelineItem[]
+  const rootDir = projectsRootDir(homedir())
+  const assetServer = await getAssetServer(rootDir)
+  const narrationAudioPaths = readNarrationAudioPaths(id)
+  return resolveTimelineAssetUrls(
+    timeline,
+    rootDir,
+    assetServer.url,
+    narrationAudioPaths,
+    burnedCaptionsFor(id),
+    beatsByItem(readTranscript(id))
+  )
+}
+
 export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => BrowserWindow | null): void {
-  ipcMain.handle('project:timeline:read', async (_event, id: string) => {
-    // Cast: project/timeline/schema.ts's zod-inferred TimelineItem treats `data` as optional
-    // (z.unknown() accepts undefined), while composition/types.ts's hand-written TimelineItem
-    // requires it. Both describe the same real shape validated by TimelineItemSchema.superRefine,
-    // so the optionality is a static-typing artifact, not a runtime possibility. Same workaround
-    // as renderProject.ts.
-    const timeline = readTimelineLenient(id) as unknown as CompositionTimelineItem[]
-    const rootDir = projectsRootDir(homedir())
-    const assetServer = await getAssetServer(rootDir)
-    const narrationAudioPaths = readNarrationAudioPaths(id)
-    return resolveTimelineAssetUrls(
-      timeline,
-      rootDir,
-      assetServer.url,
-      narrationAudioPaths,
-      burnedCaptionsFor(id),
-      beatsByItem(readTranscript(id))
-    )
-  })
+  ipcMain.handle('project:timeline:read', (_event, id: string) => timelineForWindow(id))
 
   ipcMain.handle(
     'project:timeline:addItem',
@@ -60,17 +71,20 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
       withHistory(id, () => addTimelineItem(id, item))
   )
 
-  ipcMain.handle('project:timeline:reorder', (_event, id: string, orderedIds: string[]) =>
+  ipcMain.handle('project:timeline:reorder', (_event, id: string, orderedIds: string[]) => {
     withHistory(id, () => reorderTimelineItems(id, orderedIds))
-  )
+    return timelineForWindow(id)
+  })
 
-  ipcMain.handle('project:timeline:split', (_event, id: string, timelineItemId: string, atFrame: number) =>
+  ipcMain.handle('project:timeline:split', (_event, id: string, timelineItemId: string, atFrame: number) => {
     withHistory(id, () => splitTimelineItem(id, timelineItemId, atFrame))
-  )
+    return timelineForWindow(id)
+  })
 
-  ipcMain.handle('project:timeline:delete', (_event, id: string, timelineItemId: string) =>
+  ipcMain.handle('project:timeline:delete', (_event, id: string, timelineItemId: string) => {
     withHistory(id, () => deleteTimelineItem(id, timelineItemId))
-  )
+    return timelineForWindow(id)
+  })
 
   // Progress goes back to the window that asked, as it happens: an export takes minutes, and a
   // button that only says it is busy cannot tell anyone whether it is slow or stuck.
