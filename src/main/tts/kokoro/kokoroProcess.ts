@@ -5,6 +5,7 @@ import { join } from 'path'
 import { KOKORO_MODEL, isKokoroDownloaded, kokoroCacheDir } from './kokoroModel'
 import { fetchKokoroFiles, type Fetch } from './kokoroDownload'
 import { retrySpeeds } from '../audibleTake'
+import { logFailure } from '../../diagnostics/log'
 
 /**
  * The main process's side of Kokoro: it starts the worker, sends it work, and never loads the
@@ -89,6 +90,8 @@ function worker(): ChildProcess {
 
   started.on('exit', (code) => {
     if (child === started) child = null
+    // Kept whether or not anything was waiting: a worker dying between clips is still worth knowing.
+    if (code !== 0 && code !== null) logFailure(`Kokoro worker stopped (exit code ${code})`, stderr.trim() || undefined, undefined, 'kokoro')
     if (pending.size === 0) return
     const why = lastError(stderr)
     settleAll(new Error(`Kokoro stopped unexpectedly (exit code ${code})${why ? `: ${why}` : '.'}`))

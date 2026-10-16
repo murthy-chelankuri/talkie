@@ -20,6 +20,7 @@ npm run typecheck         # both tsconfigs — node and web
 npm run build             # electron-vite build + the MCP bundle
 npm run package           # regenerates notices, builds, produces release/Talkie-<version>-arm64.dmg
 npm run notices           # regenerates the third-party licence data
+npm run doctor            # checks this checkout can work — build, voice, video tools — and speaks a line (--quick skips it)
 ```
 
 Run `npm test` and `npm run typecheck` before committing. Both are expected to pass. The git
@@ -501,6 +502,33 @@ changing a story runs it; commit what it writes to `examples/projects/`, and rai
   splitter, so every line is over the moment it was written for.
 - **Taskboard** (`examples/apps/taskboard/`) is the demo app the examples record and the tour makes
   a theme from. It starts the same every time, so a rebuild films the same board.
+
+## When something goes wrong
+
+A failure on someone else's Mac used to arrive as one line — "Kokoro stopped unexpectedly (exit
+code 1)", relayed by their agent — and every question that would have found the cause had to be
+asked by hand. The cause was a checkout pulled and never rebuilt. So Talkie keeps the answers.
+
+- **One log, `~/Talkie/logs/talkie.log`**, written by every process and tagged with which: `[app]`,
+  `[window]`, `[mcp]`, `[kokoro]`. Every IPC handler that throws (`logHandlerFailures`, installed
+  before any handler), every MCP tool that fails, errors the window prints, and what the Kokoro
+  worker printed before it died. Names and errors only — **never tool arguments, narration or
+  anything out of a project**. The tests log to `TALKIE_LOG_HOME`, never the real one.
+- **The doctor** (`diagnostics/doctor.ts`) is one list of checks for everyone: `npm run doctor` in a
+  terminal, which runs it inside the built MCP server so it tests what an agent runs; the report;
+  and agents, through `talkie_diagnostics`. Each check that fails says what to do. `npm run build`
+  writes `out/build-info.json`, and the doctor compares it with the checkout's commit — the stale
+  build is the first thing it looks for.
+- **Help → Report a Problem** opens Settings → System, where the person says what happened; Talkie
+  runs the checks, speaks a test line, saves a zip and opens a GitHub issue with the summary for
+  them to attach it to. Talkie sends nothing itself.
+- **A report never holds anything from a project, and never asks to.** Settings go in through an
+  allowlist (`settingsSummary`), with keys and addresses only as set or not set; every text goes
+  through `scrub()`, which takes out the home folder, a project folder's name, quoted words and
+  anything shaped like a key or token. A field added to settings stays out of reports until someone
+  adds it on purpose.
+- **A failed MCP tool tells the agent about `talkie_diagnostics`**, so it reads the cause rather than
+  guessing at one.
 
 ## Security invariants
 

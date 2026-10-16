@@ -73,6 +73,7 @@ export type { SpeechEngineDescription } from '../../../main/tts/engineRegistry'
 export type { KokoroDownload } from '../../../main/tts/kokoro/kokoroProcess'
 export type { KokoroCheck, KokoroImport, KokoroManual } from '../../../main/tts/kokoro/kokoroManual'
 export type { ReadinessCheck } from '../../../main/setup/readiness'
+export type { ReportOutcome } from '../../../main/ipc/diagnosticsHandlers'
 export type { McpConnection } from '../../../main/setup/mcpConnection'
 export type { ExportedFile } from '../../../main/render/revealExport'
 import type { ExportProgress, ExportResult } from '../../../main/render/exportProgress'
@@ -87,6 +88,7 @@ export const settingsClient = {
   copilotModels: () => window.api.settings.copilotModels(),
   resetSpeech: () => window.api.settings.resetSpeech(),
   readiness: () => window.api.settings.readiness(),
+  reportProblem: (description: string) => window.api.settings.reportProblem(description),
   mcpConnection: () => window.api.settings.mcpConnection(),
   mcpCreateToken: () => window.api.settings.mcpCreateToken(),
   mcpRevokeToken: () => window.api.settings.mcpRevokeToken(),

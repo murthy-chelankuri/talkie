@@ -41,6 +41,7 @@ import { cn } from '../lib/cn'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import { VoicePicker } from './VoicePicker'
 import { ThemesSection } from './themes/ThemesSection'
+import { ReportProblem } from './ReportProblem'
 /**
  * Loaded when the section is first opened, not when the app starts.
  *
@@ -1203,6 +1204,7 @@ function SystemSection({ checks }: { checks: ReadinessCheck[] }): JSX.Element {
         )}
       </div>
 
+      <ReportProblem />
       <McpSection />
       <ExamplesSection />
     </div>

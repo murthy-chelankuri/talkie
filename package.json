@@ -13,7 +13,8 @@
   "main": "./out/main/index.cjs",
   "scripts": {
     "dev": "node scripts/ensureElectron.mjs && node scripts/fetchFfmpeg.mjs --ensure && electron-vite dev",
-    "build": "electron-vite build && npm run build:mcp && npm run build:htmlscene && npm run build:exportpage",
+    "build": "electron-vite build && npm run build:mcp && npm run build:htmlscene && npm run build:exportpage && node scripts/writeBuildInfo.mjs",
+    "doctor": "node scripts/doctor.mjs",
     "notices": "node scripts/generateNotices.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",

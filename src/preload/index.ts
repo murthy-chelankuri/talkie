@@ -33,6 +33,7 @@ import type { NarrationFidelity } from '../main/tts/voiceFidelity'
 import type { MenuAction, MenuState } from '../main/menu/applicationMenu'
 import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
+import type { ReportOutcome } from '../main/ipc/diagnosticsHandlers'
 import type { McpConnection } from '../main/setup/mcpConnection'
 import type { SpeechEngineDescription } from '../main/tts/engineRegistry'
 import type { ProjectContext } from '../main/project/projectContext'
@@ -72,6 +73,7 @@ const settingsApi = {
   copilotModels: (): Promise<string[]> => ipcRenderer.invoke('settings:copilotModels'),
   resetSpeech: (): Promise<Settings> => ipcRenderer.invoke('settings:resetSpeech'),
   readiness: (): Promise<ReadinessCheck[]> => ipcRenderer.invoke('settings:readiness'),
+  reportProblem: (description: string): Promise<ReportOutcome> => ipcRenderer.invoke('settings:diagnostics:report', description),
   mcpConnection: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpConnection'),
   mcpCreateToken: (): Promise<{ token: string; connection: McpConnection }> =>
     ipcRenderer.invoke('settings:mcpCreateToken'),

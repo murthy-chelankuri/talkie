@@ -29,7 +29,7 @@ export function AppShell({
   const [showSettings, setShowSettings] = useState(false)
   // Which section the menu asked for; the button opens where it always did.
   const [slot, setSlot] = useState<HTMLElement | null>(null)
-  const [settingsSection, setSettingsSection] = useState<'narration' | 'licences'>('narration')
+  const [settingsSection, setSettingsSection] = useState<'narration' | 'system' | 'licences'>('narration')
 
   useMenuActions({
     settings: () => {
@@ -38,6 +38,11 @@ export function AppShell({
     },
     licences: () => {
       setSettingsSection('licences')
+      setShowSettings(true)
+    },
+    // Where the checks are, so the report is made beside what it reports on.
+    'report-problem': () => {
+      setSettingsSection('system')
       setShowSettings(true)
     }
   })
