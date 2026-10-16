@@ -28,8 +28,7 @@ import type { AgentOutcome } from '../main/agent/projectAgent'
 import type { Voice } from '../main/tts/listVoices'
 import type { NarrationFidelity } from '../main/tts/voiceFidelity'
 import type { MenuAction, MenuState } from '../main/menu/applicationMenu'
-import type { PreparedDeck, SlidePage } from '../main/slides/importSlides'
-import type { SlideText } from '../main/slides/slideText'
+import type { PreparedDeck } from '../main/slides/importSlides'
 import type { ReadinessCheck } from '../main/setup/readiness'
 import type { McpConnection } from '../main/setup/mcpConnection'
 import type { SpeechEngineDescription } from '../main/tts/engineRegistry'
@@ -58,8 +57,8 @@ const projectApi = {
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),
   importImage: (id: string): Promise<TimelineItem | null> => ipcRenderer.invoke('project:import:image', id),
   chooseDeck: (id: string): Promise<PreparedDeck> => ipcRenderer.invoke('project:import:deck', id),
-  saveSlides: (id: string, pages: SlidePage[], notes: string[], texts: SlideText[] = []): Promise<TimelineItem[]> =>
-    ipcRenderer.invoke('project:import:saveSlides', id, pages, notes, texts)
+  saveSlides: (id: string, pages: Array<{ png: Uint8Array }>, notes: string[]): Promise<TimelineItem[]> =>
+    ipcRenderer.invoke('project:import:saveSlides', id, pages, notes)
 }
 
 const settingsApi = {

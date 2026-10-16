@@ -1,5 +1,4 @@
 import type { SlidePage } from './importSlides'
-import { slideTextFromPdf, type PdfTextItem } from './slideText'
 
 /**
  * Turn each page of a PDF into a PNG, here rather than in the renderer.
@@ -41,8 +40,7 @@ export async function rasterisePdf(pdfBytes: Uint8Array): Promise<SlidePage[]> {
         viewport
       }).promise
 
-      const content = await page.getTextContent()
-      pages.push({ png: new Uint8Array(canvas.toBuffer('image/png')), text: slideTextFromPdf(content.items as PdfTextItem[]) })
+      pages.push({ png: new Uint8Array(canvas.toBuffer('image/png')) })
       page.cleanup()
     }
     return pages

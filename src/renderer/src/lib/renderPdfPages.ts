@@ -1,6 +1,5 @@
 import * as pdfjs from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import { slideTextFromPdf, type PdfTextItem, type SlideText } from '../../../main/slides/slideText'
 
 // pdfjs does its parsing in a worker. Bundling the worker rather than fetching it from a CDN
 // keeps slide import working with no network.
@@ -15,8 +14,6 @@ const TARGET_WIDTH = 1920
 
 export interface RenderedPage {
   png: Uint8Array
-  /** The words on the page, so the slide it becomes can be edited. See slideText.ts. */
-  text: SlideText
 }
 
 /**
@@ -53,8 +50,7 @@ export async function renderPdfPages(
 
       // pdfjs 6 takes the canvas itself rather than inferring it from the context.
       await page.render({ canvas, canvasContext: context, viewport }).promise
-      const content = await page.getTextContent()
-      pages.push({ png: await toPng(canvas), text: slideTextFromPdf(content.items as PdfTextItem[]) })
+      pages.push({ png: await toPng(canvas) })
 
       page.cleanup()
       onProgress?.(pageNumber, document.numPages)
