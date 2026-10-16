@@ -38,7 +38,7 @@ export function AddPanel({
         disabled={recording}
         onClick={onRecordSession}
       />
-      <Action icon={<LayoutTemplate size={15} />} label="Add a scene" hint="A slide, a diagram, or HTML" tone="scene" onClick={onAddScene} />
+      <Action icon={<LayoutTemplate size={15} />} label="Add a scene" hint="A slide, steps, a chart, a quote — or describe one" tone="scene" onClick={onAddScene} />
       <Action
         icon={<Presentation size={15} />}
         label={importingDeck ? 'Importing slides' : 'Import slides'}

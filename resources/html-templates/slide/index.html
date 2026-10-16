@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="talkie:template" content="Slide — a title and its points, each point arriving as it is spoken">
+<meta name="talkie:category" content="Slides">
+<script type="application/json" id="talkie-values">
+{
+  "title": "How it works",
+  "points": ["Record the product as you use it", "Talkie writes the narration", "Export a video that keeps up"]
+}
+</script>
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); }
+  main { position: absolute; left: 180px; right: 180px; top: 50%; transform: translateY(-50%); }
+  h1 { margin: 0; font: 600 96px/1.08 var(--talkie-font-heading); color: var(--talkie-heading); }
+  .rule { height: 6px; width: 0; margin: 40px 0 56px; background: var(--talkie-accent); border-radius: 3px; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 30px; }
+  li { display: flex; gap: 28px; align-items: baseline; font: 400 52px/1.3 var(--talkie-font-body); color: var(--talkie-body); opacity: 0; }
+  li::before { content: ''; flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--talkie-accent); transform: translateY(-6px); }
+</style>
+</head>
+<body>
+<main><h1 id="title"></h1><div class="rule" id="rule"></div><ul id="points"></ul></main>
+<script>
+  // Values: title, points (a list). Each point waits for its own line of narration where the take
+  // is timed — counted back from the last, so an opening sentence goes with the title — and
+  // settles in on a short stagger where it is not.
+  let items = []
+  let starts = []
+  talkie.ready(talkie.initialised.then(() => {
+    document.getElementById('title').textContent = talkie.params.title ?? 'How it works'
+    const points = talkie.params.points ?? []
+    const list = document.getElementById('points')
+    for (const point of points) {
+      const li = document.createElement('li')
+      li.textContent = String(point)
+      list.appendChild(li)
+    }
+    items = Array.from(list.children)
+    const beats = talkie.beats
+    starts = items.map((_, i) => (beats.length >= items.length ? beats[beats.length - items.length + i] : 0.9 + i * 0.35))
+  }))
+
+  const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3)
+  talkie.onFrame((t) => {
+    document.getElementById('title').style.opacity = ease(t / 0.4)
+    document.getElementById('rule').style.width = `${ease((t - 0.2) / 0.6) * 220}px`
+    items.forEach((item, i) => {
+      const k = ease((t - starts[i]) / 0.5)
+      item.style.opacity = k
+      item.style.transform = `translateX(${(1 - k) * -24}px)`
+    })
+  })
+</script>
+</body>
+</html>

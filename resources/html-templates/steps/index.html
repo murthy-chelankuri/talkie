@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="talkie:template" content="Steps — boxes joined by arrows, each step drawn as it is explained">
+<meta name="talkie:category" content="Diagrams">
+<script type="application/json" id="talkie-values">
+{
+  "title": "From recording to video",
+  "steps": [
+    { "label": "Record", "detail": "Use the product as normal" },
+    { "label": "Narrate", "detail": "Words written and spoken" },
+    { "label": "Export", "detail": "An MP4, ready to share" }
+  ]
+}
+</script>
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); }
+  h1 { position: absolute; left: 160px; right: 160px; top: 140px; margin: 0; font: 600 80px/1.1 var(--talkie-font-heading); color: var(--talkie-heading); }
+  #flow { position: absolute; left: 160px; right: 160px; top: 380px; display: flex; align-items: center; }
+  .step { flex: 1 1 0; min-width: 0; box-sizing: border-box; padding: 40px 36px; border: 4px solid var(--talkie-accent); border-radius: 28px; opacity: 0; }
+  .step b { display: block; font: 600 54px/1.15 var(--talkie-font-heading); color: var(--talkie-heading); }
+  .step span { display: block; margin-top: 16px; font: 400 34px/1.3 var(--talkie-font-body); color: var(--talkie-body); }
+  .arrow { flex: none; width: 110px; height: 40px; }
+  .arrow line, .arrow path { stroke: var(--talkie-accent); stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<div id="flow"></div>
+<script>
+  // Values: title, steps (a list of { label, detail }). A step and the arrow into it are drawn as
+  // its line of narration starts, counted back from the last; on a stagger when untimed.
+  let boxes = []
+  let arrows = []
+  let starts = []
+  talkie.ready(talkie.initialised.then(() => {
+    document.getElementById('title').textContent = talkie.params.title ?? ''
+    const steps = (talkie.params.steps ?? []).map((step) => (typeof step === 'string' ? { label: step } : step))
+    const flow = document.getElementById('flow')
+    steps.forEach((step, i) => {
+      if (i > 0) {
+        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        arrow.setAttribute('class', 'arrow')
+        arrow.setAttribute('viewBox', '0 0 110 40')
+        arrow.innerHTML = '<line x1="14" y1="20" x2="92" y2="20"/><path d="M78 8 L94 20 L78 32"/>'
+        flow.appendChild(arrow)
+        arrows.push(arrow)
+      }
+      const box = document.createElement('div')
+      box.className = 'step'
+      const label = document.createElement('b')
+      label.textContent = String(step.label ?? '')
+      box.appendChild(label)
+      if (step.detail) {
+        const detail = document.createElement('span')
+        detail.textContent = String(step.detail)
+        box.appendChild(detail)
+      }
+      flow.appendChild(box)
+      boxes.push(box)
+    })
+    const beats = talkie.beats
+    starts = boxes.map((_, i) => (beats.length >= boxes.length ? beats[beats.length - boxes.length + i] : 0.8 + i * 0.7))
+  }))
+
+  const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3)
+  talkie.onFrame((t) => {
+    document.getElementById('title').style.opacity = ease(t / 0.4)
+    boxes.forEach((box, i) => {
+      const k = ease((t - starts[i]) / 0.5)
+      box.style.opacity = k
+      box.style.transform = `translateY(${(1 - k) * 30}px)`
+      if (i > 0) {
+        const a = ease((t - starts[i] + 0.35) / 0.35)
+        arrows[i - 1].style.opacity = a
+        arrows[i - 1].style.clipPath = `inset(0 ${(1 - a) * 100}% 0 0)`
+      }
+    })
+  })
+</script>
+</body>
+</html>

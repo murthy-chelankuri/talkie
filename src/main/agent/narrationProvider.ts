@@ -41,8 +41,19 @@ export interface NarrationProvider {
    * Answer a prompt that has nothing to do with narration — writing a slide, or redrawing a
    * diagram from an instruction. Absent on the provider that has no model behind it.
    */
-  complete?(prompt: string): Promise<string>
+  complete?(prompt: string, budget?: CompleteBudget): Promise<string>
 }
+
+/**
+ * How long an answer may take, and how long it may be. Every provider's own limits were set for
+ * narration — a few lines in under two minutes — and a whole HTML scene is a page of code: a
+ * complex one was cut off at two minutes, or at 1,500 tokens on the API, every time. A caller
+ * asking for something long says so.
+ */
+export type CompleteBudget = { timeoutMs?: number; maxTokens?: number }
+
+/** Enough for a scene's whole page: ten minutes, and room for a long one. */
+export const LONG_ANSWER: CompleteBudget = { timeoutMs: 10 * 60_000, maxTokens: 16_000 }
 
 /**
  * How much of a clip the words themselves may fill.

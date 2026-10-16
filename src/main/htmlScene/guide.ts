@@ -57,6 +57,28 @@ Load only these, exactly so (nothing from the internet will load):
     <script src="__TALKIE_LIB__/lottie.min.js"></script>  lottie-web — inline the JSON in a
                                                           <script type="application/json">
 
+## Let the person change it
+
+Every word and number someone might want to change — a title, points, labels, values, names —
+goes in \`talkie.params\`, read with a default, and is declared with those defaults in a
+\`talkie-values\` block in the head. Talkie builds its form from them, so whoever uses the
+scene changes "Q3" to "Q4" without reading code; a scene with none can only be changed in its code.
+
+    <script type="application/json" id="talkie-values">
+    { "title": "Revenue by region", "points": ["North", "South"], "bars": [{ "label": "North", "value": 42 }] }
+    </script>
+
+Lists of words and lists of things (each with the same fields) both become editable rows, so
+prefer them to one long string. Read each list defensively: the person may add or remove items.
+
+## Start from a template when one fits
+
+Talkie has ready-made scenes — a slide (title and points), steps, a timeline, a quote, a bar chart,
+a counter, before-and-after, a kinetic title, a Lottie animation, a code walkthrough — each themed,
+timed to the narration and already declaring its values. Starting from one and changing its
+values is quicker and safer than writing a page. (Over MCP: talkie_html_templates lists them;
+talkie_add_html_scene takes template.)
+
 ## Keep it readable
 
 - Everything inside 1920×1080: text that runs out of the frame is reported.
@@ -65,7 +87,9 @@ Load only these, exactly so (nothing from the internet will load):
 
 ## Example
 
-    <!doctype html><html><head><meta charset="utf-8"><style>
+    <!doctype html><html><head><meta charset="utf-8">
+    <script type="application/json" id="talkie-values">{ "title": "Growth" }</script>
+    <style>
       html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg) }
       h1 { position: absolute; left: 160px; top: 120px; margin: 0; font: 600 96px var(--talkie-font-heading); color: var(--talkie-heading) }
       .bar { position: absolute; left: 160px; top: 420px; height: 96px; background: var(--talkie-accent); border-radius: 8px }

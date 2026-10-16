@@ -6,7 +6,8 @@ import {
   targetWordCount,
   type NarrationProvider,
   type NarrationRequest,
-  type ProviderAvailability
+  type ProviderAvailability,
+  type CompleteBudget
 } from './narrationProvider'
 import { readSettings } from '../settings/settingsStore'
 
@@ -32,8 +33,8 @@ export const anthropicProvider: NarrationProvider = {
       : { available: false, reason: 'Add an Anthropic API key in settings to use this provider.' }
   },
 
-  async complete(prompt: string): Promise<string> {
-    return askAnthropic([{ type: 'text', text: prompt }], 1500)
+  async complete(prompt: string, budget?: CompleteBudget): Promise<string> {
+    return askAnthropic([{ type: 'text', text: prompt }], budget?.maxTokens ?? 1500, budget?.timeoutMs)
   },
 
   async draft(request: NarrationRequest): Promise<string> {
@@ -55,7 +56,7 @@ export const anthropicProvider: NarrationProvider = {
 }
 
 /** One request to the Messages API, shared by narration and by anything else asked of it. */
-async function askAnthropic(content: unknown[], maxTokens: number): Promise<string> {
+async function askAnthropic(content: unknown[], maxTokens: number, timeoutMs: number = DRAFT_TIMEOUT_MS): Promise<string> {
   const { apiKey, model } = readSettings().narration.anthropic
   if (!apiKey.trim()) throw new Error('No Anthropic API key is set.')
 
@@ -66,7 +67,7 @@ async function askAnthropic(content: unknown[], maxTokens: number): Promise<stri
       'x-api-key': apiKey,
       'anthropic-version': API_VERSION
     },
-    signal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
     body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] })
   })
 

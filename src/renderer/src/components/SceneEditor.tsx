@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Code2, LayoutTemplate, Share2, Sparkles, TriangleAlert, X } from 'lucide-react'
+import { Sparkles, TriangleAlert, X } from 'lucide-react'
 import { sceneClient, type TimelineItem } from '../api/projectClient'
 import { RichTextField } from './RichTextField'
 import { plainToRichText, richTextToPlain } from '../../../main/project/timeline/richText'
@@ -43,7 +43,9 @@ function draftFrom(item: TimelineItem | null): { kind: SceneKind; draft: SceneDr
   }
 
   return {
-    kind: item?.kind === 'diagram' ? 'diagram' : item?.kind === 'html' ? 'html' : 'scene',
+    // A new scene is an HTML scene: its templates are slides, diagrams and charts, and the page can
+    // be anything else. Slides and diagrams already in a project still open in their own editors.
+    kind: item?.kind === 'diagram' ? 'diagram' : item?.kind === 'scene' ? 'scene' : 'html',
     draft: {
       title: data.title ?? '',
       bullets: data.bullets ?? [],
@@ -79,7 +81,7 @@ export function SceneEditor({
   onSaved: () => void | Promise<void>
 }): JSX.Element {
   const initial = useMemo(() => draftFrom(item), [item])
-  const [kind, setKind] = useState<SceneKind>(initial.kind)
+  const kind: SceneKind = initial.kind
   const [draft, setDraft] = useState<SceneDraft>(initial.draft)
   const [instruction, setInstruction] = useState('')
   const [writing, setWriting] = useState(false)
@@ -217,32 +219,6 @@ export function SceneEditor({
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
           <h2 className="font-serif text-lg text-text">{item ? 'Edit scene' : 'Add a scene'}</h2>
-
-          {!item && (
-            <div className="ml-2 flex items-center gap-1 rounded-[10px] bg-raised p-0.5">
-              {(
-                [
-                  { id: 'scene' as const, label: 'Slide', icon: <LayoutTemplate size={13} /> },
-                  { id: 'diagram' as const, label: 'Diagram', icon: <Share2 size={13} /> },
-                  { id: 'html' as const, label: 'HTML', icon: <Code2 size={13} /> }
-                ]
-              ).map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setKind(option.id)}
-                  aria-pressed={kind === option.id}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-md border-0 px-2.5 py-1 text-[12px] transition-colors',
-                    kind === option.id ? 'bg-accent text-accent-foreground' : 'bg-transparent text-text-muted'
-                  )}
-                >
-                  {option.icon}
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           <IconButton aria-label="Close" onClick={onClose} className="ml-auto">
             <X size={16} />

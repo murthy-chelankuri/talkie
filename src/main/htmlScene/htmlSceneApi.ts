@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs'
 import { homedir } from 'os'
 import { dirname, join } from 'path'
 import {
@@ -18,6 +19,7 @@ import type { RenderTheme } from '../../composition/renderTheme'
 import { checkHtmlScene, sceneThemeFor, type CheckResult } from './check'
 import { importScene } from './import'
 import { readRevision, writeRevision } from './store'
+import { templateValues } from './templates'
 
 /**
  * HTML scenes as the app, the in-app agent and outside agents all handle them: one place that
@@ -112,7 +114,9 @@ export async function addHtmlScene(
         src,
         title: input.title,
         style: input.style ?? {},
-        params: input.params ?? {},
+        // A page that declares its values (a talkie-values block, as templates and the guide do)
+        // starts with them when none were given, so its form has fields from the first moment.
+        params: input.params ?? declaredValues(src),
         ...(input.prompt ? { prompt: input.prompt } : {})
       })
       const added = addTimelineItem(projectId, { kind: 'html', start, duration: input.durationFrames ?? DEFAULT_SCENE_DURATION_FRAMES, data }, baseDir)
@@ -197,4 +201,13 @@ export async function redrawStalePosters(projectId: string, baseDir: string = ho
     }
   }
   return redrawn
+}
+
+/** The values a scene's page declares for itself; none when it declares none. */
+function declaredValues(src: string): Record<string, unknown> {
+  try {
+    return templateValues(readFileSync(src, 'utf-8'))
+  } catch {
+    return {}
+  }
 }

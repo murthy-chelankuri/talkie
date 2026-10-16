@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="talkie:template" content="Timeline — milestones along a line that draws itself, each as it is mentioned">
+<meta name="talkie:category" content="Diagrams">
+<script type="application/json" id="talkie-values">
+{
+  "title": "The road so far",
+  "milestones": [
+    { "when": "2023", "what": "First recording" },
+    { "when": "2024", "what": "Narration written for you" },
+    { "when": "2025", "what": "Videos that update themselves" }
+  ]
+}
+</script>
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--talkie-bg); }
+  h1 { position: absolute; left: 160px; right: 160px; top: 140px; margin: 0; font: 600 80px/1.1 var(--talkie-font-heading); color: var(--talkie-heading); }
+  #line { position: absolute; left: 160px; top: 600px; height: 6px; width: 0; background: var(--talkie-accent); border-radius: 3px; }
+  .mark { position: absolute; top: 560px; width: 440px; margin-left: -220px; text-align: center; opacity: 0; }
+  .dot { width: 32px; height: 32px; margin: 0 auto; border-radius: 50%; background: var(--talkie-accent); box-shadow: 0 0 0 10px var(--talkie-bg); }
+  .when { margin-top: 40px; font: 600 56px/1.1 var(--talkie-font-heading); color: var(--talkie-heading); }
+  .what { margin-top: 14px; font: 400 36px/1.3 var(--talkie-font-body); color: var(--talkie-body); }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<div id="line"></div>
+<div id="marks"></div>
+<script>
+  // Values: title, milestones (a list of { when, what }). The line draws as far as each milestone
+  // as its line of narration starts, counted back from the last; on a stagger when untimed.
+  const left = 160, right = 1760
+  let marks = []
+  let starts = []
+  let positions = []
+  talkie.ready(talkie.initialised.then(() => {
+    document.getElementById('title').textContent = talkie.params.title ?? ''
+    const milestones = talkie.params.milestones ?? []
+    const holder = document.getElementById('marks')
+    positions = milestones.map((_, i) => (milestones.length === 1 ? (left + right) / 2 : left + 220 + (i * (right - left - 440)) / (milestones.length - 1)))
+    milestones.forEach((milestone, i) => {
+      const mark = document.createElement('div')
+      mark.className = 'mark'
+      mark.style.left = `${positions[i]}px`
+      const dot = document.createElement('div')
+      dot.className = 'dot'
+      const when = document.createElement('div')
+      when.className = 'when'
+      when.textContent = String(milestone.when ?? '')
+      const what = document.createElement('div')
+      what.className = 'what'
+      what.textContent = String(milestone.what ?? '')
+      mark.append(dot, when, what)
+      holder.appendChild(mark)
+      marks.push(mark)
+    })
+    const beats = talkie.beats
+    starts = marks.map((_, i) => (beats.length >= marks.length ? beats[beats.length - marks.length + i] : 0.8 + i * 0.8))
+  }))
+
+  const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3)
+  talkie.onFrame((t) => {
+    document.getElementById('title').style.opacity = ease(t / 0.4)
+    // The line reaches each milestone as it appears, and runs to the end after the last.
+    let reach = left
+    marks.forEach((mark, i) => {
+      const k = ease((t - starts[i]) / 0.5)
+      mark.style.opacity = k
+      mark.style.transform = `translateY(${(1 - k) * 24}px)`
+      const before = i === 0 ? left : positions[i - 1]
+      reach = Math.max(reach, before + (positions[i] - before) * ease((t - starts[i] + 0.4) / 0.4))
+    })
+    if (marks.length > 0) reach = Math.max(reach, positions[marks.length - 1] + (right - positions[marks.length - 1]) * ease((t - starts[marks.length - 1] - 0.3) / 0.6))
+    document.getElementById('line').style.width = `${reach - left}px`
+  })
+</script>
+</body>
+</html>

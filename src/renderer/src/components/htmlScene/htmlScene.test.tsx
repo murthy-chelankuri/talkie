@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { HtmlScenePanel } from './HtmlScenePanel'
+import { ParamsForm, blankLike, labelFor } from './ParamsForm'
 import { ClipThumbnail } from '../Timeline'
 import { htmlSceneClient, timelineClient, type TimelineItem } from '../../api/projectClient'
 
@@ -34,7 +36,7 @@ const scene: TimelineItem = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(htmlSceneClient.templates).mockResolvedValue([{ id: 'bar-chart', name: 'Bar chart', description: 'bars grow in turn' }])
+  vi.mocked(htmlSceneClient.templates).mockResolvedValue([{ id: 'bar-chart', name: 'Bar chart', description: 'bars grow in turn', category: 'Data', values: { title: 'Revenue' }, thumbnail: null }])
   vi.mocked(htmlSceneClient.read).mockResolvedValue({ data: scene.data as never, files: [{ path: 'index.html', text: '<h1>Hi</h1>', bytes: 11 }, { path: 'style.css', text: 'h1{}', bytes: 4 }] })
   vi.mocked(htmlSceneClient.edit).mockResolvedValue({ item: scene, problems: [], warnings: [] })
   vi.mocked(htmlSceneClient.fromTemplate).mockResolvedValue({ item: scene, problems: [], warnings: [] })
@@ -42,23 +44,47 @@ beforeEach(() => {
 })
 
 describe('starting an HTML scene', () => {
-  it('offers three ways in: describe it, a template, or an import', async () => {
+  it('offers a gallery of templates by what they are for, describing it, or an import', async () => {
     render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={() => {}} onClose={() => {}} />)
 
     expect(screen.getByRole('textbox', { name: 'Describe the scene' })).toBeInTheDocument()
-    expect(await screen.findByText('Bar chart')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Choose a file or folder/ })).toBeInTheDocument()
+    const data = await screen.findByRole('region', { name: 'Data' })
+    expect(within(data).getByRole('button', { name: 'Start from Bar chart' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Import a page/ })).toBeInTheDocument()
   })
 
   it('puts a template on the timeline and opens it to edit', async () => {
     const onSaved = vi.fn()
     render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={onSaved} onClose={() => {}} />)
 
-    await userEvent.click(await screen.findByText('Bar chart'))
+    await userEvent.click(await screen.findByRole('button', { name: 'Start from Bar chart' }))
 
     expect(htmlSceneClient.fromTemplate).toHaveBeenCalledWith('p', 'bar-chart', 'Bar chart')
     expect(onSaved).toHaveBeenCalled()
-    expect(await screen.findByRole('tab', { name: 'index.html' })).toBeInTheDocument()
+    // What it says comes first, as a form.
+    expect(await screen.findByRole('tab', { name: 'Content', selected: true })).toBeInTheDocument()
+  })
+
+  it('makes a scene as long as the description asks, when the length box is left empty', async () => {
+    vi.mocked(htmlSceneClient.describe).mockResolvedValue({ status: 'failed', reason: 'stop here' })
+    render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={() => {}} onClose={() => {}} />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Describe the scene' }), 'a complex 5 min animation about FSD')
+    expect(screen.getByRole('textbox', { name: 'Length' })).toHaveAttribute('placeholder', '5 min')
+    await userEvent.click(screen.getByRole('button', { name: /Make it/ }))
+
+    expect(htmlSceneClient.describe).toHaveBeenCalledWith('p', 'a complex 5 min animation about FSD', 300)
+  })
+
+  it('takes a length typed in the box over one in the description', async () => {
+    vi.mocked(htmlSceneClient.describe).mockResolvedValue({ status: 'failed', reason: 'stop here' })
+    render(<HtmlScenePanel projectId="p" item={null} theme={null} onSaved={() => {}} onClose={() => {}} />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Describe the scene' }), 'a 5 min animation')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Length' }), '1:30')
+    await userEvent.click(screen.getByRole('button', { name: /Make it/ }))
+
+    expect(htmlSceneClient.describe).toHaveBeenCalledWith('p', 'a 5 min animation', 90)
   })
 
   it('says why, when the model could not write one', async () => {
@@ -73,18 +99,18 @@ describe('starting an HTML scene', () => {
 })
 
 describe('editing an HTML scene', () => {
-  it('shows a tab for each of its files', async () => {
+  it('keeps its code a tab away, with a tab for each of its files', async () => {
     render(<HtmlScenePanel projectId="p" item={scene} theme={null} onSaved={() => {}} onClose={() => {}} />)
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Code' }))
     expect(await screen.findByRole('tab', { name: 'index.html' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'style.css' })).toBeInTheDocument()
   })
 
   it('saves a changed value without touching its files', async () => {
     render(<HtmlScenePanel projectId="p" item={scene} theme={null} onSaved={() => {}} onClose={() => {}} />)
-    await screen.findByRole('tab', { name: 'index.html' })
 
-    const quarter = screen.getByRole('textbox', { name: 'quarter' })
+    const quarter = screen.getByRole('textbox', { name: 'Quarter' })
     await userEvent.clear(quarter)
     await userEvent.type(quarter, 'Q4')
     await userEvent.click(screen.getByRole('button', { name: /Save scene/ }))
@@ -94,9 +120,11 @@ describe('editing an HTML scene', () => {
 
   it('saves only the file that was edited, and the look chosen', async () => {
     render(<HtmlScenePanel projectId="p" item={scene} theme={null} onSaved={() => {}} onClose={() => {}} />)
+    await userEvent.click(screen.getByRole('tab', { name: 'Code' }))
     await screen.findByRole('tab', { name: 'index.html' })
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Code of index.html' }), '!')
+    await userEvent.click(screen.getByRole('tab', { name: 'Look' }))
     await userEvent.click(screen.getByRole('button', { name: 'Light' }))
     await userEvent.click(screen.getByRole('button', { name: /Save scene/ }))
 
@@ -110,6 +138,47 @@ describe('editing an HTML scene', () => {
     render(<HtmlScenePanel projectId="p" item={flagged} theme={null} onSaved={() => {}} onClose={() => {}} />)
 
     expect(await screen.findByText('Uses text in #ff0000')).toBeInTheDocument()
+  })
+})
+
+describe('the form for a scene’s values', () => {
+  function Form({ initial }: { initial: Record<string, unknown> }): JSX.Element {
+    const [params, setParams] = useState(initial)
+    return (
+      <>
+        <ParamsForm params={params} onChange={setParams} />
+        <output data-testid="value">{JSON.stringify(params)}</output>
+      </>
+    )
+  }
+  const value = (): unknown => JSON.parse(screen.getByTestId('value').textContent ?? '{}')
+
+  it('edits a list of words as rows to add, remove and reorder, not as JSON', async () => {
+    render(<Form initial={{ points: ['Record', 'Narrate'] }} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add point' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Point 3' }), 'Export')
+    await userEvent.click(screen.getByRole('button', { name: 'Move Point 3 up' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Point 1' }))
+
+    expect(value()).toEqual({ points: ['Export', 'Narrate'] })
+  })
+
+  it('gives each thing in a list of things a card with its own fields, and a new one the same fields', async () => {
+    render(<Form initial={{ steps: [{ label: 'Record', detail: 'As you use it' }] }} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add step' }))
+    const labels = screen.getAllByRole('textbox', { name: 'Label' })
+    await userEvent.type(labels[1], 'Export')
+
+    expect(value()).toEqual({ steps: [{ label: 'Record', detail: 'As you use it' }, { label: 'Export', detail: '' }] })
+  })
+
+  it('names the fields in words', () => {
+    expect(labelFor('subtitle')).toBe('Subtitle')
+    expect(labelFor('chartTitle')).toBe('Chart title')
+    expect(labelFor('max_value')).toBe('Max value')
+    expect(blankLike({ when: '2023', what: 'x', n: 3 })).toEqual({ when: '', what: '', n: 0 })
   })
 })
 

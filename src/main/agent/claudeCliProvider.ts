@@ -6,7 +6,8 @@ import {
   cleanDraft,
   type NarrationProvider,
   type NarrationRequest,
-  type ProviderAvailability
+  type ProviderAvailability,
+  type CompleteBudget
 } from './narrationProvider'
 import { readSettings } from '../settings/settingsStore'
 
@@ -46,8 +47,8 @@ export const claudeCliProvider: NarrationProvider = {
     }
   },
 
-  async complete(prompt: string): Promise<string> {
-    return cleanDraft(await runClaude(prompt))
+  async complete(prompt: string, budget?: CompleteBudget): Promise<string> {
+    return cleanDraft(await runClaude(prompt, budget?.timeoutMs))
   },
 
   async draft(request: NarrationRequest): Promise<string> {
@@ -57,7 +58,7 @@ export const claudeCliProvider: NarrationProvider = {
   }
 }
 
-async function runClaude(prompt: string): Promise<string> {
+async function runClaude(prompt: string, timeoutMs: number = TIMEOUT_MS): Promise<string> {
   const binary = await findCli('claude')
   if (!binary) throw new Error('The `claude` command was not found.')
 
@@ -75,7 +76,7 @@ async function runClaude(prompt: string): Promise<string> {
         'Read',
         ...(model ? ['--model', model] : [])
       ],
-      { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }
+      { timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 }
     )
 
     // Closed at once. The prompt is an argument, so nothing is ever written to stdin — but

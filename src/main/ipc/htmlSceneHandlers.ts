@@ -1,6 +1,6 @@
 import { dialog, type BrowserWindow, type IpcMain } from 'electron'
 import { basename, extname } from 'path'
-import { openProject } from '../project/projectApi'
+import { openProject, readTimeline } from '../project/projectApi'
 import {
   addHtmlScene,
   checkSceneItem,
@@ -9,7 +9,7 @@ import {
   type HtmlSceneInput,
   type HtmlSceneOutcome
 } from '../htmlScene/htmlSceneApi'
-import { listTemplates, templateFiles } from '../htmlScene/templates'
+import { listTemplates, templateFiles, templateThumbnail } from '../htmlScene/templates'
 import { writeHtmlScene } from '../htmlScene/writeHtmlScene'
 import type { TimelineItem } from '../project/timeline/schema'
 
@@ -39,11 +39,12 @@ async function writeChecked(
   projectId: string,
   instruction: string,
   apply: (written: { title: string; files: Record<string, string> }) => Promise<HtmlSceneOutcome>,
-  current?: { itemId: string; files: Record<string, string>; title: string }
+  current?: { itemId: string; files: Record<string, string>; title: string; seconds: number },
+  seconds?: number
 ): Promise<HtmlSceneWriteResult> {
   const project = openProject(projectId)
   const ask = (problems?: string[], files?: Record<string, string>) =>
-    writeHtmlScene({ instruction, current: files, title: current?.title, projectName: project.name, context: project.context, problems })
+    writeHtmlScene({ instruction, current: files, title: current?.title, projectName: project.name, context: project.context, problems, seconds: current?.seconds ?? seconds })
 
   const first = await ask(undefined, current?.files)
   if (first.status === 'failed') return first
@@ -86,19 +87,39 @@ export function registerHtmlSceneHandlers(ipcMain: IpcMain, getWindow: () => Bro
     const path = result.filePaths[0]
     return summarise(await addHtmlScene(id, { importPath: path, title: basename(path, extname(path)) }))
   })
-  ipcMain.handle('project:htmlScene:templates', () => listTemplates())
-  ipcMain.handle('project:htmlScene:fromTemplate', async (_event, id: string, templateId: string, title: string) =>
-    summarise(await addHtmlScene(id, { files: templateFiles(templateId) as Record<string, string>, title }))
+  ipcMain.handle('project:htmlScene:templates', () =>
+    listTemplates().map((template) => ({ ...template, thumbnail: templateThumbnail(template.id) }))
   )
-  ipcMain.handle('project:htmlScene:describe', (_event, id: string, instruction: string) =>
-    writeChecked(id, instruction, (written) => addHtmlScene(id, { title: written.title, files: written.files, prompt: instruction }))
+  // With the values the template declares, so the new scene's form has every field from the start.
+  ipcMain.handle('project:htmlScene:fromTemplate', async (_event, id: string, templateId: string, title: string) =>
+    summarise(
+      await addHtmlScene(id, {
+        files: templateFiles(templateId) as Record<string, string>,
+        title,
+        params: listTemplates().find((template) => template.id === templateId)?.values ?? {}
+      })
+    )
+  )
+  // As long as asked for: a scene described as five minutes long is made five minutes long, and the
+  // page is written knowing it.
+  ipcMain.handle('project:htmlScene:describe', (_event, id: string, instruction: string, seconds?: number) =>
+    writeChecked(
+      id,
+      instruction,
+      (written) =>
+        addHtmlScene(id, { title: written.title, files: written.files, prompt: instruction, ...(seconds ? { durationFrames: Math.round(seconds * 30) } : {}) }),
+      undefined,
+      seconds
+    )
   )
   ipcMain.handle('project:htmlScene:change', (_event, id: string, itemId: string, instruction: string) => {
     const { data, files } = readHtmlScene(id, itemId)
+    const item = readTimeline(id).find((clip) => clip.id === itemId)
     return writeChecked(id, instruction, (written) => editHtmlScene(id, itemId, { files: written.files, prompt: instruction }), {
       itemId,
       files: textFiles(files),
-      title: data.title
+      title: data.title,
+      seconds: (item?.duration ?? 150) / 30
     })
   })
 }

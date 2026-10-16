@@ -146,7 +146,8 @@ describe('editing a theme', () => {
 
       await userEvent.upload(screen.getAllByLabelText('Upload your font files')[0], [font('AcmeSans-Regular.otf'), font('AcmeSans-Bold.otf')])
 
-      expect(screen.getByRole('textbox', { name: 'heading font' })).toHaveValue('Acme Sans')
+      // The files are read one after another; under load that takes more than a tick.
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'heading font' })).toHaveValue('Acme Sans'))
       const listed = await screen.findByRole('list', { name: 'heading font files' })
       expect(listed).toHaveTextContent('Regular')
       expect(listed).toHaveTextContent('Bold')
@@ -166,7 +167,7 @@ describe('editing a theme', () => {
       await userEvent.upload(screen.getAllByLabelText('Upload your font files')[0], [font('AcmeSans-Regular.otf')])
 
       await userEvent.click(await screen.findByRole('button', { name: 'Use for body too' }))
-      expect(screen.getByRole('textbox', { name: 'body font' })).toHaveValue('Acme Sans')
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'body font' })).toHaveValue('Acme Sans'))
 
       await userEvent.click(await screen.findAllByRole('button', { name: 'Remove AcmeSans-Regular.otf' }).then((all) => all[0]))
       expect(screen.getByRole('textbox', { name: 'heading font' })).not.toHaveValue('Acme Sans')

@@ -523,6 +523,34 @@ describe('Talkie over MCP', () => {
       expect(readTimeline(projectId, baseDir)[0].kind).toBe('html')
     }, 180_000)
 
+    it('lists the templates with the values each reads, and starts a scene from one with its own words', async () => {
+      const projectId = await newProject('Templates')
+
+      const listed = await call('talkie_html_templates')
+      expect(listed).toMatch(/^slide \(Slides\) — Slide: /m)
+      expect(listed).toContain('"points":[')
+
+      const said = await call('talkie_add_html_scene', { projectId, title: 'Why switch', template: 'slide', params: { title: 'Why teams switch' } })
+      expect(said).toMatch(/Added "Why switch"/)
+      const [clip] = readTimeline(projectId, baseDir)
+      // The words asked for, over the template's own for whatever was not given.
+      expect((clip.data as { params: Record<string, unknown> }).params).toMatchObject({
+        title: 'Why teams switch',
+        points: expect.arrayContaining(['Talkie writes the narration'])
+      })
+
+      expect(await call('talkie_add_html_scene', { projectId, title: 'X', template: 'nope' })).toMatch(/no template called nope.*slide/)
+    }, 180_000)
+
+    it('gives a written scene the values its page declares, so the person can change them in a form', async () => {
+      const projectId = await newProject('Declared')
+      const page = GOOD.replace('<head>', '<head><script type="application/json" id="talkie-values">{"quarter":"Q3"}</script>')
+
+      await call('talkie_add_html_scene', { projectId, title: 'Revenue', files: { 'index.html': page } })
+
+      expect((readTimeline(projectId, baseDir)[0].data as { params: Record<string, unknown> }).params).toEqual({ quarter: 'Q3' })
+    }, 180_000)
+
     it('will only import from an absolute path', async () => {
       const projectId = await newProject('Charts')
 
