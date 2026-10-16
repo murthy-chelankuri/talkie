@@ -12,8 +12,6 @@ import {
 } from '../project/projectApi'
 import { readTranscript } from '../project/projectApi'
 import { projectsRootDir } from '../project/paths'
-import { beatsByItem } from '../transcript/captions'
-import { withHistory } from '../project/history'
 import {
   chooseVersion,
   createVersion,
@@ -22,6 +20,8 @@ import {
   renameVersion,
   setClipIncluded
 } from '../project/versionsStore'
+import { beatsByItem } from '../transcript/captions'
+import { withHistory } from '../project/history'
 import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
 import { describeExport, openExport, showExportInFinder } from '../render/revealExport'
 import { addScene, updateSceneData, writeDiagramSvg } from '../project/projectApi'
