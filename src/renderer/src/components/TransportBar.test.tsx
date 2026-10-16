@@ -53,7 +53,8 @@ describe('the scene clock', () => {
 
     act(() => player.emit(276))
 
-    expect(screen.getByLabelText('Time in this scene')).toHaveTextContent('Scene 3 · 4.2 / 12.0s')
+    expect(screen.getByRole('group', { name: 'Time in this scene' })).toHaveTextContent('Scene 3 4.2s of 12.0s')
+    expect(screen.getByLabelText('Time in the video')).toHaveTextContent('0:09.2 / 0:17')
   })
 
   it('copies the moment as a timing to start a narration line with', async () => {

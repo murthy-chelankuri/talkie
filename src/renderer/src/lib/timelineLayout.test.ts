@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   chooseTickIntervalSeconds,
+  formatPreciseTimecode,
   formatSceneSeconds,
   formatTimecode,
   sceneAt,
@@ -119,5 +120,10 @@ describe('the scene clock', () => {
     expect(formatSceneSeconds(4.2)).toBe('4.2')
     expect(formatSceneSeconds(4.29)).toBe('4.2')
     expect(formatSceneSeconds(12)).toBe('12.0')
+  })
+
+  it('gives the video\'s time in tenths too, so both clocks agree in the first scene', () => {
+    expect(formatPreciseTimecode(2.97)).toBe('0:02.9')
+    expect(formatPreciseTimecode(65.4)).toBe('1:05.4')
   })
 })

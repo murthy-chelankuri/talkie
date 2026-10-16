@@ -31,6 +31,13 @@ export function formatTimecode(seconds: number): string {
   return `${minutes}:${String(whole % 60).padStart(2, '0')}`
 }
 
+/** "0:02.9" — the video's time to the tenth, the same precision as the scene clock beside it. */
+export function formatPreciseTimecode(seconds: number): string {
+  const tenths = Math.floor(Math.max(seconds, 0) * 10)
+  const whole = Math.floor(tenths / 10)
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}.${tenths % 10}`
+}
+
 export interface ClipBounds {
   start: number
   duration: number
