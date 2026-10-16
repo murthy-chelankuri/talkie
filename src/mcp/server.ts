@@ -243,7 +243,7 @@ export function createTalkieServer(
         const narration = segment
           ? segment.beats?.length
             ? `\n   narration (${segment.status}), timed:\n` +
-              segment.beats.map((beat) => `     [${beat.at.toFixed(1)}] ${beat.text}`).join('\n')
+              segment.beats.map((beat) => `     [${beat.at.toFixed(1)}] ${beat.text.replace(/\s*\n\s*/g, ' / ')}`).join('\n')
             : `\n   narration (${segment.status}), read straight through: ${segment.text}`
           : '\n   no narration yet'
         const out = cut.leftOut.includes(item.id) ? `\n   LEFT OUT of the version "${cut.name}": not played or exported` : ''

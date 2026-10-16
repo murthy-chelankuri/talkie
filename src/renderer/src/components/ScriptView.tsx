@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Poin
 import type { PreviewHandle } from '../../../video/preview'
 import { AudioLines, Mic, Play, Sparkles, Square, TriangleAlert } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
-import { narrationScriptForItem, segmentsForItem } from '../lib/clipNarration'
+import { narrationScriptForItem, sameNarration, segmentsForItem } from '../lib/clipNarration'
 import { narrationFit, scriptParts, type NarrationFit } from '../lib/narrationFit'
 import { KIND_NAMES } from '../lib/clipKinds'
 import { BASE_WIDTH, isBaseSize, resized, textPxFor, type SceneSize } from '../lib/sceneSize'
@@ -13,6 +13,7 @@ import { cn } from '../lib/cn'
 import { ClipThumbnail } from './Timeline'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
+import { Working } from './ui/Working'
 
 /** Long enough to finish a thought, short enough that leaving the scene never finds it unsaved. */
 const AUTOSAVE_MS = 900
@@ -244,13 +245,15 @@ function Scene({
   const sentRef = useRef(saved)
 
   // Take in changes made elsewhere — a draft arriving, an undo — without ever discarding what
-  // is being typed. Words that were just saved count as not being typed: the store hands them
-  // back tidied (`[2]` becomes `[2.0]`), and keeping the untidy copy would leave the scene
-  // looking unsaved and Voice switched off for good.
+  // is being typed. The store hands words back tidied (`[2]` becomes `[2.0]`); words that mean
+  // what is in the box are the box's own words coming back, and the box keeps them as typed.
+  // Putting the tidied copy back instead rewrote the text every time typing paused: lines joined
+  // and full stops appeared under the cursor.
   useEffect(() => {
     if (saved === lastSavedRef.current) return
     const current = draftRef.current
-    if (current === lastSavedRef.current || current === sentRef.current) {
+    const ours = current === sentRef.current && sameNarration(current, saved)
+    if (!ours && (current === lastSavedRef.current || current === sentRef.current)) {
       setDraft(saved)
       sentRef.current = saved
     }
@@ -286,7 +289,8 @@ function Scene({
   const segment = segmentsForItem(segments, item.id)[0]
   const audioUrl = (item.data as { audioUrl?: string } | null | undefined)?.audioUrl
   // The take only speaks for the words while they are the words it read.
-  const takeSeconds = useTakeSeconds(segment?.status === 'narrated' && draft === saved ? audioUrl : undefined)
+  const isSaved = sameNarration(draft, saved)
+  const takeSeconds = useTakeSeconds(segment?.status === 'narrated' && isSaved ? audioUrl : undefined)
   const fit = draft.trim() ? narrationFit(draft, item.duration, takeSeconds) : null
   const label = `Narration for scene ${index + 1}`
   const long = fit?.long ?? false
@@ -340,7 +344,15 @@ function Scene({
           <p className="mt-1 text-[11px] text-text-muted">
             {KIND_NAMES[item.kind] ?? 'Clip'} · <span className="tabular-nums">{formatTimecode(item.start / FPS)}–{formatTimecode(end)}</span>
           </p>
-          <p className="mt-0.5 text-[11px] text-text-muted">{statusOf(segment)}</p>
+          {/* What is happening to the scene now, in place of what it was: a status reading "Nothing
+              written" while words were being written for it was the scene looking frozen. */}
+          {drafting ? (
+            <Working what="Writing the words" slowNote="a model can take a minute" className="mt-0.5" />
+          ) : narrating ? (
+            <Working what="Voicing" className="mt-0.5" />
+          ) : (
+            <p className="mt-0.5 text-[11px] text-text-muted">{statusOf(segment)}</p>
+          )}
         </div>
       </header>
 
@@ -353,6 +365,8 @@ function Scene({
         onChange={setDraft}
         onFocus={() => onSelectItem(item)}
         onBlur={() => void commit(draft)}
+        // Words typed while new ones are being written would be replaced when they arrive.
+        busy={drafting}
       />
 
       <footer className="mt-3 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
@@ -365,24 +379,25 @@ function Scene({
             variant="soft"
             size="sm"
             className="h-7 text-[12px]"
-            aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
+            aria-label={drafting ? `Writing ${label}` : `Write ${label}`}
+            title="Write the words for this scene from what it shows. Words already here are replaced."
             disabled={drafting || narrating || recording}
             onClick={() => onDraft(item)}
           >
-            {drafting ? <Spinner size="sm" /> : <Sparkles size={12} aria-hidden="true" />}
-            Draft
+            {drafting ? <Spinner size="sm" label="Writing" /> : <Sparkles size={12} aria-hidden="true" />}
+            {drafting ? 'Writing…' : 'Write'}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             className="h-7 text-[12px]"
             aria-label={narrating ? `Voicing ${label}` : `Voice ${label}`}
-            title={draft !== saved ? 'Saving the words first' : 'Read the words in the project’s voice'}
-            disabled={narrating || drafting || recording || !draft.trim() || draft !== saved}
+            title={!isSaved ? 'Saving the words first' : 'Read the words in the project’s voice'}
+            disabled={narrating || drafting || recording || !draft.trim() || !isSaved}
             onClick={() => onNarrate(item)}
           >
-            {narrating ? <Spinner size="sm" /> : <AudioLines size={12} className="text-accent" aria-hidden="true" />}
-            Voice
+            {narrating ? <Spinner size="sm" label="Voicing" /> : <AudioLines size={12} className="text-accent" aria-hidden="true" />}
+            {narrating ? 'Voicing…' : 'Voice'}
           </Button>
           {/* The same recorder as the timeline's microphone. Before this the script had only
               Voice, which speaks in the synthetic voice — so pressing it to record your own did
@@ -514,8 +529,10 @@ function TimedText({
   clipSeconds,
   onChange,
   onFocus,
-  onBlur
+  onBlur,
+  busy = false
 }: {
+  busy?: boolean
   value: string
   label: string
   textPx: number
@@ -532,7 +549,8 @@ function TimedText({
     <div
       data-testid="script-text"
       style={{ fontSize: textPx, lineHeight: 1.7, paddingBottom: extraHeight }}
-      className="relative mt-4 min-h-[1.7em]"
+      className={cn('relative mt-4 min-h-[1.7em] transition-opacity', busy && 'animate-pulse opacity-50')}
+      aria-busy={busy || undefined}
     >
       <div aria-hidden="true" data-testid="script-backdrop" className={cn(TEXT, 'pointer-events-none text-paper-text')}>
         {scriptParts(value).map((part, index) =>
@@ -550,8 +568,9 @@ function TimedText({
       <textarea
         value={value}
         aria-label={label}
-        placeholder="Nothing said over this one yet. Write it, or press Draft."
+        placeholder="Nothing said over this one yet. Type it here, or press Write."
         spellCheck
+        readOnly={busy}
         data-clip-seconds={clipSeconds.toFixed(2)}
         onChange={(event) => onChange(event.target.value)}
         onFocus={onFocus}

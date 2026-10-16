@@ -44,6 +44,7 @@ import { IconButton } from './ui/IconButton'
 import { ButtonGroup } from './ui/ButtonGroup'
 import { Button } from './ui/Button'
 import { Spinner } from './ui/Spinner'
+import { useElapsedSeconds } from './ui/Working'
 import { ClipNarrationBox } from './ClipNarrationBox'
 
 const DEFAULT_PIXELS_PER_SECOND = 60
@@ -433,6 +434,16 @@ function ClipBlock({
   )
 }
 
+/** "Writing… 12s" on the button while every clip's words are written: one request, often a minute. */
+function WritingAllLabel(): JSX.Element {
+  const seconds = useElapsedSeconds(true)
+  return (
+    <span>
+      Writing… <span className="tabular-nums">{seconds}s</span>
+    </span>
+  )
+}
+
 /** What a clip is called, for the screen reader's sake: its title, or its kind. */
 function clipName(item: TimelineItem): string {
   const title = (item.data as { title?: string } | null)?.title
@@ -452,6 +463,7 @@ export function Timeline({
   onActiveItemChange,
   narratingItemId,
   narratingAll,
+  voicingAll = null,
   progress,
   currentVoice,
   onEditScene,
@@ -486,6 +498,8 @@ export function Timeline({
   onActiveItemChange: (itemId: string | null) => void
   narratingItemId: string | null
   narratingAll: boolean
+  /** How far a "Speak all" run has got. */
+  voicingAll?: { at: number; of: number } | null
   progress: VoiceProgress
   currentVoice: string
   /** Scenes are written in the app, so a click on one opens it rather than only selecting it. */
@@ -701,8 +715,8 @@ export function Timeline({
             disabled={draftingAll || timeline.length === 0}
             title="Write narration for every clip that has none. Words you wrote are left alone."
           >
-            {draftingAll ? <Spinner size="sm" /> : <Sparkles size={14} className="text-accent" />}
-            Write the words
+            {draftingAll ? <Spinner size="sm" label="Writing" /> : <Sparkles size={14} className="text-accent" />}
+            {draftingAll ? <WritingAllLabel /> : 'Write the words'}
           </Button>
           <Button
             variant="soft"
@@ -719,8 +733,8 @@ export function Timeline({
                   : `Read these again in ${currentVoice}, replacing the takes already there`
             }
           >
-            {narratingAll ? <Spinner size="sm" /> : <AudioLines size={14} className="text-accent" />}
-            {speakAllLabel(progress, currentVoice)}
+            {narratingAll ? <Spinner size="sm" label="Voicing" /> : <AudioLines size={14} className="text-accent" />}
+            {narratingAll && voicingAll ? `Voicing ${voicingAll.at} of ${voicingAll.of}…` : speakAllLabel(progress, currentVoice)}
           </Button>
           <ButtonGroup aria-label="Edit the timeline" className="ml-1">
           <IconButton aria-label="Undo" disabled={!canUndo} onClick={onUndo}>

@@ -235,6 +235,19 @@ and `narrationFromText` reads them back on the way in — in the IPC handlers an
 route stores them the same way. Before that, editing narration anywhere cleared `beats` and
 silently turned a timed take into one flat block.
 
+**What is typed stays as typed.** The store keeps words tidied (`[2]` as `[2.0]`), and the
+editors once put that copy back into the box after every autosave — with the full stop each line
+was given and its line breaks joined — so whoever was typing found full stops appearing under the
+cursor and lines vanishing. Now the box keeps its own text and compares by meaning
+(`sameNarration`); a line's full stop is added only where it is spoken (`spokenLine`), and a line
+that runs on keeps its break. Both editors show and save the timings: the timeline's box once
+showed the words without them and saved them back that way.
+
+**Slow work says so.** Writing words and voicing a scene take seconds to a minute; a spinner the
+size of an icon looked frozen. `Working` says what is happening with a count that keeps moving,
+in the scene's status, the clip's narration box and on the buttons, and the words are locked while
+new ones are being written for them.
+
 ## Asking the agent to change a project
 
 It sits beside the video rather than in the script pane: what it changes is the project, not
