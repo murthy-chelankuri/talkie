@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, rmSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { isKokoroDownloaded } from './kokoroModel'
-import { speakWithKokoro, stopKokoro } from './kokoroProcess'
+import { lastError, speakWithKokoro, stopKokoro, workerPath } from './kokoroProcess'
 import { readWavFormat } from '../wavDuration'
 import { wavSamples } from '../audibleTake'
 
@@ -106,5 +106,33 @@ describe('speaking through the Kokoro worker', () => {
     } finally {
       rmSync(elsewhere, { recursive: true, force: true })
     }
+  })
+})
+
+describe('finding the Kokoro worker', () => {
+  it('finds the app\'s worker from the MCP server\'s folder, which has none of its own', () => {
+    const out = mkdtempSync(join(tmpdir(), 'talkie-worker-path-'))
+    try {
+      mkdirSync(join(out, 'main'))
+      mkdirSync(join(out, 'mcp'))
+      writeFileSync(join(out, 'main', 'kokoroWorker.cjs'), '')
+
+      expect(workerPath(join(out, 'mcp'))).toBe(join(out, 'mcp', '..', 'main', 'kokoroWorker.cjs'))
+      expect(workerPath(join(out, 'main'))).toBe(join(out, 'main', 'kokoroWorker.cjs'))
+    } finally {
+      rmSync(out, { recursive: true, force: true })
+    }
+  })
+
+  it('says why the worker died, not only its exit code', () => {
+    const stderr = [
+      'node:internal/modules/cjs/loader:1478',
+      '  throw err;',
+      "Error: Cannot find module '/x/out/mcp/kokoroWorker.ts'",
+      '    at Module._resolveFilename (node:internal/modules/cjs/loader:1475:15)'
+    ].join('\n')
+
+    expect(lastError(stderr)).toBe("Error: Cannot find module '/x/out/mcp/kokoroWorker.ts'")
+    expect(lastError('')).toBe('')
   })
 })

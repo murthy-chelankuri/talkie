@@ -70,7 +70,12 @@ asarUnpack:
   # Kokoro runs in a forked worker (out/main/kokoroWorker.cjs). ONNX Runtime is a native library,
   # which cannot load from inside the archive; kokoro-js reads its voice files off disk beside its
   # own code; and the rest are what those load. `sharp` is the stub in stubs/sharp — plain
-  # JavaScript, so it stays in the archive. See kokoroWorker.ts and stubs/sharp/README.md.
+  # JavaScript, so the app could read it from the archive — but the MCP server starts the same
+  # worker as plain node, which cannot, so the worker and the stub are unpacked too. Packed, an
+  # agent's narration ended "Kokoro stopped unexpectedly". See kokoroWorker.ts and
+  # stubs/sharp/README.md.
+  - out/main/kokoroWorker.cjs
+  - node_modules/sharp/**
   - node_modules/kokoro-js/**
   - node_modules/phonemizer/**
   - node_modules/@huggingface/**

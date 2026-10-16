@@ -133,6 +133,11 @@ These each cost real time to find. None are obvious from the code.
   process forks it and talks over IPC. `kokoroBoundary.test.ts` fails on any other import — a
   type-only one included. The worker is its own `electron.vite.config.ts` main entry, and those
   packages are in `asarUnpack` because ONNX Runtime and libvips are native.
+  The MCP server starts the same worker from `out/mcp`, where there is none, so `workerPath()`
+  looks in `out/main` too: looking only beside itself, every narration an agent asked for ended
+  "Kokoro stopped unexpectedly (exit code 1)" while the app spoke the same words.
+  `builtServer.test.ts` speaks a clip through the built server. The worker's output is piped to
+  stderr, never inherited — the server's stdout is its conversation with the agent.
 - **`sharp` is a stub, on purpose.** transformers.js loads sharp at startup but Kokoro never
   processes an image, and the real one brings libvips — eight LGPL-3.0 libraries, MPL and a patent
   licence. `package.json` makes `stubs/sharp` a dependency and overrides `sharp` with `$sharp`

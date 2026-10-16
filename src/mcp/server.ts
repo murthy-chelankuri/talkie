@@ -1722,13 +1722,23 @@ export function createTalkieServer(
 
       if (wanted.length === 0) return text('Nothing to voice: every clip with words already has audio.')
 
+      // Carries on past a clip that fails, as the app's "Speak N clips" does: stopping at the first
+      // left every later clip unvoiced, and the agent told only about the one.
       const spoken: string[] = []
+      const failed: string[] = []
       for (const segment of wanted) {
-        await narrateSegment(projectId, segment.id, baseDir)
-        spoken.push(segment.id)
+        try {
+          await narrateSegment(projectId, segment.id, baseDir)
+          spoken.push(segment.id)
+        } catch (error) {
+          failed.push(`${segment.timelineItemId ?? segment.id}: ${error instanceof Error ? error.message : String(error)}`)
+        }
       }
 
-      return text(`Voiced ${spoken.length} clip(s).`)
+      if (failed.length === 0) return text(`Voiced ${spoken.length} clip(s).`)
+      const report = `Voiced ${spoken.length} clip(s); ${failed.length} failed:\n${failed.join('\n')}`
+      if (spoken.length === 0) throw new Error(report)
+      return text(report)
     }
   )
 
