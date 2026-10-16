@@ -45,15 +45,19 @@ import {
 import { rasterisePdf } from '../main/slides/rasterisePdf'
 import { drawDiagramForProject } from '../main/themes/projectDiagrams'
 import {
+  addFontInto,
   createTheme,
   deleteTheme,
+  describeFontFiles,
   duplicateTheme,
+  findThemeDir,
   listThemes,
   projectsUsingTheme,
   readTheme,
   updateTheme,
   writeThemeAsset
 } from '../main/themes/themeApi'
+import { describeFace } from '../main/themes/fontFace'
 import { isBuiltinThemeId } from '../main/themes/builtinThemes'
 import { BUILTIN_FONTS, LOGO_CORNERS, ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type FontChoice, type Theme } from '../main/themes/schema'
 import { resolveFonts } from '../main/themes/generate/resolveFonts'
@@ -405,12 +409,16 @@ export function createTalkieServer(
     .object({ background: z.string(), heading: z.string(), body: z.string(), accent: z.string() })
     .partial()
   const FontInput = z.object({
-    family: z.string(),
-    files: z.array(z.string()).optional().describe('Absolute paths to the person\'s own woff2, woff, ttf or otf files')
+    family: z.string().optional().describe('Left out when files are given: the family is read from inside them'),
+    files: z
+      .array(z.string())
+      .optional()
+      .describe('Absolute paths to the company\'s own .otf, .ttf, .woff or .woff2 files — every weight and style it uses')
   })
   const FONT_HELP =
-    `"${BUILTIN_FONTS.sans}" and "${BUILTIN_FONTS.serif}" are Talkie's own. Any other family is fetched ` +
-    'from Google Fonts if it is open there; otherwise give the files.'
+    `"${BUILTIN_FONTS.sans}" and "${BUILTIN_FONTS.serif}" are Talkie's own. A company's own font: give its files, ` +
+    'each read for its family, weight and slant (a file that is not a font is refused). Any other family is ' +
+    'fetched from Google Fonts if it is open there.'
 
   /**
    * A font for a theme, as the editor would make it: Talkie's own by name, the person's files as
@@ -422,16 +430,23 @@ export function createTalkieServer(
     wanted: z.infer<typeof FontInput>,
     notes: string[]
   ): Promise<FontChoice> => {
-    if ((Object.values(BUILTIN_FONTS) as string[]).includes(wanted.family)) {
+    if (wanted.family && (Object.values(BUILTIN_FONTS) as string[]).includes(wanted.family)) {
       return { family: wanted.family, source: 'builtin', files: [] }
     }
     if (wanted.files?.length) {
-      const files = wanted.files.map((path) => {
+      // Read as they are saved, as the editor does: the family names itself, a file that is not a
+      // font is turned away, and the agent is told which faces it now has — a missing bold shows.
+      const dir = findThemeDir(themeId, baseDir)
+      if (!dir) throw new Error(`No theme with id ${themeId}.`)
+      const faces = wanted.files.map((path) => {
         const { fileName, bytes } = readLocalFile(path)
-        return writeThemeAsset(themeId, 'font', fileName, bytes, baseDir)
+        return addFontInto(dir, fileName, bytes)
       })
-      return { family: wanted.family, source: 'user', files }
+      const family = wanted.family?.trim() || faces[0].family
+      notes.push(`${role === 'heading' ? 'Headings' : 'Text'}: ${family}, ${faces.map((face) => face.variable ? `${face.face} (every weight)` : describeFace(face.weight, face.italic)).join(', ')}.`)
+      return { family, source: 'user', files: faces.map((face) => face.file) }
     }
+    if (!wanted.family) throw new Error(`Name a family for the ${role} font, or give its files.`)
     const probe = defaultThemeDraft('font')
     probe.fonts[role] = { family: wanted.family, source: 'google', files: [] }
     const resolved = await resolveFonts(probe, {})
@@ -440,6 +455,15 @@ export function createTalkieServer(
     }
     notes.push(...resolved.notes)
     return resolved.draft.fonts[role]
+  }
+
+  /** A font as the person would check it: the family, and for their own files, each face they cover. */
+  const describeFont = (theme: Theme, role: 'heading' | 'body'): string => {
+    const choice = theme.fonts[role]
+    if (choice.source !== 'user') return `${choice.family} (${choice.source === 'google' ? 'open font' : 'built in'})`
+    const dir = findThemeDir(theme.id, baseDir)
+    const faces = dir ? describeFontFiles(dir, choice.files) : []
+    return `${choice.family} (the company's own: ${faces.map((face) => (face.variable ? `${face.face}, every weight` : describeFace(face.weight, face.italic))).join(', ') || 'files missing'})`
   }
 
   const describeTheme = (theme: Theme): string =>
@@ -452,7 +476,7 @@ export function createTalkieServer(
         const v = theme.variants[id]
         return `${id}: background ${v.background}, heading ${v.heading}, body ${v.body}, accent ${v.accent}`
       }),
-      `Fonts: ${theme.fonts.heading.family} for headings, ${theme.fonts.body.family} for text`,
+      `Fonts: ${describeFont(theme, 'heading')} for headings, ${describeFont(theme, 'body')} for text`,
       `Logo: ${theme.logo ? `${theme.logo.file}, ${theme.logo.corner}` : 'none'}`,
       `Click highlight ${theme.overlays.highlight}; captions in the ${theme.overlays.caption} variant`,
       ...(theme.provenance?.notes.length ? ['Notes from when it was made:', ...theme.provenance.notes.map((n) => `  - ${n}`)] : [])

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { execFileSync } from 'child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -328,6 +328,27 @@ describe('Talkie over MCP', () => {
       expect(await call('talkie_update_theme', { themeId: 'builtin-sand', tagline: 'x' })).toMatch(/built into Talkie and cannot be changed/)
     })
 
+    it.skipIf(!existsSync('/System/Library/Fonts/Supplemental/Georgia Bold.ttf'))(
+      'takes a company’s own font files, names the family from them, and says which faces it has',
+      async () => {
+        const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+        const dir = '/System/Library/Fonts/Supplemental/'
+
+        const said = await call('talkie_update_theme', { themeId, headingFont: { files: [`${dir}Georgia.ttf`, `${dir}Georgia Bold.ttf`] } })
+
+        expect(said).toContain('Headings: Georgia, Regular, Bold.')
+        expect(said).toContain("Georgia (the company's own: Regular, Bold) for headings")
+        expect(readTheme(themeId, baseDir).fonts.heading).toMatchObject({ family: 'Georgia', source: 'user' })
+
+        const fake = join(baseDir, 'brand.otf')
+        writeFileSync(fake, 'not a font')
+        const refused = await client.callTool({ name: 'talkie_update_theme', arguments: { themeId, bodyFont: { files: [fake] } } })
+        expect(refused.isError).toBe(true)
+        expect(JSON.stringify(refused.content)).toMatch(/brand\.otf is not a font Talkie can read/)
+      },
+      60_000
+    )
+
     it('gives a theme a logo, and moves or removes it', async () => {
       const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
       const logo = join(baseDir, 'acme.png')
@@ -347,8 +368,9 @@ describe('Talkie over MCP', () => {
 
     it('sets a theme’s type, from Talkie’s own fonts or the person’s files', async () => {
       const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      // A real font, under a company's name: what is inside a file is checked now, not trusted.
       const font = join(baseDir, 'AcmeSans-400.woff2')
-      writeFileSync(font, 'not really a font')
+      copyFileSync(join(__dirname, '..', '..', 'node_modules', '@fontsource-variable', 'geist', 'files', 'geist-latin-wght-normal.woff2'), font)
 
       const said = await call('talkie_update_theme', {
         themeId,
@@ -356,7 +378,7 @@ describe('Talkie over MCP', () => {
         bodyFont: { family: 'Acme Sans', files: [font] }
       })
 
-      expect(said).toContain('Fonts: Geist Variable for headings, Acme Sans for text')
+      expect(said).toContain("Fonts: Geist Variable (built in) for headings, Acme Sans (the company's own: Regular, every weight) for text")
       expect(readTheme(themeId, baseDir).fonts.body).toEqual({ family: 'Acme Sans', source: 'user', files: ['fonts/AcmeSans-400.woff2'] })
     })
 
