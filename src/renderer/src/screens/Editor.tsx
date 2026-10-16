@@ -132,6 +132,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [inspectorWidth, setInspectorWidth] = useResizableWidth('talkie.inspectorWidth', 280, 240, 380)
   const recorderRef = useRef<{ stop: () => Promise<Uint8Array>; cancel: () => void } | null>(null)
   const [transcriptError, setTranscriptError] = useState<string | null>(null)
+  // Which clip of a "Speak all" run is being voiced, and of how many.
+  const [voicingAll, setVoicingAll] = useState<{ at: number; of: number } | null>(null)
   const [history, setHistory] = useState({ canUndo: false, canRedo: false })
   const playerRef = useRef<PreviewHandle>(null)
   const leftOut = activeVersion(versions).leftOut
@@ -520,7 +522,14 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     setTranscriptError(null)
     setNarratingAll(true)
     try {
-      const failures = await narrateEach(needingNarration, narrateItem, (item) => setNarratingItemId(item.id))
+      // How far it has got, said on the button: a run over ten scenes takes minutes.
+      const total = needingNarration.length
+      let started = 0
+      const failures = await narrateEach(needingNarration, narrateItem, (item) => {
+        started += 1
+        setNarratingItemId(item.id)
+        setVoicingAll({ at: started, of: total })
+      })
       await refreshSegments()
       await refreshTimeline()
       setTranscriptError(describeNarrationFailures(failures))
@@ -529,6 +538,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     } finally {
       setNarratingItemId(null)
       setNarratingAll(false)
+      setVoicingAll(null)
     }
   }
 
@@ -898,6 +908,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
           onActiveItemChange={setActiveItemId}
           narratingItemId={narratingItemId}
           narratingAll={narratingAll}
+          voicingAll={voicingAll}
           currentVoice={voice}
           recordingItemId={recordingItemId}
           onEditScene={(item) => setSceneEditing(item)}

@@ -162,12 +162,12 @@ export function Inspector({
         )}
         <div className="flex gap-1.5">
           <Button variant="secondary" size="sm" className="flex-1" aria-label="Voice it again" disabled={busy.narrating} onClick={() => onNarrate(item)}>
-            {busy.narrating ? <Spinner size="sm" /> : <AudioLines size={13} className="text-accent" />}
-            Voice
+            {busy.narrating ? <Spinner size="sm" label="Voicing" /> : <AudioLines size={13} className="text-accent" />}
+            {busy.narrating ? 'Voicing…' : 'Voice'}
           </Button>
           <Button variant="secondary" size="sm" className="flex-1" aria-label="Write the words" disabled={busy.drafting} onClick={() => onDraft(item)}>
-            {busy.drafting ? <Spinner size="sm" /> : <Sparkles size={13} className="text-accent" />}
-            Write
+            {busy.drafting ? <Spinner size="sm" label="Writing" /> : <Sparkles size={13} className="text-accent" />}
+            {busy.drafting ? 'Writing…' : 'Write'}
           </Button>
           <IconButton aria-label="Split at playhead" disabled={!playheadInside} onClick={() => onSplit(item, playheadFrame())}>
             <Scissors size={14} />

@@ -80,7 +80,7 @@ function cuesFromBeats(beats: NarrationBeat[], item: TimelineItem, endFrame: num
     const stops = next ? item.start + Math.round(next.at * FPS) : endFrame
     if (stops <= startFrame || startFrame >= endFrame) continue
 
-    for (const part of splitIntoCues(beat.text.trim())) {
+    for (const part of splitIntoCues(beat.text.replace(/\s+/g, ' ').trim())) {
       cues.push({ startFrame, endFrame: Math.min(stops, endFrame), text: part })
     }
   }

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { ScriptView } from './ScriptView'
+import { narrationFromText } from '../../../main/transcript/narrationBeats'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
 
 function clip(id: string, start: number, duration = 450): TimelineItem {
@@ -152,10 +154,42 @@ describe('the script as a piece of paper', () => {
 
 
 describe('what a writer needs beside the words', () => {
-  it('keeps Draft and Voice on the page, labelled, rather than behind a hover', () => {
+  it('says in words that a scene is being written or voiced, and how long it has taken, and holds its words still meanwhile', () => {
+    // A 12px spinner in place of a button's icon was all there was; a scene that sat unchanged
+    // for half a minute while a model wrote its words looked frozen.
+    vi.useFakeTimers()
+    try {
+      const { rerender } = view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Old words.' })], { draftingItemId: 'a' })
+      act(() => void vi.advanceTimersByTime(3200))
+      expect(screen.getAllByRole('status').some((each) => /Writing the words… 3s/.test(each.textContent ?? ''))).toBe(true)
+      expect(screen.getByRole('button', { name: 'Writing Narration for scene 1' })).toHaveTextContent('Writing…')
+      expect(screen.getByLabelText('Narration for scene 1')).toHaveAttribute('readonly')
+
+      rerender(
+        <ScriptView
+          timeline={[clip('a', 0)]}
+          segments={[segment({ timelineItemId: 'a', text: 'Old words.' })]}
+          activeItemId={null}
+          draftingItemId={null}
+          narratingItemId="a"
+          onSeek={noop}
+          onSelectItem={noop}
+          onCommit={noop}
+          onDraft={noop}
+          onNarrate={noop}
+        />
+      )
+      expect(screen.getByText(/Voicing…/, { selector: 'span' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Narration for scene 1')).not.toHaveAttribute('readonly')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps Write and Voice on the page, labelled, rather than behind a hover', () => {
     view([clip('a', 0)], [segment({ timelineItemId: 'a', text: 'Saved.' })])
 
-    expect(screen.getByRole('button', { name: 'Draft Narration for scene 1' })).toHaveTextContent('Draft')
+    expect(screen.getByRole('button', { name: 'Write Narration for scene 1' })).toHaveTextContent('Write')
     expect(screen.getByRole('button', { name: 'Voice Narration for scene 1' })).toHaveTextContent('Voice')
   })
 
@@ -205,6 +239,45 @@ describe('keeping what is written', () => {
       timeout: 2500
     })
     expect(await screen.findByText('Saved')).toBeInTheDocument()
+  })
+
+  it('leaves what is being typed exactly as typed when it saves, line breaks and all, with no full stops added', async () => {
+    // The words came back from the store tidied — timed lines joined, a full stop on each — and
+    // were put back into the box every time the typing paused, so writing narration by hand meant
+    // fighting the box: lines vanished and full stops appeared under the cursor.
+    function Store(): JSX.Element {
+      const [segments, setSegments] = useState<TranscriptSegment[]>([segment({ timelineItemId: 'a', text: 'Old' })])
+      return (
+        <ScriptView
+          timeline={[clip('a', 0)]}
+          segments={segments}
+          activeItemId={null}
+          draftingItemId={null}
+          narratingItemId={null}
+          onSeek={noop}
+          onSelectItem={noop}
+          onDraft={noop}
+          onNarrate={noop}
+          onCommit={(_item, written) => {
+            // As the store keeps it: the prose and the timings read out of what was written.
+            const { text, beats } = narrationFromText(written)
+            setSegments([segment({ timelineItemId: 'a', text, ...(beats.length ? { beats } : {}) })])
+          }}
+        />
+      )
+    }
+    render(<Store />)
+    const box = screen.getByLabelText('Narration for scene 1') as HTMLTextAreaElement
+
+    await userEvent.clear(box)
+    await userEvent.type(box, '[[1] Here is the board{Enter}with every task on it{Enter}[[4] Now drag one')
+    await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument(), { timeout: 2500 })
+    expect(box.value).toBe('[1] Here is the board\nwith every task on it\n[4] Now drag one')
+
+    // And typing on after the save carries on from where it was, not from a rewritten line.
+    await userEvent.type(box, ' across')
+    await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument(), { timeout: 2500 })
+    expect(box.value).toBe('[1] Here is the board\nwith every task on it\n[4] Now drag one across')
   })
 
   it('does not save the same words twice when the box is left after saving', async () => {

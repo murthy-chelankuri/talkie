@@ -1,4 +1,5 @@
 import type { TranscriptSegment } from '../api/projectClient'
+import { narrationFromText } from '../../../main/transcript/narrationBeats'
 
 // Playback resolves narration audio per clip (readNarrationAudioPaths keys a Map by
 // timelineItemId), so a clip can only ever play one narration. The editor works in those terms:
@@ -28,6 +29,26 @@ export function narrationScriptForItem(segments: TranscriptSegment[], itemId: st
   if (!beats || beats.length === 0) return narrationTextForItem(segments, itemId)
 
   return beats.map((beat) => `[${beat.at.toFixed(1)}] ${beat.text}`).join('\n')
+}
+
+/**
+ * Whether two versions of a clip's narration say the same thing at the same moments.
+ *
+ * The store keeps narration tidied — `[2]` comes back as `[2.0]`, stray spaces at the ends of
+ * lines go — so what was typed and what was saved are rarely the same characters. Comparing the
+ * characters made a saved scene look unsaved (and its Voice button stay off), and the cure for
+ * that was to put the tidied words back into the box, which rewrote whatever was being typed every
+ * time the typing paused. This compares what the words mean instead, and the box keeps its text.
+ */
+export function sameNarration(a: string, b: string): boolean {
+  const left = narrationFromText(a)
+  const right = narrationFromText(b)
+  const words = (text: string): string => text.replace(/\s+/g, ' ').trim()
+  return (
+    words(left.text) === words(right.text) &&
+    left.beats.length === right.beats.length &&
+    left.beats.every((beat, index) => beat.at === right.beats[index].at && words(beat.text) === words(right.beats[index].text))
+  )
 }
 
 /** What the voice was before it could be chosen: `say -v Samantha` was hardcoded. */
@@ -76,7 +97,10 @@ export function planNarrationCommit(
   const existing = segmentsForItem(segments, itemId)
   const text = nextText.trim()
 
-  if (text === narrationTextForItem(segments, itemId)) return { action: 'none' }
+  // Compared with the script as the editors show it, timings and all, and by meaning: a save that
+  // changes nothing must not mark a voiced scene as needing its voice again.
+  if (existing.length > 0 && sameNarration(text, narrationScriptForItem(segments, itemId))) return { action: 'none' }
+  if (existing.length === 0 && text === '') return { action: 'none' }
 
   if (existing.length === 0) {
     return text.length === 0 ? { action: 'none' } : { action: 'create', text }

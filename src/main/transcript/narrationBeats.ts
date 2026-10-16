@@ -21,12 +21,14 @@ export function parseBeats(draft: string): NarrationBeat[] {
   for (const line of draft.split('\n')) {
     const match = TIMED_LINE.exec(line)
     if (!match) {
-      // A continuation of the line before it, which is how a model wraps a long sentence.
+      // A continuation of the line before it, which is how a model wraps a long sentence — and how
+      // a person breaks one up to read it. Kept on a line of its own, so the words come back as
+      // they were written; the voice reads a line break as the space it is.
       const text = line.trim()
       if (text && beats.length > 0) {
         beats[beats.length - 1] = {
           ...beats[beats.length - 1],
-          text: `${beats[beats.length - 1].text} ${text}`.trim()
+          text: `${beats[beats.length - 1].text}\n${text}`
         }
       }
       continue
@@ -39,14 +41,11 @@ export function parseBeats(draft: string): NarrationBeat[] {
   // Time only ever runs forwards. A model that puts a beat before the one in front of it has
   // made an ordering mistake, not asked for two things to be said at once.
   //
-  // Punctuated here rather than as each line is read, so a line the model wrapped is joined on
-  // before the full stop goes at the end of the whole beat rather than into the middle of it.
+  // The words are kept exactly as written. They used to be given a full stop here, which was
+  // then saved and handed back to the editor — so a line being typed grew a full stop every time
+  // the typing paused. The voice is given its full stop where it reads the line (spokenLine).
   return beats
-    .map((beat, index) => ({
-      ...beat,
-      at: Math.max(beat.at, index === 0 ? 0 : beats[index - 1].at),
-      text: finished(beat.text)
-    }))
+    .map((beat, index) => ({ ...beat, at: Math.max(beat.at, index === 0 ? 0 : beats[index - 1].at) }))
     .filter((beat) => beat.text.length > 0)
 }
 
@@ -59,9 +58,10 @@ export function parseBeats(draft: string): NarrationBeat[] {
  * one after another that is what makes a take sound recited. It also keeps the prose readable,
  * since the beats are joined with a space to make it.
  */
-function finished(text: string): string {
-  if (text.length === 0) return text
-  return /[.!?…:;,—–]$/.test(text) ? text : `${text}.`
+export function spokenLine(text: string): string {
+  const words = text.replace(/\s+/g, ' ').trim()
+  if (words.length === 0) return words
+  return /[.!?…:;,—–]$/.test(words) ? words : `${words}.`
 }
 
 /**

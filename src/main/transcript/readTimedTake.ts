@@ -1,7 +1,7 @@
 import { renameSync, rmSync } from 'fs'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { assembleTake } from './assembleTake'
-import { placeBeats } from './narrationBeats'
+import { placeBeats, spokenLine } from './narrationBeats'
 import { AIM_INSIDE, MAX_SPEED_UP, hurriedBy, roomFor } from './fitToFootage'
 import { arcFor } from '../tts/prosody'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
@@ -90,7 +90,7 @@ async function layOne(
       const beatPath = `${audioPath}.beat${index}.wav`
       // Its own slice of the take's pitch fall. Each beat is a separate call to the voice, so
       // without this they all start from the baseline and the take has no shape. See prosody.ts.
-      await request.synthesize(beat.text, beatPath, { ...delivery, arc: arcFor(index, beats.length) })
+      await request.synthesize(spokenLine(beat.text), beatPath, { ...delivery, arc: arcFor(index, beats.length) })
       spoken.push(getWavDurationSeconds(beatPath))
       pieces.push({ at: beat.at, wavPath: beatPath })
     }

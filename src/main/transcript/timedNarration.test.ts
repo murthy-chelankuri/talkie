@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { parseBeats, beatsToText, placeBeats, narrationFromText } from './narrationBeats'
+import { parseBeats, beatsToText, placeBeats, narrationFromText, spokenLine } from './narrationBeats'
 import { assembleTake, BREATH_SECONDS } from './assembleTake'
 import { readWavFormat, getWavDurationSeconds } from '../tts/wavDuration'
 import {
@@ -48,23 +48,24 @@ describe('reading the times out of a draft', () => {
     ])
   })
 
-  it('joins a line the model wrapped onto the beat above it', () => {
+  it('keeps a line that runs on to the next with the beat above it, on its own line as written', () => {
     const beats = parseBeats('[2.0] A sentence that ran on\nand finished on the next line.\n[9.0] The next thing.')
 
-    expect(beats[0].text).toBe('A sentence that ran on and finished on the next line.')
     expect(beats).toHaveLength(2)
+    expect(beats[0].text).toBe('A sentence that ran on\nand finished on the next line.')
+    // Read as the one sentence it is.
+    expect(spokenLine(beats[0].text)).toBe('A sentence that ran on and finished on the next line.')
   })
 
-  it('gives a line with no full stop something to fall on', () => {
+  it('gives a line with no full stop something to fall on when it is spoken, not where it is written', () => {
     // A model asked for short timed lines often leaves the punctuation off. `say` falls at a
     // full stop and runs flat without one, so the line is read as though it were going to carry
-    // on — and then stops dead, which is what makes a take sound recited.
+    // on — and then stops dead, which is what makes a take sound recited. The full stop is the
+    // voice's: put into the words themselves, it appeared under the cursor of whoever was typing.
     const beats = parseBeats('[0.0] Here is the watchlist\n[6.0] And the analysis comes back')
 
-    expect(beats.map((beat) => beat.text)).toEqual([
-      'Here is the watchlist.',
-      'And the analysis comes back.'
-    ])
+    expect(beats.map((beat) => beat.text)).toEqual(['Here is the watchlist', 'And the analysis comes back'])
+    expect(beats.map((beat) => spokenLine(beat.text))).toEqual(['Here is the watchlist.', 'And the analysis comes back.'])
   })
 
   it('leaves punctuation the model did write alone', () => {

@@ -65,14 +65,14 @@ describe('ClipNarrationBox', () => {
     const onNarrate = vi.fn()
     renderBox({ onNarrate })
 
-    await user.click(screen.getByRole('button', { name: /^Narrate / }))
+    await user.click(screen.getByRole('button', { name: /^Voice / }))
 
     expect(onNarrate).toHaveBeenCalledWith(item)
   })
 
   it('cannot narrate an empty clip', () => {
     renderBox({ segments: [] })
-    expect(screen.getByRole('button', { name: /^Narrate / })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Voice / })).toBeDisabled()
   })
 
   it('cannot narrate text that has not been committed yet', async () => {
@@ -81,11 +81,11 @@ describe('ClipNarrationBox', () => {
 
     await user.type(box(), ' and more')
 
-    expect(screen.getByRole('button', { name: /^Narrate / })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Voice / })).toBeDisabled()
   })
 
   it('shows progress while narrating', () => {
     renderBox({ narrating: true })
-    expect(screen.getByRole('button', { name: /^Narrating / })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Voicing / })).toBeDisabled()
   })
 })

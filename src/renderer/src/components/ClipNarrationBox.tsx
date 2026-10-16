@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { AudioLines, Mic, Sparkles, Square } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../api/projectClient'
-import { hasStaleVoice, narrationTextForItem, segmentsForItem, voiceOf, RECORDED_VOICE } from '../lib/clipNarration'
+import { hasStaleVoice, narrationScriptForItem, sameNarration, segmentsForItem, voiceOf, RECORDED_VOICE } from '../lib/clipNarration'
 import { formatTimecode } from '../lib/timelineLayout'
 import { FPS } from '../../../composition/constants'
 import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
 import { Spinner } from './ui/Spinner'
+import { Working } from './ui/Working'
 
 export function ClipNarrationBox({
   item,
@@ -38,7 +39,9 @@ export function ClipNarrationBox({
   onCommit: (item: TimelineItem, text: string) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void | Promise<void>
 }): JSX.Element {
-  const savedText = narrationTextForItem(segments, item.id)
+  // Timings and all: shown without them, a timed scene edited here was saved without them, and
+  // its narration quietly stopped keeping step with the picture.
+  const savedText = narrationScriptForItem(segments, item.id)
   const [draft, setDraft] = useState(savedText)
   const lastSavedRef = useRef(savedText)
 
@@ -46,7 +49,7 @@ export function ClipNarrationBox({
   // what is being typed. Untouched means the draft still matches the text last seen as saved.
   useEffect(() => {
     if (savedText === lastSavedRef.current) return
-    setDraft((current) => (current === lastSavedRef.current ? savedText : current))
+    setDraft((current) => (current === lastSavedRef.current && !sameNarration(current, savedText) ? savedText : current))
     lastSavedRef.current = savedText
   }, [savedText])
 
@@ -75,6 +78,10 @@ export function ClipNarrationBox({
             <span className="truncate text-[10px] text-danger">Recording…</span>
           </>
         )}
+        {/* Said in words, with the time it has taken: a spinner the size of the icon it replaced
+            was all there was, and a scene unchanged for half a minute looked frozen. */}
+        {!recording && drafting && <Working what="Writing" className="min-w-0 truncate text-[10px]" />}
+        {!recording && narrating && <Working what="Voicing" className="min-w-0 truncate text-[10px]" />}
         <IconButton
           aria-label={recording ? `Stop recording ${label}` : `Record ${label} in your own voice`}
           className={cn(
@@ -88,7 +95,8 @@ export function ClipNarrationBox({
           {recording ? <Square size={11} fill="currentColor" /> : <Mic size={12} />}
         </IconButton>
         <IconButton
-          aria-label={drafting ? `Drafting ${label}` : `Draft ${label}`}
+          aria-label={drafting ? `Writing ${label}` : `Write ${label}`}
+          title="Write the words for this clip"
           className="h-5 w-5 shrink-0 text-text-muted hover:text-accent"
           disabled={drafting || narrating || recording}
           onClick={() => onDraft(item)}
@@ -96,9 +104,10 @@ export function ClipNarrationBox({
           {drafting ? <Spinner size="sm" /> : <Sparkles size={12} />}
         </IconButton>
         <IconButton
-          aria-label={narrating ? `Narrating ${label}` : `Narrate ${label}`}
+          aria-label={narrating ? `Voicing ${label}` : `Voice ${label}`}
+          title="Read the words in the project’s voice"
           className="h-5 w-5 shrink-0 text-text-muted hover:text-accent"
-          disabled={narrating || recording || !draft.trim() || draft !== savedText}
+          disabled={narrating || recording || !draft.trim() || !sameNarration(draft, savedText)}
           onClick={() => onNarrate(item)}
         >
           {/* A voice coming out, not going in — this speaks the words with the chosen voice. */}
@@ -118,7 +127,13 @@ export function ClipNarrationBox({
           data-clip-seconds={(item.duration / FPS).toFixed(2)}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => onCommit(item, draft)}
-          className="min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-paper-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent"
+          // Words typed while new ones are being written would be replaced when they arrive.
+          readOnly={drafting}
+          aria-busy={drafting || undefined}
+          className={cn(
+            'min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-paper-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent',
+            drafting && 'animate-pulse opacity-50'
+          )}
         />
       )}
     </div>
