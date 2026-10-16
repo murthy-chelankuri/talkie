@@ -87,7 +87,9 @@ export const AGENT_TOOLS = [
   'talkie_delete_version',
   // Taking it back
   'talkie_undo',
-  'talkie_redo'
+  'talkie_redo',
+  // When a tool fails, so the agent can say why rather than guess
+  'talkie_diagnostics'
 ]
 
 export type AgentOutcome =

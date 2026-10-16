@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest'
+import { spawnSync } from 'child_process'
 import { existsSync, mkdtempSync, rmSync, symlinkSync } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { join } from 'path'
@@ -85,4 +86,25 @@ describe.skipIf(!built)('the built MCP server', () => {
       rmSync(kokoroHome, { recursive: true, force: true })
     }
   }, 180_000)
+
+  /**
+   * `npm run doctor` runs these checks inside the built server, so they find what an agent runs:
+   * the build it came from, and the worker beside out/main.
+   */
+  it('checks the copy of Talkie it is part of, from any working directory', () => {
+    const doctorHome = mkdtempSync(join(tmpdir(), 'talkie-built-doctor-'))
+    try {
+      const run = spawnSync(process.execPath, [BUNDLE, '--doctor'], {
+        cwd: '/',
+        encoding: 'utf8',
+        env: { ...process.env, TALKIE_HOME: doctorHome, TALKIE_MCP_TOKEN: '' }
+      })
+
+      expect(run.stdout).toMatch(/[✓✗] Build: /)
+      expect(run.stdout).toContain('✓ Kokoro worker: Found.')
+      expect(run.stdout).toContain('✓ Video tools: ffmpeg and ffprobe found.')
+    } finally {
+      rmSync(doctorHome, { recursive: true, force: true })
+    }
+  }, 60_000)
 })

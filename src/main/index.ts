@@ -17,6 +17,10 @@ import { cancelAllExports, exportsRunning } from './render/exportJob'
 import { applyContentSecurityPolicy } from './security/contentSecurityPolicy'
 import { closeAssetServer } from './render/assetServer'
 import { applyNavigationGuards } from './security/navigationGuards'
+import { configureLog, logEvent, logFailure } from './diagnostics/log'
+import { logHandlerFailures, logWindowErrors } from './diagnostics/appLogging'
+import { readBuildInfo } from './diagnostics/buildInfo'
+import { registerDiagnosticsHandlers } from './ipc/diagnosticsHandlers'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -39,6 +43,7 @@ function createWindow(): void {
 
   // Right-clicking text reaches the system's own text features from here — see editContextMenu.
   registerEditContextMenu(mainWindow.webContents)
+  logWindowErrors(mainWindow.webContents)
 
   // Shown once it has something to draw, rather than as an empty frame that then fills in.
   mainWindow.once('ready-to-show', () => mainWindow.show())
@@ -72,14 +77,23 @@ function createWindow(): void {
  */
 function reportFatal(context: string, err: unknown): void {
   const message = err instanceof Error ? (err.stack ?? err.message) : String(err)
-  console.error(`${context}:`, message)
+  logFailure(context, err)
   dialog.showErrorBox('Talkie could not start', `${context}\n\n${message}`)
   app.exit(1)
 }
 
 process.on('uncaughtException', (err) => reportFatal('Something went wrong', err))
+// Not fatal — the app carries on — but the one record of a promise nobody was waiting on.
+process.on('unhandledRejection', (reason) => logFailure('A failure nothing handled', reason))
+
+configureLog({ source: 'app' })
 
 app.whenReady().then(() => {
+  const build = readBuildInfo()
+  logEvent(`Talkie started (${build ? `${build.version}, ${build.commit?.slice(0, 7) ?? 'no commit'}` : `${app.getVersion()}, build unknown`}, ${app.isPackaged ? 'installed' : 'from a checkout'})`)
+  // Before any handler exists, so every one is covered.
+  logHandlerFailures(ipcMain)
+
   // Before any handler can read a project, bring a previous installation's projects across
   // and point their media at wherever the files now sit.
   migrateStorageRoot()
@@ -127,6 +141,7 @@ app.whenReady().then(() => {
   registerTranscriptHandlers(ipcMain)
   registerThemeHandlers(ipcMain)
   registerHtmlSceneHandlers(ipcMain, () => mainWindowRef)
+  registerDiagnosticsHandlers(ipcMain, () => mainWindowRef)
   createWindow()
 
   app.on('activate', function () {

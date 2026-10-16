@@ -106,7 +106,17 @@ describe('the application menu', () => {
     const template = buildMenuTemplate(open, () => {}, 'darwin')
 
     expect(labels(menu(template, 'Help'))).toEqual(
-      expect.arrayContaining(['Licences', 'Talkie on GitHub', 'Report an Issue'])
+      expect.arrayContaining(['Licences', 'Talkie on GitHub', 'Report a Problem…'])
     )
+  })
+
+  it('asks the window to gather a report, rather than opening a blank issue', () => {
+    const sent: string[] = []
+    const template = buildMenuTemplate(open, (action) => sent.push(action), 'darwin')
+
+    const report = menu(template, 'Help').find((i) => i.label === 'Report a Problem…')
+    ;(report?.click as () => void)()
+
+    expect(sent).toEqual(['report-problem'])
   })
 })

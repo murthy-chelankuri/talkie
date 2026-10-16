@@ -1,3 +1,5 @@
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
@@ -11,7 +13,10 @@ export default defineConfig({
     //
     // Overridable because a recording test that misbehaves is far easier to understand when you
     // can watch it: `TALKIE_HEADLESS=0 npm test`.
-    env: { TALKIE_HEADLESS: process.env.TALKIE_HEADLESS ?? '1' },
+    //
+    // The log goes to a folder of the run's own, so a test that fails on purpose never writes into
+    // the person's ~/Talkie/logs — the file a problem report is made from.
+    env: { TALKIE_HEADLESS: process.env.TALKIE_HEADLESS ?? '1', TALKIE_LOG_HOME: join(tmpdir(), 'talkie-test-logs') },
     include: [
       'src/main/**/*.test.ts',
       'src/mcp/**/*.test.ts',

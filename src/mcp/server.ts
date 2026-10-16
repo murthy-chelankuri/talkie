@@ -25,6 +25,9 @@ import {
 import { withHistory } from '../main/project/history'
 import { draftNarrationForItem, draftNarrationForProject } from '../main/agent/draftNarration'
 import { narrateSegment } from '../main/transcript/narrate'
+import { logFailure, readLogTail } from '../main/diagnostics/log'
+import { scrub } from '../main/diagnostics/scrub'
+import { formatChecks, runDoctor } from '../main/diagnostics/doctor'
 import { renderProjectVideo } from '../main/render/renderProject'
 import { richTextToPlain } from '../main/project/timeline/richText'
 import { describeProjectContext } from '../main/project/projectContext'
@@ -178,9 +181,18 @@ export function createTalkieServer(
     server.registerTool(
       name,
       config,
-      ((...args: Parameters<typeof cb>) => {
+      (async (...args: Parameters<typeof cb>) => {
         requireAccess()
-        return (cb as (...a: unknown[]) => unknown)(...args)
+        try {
+          return await (cb as (...a: unknown[]) => unknown)(...args)
+        } catch (err) {
+          // Written down where a report can find it — an agent's session is otherwise the only
+          // place the error ever was. The tool's name and the error, never its arguments, which
+          // carry the person's narration and scenes. The agent is told where to look next.
+          logFailure(`${name} failed`, err, baseDir)
+          const message = err instanceof Error ? err.message : String(err)
+          throw new Error(name === 'talkie_diagnostics' ? message : `${message}\n(talkie_diagnostics has the details of what went wrong.)`)
+        }
       }) as typeof cb
     )
 
@@ -1739,6 +1751,27 @@ export function createTalkieServer(
       const report = `Voiced ${spoken.length} clip(s); ${failed.length} failed:\n${failed.join('\n')}`
       if (spoken.length === 0) throw new Error(report)
       return text(report)
+    }
+  )
+
+  // ------------------------------------------------------------- diagnostics
+
+  tool(
+    'talkie_diagnostics',
+    {
+      title: 'Find out what went wrong',
+      description:
+        'When a Talkie tool fails: checks this copy of Talkie part by part — whether it was rebuilt ' +
+        'after the last pull, the voice, the video tools, the browser — each with what to do, and ' +
+        'returns the end of its log. Set speak to also speak a line in the chosen voice, which takes ' +
+        'a few seconds. Tell the person what a failed check says to do.',
+      inputSchema: { speak: z.boolean().optional() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ speak }) => {
+      const checks = await runDoctor({ baseDir, speak: speak ?? false })
+      const log = scrub(readLogTail(60, baseDir))
+      return text(`${formatChecks(checks)}\n\nThe end of Talkie's log:\n${log || '(empty)'}`)
     }
   )
 

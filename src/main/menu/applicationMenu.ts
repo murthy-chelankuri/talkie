@@ -20,6 +20,7 @@ export type MenuAction =
   | 'project-context'
   | 'settings'
   | 'licences'
+  | 'report-problem'
   | 'undo'
   | 'redo'
 
@@ -153,10 +154,9 @@ export function buildMenuTemplate(
           label: 'Talkie on GitHub',
           click: () => void shell.openExternal(REPOSITORY)
         },
-        {
-          label: 'Report an Issue',
-          click: () => void shell.openExternal(`${REPOSITORY}/issues/new`)
-        }
+        // Through the window, which gathers what a report needs first: a blank issue was all this
+        // once opened, and the details that would have found the cause had to be asked for.
+        item('Report a Problem…', 'report-problem')
       ]
     }
   ]

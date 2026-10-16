@@ -2,6 +2,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createTalkieServer, presentedToken, talkieHome } from './server'
 import { discardRecording } from './recordingSession'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
+import { configureLog, logEvent, logFailure } from '../main/diagnostics/log'
+import { readBuildInfo } from '../main/diagnostics/buildInfo'
+import { formatChecks, runDoctor } from '../main/diagnostics/doctor'
 
 /**
  * Talkie as an MCP server, so any agent can make a demo.
@@ -13,6 +16,18 @@ import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
  * Nothing may be written to stdout but protocol messages, so every diagnostic goes to stderr.
  */
 async function main(): Promise<void> {
+  configureLog({ source: 'mcp', home: talkieHome() })
+
+  // `npm run doctor`: the built server checks the copy of Talkie it is part of, in a terminal,
+  // so what it reports is what an agent would be running. Needs no token — it reads no project.
+  if (process.argv.includes('--doctor')) {
+    const checks = await runDoctor({ baseDir: talkieHome(), speak: process.argv.includes('--speak') })
+    console.log(formatChecks(checks))
+    process.exit(checks.some((check) => check.ok === false) ? 1 : 0)
+  }
+
+  const build = readBuildInfo()
+  logEvent(`MCP server started (${build ? `${build.version}, ${build.commit?.slice(0, 7) ?? 'no commit'}` : 'build unknown'}, node ${process.versions.node})`)
   const server = createTalkieServer(talkieHome())
 
   // An agent that disconnects mid-recording would otherwise leave a browser running with a
@@ -38,6 +53,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('talkie-mcp could not start:', err)
+  logFailure('talkie-mcp could not start', err)
   process.exit(1)
 })
