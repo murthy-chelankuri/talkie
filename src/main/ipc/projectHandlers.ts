@@ -31,7 +31,7 @@ import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { downloadKokoro, kokoroDownloadStatus } from '../tts/kokoro/kokoroProcess'
 import { checkKokoroFiles, importKokoroFiles, kokoroManual } from '../tts/kokoro/kokoroManual'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
-import { runProjectAgent } from '../agent/projectAgent'
+import { runProjectAgent, stopProjectAgent } from '../agent/projectAgent'
 import { setProjectTheme } from '../themes/applyTheme'
 import { toRenderTheme } from '../themes/toRenderTheme'
 
@@ -158,16 +158,18 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
    */
   ipcMain.handle(
     'project:agent:instruct',
-    (_event, projectId: string, instruction: string, resumeSessionId?: string) =>
+    (_event, projectId: string, instruction: string, resumeSessionId?: string, scenes: string[] = []) =>
       withHistory(projectId, () =>
         runProjectAgent({
           projectId,
           instruction,
           resumeSessionId,
+          scenes,
           serverPath: mcpConnection().serverPath
         })
       )
   )
+  ipcMain.handle('project:agent:stop', (_event, projectId: string) => stopProjectAgent(projectId))
 
   ipcMain.handle('project:agent:draftAll', (_event, projectId: string, force: boolean) =>
     withHistory(projectId, () => draftNarrationForProject(projectId, { force }))

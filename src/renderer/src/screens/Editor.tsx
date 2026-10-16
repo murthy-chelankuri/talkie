@@ -1003,6 +1003,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               <div className={cn('h-full', rail.open !== 'agent' && 'hidden')}>
                 <AskTheAgent
                   projectId={projectId}
+                  timeline={timeline}
+                  selectedItemId={selectedItemId}
                   onClose={rail.close}
                   onWorkingChange={setAgentWorking}
                   onChanged={async () => {

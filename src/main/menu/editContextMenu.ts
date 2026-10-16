@@ -1,12 +1,11 @@
 import {
   BrowserWindow,
   Menu,
-  dialog,
   type ContextMenuParams,
   type MenuItemConstructorOptions,
   type WebContents
 } from 'electron'
-import { REWRITE_LABELS, REWRITE_STYLES, rewriteText, type RewriteStyle } from '../agent/rewriteText'
+import { REWRITE_DOING, REWRITE_LABELS, REWRITE_STYLES, rewriteText, type RewriteStyle } from '../agent/rewriteText'
 
 /**
  * The menu you get when you right-click text.
@@ -108,30 +107,34 @@ async function focusedClipSeconds(webContents: WebContents): Promise<number | un
   }
 }
 
+/** What the window is told about a rewrite, as it goes. See RewriteStatus.tsx. */
+export type RewriteEvent =
+  | { state: 'started'; doing: string }
+  | { state: 'done'; text: string }
+  | { state: 'failed'; message: string }
+
 /**
- * Rewrite what is selected and put the answer in its place.
+ * Rewrite what is selected, and hand the answer back to the window to put in its place.
  *
- * `insertText` replaces the selection, so the field's own undo still holds the original — a
- * rewrite someone dislikes is one Cmd-Z away rather than something to retype.
+ * The window is told when it starts, so it can say so and hold the selection still: a rewrite
+ * takes seconds, and nothing on screen said one was happening. And the window puts the words
+ * back itself, into the selection as it was when the menu was used — this used to type them into
+ * whatever had focus when the answer arrived, which after a click elsewhere was somewhere else.
  */
 async function applyRewrite(
   webContents: WebContents,
   style: RewriteStyle,
   text: string
 ): Promise<void> {
-  const window = BrowserWindow.fromWebContents(webContents) ?? undefined
-
+  const tell = (event: RewriteEvent): void => {
+    if (!webContents.isDestroyed()) webContents.send('menu:rewrite', event)
+  }
+  tell({ state: 'started', doing: REWRITE_DOING[style] })
   try {
     const rewritten = await rewriteText({ text, style, seconds: await focusedClipSeconds(webContents) })
-    if (webContents.isDestroyed()) return
-    webContents.insertText(rewritten)
+    tell({ state: 'done', text: rewritten })
   } catch (err) {
-    if (webContents.isDestroyed()) return
-
-    const message = err instanceof Error ? err.message : String(err)
-    const options = { type: 'warning' as const, title: 'Could not rewrite that', message }
-    if (window) dialog.showMessageBox(window, options)
-    else dialog.showMessageBox(options)
+    tell({ state: 'failed', message: err instanceof Error ? err.message : String(err) })
   }
 }
 

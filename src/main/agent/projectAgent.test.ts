@@ -2,8 +2,8 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { AGENT_TOOLS, buildAgentPrompt, runProjectAgent } from './projectAgent'
-import { createProject } from '../project/projectApi'
+import { AGENT_TOOLS, buildAgentPrompt, describeScenes, runProjectAgent } from './projectAgent'
+import { addScene, addTranscriptSegment, createProject } from '../project/projectApi'
 import { updateSettings } from '../settings/settingsStore'
 import { checkMcpAccess, grantRunToken } from '../settings/mcpAccess'
 
@@ -44,6 +44,27 @@ describe('what the project agent is allowed to do', () => {
     expect(AGENT_TOOLS).not.toContain('talkie_start_recording')
     expect(AGENT_TOOLS).not.toContain('talkie_export')
     expect(AGENT_TOOLS).not.toContain('talkie_explore')
+  })
+})
+
+describe('pointing the agent at scenes', () => {
+  it('names each picked scene the way the timeline numbers it, with what it says now', () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'talkie-agent-scenes-'))
+    try {
+      const { id } = createProject('Scenes', baseDir)
+      addScene(id, 'scene', { title: 'Welcome', bullets: [] }, baseDir)
+      const second = addScene(id, 'scene', { title: 'How it <b>works</b>', bullets: [] }, baseDir)
+      addTranscriptSegment(id, { text: 'Here is how it works.', timelineItemId: second.id }, baseDir)
+
+      const said = describeScenes(id, [second.id, 'gone'], baseDir)
+
+      expect(said).toMatch(/this scene in particular/)
+      expect(said).toContain(`Scene 2 (clip id ${second.id}): slide "How it works", 0:05–0:10. Narration now: "Here is how it works."`)
+      expect(said).not.toContain('gone')
+      expect(describeScenes(id, [], baseDir)).toBe('')
+    } finally {
+      rmSync(baseDir, { recursive: true, force: true })
+    }
   })
 })
 
