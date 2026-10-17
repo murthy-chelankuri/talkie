@@ -6,7 +6,8 @@ import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { createTalkieServer } from './server'
-import { addTimelineItem, readTimeline, readTranscript } from '../main/project/projectApi'
+import { addScene, addTimelineItem, readTimeline, readTranscript, writeDiagramSvg } from '../main/project/projectApi'
+import type { TimelineItem } from '../main/project/timeline/schema'
 import { createMcpToken } from '../main/settings/mcpAccess'
 import { bandedPng } from '../main/themes/generate/testImages'
 import { GOOD } from '../main/htmlScene/fixtures'
@@ -37,6 +38,19 @@ async function call(name: string, args: Record<string, unknown> = {}): Promise<s
   const result = await client.callTool({ name, arguments: args })
   const content = result.content as Array<{ type: string; text?: string }>
   return content.map((part) => part.text ?? '').join('\n')
+}
+
+/**
+ * A classic slide or a diagram already in a project — made before scenes were HTML, or a theme's
+ * card. Agents can no longer add them, so the tests put them there as an older project has them.
+ */
+function addSlide({ projectId, title, bullets, style, layout }: { projectId: string; title: string; bullets?: string[]; style?: object; layout?: string }): TimelineItem {
+  return addScene(projectId, 'scene', { title, bullets: bullets ?? [], style: style ?? {}, ...(layout ? { layout } : {}) }, baseDir)
+}
+
+function addDiagram({ projectId, source }: { projectId: string; source: string }): TimelineItem {
+  const src = writeDiagramSvg(projectId, '<svg xmlns="http://www.w3.org/2000/svg"><text>Drawn before</text></svg>', baseDir)
+  return addScene(projectId, 'diagram', { source, style: {}, src }, baseDir)
 }
 
 async function newProject(name = 'Demo'): Promise<string> {
@@ -70,13 +84,25 @@ describe('Talkie over MCP', () => {
         'talkie_click',
         'talkie_type',
         'talkie_stop_recording',
-        'talkie_add_scene',
+        'talkie_add_html_scene',
         'talkie_set_narration',
         'talkie_draft_narration',
         'talkie_narrate',
         'talkie_export'
       ])
     )
+  })
+
+  it('makes new scenes only as HTML scenes, as the app does', async () => {
+    // The app adds HTML scenes and nothing else; an agent that could still make classic slides and
+    // mermaid diagrams made scenes the person had no way to add, and edited in editors they never saw.
+    const names = (await client.listTools()).tools.map((tool) => tool.name)
+
+    expect(names).toContain('talkie_add_html_scene')
+    expect(names).not.toContain('talkie_add_scene')
+    expect(names).not.toContain('talkie_add_diagram')
+    // Slides and diagrams already in a project stay editable, as they are in the app.
+    expect(names).toEqual(expect.arrayContaining(['talkie_edit_slide', 'talkie_edit_diagram']))
   })
 
   it('describes every tool, since the description is all an agent has to choose by', async () => {
@@ -96,39 +122,9 @@ describe('Talkie over MCP', () => {
     expect(await call('talkie_list_projects')).toContain('Checkout walkthrough')
   })
 
-  it('adds a slide to the timeline', async () => {
-    const projectId = await newProject()
-
-    await call('talkie_add_scene', {
-      projectId,
-      title: 'Why this matters',
-      bullets: ['Record it silent', 'Give it a voice']
-    })
-
-    const timeline = readTimeline(projectId, baseDir)
-    expect(timeline).toHaveLength(1)
-    expect(timeline[0].kind).toBe('scene')
-    expect((timeline[0].data as { title: string }).title).toBe('Why this matters')
-  })
-
-  it('takes a style for the slide, so an agent can match a deck', async () => {
-    const projectId = await newProject()
-
-    await call('talkie_add_scene', {
-      projectId,
-      title: 'Styled',
-      style: { theme: 'paper', align: 'center', accent: '#f87171' }
-    })
-
-    const style = (readTimeline(projectId, baseDir)[0].data as { style: Record<string, string> }).style
-    expect(style).toMatchObject({ theme: 'paper', align: 'center', accent: '#f87171' })
-    // Everything not named still arrives filled in, or the renderer has nothing to draw with.
-    expect(style.font).toBeTruthy()
-  })
-
   it('reads a timeline back with its narration', async () => {
     const projectId = await newProject()
-    await call('talkie_add_scene', { projectId, title: 'One' })
+    addSlide({ projectId, title: 'One' })
     const itemId = readTimeline(projectId, baseDir)[0].id
 
     expect(await call('talkie_timeline', { projectId })).toContain('no narration yet')
@@ -146,7 +142,7 @@ describe('Talkie over MCP', () => {
 
   it('replaces narration rather than stacking a second segment on the same clip', async () => {
     const projectId = await newProject()
-    await call('talkie_add_scene', { projectId, title: 'One' })
+    addSlide({ projectId, title: 'One' })
     const itemId = readTimeline(projectId, baseDir)[0].id
 
     await call('talkie_set_narration', { projectId, timelineItemId: itemId, text: 'First words.' })
@@ -159,7 +155,7 @@ describe('Talkie over MCP', () => {
 
   it('shows the words on a slide without the markup around them', async () => {
     const projectId = await newProject()
-    await call('talkie_add_scene', { projectId, title: 'Record it <b>silent</b>' })
+    addSlide({ projectId, title: 'Record it <b>silent</b>' })
 
     expect(await call('talkie_timeline', { projectId })).toContain('Record it silent')
   })
@@ -198,7 +194,7 @@ describe('Talkie over MCP', () => {
       // The whole reason narration keeps step with the picture is that each line says which
       // moment it belongs to. An agent that can only send prose can only produce the drift.
       const projectId = await newProject('Timed')
-      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      addSlide({ projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
 
       const said = await call('talkie_set_narration', {
@@ -219,7 +215,7 @@ describe('Talkie over MCP', () => {
 
     it('still takes plain prose, which is read as one block', async () => {
       const projectId = await newProject('Untimed')
-      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      addSlide({ projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
 
       const said = await call('talkie_set_narration', {
@@ -236,7 +232,7 @@ describe('Talkie over MCP', () => {
       // Beats describe the words they were written for; keeping them against new words would put
       // the voice at moments chosen for sentences that are no longer there.
       const projectId = await newProject('Replaced')
-      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      addSlide({ projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
 
       await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: '[0.0] One.\n[5.0] Two.' })
@@ -249,7 +245,7 @@ describe('Talkie over MCP', () => {
       // A count is no use for changing one line: without the times, adjusting a beat means
       // rewriting the whole take from memory, and an edit someone else made is invisible.
       const projectId = await newProject('Listing')
-      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      addSlide({ projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
       await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: '[0.0] One.\n[4.0] Two.' })
 
@@ -261,7 +257,7 @@ describe('Talkie over MCP', () => {
 
     it('says plainly when a take has no timings at all', async () => {
       const projectId = await newProject('Untimed listing')
-      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      addSlide({ projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
       await call('talkie_set_narration', { projectId, timelineItemId: clip.id, text: 'Just words.' })
 
@@ -489,14 +485,6 @@ describe('Talkie over MCP', () => {
   })
 
   describe('slides and cards', () => {
-    it('adds an opening card when asked for one', async () => {
-      const projectId = await newProject('Cards')
-
-      await call('talkie_add_scene', { projectId, title: 'Acme', layout: 'title' })
-
-      expect((readTimeline(projectId, baseDir)[0].data as { layout: string }).layout).toBe('title')
-    })
-
     it('keeps an opening card a card when its words are rewritten', async () => {
       // The cards a theme adds are slides with a layout; an edit that rebuilt the slide from its
       // words alone turned the opening card into an ordinary slide.
@@ -512,7 +500,7 @@ describe('Talkie over MCP', () => {
 
     it('changes one thing about a slide’s look without losing the rest', async () => {
       const projectId = await newProject('Look')
-      await call('talkie_add_scene', { projectId, title: 'Hi', style: { theme: 'light', align: 'center' } })
+      addSlide({ projectId, title: 'Hi', style: { theme: 'light', align: 'center' } })
       const [slide] = readTimeline(projectId, baseDir)
 
       await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'Hi', style: { size: 'large' } })
@@ -597,7 +585,7 @@ describe('Talkie over MCP', () => {
 
     it('is moved and removed like any other clip', async () => {
       const projectId = await newProject('Charts')
-      await call('talkie_add_scene', { projectId, title: 'First' })
+      addSlide({ projectId, title: 'First' })
       const id = clipIdIn(await call('talkie_add_html_scene', { projectId, title: 'Revenue', files: { 'index.html': GOOD } }))
 
       await call('talkie_move_clip', { projectId, timelineItemId: id, toPosition: 1 })
@@ -620,7 +608,7 @@ describe('Talkie over MCP', () => {
       // A slide is on screen for exactly as long as it is told to be, and nothing else could
       // say so — duration only ever moved as a side effect of voicing.
       const projectId = await newProject('Timing')
-      await call('talkie_add_scene', { projectId, title: 'Hold this' })
+      addSlide({ projectId, title: 'Hold this' })
       const [slide] = readTimeline(projectId, baseDir)
 
       await call('talkie_set_duration', { projectId, timelineItemId: slide.id, seconds: 8 })
@@ -632,7 +620,7 @@ describe('Talkie over MCP', () => {
   describe('versions', () => {
     it('cuts a shorter version without losing the full one, and says what each leaves out', async () => {
       const projectId = await newProject('Cuts')
-      for (const title of ['Intro', 'Deep dive', 'Close']) await call('talkie_add_scene', { projectId, title, bullets: [] })
+      for (const title of ['Intro', 'Deep dive', 'Close']) addSlide({ projectId, title, bullets: [] })
       const [, deep] = readTimeline(projectId, baseDir)
 
       await call('talkie_create_version', { projectId, name: '2-minute' })
@@ -688,41 +676,20 @@ describe('Talkie over MCP', () => {
   })
 
   describe('pictures and diagrams', () => {
-    it('draws the diagram there and then, rather than leaving a blank clip', async () => {
-      // Mermaid needs a browser to measure text, and the server has one — the same headless
-      // Chromium that records demos. Waiting for the app to open meant an agent's diagram sat
-      // on the timeline showing nothing, which reads as broken rather than pending.
-      const projectId = await newProject('Drawn')
-
-      await call('talkie_add_diagram', {
-        projectId,
-        source: 'graph LR; A[Client] --> B[API]',
-        title: 'How it fits together'
-      })
-
-      const [item] = readTimeline(projectId, baseDir)
-      expect(item.kind).toBe('diagram')
-      const data = item.data as { source: string; src?: string }
-      expect(data.source).toBe('graph LR; A[Client] --> B[API]')
-      expect(data.src).toBeDefined()
-
-      const svg = readFileSync(data.src as string, 'utf-8')
-      expect(svg).toContain('<svg')
-      expect(svg).toContain('Client')
-    }, 120_000)
-
     it('hands back the complaint from mermaid instead of saving a diagram that will not draw', async () => {
       const projectId = await newProject('Broken diagram')
 
-      const said = await call('talkie_add_diagram', { projectId, source: 'graph LR; A -->' })
+      const diagram = addDiagram({ projectId, source: 'graph LR; Alpha --> Beta' })
+
+      const said = await call('talkie_edit_diagram', { projectId, timelineItemId: diagram.id, source: 'graph LR; A -->' })
 
       expect(said).toMatch(/could not be drawn/i)
-      expect(readTimeline(projectId, baseDir)).toHaveLength(0)
+      expect((readTimeline(projectId, baseDir)[0].data as { source: string }).source).toBe('graph LR; Alpha --> Beta')
     }, 120_000)
 
     it('redraws when the source changes, so the picture and the project agree', async () => {
       const projectId = await newProject('Redrawn')
-      await call('talkie_add_diagram', { projectId, source: 'graph LR; Alpha --> Beta' })
+      addDiagram({ projectId, source: 'graph LR; Alpha --> Beta' })
       const [item] = readTimeline(projectId, baseDir)
       const first = (item.data as { src: string }).src
 
@@ -737,7 +704,7 @@ describe('Talkie over MCP', () => {
     it('redraws a diagram in another of the theme’s looks when asked', async () => {
       const projectId = await newProject('Looks')
       await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })
-      await call('talkie_add_diagram', { projectId, source: 'graph LR; Alpha --> Beta' })
+      addDiagram({ projectId, source: 'graph LR; Alpha --> Beta' })
       const diagram = readTimeline(projectId, baseDir).find((item) => item.kind === 'diagram')!
 
       await call('talkie_edit_diagram', { projectId, timelineItemId: diagram.id, source: 'graph LR; Alpha --> Beta', style: { theme: 'light' } })
@@ -750,7 +717,7 @@ describe('Talkie over MCP', () => {
 
     it('refuses to treat a slide as a diagram', async () => {
       const projectId = await newProject('Not a diagram')
-      await call('talkie_add_scene', { projectId, title: 'A slide' })
+      addSlide({ projectId, title: 'A slide' })
       const [slide] = readTimeline(projectId, baseDir)
 
       expect(
@@ -760,25 +727,28 @@ describe('Talkie over MCP', () => {
   })
 
   describe('taking a change back', () => {
+    const titleOf = (projectId: string): string => (readTimeline(projectId, baseDir)[0].data as { title: string }).title
+
     it('steps back its own last change', async () => {
       const projectId = await newProject('Undoable')
-      await call('talkie_add_scene', { projectId, title: 'First' })
-      await call('talkie_add_scene', { projectId, title: 'Second' })
-      expect(readTimeline(projectId, baseDir)).toHaveLength(2)
+      const slide = addSlide({ projectId, title: 'First' })
+      await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'Second' })
+      expect(titleOf(projectId)).toBe('Second')
 
       await call('talkie_undo', { projectId })
 
-      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+      expect(titleOf(projectId)).toBe('First')
     })
 
     it('puts it back again', async () => {
       const projectId = await newProject('Redoable')
-      await call('talkie_add_scene', { projectId, title: 'Only' })
+      const slide = addSlide({ projectId, title: 'First' })
+      await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'Second' })
       await call('talkie_undo', { projectId })
 
       await call('talkie_redo', { projectId })
 
-      expect(readTimeline(projectId, baseDir)).toHaveLength(1)
+      expect(titleOf(projectId)).toBe('Second')
     })
   })
 
@@ -788,7 +758,7 @@ describe('Talkie over MCP', () => {
       // reword an opening it changed the voice and left the picture — which reads as a preview
       // that will not update, because the picture genuinely never changed.
       const projectId = await newProject('Slide words')
-      await call('talkie_add_scene', { projectId, title: 'Old title', bullets: ['One', 'Two'] })
+      addSlide({ projectId, title: 'Old title', bullets: ['One', 'Two'] })
       const [slide] = readTimeline(projectId, baseDir)
 
       const said = await call('talkie_edit_slide', {
@@ -804,7 +774,7 @@ describe('Talkie over MCP', () => {
     it('keeps the lines it was not asked about', async () => {
       // Leaving the bullets out of a retitle should not silently empty the slide.
       const projectId = await newProject('Keep bullets')
-      await call('talkie_add_scene', { projectId, title: 'Old', bullets: ['One', 'Two'] })
+      addSlide({ projectId, title: 'Old', bullets: ['One', 'Two'] })
       const [slide] = readTimeline(projectId, baseDir)
 
       await call('talkie_edit_slide', { projectId, timelineItemId: slide.id, title: 'New' })
@@ -830,12 +800,12 @@ describe('Talkie over MCP', () => {
 
   describe('rearranging a project over MCP', () => {
     it('lifts a scene added at the end to the front, where an introduction belongs', async () => {
-      // The gap this closes: talkie_add_scene only ever appends, so an agent asked to "add an
+      // The gap this closes: adding a scene only ever appended, so an agent asked to "add an
       // introduction" produced one stranded after the whole demo and had no way to move it.
       const projectId = await newProject('Order')
       addTimelineItem(projectId, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
       addTimelineItem(projectId, { kind: 'image', start: 90, duration: 90, data: { src: '/b.png' } }, baseDir)
-      await call('talkie_add_scene', { projectId, title: 'Ledger' })
+      addSlide({ projectId, title: 'Ledger' })
       const intro = readTimeline(projectId, baseDir)[2]
 
       const said = await call('talkie_move_clip', {
@@ -881,7 +851,7 @@ describe('Talkie over MCP', () => {
     it('takes back a scene it should not have added', async () => {
       // Without this the agent could make a mess and not tidy it.
       const projectId = await newProject('Undo it')
-      await call('talkie_add_scene', { projectId, title: 'Wrong' })
+      addSlide({ projectId, title: 'Wrong' })
       const [added] = readTimeline(projectId, baseDir)
 
       const said = await call('talkie_delete_clip', { projectId, timelineItemId: added.id })
@@ -902,7 +872,7 @@ describe('Talkie over MCP', () => {
   describe('reading and cutting a recorded clip over MCP', () => {
     it('says a slide has nothing happening in it rather than failing', async () => {
       const projectId = await newProject('Slide')
-      await call('talkie_add_scene', { projectId, title: 'Hello' })
+      addSlide({ projectId, title: 'Hello' })
       const [clip] = readTimeline(projectId, baseDir)
 
       expect(await call('talkie_clip_actions', { projectId, timelineItemId: clip.id })).toContain(

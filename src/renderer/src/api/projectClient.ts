@@ -1,5 +1,6 @@
 import type { TimelineItem } from '../../../main/project/timeline/schema'
 import type { Versions } from '../../../main/project/versions'
+import type { DiskChange } from '../../../main/project/diskChange'
 import { notifySettingsChanged } from '../lib/settingsChanged'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
 import type { ProjectContext } from '../../../main/project/projectContext'
@@ -54,6 +55,10 @@ export const projectClient = {
   setTheme: (id: string, themeId: string | null): Promise<ProjectMetadata> => window.api.project.setTheme(id, themeId),
   renderTheme: (id: string) => window.api.project.renderTheme(id),
   historyState: (id: string): Promise<HistoryState> => window.api.project.historyState(id),
+  metadata: (id: string): Promise<ProjectMetadata> => window.api.project.metadata(id),
+  watch: (id: string | null): Promise<void> => window.api.project.watch(id),
+  onChangedOnDisk: (callback: (projectId: string, change: DiskChange) => void): (() => void) =>
+    window.api.project.onChangedOnDisk(callback),
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
   importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id),

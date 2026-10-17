@@ -17,6 +17,7 @@ import { projectsRootDir } from '../project/paths'
 import { ProjectContextSchema } from '../project/projectContext'
 import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { clearHistory, historyState, redo, undo, withHistory } from '../project/history'
+import { acceptWatchedProject } from './projectWatchHandlers'
 import { readSettings, updateSettings, resetSpeechSettings } from '../settings/settingsStore'
 import { repairNarrationDurations } from '../transcript/repairNarrationDurations'
 import { checkReadiness } from '../setup/readiness'
@@ -167,7 +168,7 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
           scenes,
           serverPath: mcpConnection().serverPath
         })
-      )
+      ).finally(() => acceptWatchedProject(projectId))
   )
   ipcMain.handle('project:agent:stop', (_event, projectId: string) => stopProjectAgent(projectId))
 

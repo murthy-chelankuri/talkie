@@ -3,7 +3,7 @@ import { Preview, type PreviewHandle } from '../../../video/preview'
 import { activeVersion, NO_VERSIONS, playable, type Versions } from '../../../main/project/versions'
 import { useEditPlayer } from '../lib/editPlayer'
 import { VersionPicker } from '../components/VersionPicker'
-import { Clapperboard, Maximize2, Minimize2 } from 'lucide-react'
+import { Clapperboard, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import {
   Group,
   Panel as ResizablePanel,
@@ -291,6 +291,67 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     setVersions(cuts)
   }, [projectId])
 
+  /**
+   * Everything the editor shows, read again from disk.
+   *
+   * An agent working through MCP writes this project from another process; the editor read it
+   * only on opening, so a video an agent was building stayed as it was until the project was shut
+   * and opened again. The main process watches the folder and says when a file holds something the
+   * app did not write (projectWatcher.ts); Reload does the same on demand. A reload asked for while
+   * one is running runs once more after it, so the last change is never the one missed.
+   */
+  const reloading = useRef<Promise<void> | null>(null)
+  const reloadAgain = useRef(false)
+  const reloadFromDisk = useCallback(async (): Promise<void> => {
+    if (reloading.current) {
+      reloadAgain.current = true
+      return reloading.current
+    }
+    const run = async (): Promise<void> => {
+      do {
+        reloadAgain.current = false
+        const [metadata] = await Promise.all([projectClient.metadata(projectId), refreshEverything()])
+        setProject(metadata)
+        // An agent's mermaid is drawn here, as it is after an in-app run. See drawPendingDiagrams.
+        const theme = renderThemeRef.current
+        if (theme !== undefined && (await drawPendingDiagrams(projectId, await timelineClient.read(projectId), theme)) > 0) {
+          setTimeline(await timelineClient.read(projectId))
+        }
+      } while (reloadAgain.current)
+    }
+    reloading.current = run().finally(() => {
+      reloading.current = null
+    })
+    return reloading.current
+  }, [projectId, refreshEverything])
+
+  // Said briefly, so a scene that appears on its own has a reason beside it.
+  const [diskNote, setDiskNote] = useState<string | null>(null)
+  useEffect(() => {
+    if (!diskNote) return
+    const timer = setTimeout(() => setDiskNote(null), 6000)
+    return () => clearTimeout(timer)
+  }, [diskNote])
+
+  useEffect(() => {
+    void projectClient.watch(projectId)
+    const stop = projectClient.onChangedOnDisk((changedProjectId, change) => {
+      if (changedProjectId !== projectId) return
+      setDiskNote(change.historyCleared ? 'Updated with changes from outside Talkie. Undo starts here.' : 'Updated with the agent’s changes.')
+      reloadFromDisk().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+    })
+    return () => {
+      stop()
+      void projectClient.watch(null)
+    }
+  }, [projectId, reloadFromDisk])
+
+  const handleReload = useCallback((): void => {
+    reloadFromDisk()
+      .then(() => setDiskNote('Reloaded from disk.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+  }, [reloadFromDisk])
+
   const handleUndo = useCallback(async (): Promise<void> => {
     await projectClient.undo(projectId)
     await refreshEverything()
@@ -406,7 +467,8 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     'export-video': () => void handleExport(),
     'draft-all': () => void handleDraftAll(),
     'speak-all': () => void handleNarrateAll(),
-    'project-context': () => setEditingContext(true)
+    'project-context': () => setEditingContext(true),
+    'reload-project': handleReload
   })
 
   useEffect(() => {
@@ -936,6 +998,20 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   return (
     <div className="flex h-full gap-2 bg-bg pb-2 pr-2">
       <TopBarActions>
+        {diskNote && (
+          <span role="status" className="max-w-[26rem] truncate text-[11px] text-text-muted" title={diskNote}>
+            {diskNote}
+          </span>
+        )}
+        <Button
+          variant="icon"
+          size="sm"
+          onClick={handleReload}
+          aria-label="Reload from disk"
+          title="Reload from disk — picks up what an agent changed (⌥⌘R)"
+        >
+          <RefreshCw className="size-4" aria-hidden />
+        </Button>
         <ExportControl
           state={exportState}
           onExport={handleExport}

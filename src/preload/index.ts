@@ -41,6 +41,7 @@ import type { ExportedFile } from '../main/render/revealExport'
 import type { ExportProgress, ExportResult } from '../main/render/exportProgress'
 import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
+import type { DiskChange } from '../main/project/diskChange'
 
 const projectApi = {
   create: (name: string, context?: ProjectContext): Promise<ProjectMetadata> =>
@@ -57,6 +58,16 @@ const projectApi = {
     ipcRenderer.invoke('project:setTheme', id, themeId),
   renderTheme: (id: string): Promise<RenderTheme | null> => ipcRenderer.invoke('project:theme:render', id),
   historyState: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:state', id),
+  /** Reads project.json and nothing else — see projectWatchHandlers.ts for why not `open`. */
+  metadata: (id: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:metadata', id),
+  /** The project the editor has open, to be watched for changes made outside the app; null for none. */
+  watch: (id: string | null): Promise<void> => ipcRenderer.invoke('project:watch', id),
+  // An agent changed the open project from another process, so the editor reads it again.
+  onChangedOnDisk: (callback: (projectId: string, change: DiskChange) => void): (() => void) => {
+    const listener = (_event: unknown, projectId: string, change: DiskChange): void => callback(projectId, change)
+    ipcRenderer.on('project:changedOnDisk', listener)
+    return () => ipcRenderer.removeListener('project:changedOnDisk', listener)
+  },
   undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),
   importImage: (id: string): Promise<TimelineItem | null> => ipcRenderer.invoke('project:import:image', id),

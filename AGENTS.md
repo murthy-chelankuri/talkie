@@ -285,10 +285,11 @@ implementation to keep in step.
   arranging, and undo. Not recording and not exporting — both take minutes, and neither is what
   anyone means by "add an introduction".
 - **Every kind needs all five verbs.** Create, read, modify, remove, place. Both agent bugs
-  found in use were the same shape — create exposed, modify not: `add_scene` with no way to
-  edit a slide, and no way to reorder. Adding a tool means checking the other four.
+  found in use were the same shape — create exposed, modify not: adding a slide with no way to
+  edit one, and no way to reorder. Adding a tool means checking the other four. The one
+  deliberate gap: classic slides and diagrams cannot be created, only kept up (see HTML scenes).
 - **Mermaid needs a browser, and the server has one.** `renderMermaidHeadless.ts` draws a
-  diagram in the same Playwright Chromium that records demos, so an agent's diagram is a
+  diagram in the same Playwright Chromium that records demos, so an agent's edit to a diagram is a
   picture immediately and a syntax error comes back to whoever wrote it. Both drawings go
   through `mermaidTheme.ts` — same config, same font, injected as a data URL because a headless
   browser has no fonts and mermaid sizes every box to the text in it. `drawPendingDiagrams` in
@@ -457,8 +458,10 @@ or edit the code; agents use five MCP tools and get the frames back as images.
   (`slide`, `quote`, `steps`, `timeline`, beside the charts and motion ones), so the dialog no longer
   offers those kinds; slides and diagrams already in a project still open in their own editors.
   Agents are steered the same way: `talkie_html_templates` lists the templates with their values,
-  `talkie_add_html_scene` takes `template`, and `talkie_add_scene` / `talkie_add_diagram` say they are
-  for a theme's cards, a classic slide asked for by name, and structures no template holds. The
+  `talkie_add_html_scene` takes `template`, and there is no tool to make a classic slide or a
+  mermaid diagram: an agent could once make both, and the person was left with scenes the app had
+  no way to add. `talkie_edit_slide` and `talkie_edit_diagram` stay, for the ones a project already
+  has, and a theme still adds its opening and closing cards (`talkie_apply_theme`). The
   scene guide asks every page to declare its values, and a page added without values starts with
   the ones it declares — so what an agent or "Describe it" writes is editable in the form too.
   Each template declares its values in a
@@ -560,6 +563,27 @@ Do not weaken these without understanding what they are for. Each has tests.
 - **No window enables `nodeIntegration`.** Navigation is confined to the app's own pages by
   `src/main/security/navigationGuards.ts`.
 - **The MCP server is off by default** and checks a hashed token on every call.
+
+## A project changed while it is open
+
+An agent working over MCP writes the project from another process, and the editor used to read it
+only on opening — a video an agent was building stayed as it was until the person closed the project
+and opened it again. Now the main process watches the open project's folder (`projectWatcher.ts`)
+and tells the window when `project.json`, `timeline.json`, `transcript.json` or `versions.json`
+holds something the app did not write; the editor reads everything again and says so in the top
+bar. The window coming forward looks again, in case a watch missed it, and Project → Reload from
+Disk (⌥⌘R) and the button beside Export do it on demand.
+
+- **The app's own saves are told apart by content.** `writeJsonAtomic` remembers a hash of what this
+  process last wrote to each file; a file that matches it is the app's own save. Without that every
+  autosave read as someone else's change.
+- **An outside change empties undo.** Undo puts back whole files as they were before the app's last
+  change, so after an agent's work it would quietly throw that work away with the step. The in-app
+  agent is the exception: its run is one undo step of its own, so its writes leave history alone,
+  and the watcher takes the disk as read when the run ends (`acceptWatchedProject`).
+- **The reload reads; it never tidies.** `project:metadata` is project.json and nothing else, because
+  `project:open` sweeps audio nothing points at — and an agent has written a take a moment before
+  it writes the scene that points at it.
 
 ## Known issue
 
