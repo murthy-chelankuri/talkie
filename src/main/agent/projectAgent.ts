@@ -280,6 +280,11 @@ export async function runProjectAgent(
 /** The run going on for each project, so it can be stopped. */
 const running = new Map<string, AbortController>()
 
+/** Whether the in-app agent is changing this project now — its writes come from another process. */
+export function isProjectAgentRunning(projectId: string): boolean {
+  return running.has(projectId)
+}
+
 /**
  * Stop the run on a project. A run can take minutes and there was no way out of one: the button
  * that looked like Stop was disabled. What it already changed stays, as one undo step.

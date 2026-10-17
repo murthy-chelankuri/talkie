@@ -21,6 +21,7 @@ import { configureLog, logEvent, logFailure } from './diagnostics/log'
 import { logHandlerFailures, logWindowErrors } from './diagnostics/appLogging'
 import { readBuildInfo } from './diagnostics/buildInfo'
 import { registerDiagnosticsHandlers } from './ipc/diagnosticsHandlers'
+import { checkWatchedProject, registerProjectWatchHandlers } from './ipc/projectWatchHandlers'
 
 let mainWindowRef: BrowserWindow | null = null
 
@@ -55,6 +56,9 @@ function createWindow(): void {
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => saveWindowState(mainWindow.getNormalBounds()), 400)
   }
+  // A watch can miss a change — a folder on a network drive, a Mac asleep — so coming back to the
+  // window looks again.
+  mainWindow.on('focus', checkWatchedProject)
   mainWindow.on('resize', remember)
   mainWindow.on('move', remember)
   mainWindow.on('close', () => {
@@ -137,6 +141,7 @@ app.whenReady().then(() => {
 
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)
+  registerProjectWatchHandlers(ipcMain, () => mainWindowRef)
   registerCaptureHandlers(ipcMain, () => mainWindowRef)
   registerTranscriptHandlers(ipcMain)
   registerThemeHandlers(ipcMain)

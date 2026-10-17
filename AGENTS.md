@@ -561,6 +561,27 @@ Do not weaken these without understanding what they are for. Each has tests.
   `src/main/security/navigationGuards.ts`.
 - **The MCP server is off by default** and checks a hashed token on every call.
 
+## A project changed while it is open
+
+An agent working over MCP writes the project from another process, and the editor used to read it
+only on opening — a video an agent was building stayed as it was until the person closed the project
+and opened it again. Now the main process watches the open project's folder (`projectWatcher.ts`)
+and tells the window when `project.json`, `timeline.json`, `transcript.json` or `versions.json`
+holds something the app did not write; the editor reads everything again and says so in the top
+bar. The window coming forward looks again, in case a watch missed it, and Project → Reload from
+Disk (⌥⌘R) and the button beside Export do it on demand.
+
+- **The app's own saves are told apart by content.** `writeJsonAtomic` remembers a hash of what this
+  process last wrote to each file; a file that matches it is the app's own save. Without that every
+  autosave read as someone else's change.
+- **An outside change empties undo.** Undo puts back whole files as they were before the app's last
+  change, so after an agent's work it would quietly throw that work away with the step. The in-app
+  agent is the exception: its run is one undo step of its own, so its writes leave history alone,
+  and the watcher takes the disk as read when the run ends (`acceptWatchedProject`).
+- **The reload reads; it never tidies.** `project:metadata` is project.json and nothing else, because
+  `project:open` sweeps audio nothing points at — and an agent has written a take a moment before
+  it writes the scene that points at it.
+
 ## Known issue
 
 `projectApi` mutations are read-modify-write over whole JSON files with **no locking**. That is

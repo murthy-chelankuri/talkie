@@ -18,6 +18,7 @@ export type MenuAction =
   | 'draft-all'
   | 'speak-all'
   | 'project-context'
+  | 'reload-project'
   | 'settings'
   | 'licences'
   | 'report-problem'
@@ -127,7 +128,11 @@ export function buildMenuTemplate(
         item('Write All Narration', 'draft-all', 'CmdOrCtrl+Shift+D', state.projectOpen),
         item('Speak All Clips', 'speak-all', 'CmdOrCtrl+Shift+S', state.projectOpen),
         { type: 'separator' },
-        item('About This Project…', 'project-context', undefined, state.projectOpen)
+        item('About This Project…', 'project-context', undefined, state.projectOpen),
+        { type: 'separator' },
+        // Picks up what an agent changed over MCP. The window watches for that too; this is for
+        // when you would rather not wait or the watch missed it.
+        item('Reload from Disk', 'reload-project', 'Alt+CmdOrCtrl+R', state.projectOpen)
       ]
     },
     {

@@ -2,7 +2,7 @@ import { homedir } from 'os'
 import { existsSync, readFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import { findProjectDir } from './paths'
-import { writeJsonAtomic } from './atomicWrite'
+import { noteRemoved, writeJsonAtomic } from './atomicWrite'
 
 // A project's editable state is a few small JSON files, so the simplest correct undo is to keep
 // copies of them rather than teach every operation how to reverse itself. Audio files are not
@@ -53,8 +53,10 @@ function writeSnapshot(projectId: string, snapshot: Snapshot, baseDir: string): 
   writeJsonAtomic(join(dir, 'transcript.json'), snapshot.transcript)
   // Leaving a scene out is an edit like any other, so undo puts it back — and undoing the first
   // version ever made leaves the project as it was, with no versions file at all.
-  if (snapshot.versions === null) rmSync(join(dir, 'versions.json'), { force: true })
-  else writeJsonAtomic(join(dir, 'versions.json'), snapshot.versions)
+  if (snapshot.versions === null) {
+    rmSync(join(dir, 'versions.json'), { force: true })
+    noteRemoved(join(dir, 'versions.json'))
+  } else writeJsonAtomic(join(dir, 'versions.json'), snapshot.versions)
 }
 
 // Run one user-level action, remembering the state it started from. Nested writes inside the
