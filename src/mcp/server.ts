@@ -1072,37 +1072,7 @@ export function createTalkieServer(
     }
   )
 
-  // ------------------------------------------------------------------ slides
-
-  tool(
-    'talkie_add_scene',
-    {
-      title: 'Add a classic slide',
-      description:
-        'Add one of Talkie\'s classic text slides to the end of the timeline. New scenes in Talkie are HTML ' +
-        'scenes: for a slide, use talkie_add_html_scene with template "slide" (or "quote"), which is what the ' +
-        'person adds and edits in the app. Use this only for a theme\'s opening or closing card (layout), or ' +
-        'when asked for a classic slide. Keep the lines short: they are read on screen, not aloud.',
-      inputSchema: {
-        projectId: z.string(),
-        title: z.string(),
-        bullets: z.array(z.string()).optional().describe('A few short lines, or none at all'),
-        style: SceneStyleSchema.partial().optional().describe(STYLE_HELP),
-        layout: LayoutInput.optional()
-      }
-    },
-    async ({ projectId, title, bullets, style, layout }) => {
-      const item = withHistory(
-        projectId,
-        () => addScene(projectId, 'scene', { title, bullets: bullets ?? [], style: style ?? {}, ...(layout ? { layout } : {}) }, baseDir),
-        baseDir
-      )
-      return text(
-        `Added the slide "${title}" at the end (clip id ${item.id}). ` +
-          'Use talkie_move_clip if it belongs somewhere else.'
-      )
-    }
-  )
+  // ------------------------------------------------------------- pictures and decks
 
   tool(
     'talkie_add_image',
@@ -1353,51 +1323,6 @@ export function createTalkieServer(
   )
 
   tool(
-    'talkie_add_diagram',
-    {
-      title: 'Add a mermaid diagram',
-      description:
-        'Add a diagram written as mermaid source. For a few steps in order, or dates along a line, use ' +
-        'talkie_add_html_scene with template "steps" or "timeline" instead — what the person adds and edits ' +
-        'in the app. Mermaid is for structures those cannot hold: a sequence, an architecture, a branching ' +
-        'flow. Better than describing a structure in words over a screen recording that does not show it. ' +
-        'It is drawn straight away, so a syntax error comes back here rather than surfacing as ' +
-        'a blank clip later. The source is kept, so it stays editable.',
-      inputSchema: {
-        projectId: z.string(),
-        source: z.string().describe('mermaid source, e.g. "graph LR; A[Client] --> B[API]"'),
-        title: z.string().optional().describe('A heading above it'),
-        style: SceneStyleSchema.partial().optional().describe(STYLE_HELP)
-      }
-    },
-    async ({ projectId, source, title, style }) => {
-      const drawn = await draw(projectId, source, { style }, baseDir)
-      if (!drawn.ok) return text(drawn.reason)
-
-      const item = withHistory(
-        projectId,
-        () =>
-          addScene(
-            projectId,
-            'diagram',
-            {
-              source,
-              title,
-              style: style ?? {},
-              src: writeDiagramSvg(projectId, drawn.svg, baseDir),
-              ...(drawn.themeStamp ? { themeStamp: drawn.themeStamp } : {})
-            },
-            baseDir
-          ),
-        baseDir
-      )
-      return text(
-        `Added the diagram at the end (clip id ${item.id}). Use talkie_move_clip to place it.`
-      )
-    }
-  )
-
-  tool(
     'talkie_edit_diagram',
     {
       title: 'Change a diagram',
@@ -1510,8 +1435,8 @@ export function createTalkieServer(
       description:
         'Put a clip at a different position in the project, counting from 1 as talkie_timeline ' +
         'lists them; everything else shuffles along. This is how a scene gets to the front — ' +
-        'talkie_add_scene always appends, so an introduction arrives at the end and has to be ' +
-        'moved to where it belongs.',
+        'one added without a position arrives at the end, so an introduction has to be moved to ' +
+        'where it belongs.',
       inputSchema: {
         projectId: z.string(),
         timelineItemId: z.string().describe('The clip id, from talkie_timeline'),

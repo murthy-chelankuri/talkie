@@ -35,7 +35,10 @@ describe('what the project agent is allowed to do', () => {
     // introduction" — and a tool the agent cannot call is one a bad instruction cannot reach.
     expect(AGENT_TOOLS).toContain('talkie_timeline')
     expect(AGENT_TOOLS).toContain('talkie_set_narration')
-    expect(AGENT_TOOLS).toContain('talkie_add_scene')
+    expect(AGENT_TOOLS).toContain('talkie_add_html_scene')
+    // New scenes are HTML scenes, as in the app; classic slides and diagrams can only be edited.
+    expect(AGENT_TOOLS).not.toContain('talkie_add_scene')
+    expect(AGENT_TOOLS).not.toContain('talkie_add_diagram')
     // Able to tidy as well as make: a scene is always added at the end, so without move an
     // agent asked for an introduction produces one stranded after the whole demo.
     expect(AGENT_TOOLS).toContain('talkie_edit_slide')

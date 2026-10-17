@@ -223,7 +223,7 @@ needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your 
 | `talkie_start_recording` | Open a real browser and start capturing it |
 | `talkie_navigate`, `talkie_click`, `talkie_type`, `talkie_scroll`, `talkie_wait` | Drive that browser |
 | `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |
-| `talkie_add_scene` | Add a title slide, with a theme and accent colour |
+| `talkie_html_templates`, `talkie_add_html_scene` | Add a scene — a slide, steps, a chart — from a template or a page of its own, as the app does |
 | `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate` | Write the words, have a model write them, speak them |
 | `talkie_export` | Render the MP4 |
 
@@ -232,8 +232,8 @@ recording of instant clicks is unwatchable — the page never settles and a view
 happened. And everything an agent does goes through the app's own undo history, so a change you
 did not want can be undone in the window like any other.
 
-If the app is open while an agent works, it will not show the new clips until the project is
-reopened.
+If the app is open while an agent works, it shows the agent's changes as they land; Project →
+Reload from Disk (⌥⌘R) reads the project again on demand.
 
 ## What Talkie needs on the machine it runs on
 
