@@ -1,11 +1,12 @@
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
 import { cpSync, existsSync, readFileSync, readdirSync } from 'fs'
-import { dirname, join } from 'path'
+import { dirname, join, relative } from 'path'
 import { z } from 'zod'
 import { projectDirName, projectsRootDir } from '../project/paths'
 import { writeJsonAtomic } from '../project/atomicWrite'
 import { slugify } from '../project/slug'
+import { keepOutOfGit, studioDir } from '../studio/studio'
 import { ProjectMetadataSchema } from '../project/schema'
 
 /**
@@ -122,9 +123,13 @@ function installExample(example: ExampleManifest, sourceDir: string, baseDir: st
 
   const timelinePath = join(dir, 'timeline.json')
   if (existsSync(timelinePath)) {
-    const placed = readFileSync(timelinePath, 'utf-8').split(PROJECT_DIR_TOKEN).join(dir)
+    // Media is stored relative to the project now (timelineFile.ts), so the token simply goes.
+    const placed = readFileSync(timelinePath, 'utf-8').split(`${PROJECT_DIR_TOKEN}/`).join('').split(PROJECT_DIR_TOKEN).join('.')
     writeJsonAtomic(timelinePath, JSON.parse(placed))
   }
+  // Every Mac installs the examples for itself, so a Studio checked into git leaves them out.
+  const inStudio = relative(studioDir(baseDir), dir)
+  if (!inStudio.startsWith('..')) keepOutOfGit(inStudio, baseDir)
   writeJsonAtomic(
     join(dir, 'project.json'),
     ProjectMetadataSchema.parse({

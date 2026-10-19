@@ -7,6 +7,9 @@ import { registerTranscriptHandlers } from './ipc/transcriptHandlers'
 import { registerThemeHandlers } from './ipc/themeHandlers'
 import { registerHtmlSceneHandlers } from './ipc/htmlSceneHandlers'
 import { migrateStorageRoot } from './project/migrateStorageRoot'
+import { moveIntoStudio } from './studio/studio'
+import { registerStudioHandlers } from './ipc/studioHandlers'
+import { moveSharedSettings } from './settings/settingsStore'
 import { MIN_HEIGHT, MIN_WIDTH, openingBounds, saveWindowState } from './windowState'
 import { repairAssetPaths } from './project/repairAssetPaths'
 import { installExamples } from './examples/installExamples'
@@ -101,6 +104,9 @@ app.whenReady().then(() => {
   // Before any handler can read a project, bring a previous installation's projects across
   // and point their media at wherever the files now sit.
   migrateStorageRoot()
+  // Projects, themes and the settings that shape a video, into the Studio. See studio/studio.ts.
+  moveIntoStudio()
+  moveSharedSettings()
   repairAssetPaths()
   // After the repairs, so an example lands in a projects folder that is already where it belongs.
   // Never fatal: an app that cannot copy its examples is still an app.
@@ -142,6 +148,7 @@ app.whenReady().then(() => {
   registerProjectHandlers(ipcMain)
   registerTimelineHandlers(ipcMain, () => mainWindowRef)
   registerProjectWatchHandlers(ipcMain, () => mainWindowRef)
+  registerStudioHandlers(ipcMain)
   registerCaptureHandlers(ipcMain, () => mainWindowRef)
   registerTranscriptHandlers(ipcMain)
   registerThemeHandlers(ipcMain)

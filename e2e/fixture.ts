@@ -14,6 +14,7 @@ import { isKokoroDownloaded, kokoroCacheDir } from '../src/main/tts/kokoro/kokor
 import type { SpeechEngineId } from '../src/main/settings/schema'
 import { addHtmlScene } from '../src/main/htmlScene/htmlSceneApi'
 import { templateFiles } from '../src/main/htmlScene/templates'
+import { projectsRootDir } from '../src/main/project/paths'
 
 export const PROJECT_NAME = 'End to end'
 
@@ -73,7 +74,7 @@ export async function makeFixtureWithCut(): Promise<Fixture> {
   const home = mkdtempSync(join(tmpdir(), 'talkie-e2e-'))
   updateSettings({ speech: { engine: 'system' }, narration: { autoDraft: false } }, home)
   const project = createProject(PROJECT_NAME, home)
-  const root = join(home, 'Talkie', 'Projects')
+  const root = projectsRootDir(home)
   const dir = join(root, readdirSync(root).find((entry) => entry.startsWith(project.id))!)
 
   const clip = join(dir, 'sources', 'cut', 'clip.mp4')

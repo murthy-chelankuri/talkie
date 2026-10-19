@@ -4,6 +4,7 @@ import { join } from 'path'
 import { _electron, type ElectronApplication, type Page } from 'playwright'
 import { PROJECT_NAME, type Fixture } from './fixture'
 import type { TranscriptSegment } from '../src/main/transcript/schema'
+import { projectsRootDir } from '../src/main/project/paths'
 
 export type Talkie = {
   app: ElectronApplication
@@ -67,7 +68,7 @@ export async function openProject(win: Page): Promise<void> {
 }
 
 function projectDir(fixture: Fixture): string {
-  const root = join(fixture.home, 'Talkie', 'Projects')
+  const root = projectsRootDir(fixture.home)
   const name = readdirSync(root).find((entry) => entry.startsWith(fixture.projectId))
   if (!name) throw new Error('The fixture project has gone')
   return join(root, name)

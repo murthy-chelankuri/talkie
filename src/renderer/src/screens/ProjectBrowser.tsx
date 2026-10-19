@@ -169,11 +169,18 @@ export function ProjectBrowser({
   }, [createRequest])
 
   useEffect(() => {
-    projectClient
-      .overviews()
-      .then(setProjects)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false))
+    const load = (): void => {
+      projectClient
+        .overviews()
+        .then(setProjects)
+        .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+        .finally(() => setLoading(false))
+    }
+    load()
+    // A Studio in git changes under the app — a pull in Terminal brings projects nobody made here —
+    // so coming back to the window reads the list again.
+    window.addEventListener('focus', load)
+    return () => window.removeEventListener('focus', load)
   }, [])
 
   async function handleCreate(): Promise<void> {

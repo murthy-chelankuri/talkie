@@ -3,6 +3,7 @@ import { join } from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, openProject, type Talkie } from './app'
 import { makeFixture, type Fixture } from './fixture'
+import { projectsRootDir } from '../src/main/project/paths'
 
 let fixture: Fixture
 let talkie: Talkie
@@ -51,7 +52,7 @@ describe('adding a scene', () => {
     await dialog.getByRole('button', { name: /Save scene/ }).click()
     await expect
       .poll(() => {
-        const root = join(fixture.home, 'Talkie', 'Projects')
+        const root = projectsRootDir(fixture.home)
         const dir = join(root, readdirSync(root).find((entry) => entry.startsWith(fixture.projectId))!)
         const clips = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf8')) as { kind: string; data: { params?: Record<string, unknown> } }[]
         return clips.find((clip) => clip.kind === 'html')?.data.params

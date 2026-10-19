@@ -2,20 +2,19 @@ import { homedir } from 'os'
 import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { projectsRootDir } from './paths'
+import { makeTimelinePortable } from './timelineFile'
 import { writeJsonAtomic } from './atomicWrite'
+import { migrateProjectMetadata } from './migrate'
+import { CURRENT_SCHEMA_VERSION } from './schema'
 
 /**
- * Point a timeline's media back at the files after the project folder has moved.
+ * Store every project's media relative to its own folder, re-rooting what was left behind first.
  *
- * Timeline items record where their media lives as an absolute path, so moving the projects
- * folder — the rename from Demo Studio to Talkie, a restored backup, a different machine —
- * leaves every clip pointing at a directory that is no longer there. The files themselves
- * moved with the project, so the fix is to re-root each path onto the project's current
- * directory.
- *
- * Only paths that are actually broken are touched, and only when the media is really at the
- * re-rooted location: a path we cannot resolve is left as it is, since it is the only record
- * of where that media was meant to come from.
+ * Timelines used to record media as full paths, so moving the projects folder — the rename from
+ * Demo Studio to Talkie, the move into the Studio, a restored backup, a clone on another Mac — left
+ * clips pointing at a folder that was no longer there. The files moved with the project; the paths
+ * are now written relative to it (timelineFile.ts), which is also what lets a Studio be checked in.
+ * A path whose media cannot be found is kept as it was: it is the only record of where it was.
  */
 export function repairAssetPaths(baseDir: string = homedir()): void {
   const root = projectsRootDir(baseDir)
@@ -23,46 +22,24 @@ export function repairAssetPaths(baseDir: string = homedir()): void {
 
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
-    repairProject(join(root, entry.name), entry.name)
+    const dir = join(root, entry.name)
+    try {
+      makeTimelinePortable(dir)
+      stampCurrentVersion(dir)
+    } catch (err) {
+      console.error(`Could not make the media paths in ${dir} portable:`, err)
+    }
   }
 }
 
-function repairProject(projectDir: string, dirName: string): void {
-  const timelinePath = join(projectDir, 'timeline.json')
-  if (!existsSync(timelinePath)) return
-
-  let items: unknown
-  try {
-    items = JSON.parse(readFileSync(timelinePath, 'utf-8'))
-  } catch (err) {
-    console.error(`Could not read ${timelinePath} to repair its media paths:`, err)
-    return
-  }
-  if (!Array.isArray(items)) return
-
-  let changed = false
-  const repaired = items.map((item) => {
-    const src = (item as { data?: { src?: unknown } })?.data?.src
-    if (typeof src !== 'string') return item
-
-    const next = rerootedPath(src, projectDir, dirName)
-    if (!next) return item
-
-    changed = true
-    return { ...(item as object), data: { ...(item as { data: object }).data, src: next } }
-  })
-
-  if (changed) writeJsonAtomic(timelinePath, repaired)
-}
-
-function rerootedPath(src: string, projectDir: string, dirName: string): string | null {
-  if (existsSync(src)) return null
-
-  // Everything after the project's own folder name is the part that travelled with it.
-  const marker = `/${dirName}/`
-  const at = src.indexOf(marker)
-  if (at === -1) return null
-
-  const candidate = join(projectDir, src.slice(at + marker.length))
-  return candidate !== src && existsSync(candidate) ? candidate : null
+/**
+ * Mark a project as the version that names media relatively, now that it does, so a Talkie from
+ * before that refuses it plainly instead of opening clips it cannot find.
+ */
+function stampCurrentVersion(dir: string): void {
+  const path = join(dir, 'project.json')
+  if (!existsSync(path)) return
+  const raw = JSON.parse(readFileSync(path, 'utf-8')) as { schemaVersion?: unknown }
+  if (typeof raw.schemaVersion === 'number' && raw.schemaVersion >= CURRENT_SCHEMA_VERSION) return
+  writeJsonAtomic(path, migrateProjectMetadata(raw as Record<string, unknown>))
 }

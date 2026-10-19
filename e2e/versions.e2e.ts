@@ -5,6 +5,7 @@ import { exportsIn, launchTalkie, openProject, type Talkie } from './app'
 import { makeFixture, type Fixture } from './fixture'
 import { videoSeconds } from './long/exported'
 import { FPS } from '../src/composition/constants'
+import { projectsRootDir } from '../src/main/project/paths'
 
 let fixture: Fixture
 let talkie: Talkie
@@ -17,7 +18,7 @@ afterEach(async () => {
 })
 
 function onDisk<T>(file: string): T {
-  const root = join(fixture.home, 'Talkie', 'Projects')
+  const root = projectsRootDir(fixture.home)
   const dir = join(root, readdirSync(root).find((entry) => entry.startsWith(fixture.projectId))!)
   return JSON.parse(readFileSync(join(dir, file), 'utf8'))
 }

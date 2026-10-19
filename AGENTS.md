@@ -215,9 +215,10 @@ These each cost real time to find. None are obvious from the code.
   against, and each is held to how it behaved then. `videoBoundary.test.ts` keeps the third-party
   renderer Talkie used to depend on from coming back — it is the one file that names it.
 - `src/mcp/` — a standalone MCP server, a **separate process**, off by default and token-gated.
-- Projects live in `~/Talkie/Projects/<id>-<slug>/` as `project.json`, `timeline.json`,
-  `transcript.json`, plus `audio/` and `sources/`. Settings are `~/Talkie/settings.json`, mode
-  `0600`.
+- Projects live in the Studio, `~/Talkie/Studio/Projects/<id>-<slug>/`, as `project.json`,
+  `timeline.json`, `transcript.json`, plus `audio/` and `sources/`. This Mac's settings are
+  `~/Talkie/settings.json`, mode `0600`; the ones that shape a video are `~/Talkie/Studio/talkie.json`.
+  See "The Studio" below.
 
 ## Writing narration
 
@@ -399,7 +400,7 @@ drawn in the order it is explained rather than arriving whole.
 ## Themes
 
 A theme is a company's look — three variants (brand, light, dark), fonts, logo, caption and click
-colours — kept once in `~/Talkie/Themes` and chosen per project (`themeId`). `src/main/themes/`.
+colours — kept once in the Studio's `Themes` folder and chosen per project (`themeId`). `src/main/themes/`.
 
 - **The composition gets a `RenderTheme`, with logo and fonts as data URLs.** Not asset-server
   URLs: that server is rooted at the projects folder, and widening it would put `settings.json`
@@ -485,9 +486,11 @@ same functions the app uses, voiced in Kokoro, with every take checked for silen
 changing a story runs it; commit what it writes to `examples/projects/`, and raise the story's
 `version` when people with the old one should get the new.
 
-- **Clips store absolute paths**, so a shipped example holds `{{TALKIE_PROJECT_DIR}}` instead and
-  the installer fills it in. Copying a project by hand left every clip pointing at the machine it
-  came from, and export failed with a 404 for each.
+- **A shipped example holds `{{TALKIE_PROJECT_DIR}}` before its media**, which the installer drops,
+  leaving paths relative to the project as every timeline now stores them (timelineFile.ts). It dates
+  from when clips stored full paths: copying a project by hand left every clip pointing at the
+  machine it came from, and export failed with a 404 for each. Installed examples are added to the
+  Studio's `.gitignore` — every Mac installs its own.
 - **Meet Talkie is filmed, not staged.** `examples/build/tour/` drives the built app in a throwaway
   home, records its windows, draws a pointer in (a recording has none), writes each click down for
   the zoom, and cuts out the waiting. A rebuild reuses the footage Meet Talkie already ships;
@@ -563,6 +566,44 @@ Do not weaken these without understanding what they are for. Each has tests.
 - **No window enables `nodeIntegration`.** Navigation is confined to the app's own pages by
   `src/main/security/navigationGuards.ts`.
 - **The MCP server is off by default** and checks a hashed token on every call.
+
+## The Studio
+
+Everything a video is made of is one folder, `~/Talkie/Studio`, which can be checked into git and
+cloned on another Mac to carry on there (`src/main/studio/`). People wanted to work on a project
+from a second Mac, and before this the work was spread across `~/Talkie` among things that must
+never leave the machine.
+
+```
+~/Talkie/Studio/          ← the git repository
+  Projects/<id>-<slug>/   media named relative to the project's own folder
+  Themes/                 the theme library its projects draw from
+  talkie.json             voice, pace, pauses, captions burned in, click highlight
+  .gitignore              written once by Talkie, then the person's: exports, agent runs,
+                          unsaved AI themes, temporary files, installed examples
+~/Talkie/settings.json    this Mac's: providers and API keys, the agent token, certificates
+~/Talkie/Models, logs     this Mac's: the Kokoro voice, the log
+```
+
+- **A clip's media is stored relative to its project** (`timelineFile.ts`), and is a full path
+  everywhere else in the app — only that file knows. Full paths tied a project to one Mac and one
+  home folder: cloned, every clip pointed into someone else's, and repairing it wrote this Mac's
+  paths back, so two Macs would rewrite the same lines on every pull. Older timelines are made
+  relative at startup (`repairAssetPaths.ts`), and only when something changes, so opening a Studio
+  never dirties it. Media outside a project keeps its full path — the only record of where it is.
+- **Project format version 2** marks that, so a Talkie from before refuses a project plainly rather
+  than opening clips it cannot find.
+- **Settings are split by what they are for.** `sharedPart` in `settingsStore.ts` lists what goes
+  into `talkie.json`; everything else stays in `settings.json`. A field added to settings is this
+  Mac's until someone adds it there on purpose — the same rule as the problem report's allowlist,
+  and for the same reason: a key in a git repository is a key published.
+- **Moving into the Studio is timid** (`moveIntoStudio`), as the Demo Studio rename was: a folder
+  moves only when the Studio has none of its own, and the paths read the old place until it has.
+- **Talkie runs no git.** Settings → System shows where the Studio is, whether it is in git, and the
+  commands to start or clone; the person's own git and credentials do the rest. Coming back to the
+  window reads the project list, settings and themes again, and an open project reloads on its
+  own, so a pull in Terminal shows up without a restart.
+- Two Macs changing one project at once conflict like any file: pull before, push after.
 
 ## A project changed while it is open
 

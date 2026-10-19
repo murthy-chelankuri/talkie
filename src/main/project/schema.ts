@@ -1,7 +1,11 @@
 import { z } from 'zod'
 import { ProjectContextSchema } from './projectContext'
 
-export const CURRENT_SCHEMA_VERSION = 1
+/**
+ * 2: a clip's media is named relative to its project's folder (timelineFile.ts). Raised so a
+ * Talkie from before that says "update the app" rather than playing clips it cannot find.
+ */
+export const CURRENT_SCHEMA_VERSION = 2
 
 export const ProjectMetadataSchema = z.object({
   id: z.string(),
@@ -20,7 +24,7 @@ export const ProjectMetadataSchema = z.object({
   /** What the project is about, for everything that writes words for it. See projectContext.ts. */
   context: ProjectContextSchema.optional(),
   /**
-   * The theme this project's video follows, from the library in ~/Talkie/Themes. Absent means the
+   * The theme this project's video follows, from the library in the Studio's Themes folder. Absent means the
    * look every project had before themes existed. See src/main/themes.
    */
   themeId: z.string().optional(),

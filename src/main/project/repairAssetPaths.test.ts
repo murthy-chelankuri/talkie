@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { projectsRootDir } from './paths'
 import { repairAssetPaths } from './repairAssetPaths'
+import { readTimelineFile } from './timelineFile'
 
 describe('repairAssetPaths', () => {
   let baseDir: string
@@ -39,7 +40,8 @@ describe('repairAssetPaths', () => {
 
     repairAssetPaths(baseDir)
 
-    expect(readTimeline()[0].data.src).toBe(media)
+    expect(readTimeline()[0].data.src).toBe('sources/images/shot.png')
+    expect((readTimelineFile(projectDir)[0] as { data: { src: string } }).data.src).toBe(media)
   })
 
   it('repairs every item that needs it', () => {
@@ -54,19 +56,38 @@ describe('repairAssetPaths', () => {
     repairAssetPaths(baseDir)
 
     const repaired = readTimeline()
-    expect(repaired[0].data.src).toBe(join(projectDir, 'sources', 'images', 'a.png'))
-    expect(repaired[1].data.src).toBe(join(projectDir, 'sources', 'session-1', 'video.mp4'))
+    expect(repaired[0].data.src).toBe('sources/images/a.png')
+    expect(repaired[1].data.src).toBe('sources/session-1/video.mp4')
   })
 
-  it('does not touch a file whose paths all still resolve', () => {
+  it('stores media inside the project relative to it, so the timeline names no Mac', () => {
     const media = join(projectDir, 'sources', 'images', 'shot.png')
     writeFileSync(media, 'png-bytes')
     writeTimeline([item(media)])
+
+    repairAssetPaths(baseDir)
+
+    expect(readFileSync(join(projectDir, 'timeline.json'), 'utf-8')).not.toContain(baseDir)
+    expect(readTimeline()[0].data.src).toBe('sources/images/shot.png')
+  })
+
+  it('does not touch a timeline that is already portable', () => {
+    writeFileSync(join(projectDir, 'sources', 'images', 'shot.png'), 'png-bytes')
+    writeTimeline([item('sources/images/shot.png')])
+    repairAssetPaths(baseDir)
     const before = statSync(join(projectDir, 'timeline.json')).mtimeMs
 
     repairAssetPaths(baseDir)
 
     expect(statSync(join(projectDir, 'timeline.json')).mtimeMs).toBe(before)
+  })
+
+  it('keeps the full path of media outside the project', () => {
+    writeTimeline([item('/Library/Desktop Pictures/elsewhere.png')])
+
+    repairAssetPaths(baseDir)
+
+    expect(readTimeline()[0].data.src).toBe('/Library/Desktop Pictures/elsewhere.png')
   })
 
   it('leaves a path alone when the media is not at the new location either', () => {
@@ -87,7 +108,8 @@ describe('repairAssetPaths', () => {
     repairAssetPaths(baseDir)
     repairAssetPaths(baseDir)
 
-    expect(readTimeline()[0].data.src).toBe(media)
+    expect(readTimeline()[0].data.src).toBe('sources/images/shot.png')
+    expect(media).toBe(join(projectDir, 'sources', 'images', 'shot.png'))
   })
 
   it('survives a project with no timeline yet', () => {

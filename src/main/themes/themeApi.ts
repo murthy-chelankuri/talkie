@@ -6,6 +6,7 @@ import { readFontInfo, type FontInfo } from './fontInfo'
 import { writeJsonAtomic } from '../project/atomicWrite'
 import { slugify } from '../project/slug'
 import { ROOT_NAME } from '../project/migrateStorageRoot'
+import { studioDir } from '../studio/studio'
 import { listProjects, openProject } from '../project/projectApi'
 import { BUILTIN_THEMES, builtinTheme, isBuiltinThemeId } from './builtinThemes'
 import { THEME_SCHEMA_VERSION, ThemeDraftSchema, ThemeSchema, type Theme, type ThemeDraft } from './schema'
@@ -24,7 +25,10 @@ const LOGO_TYPES = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp'])
 const FONT_TYPES = new Set(['.woff2', '.woff', '.ttf', '.otf'])
 
 export function themesRootDir(baseDir: string = homedir()): string {
-  return join(baseDir, ROOT_NAME, 'Themes')
+  const current = join(studioDir(baseDir), 'Themes')
+  // Where they were before the Studio, should the move at startup not have happened.
+  const before = join(baseDir, ROOT_NAME, 'Themes')
+  return !existsSync(current) && existsSync(before) ? before : current
 }
 
 /** Never for a built-in theme, which has no folder — and so nowhere a file could be written. */
