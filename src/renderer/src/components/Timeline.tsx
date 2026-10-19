@@ -327,7 +327,7 @@ export function VoiceLayer({
 
       {/* Over the waveform rather than beside it, so the words stay readable and the picture
           keeps the whole width it is entitled to. */}
-      <span className="relative flex items-center gap-1.5 rounded bg-surface/75 px-1 backdrop-blur-[1px]">
+      <span className="relative flex items-center gap-1.5 rounded-sm bg-surface/75 px-1 backdrop-blur-[1px]">
         {own ? (
           <Mic size={11} className="shrink-0" aria-hidden="true" />
         ) : (
@@ -395,7 +395,7 @@ function ClipBlock({
       <ClipThumbnail item={item} />
       {/* Deliberately not themed: this label sits on arbitrary footage, so it needs a fixed
           dark scrim to stay legible in either theme. */}
-      <span className="absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
+      <span className="absolute bottom-1 left-1 flex items-center gap-1 rounded-sm bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
         {CLIP_ICONS[item.kind] ?? <ImageIcon size={10} />}
         {item.kind === 'scene' ? 'slide' : item.kind}
       </span>
@@ -888,7 +888,7 @@ export function Timeline({
               aria-hidden="true"
               className="pointer-events-none absolute top-0 bottom-0 left-0 z-10 w-px bg-danger"
             >
-              <div className="-ml-[5px] h-2.5 w-2.5 rotate-45 rounded-[2px] bg-danger" />
+              <div className="ml-[-5px] h-2.5 w-2.5 rotate-45 rounded-[2px] bg-danger" />
             </div>
           )}
         </div>

@@ -330,7 +330,7 @@ function Scene({
             onSeek(item.start)
             onSelectItem(item)
           }}
-          className="group/thumb relative aspect-video w-28 shrink-0 overflow-hidden rounded-md bg-raised ring-1 ring-paper-border transition-shadow hover:ring-2 hover:ring-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="group/thumb relative aspect-video w-28 shrink-0 overflow-hidden rounded-md bg-raised ring-1 ring-paper-border transition-shadow hover:ring-2 hover:ring-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
         >
           <ClipThumbnail item={item} />
           <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/thumb:opacity-100">
@@ -497,7 +497,7 @@ function ResizeCorner({
       onPointerCancel={() => (dragRef.current = null)}
       onDoubleClick={() => onResize(null)}
       onKeyDown={onKeyDown}
-      className="absolute -right-5 bottom-1 flex h-5 w-5 cursor-nwse-resize touch-none items-end justify-end rounded text-text-muted opacity-40 transition-opacity hover:text-text hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group-hover/scene:opacity-80"
+      className="absolute -right-5 bottom-1 flex h-5 w-5 cursor-nwse-resize touch-none items-end justify-end rounded-sm text-text-muted opacity-40 transition-opacity hover:text-text hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent group-hover/scene:opacity-80"
     >
       {/* Three diagonal ticks, the mark every window corner uses for "drag me". */}
       <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
@@ -508,7 +508,7 @@ function ResizeCorner({
 }
 
 /** The look both layers of the box share, so a wrapped line falls in the same place in each. */
-const TEXT = 'm-0 block w-full border-0 p-0 font-serif whitespace-pre-wrap break-words'
+const TEXT = 'm-0 block w-full border-0 p-0 font-serif whitespace-pre-wrap wrap-break-word'
 
 
 
@@ -555,7 +555,7 @@ function TimedText({
       <div aria-hidden="true" data-testid="script-backdrop" className={cn(TEXT, 'pointer-events-none text-paper-text')}>
         {scriptParts(value).map((part, index) =>
           part.mark ? (
-            <span key={index} className="rounded bg-accent/15 text-accent [box-decoration-break:clone]">
+            <span key={index} className="rounded-sm bg-accent/15 text-accent [box-decoration-break:clone]">
               {part.text}
             </span>
           ) : (
@@ -578,7 +578,7 @@ function TimedText({
         className={cn(
           TEXT,
           'absolute inset-0 h-full resize-none overflow-hidden bg-transparent text-transparent caret-paper-text',
-          'selection:bg-accent/30 placeholder:italic placeholder:text-text-muted focus:outline-none'
+          'selection:bg-accent/30 placeholder:italic placeholder:text-text-muted focus:outline-hidden'
         )}
       />
     </div>

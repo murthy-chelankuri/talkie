@@ -137,7 +137,7 @@ export function Inspector({
             aria-label={`In the version ${version.name}`}
             checked={!version.leftOut.includes(item.id)}
             onChange={(event) => onToggleIncluded(item, event.target.checked)}
-            className="h-4 w-4 accent-[var(--color-accent-fill)]"
+            className="h-4 w-4 accent-accent-fill"
           />
         </label>
       )}

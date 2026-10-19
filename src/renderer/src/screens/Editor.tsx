@@ -896,7 +896,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                 if (id === 'timeline') scriptFocus.leave()
               }}
               className={cn(
-                'relative pb-2 pt-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'relative pb-2 pt-1 text-[12px] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
                 bottomPane === id ? 'font-medium text-text' : 'text-text-muted hover:text-text'
               )}
             >
@@ -999,7 +999,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     <div className="flex h-full gap-2 bg-bg pb-2 pr-2">
       <TopBarActions>
         {diskNote && (
-          <span role="status" className="max-w-[26rem] truncate text-[11px] text-text-muted" title={diskNote}>
+          <span role="status" className="max-w-104 truncate text-[11px] text-text-muted" title={diskNote}>
             {diskNote}
           </span>
         )}

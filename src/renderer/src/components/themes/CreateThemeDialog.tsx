@@ -83,7 +83,7 @@ export function CreateThemeDialog({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Payments for small businesses. Calm and trustworthy; navy and green."
-          className="min-h-[4rem]"
+          className="min-h-16"
         />
       </Field>
       <Field label="Logo or brand guide">

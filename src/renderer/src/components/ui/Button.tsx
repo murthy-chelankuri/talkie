@@ -32,7 +32,7 @@ export function Button({ variant = 'primary', size = 'md', className, ...props }
     <button
       className={cn(
         'inline-flex items-center justify-center gap-1.5 rounded-[9px] font-medium transition-[background-color,color,filter] disabled:cursor-not-allowed disabled:opacity-50',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],
         className

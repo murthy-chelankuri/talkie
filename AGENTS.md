@@ -234,8 +234,10 @@ typing, and says under each scene whether the words fit the clip: estimated at
 `WORDS_PER_SECOND` until there is a take, then measured off it (`narrationFit.ts`). Timings are
 painted as chips under a transparent textarea, so the stored text is exactly what was typed.
 
-Token colours go through `color-mix` in `tailwind.config.ts` so `ring-accent/35` and the like
-work. With bare `var()` Tailwind silently emitted nothing for any colour with an opacity.
+The colour tokens are Tailwind 4's theme (`@theme static` in `index.css`): they are already named
+`--color-<name>`, so `ring-accent/35` and the like mix the token with an opacity themselves. The theme
+also keeps Tailwind 3's line heights, as lengths — as ratios a small badge in a `text-xs` row came
+out three pixels shorter and moved every card.
 
 **Timings live in the words.** A line beginning `[12.3]` is spoken at that second of its clip,
 and `narrationFromText` reads them back on the way in — in the IPC handlers and in MCP, so every

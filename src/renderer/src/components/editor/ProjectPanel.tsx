@@ -34,7 +34,7 @@ export function ProjectPanel({
       <button
         type="button"
         onClick={onEditContext}
-        className="flex w-full items-start gap-2 rounded-xl bg-raised p-3 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex w-full items-start gap-2 rounded-xl bg-raised p-3 text-left transition-colors hover:bg-surface-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       >
         <BookOpen size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
         <span className="flex min-w-0 flex-col gap-0.5">

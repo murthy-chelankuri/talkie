@@ -32,7 +32,7 @@ export function ExportedCard({
   if (!file) return null
 
   return (
-    <div role="status" className="flex flex-col gap-2.5 rounded-lg border border-success/40 bg-success/[0.06] p-3">
+    <div role="status" className="flex flex-col gap-2.5 rounded-lg border border-success/40 bg-success/6 p-3">
       <div className="flex items-start gap-2">
         <CircleCheck size={15} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col">

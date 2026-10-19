@@ -326,7 +326,7 @@ export function ThemeEditor({
       )}
 
       {confirmingDelete && (
-        <p role="alert" className="rounded-lg border border-danger/40 bg-danger/[0.06] p-3 text-[12px] leading-relaxed text-text">
+        <p role="alert" className="rounded-lg border border-danger/40 bg-danger/6 p-3 text-[12px] leading-relaxed text-text">
           {confirmingDelete.length === 0
             ? 'No project uses this theme. Delete it?'
             : `${confirmingDelete.map((p) => p.name).join(', ')} ${confirmingDelete.length === 1 ? 'uses' : 'use'} this theme, and will go back to Talkie’s own look. Delete it?`}
@@ -405,7 +405,7 @@ function ColourField({
           aria-label={`${label} colour`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-7 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
+          className="h-7 w-8 shrink-0 cursor-pointer rounded-sm border border-border bg-transparent p-0"
         />
         <Input
           aria-label={label}
@@ -483,7 +483,7 @@ function FontField({
                 type="button"
                 aria-label={`Remove ${face.file.replace(/^fonts\//, '')}`}
                 onClick={() => onRemove(face.file)}
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-text-muted hover:text-danger"
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-text-muted hover:text-danger"
               >
                 <X size={11} />
               </button>

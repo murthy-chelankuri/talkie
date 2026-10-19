@@ -63,7 +63,7 @@ export function RewriteStatus(): JSX.Element | null {
 
   if (!shown) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-60 flex justify-center px-4">
       <div className="pointer-events-auto flex max-w-lg items-center gap-2.5 rounded-full bg-raised px-4 py-2 text-[12px] text-text shadow-2xl ring-1 ring-border">
         {shown.state === 'working' && <Working what={`${shown.doing} the selected words`} slowNote="a model can take a while" className="text-[12px]" />}
         {shown.state === 'done' && (

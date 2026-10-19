@@ -67,7 +67,7 @@ export function AboutProjectDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-xs">
       <div
         role="dialog"
         aria-label="About this project"
@@ -98,7 +98,7 @@ export function AboutProjectDialog({
               placeholder={
                 'Talkie records a browser session with no sound, then writes and speaks the narration over it.\nThe strip at the bottom is the timeline; each piece on it is a clip.\nCall it a walkthrough, not a video.'
               }
-              className="min-h-[7rem] resize-y leading-relaxed"
+              className="min-h-28 resize-y leading-relaxed"
             />
           </Field>
 
@@ -156,7 +156,7 @@ export function AboutProjectDialog({
               <button
                 type="button"
                 onClick={() => setDraft((d) => ({ ...d, neverSay: [...d.neverSay, ''] }))}
-                className="flex items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
+                className="flex items-center gap-1 self-start rounded-sm border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
               >
                 <Plus size={11} />
                 {rules.length === 0 ? 'Add something it must never say' : 'Add another'}
@@ -211,7 +211,7 @@ export function AboutProjectDialog({
                     pronunciations: [...(d.pronunciations ?? []), { written: '', spoken: '' }]
                   }))
                 }
-                className="flex items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
+                className="flex items-center gap-1 self-start rounded-sm border-0 bg-transparent px-0 py-0 text-[11px] text-accent hover:underline"
               >
                 <Plus size={11} />
                 {pronunciations.length === 0 ? 'Add a word the voice says wrong' : 'Add another'}
