@@ -11,9 +11,12 @@ export class UnsupportedSchemaVersionError extends Error {
 
 type Migration = (metadata: Record<string, unknown>) => Record<string, unknown>
 
-// Keyed by the version a migration upgrades FROM. Empty until the schema
-// changes for the first time after v1 — see spec §4/§11.
-const MIGRATIONS: Record<number, Migration> = {}
+// Keyed by the version a migration upgrades FROM.
+const MIGRATIONS: Record<number, Migration> = {
+  // Nothing in project.json changes: v2 is about timeline.json, whose paths are made relative as
+  // they are read and written (timelineFile.ts) and all at once at startup (repairAssetPaths.ts).
+  1: (metadata) => ({ ...metadata, schemaVersion: 2 })
+}
 
 export function migrateProjectMetadata(raw: Record<string, unknown>): ProjectMetadata {
   let version = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 0

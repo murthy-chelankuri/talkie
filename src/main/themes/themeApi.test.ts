@@ -29,8 +29,8 @@ afterEach(() => {
 })
 
 describe('the theme library', () => {
-  it('keeps themes beside the projects, in ~/Talkie/Themes', () => {
-    expect(themesRootDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Themes'))
+  it('keeps themes beside the projects, in the Studio', () => {
+    expect(themesRootDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Studio', 'Themes'))
   })
 
   it('saves a theme in a folder named for it, and reads it back', () => {

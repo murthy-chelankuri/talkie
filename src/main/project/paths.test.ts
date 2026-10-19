@@ -15,7 +15,13 @@ describe('paths', () => {
     rmSync(baseDir, { recursive: true, force: true })
   })
 
-  it('builds the projects root under Talkie/Projects', () => {
+  it('keeps projects in the Studio, under Talkie/Studio/Projects', () => {
+    expect(projectsRootDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Studio', 'Projects'))
+  })
+
+  it('still reads projects from Talkie/Projects until they have been moved into the Studio', () => {
+    mkdirSync(join(baseDir, 'Talkie', 'Projects'), { recursive: true })
+
     expect(projectsRootDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Projects'))
   })
 

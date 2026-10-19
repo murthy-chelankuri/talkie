@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ProjectBrowser } from './screens/ProjectBrowser'
 import { Editor } from './screens/Editor'
 import { AppShell } from './components/AppShell'
@@ -7,6 +7,7 @@ import { ProjectSwitcher } from './components/ProjectSwitcher'
 import { projectClient, type ProjectSummary } from './api/projectClient'
 import { useMenuActions, useMenuState } from './lib/menuActions'
 import { rememberLastProject } from './lib/lastProject'
+import { notifySettingsChanged } from './lib/settingsChanged'
 
 export default function App(): JSX.Element {
   const [openProject, setOpenProject] = useState<ProjectSummary | null>(null)
@@ -15,6 +16,13 @@ export default function App(): JSX.Element {
   const [createRequest, setCreateRequest] = useState(0)
 
   useMenuState({ projectOpen: openProject !== null })
+
+  // The Studio's settings and themes can change under the app with a git pull, so coming back to
+  // the window reads them again, as a change made in Settings would.
+  useEffect(() => {
+    window.addEventListener('focus', notifySettingsChanged)
+    return () => window.removeEventListener('focus', notifySettingsChanged)
+  }, [])
 
   useMenuActions({
     // Both leave the editor, because the list is where a project is chosen or started.

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, type Talkie } from './app'
 import { makeFixture, type Fixture } from './fixture'
 import { FPS } from '../src/composition/constants'
+import { projectsRootDir } from '../src/main/project/paths'
 
 let fixture: Fixture
 let talkie: Talkie
@@ -27,7 +28,7 @@ describe('the scene clock', () => {
     await win.getByRole('button', { name: 'Open Taskboard walkthrough' }).click()
     await win.getByRole('tablist', { name: 'Ways to work on this project' }).waitFor()
 
-    const root = join(fixture.home, 'Talkie', 'Projects')
+    const root = projectsRootDir(fixture.home)
     const dir = readdirSync(root)
       .map((entry) => join(root, entry))
       .find((each) => JSON.parse(readFileSync(join(each, 'project.json'), 'utf8')).name === 'Taskboard walkthrough')!

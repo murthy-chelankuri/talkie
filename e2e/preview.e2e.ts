@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { launchTalkie, openProject, type Talkie } from './app'
 import { CUT_FRAME, makeFixture, makeFixtureWithCut, type Fixture } from './fixture'
 import { FPS, NARRATION_LEAD_IN_FRAMES } from '../src/composition/constants'
+import { projectsRootDir } from '../src/main/project/paths'
 
 let fixture: Fixture
 let talkie: Talkie
@@ -123,7 +124,7 @@ type Clip = { id: string; kind: string; start: number; duration: number }
 
 /** An installed example's clips, and which of them have a take. */
 function exampleOnDisk(home: string, name: string): { clips: Clip[]; voiced: Set<string> } {
-  const root = join(home, 'Talkie', 'Projects')
+  const root = projectsRootDir(home)
   for (const entry of readdirSync(root)) {
     const dir = join(root, entry)
     if (JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).name !== name) continue

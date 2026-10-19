@@ -24,7 +24,9 @@ vi.mock('../api/projectClient', () => ({
     kokoroManual: vi.fn(),
     kokoroImport: vi.fn(),
     kokoroCheck: vi.fn(),
-    kokoroShowFolder: vi.fn()
+    kokoroShowFolder: vi.fn(),
+    studio: vi.fn(() => Promise.resolve({ path: '/x', shownPath: '~/Talkie/Studio', inGit: false })),
+    revealStudio: vi.fn()
   }
 }))
 

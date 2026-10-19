@@ -235,6 +235,25 @@ did not want can be undone in the window like any other.
 If the app is open while an agent works, it shows the agent's changes as they land; Project →
 Reload from Disk (⌥⌘R) reads the project again on demand.
 
+## Carrying on from another Mac
+
+Your projects, themes and the settings that shape a video — voice, pace, captions, the click
+highlight — are kept together in `~/Talkie/Studio`. Put that folder in git and clone it on another
+Mac, and Talkie picks up where you left off. API keys, the agent token and the downloaded Kokoro
+voice stay on each Mac and are never in it, and nor are exports or the examples Talkie ships.
+
+```bash
+cd ~/Talkie/Studio
+git init && git add . && git commit -m "My Talkie Studio"
+git remote add origin <your repository> && git push -u origin main
+```
+
+On the other Mac, quit Talkie, move any `~/Talkie/Studio` already there aside, and
+`git clone <your repository> ~/Talkie/Studio`. Settings → System shows where the Studio is and
+whether it is in git. Recordings are large; plain git copes, but GitHub refuses any one file over
+100 MB. Pull before you start and push when you stop — two Macs changing one project at once
+conflict like any file.
+
 ## What Talkie needs on the machine it runs on
 
 Settings opens with what this machine can and cannot do, so a missing piece shows up before

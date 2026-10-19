@@ -44,7 +44,7 @@ describe('createProject', () => {
 
     expect(metadata.name).toBe('Checkout Flow')
     expect(metadata.id).toBeTruthy()
-    expect(metadata.schemaVersion).toBe(1)
+    expect(metadata.schemaVersion).toBe(2)
   })
 
   it('creates the project directory with the expected subdirectories', () => {

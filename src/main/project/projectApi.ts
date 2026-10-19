@@ -12,6 +12,7 @@ import {
 import { projectsRootDir, projectDirName, PROJECT_SUBDIRS, findProjectDir } from './paths'
 import { slugify } from './slug'
 import { writeJsonAtomic } from './atomicWrite'
+import { readTimelineFile, writeTimelineFile } from './timelineFile'
 import { migrateProjectMetadata } from './migrate'
 import { ProjectContextSchema, hasProjectContext, type ProjectContext } from './projectContext'
 import { TimelineItemSchema, TIMELINE_ITEM_DATA_SCHEMAS, type TimelineItem } from './timeline/schema'
@@ -49,7 +50,7 @@ export function createProject(
   })
 
   writeJsonAtomic(join(dir, 'project.json'), metadata)
-  writeJsonAtomic(join(dir, 'timeline.json'), [])
+  writeTimelineFile(dir, [])
   writeJsonAtomic(join(dir, 'transcript.json'), [])
 
   return metadata
@@ -221,7 +222,7 @@ export function readTimeline(id: string, baseDir: string = homedir()): TimelineI
     throw new Error(`No project found with id ${id}`)
   }
 
-  const raw = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
+  const raw = readTimelineFile(dir)
   try {
     return raw.map((item: unknown) => TimelineItemSchema.parse(asDeckPicture(item)))
   } catch (err) {
@@ -238,7 +239,7 @@ export function readTimelineLenient(id: string, baseDir: string = homedir()): Ti
     throw new Error(`No project found with id ${id}`)
   }
 
-  const raw = JSON.parse(readFileSync(join(dir, 'timeline.json'), 'utf-8'))
+  const raw = readTimelineFile(dir)
   const items: TimelineItem[] = []
   for (const item of raw) {
     try {
@@ -271,7 +272,7 @@ export function addTimelineItem(
   }
   const timeline = readTimeline(id, baseDir)
   timeline.push(newItem)
-  writeJsonAtomic(join(dir, 'timeline.json'), timeline)
+  writeTimelineFile(dir, timeline)
   return newItem
 }
 
@@ -348,7 +349,7 @@ export function updateSceneData(
 
   const updated = TimelineItemSchema.parse({ ...timeline[index], data: normaliseScene(timeline[index].kind, data) })
   timeline[index] = updated
-  writeJsonAtomic(join(dir, 'timeline.json'), timeline)
+  writeTimelineFile(dir, timeline)
   return updated
 }
 
@@ -719,7 +720,7 @@ export function fitClipToNarration(
   })
 
   const resequenced = withSequentialStarts(timeline)
-  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  writeTimelineFile(dir, resequenced)
   return resequenced[index]
 }
 
@@ -751,7 +752,7 @@ export function updateTimelineItemDuration(
   }
   timeline[index] = updated
   const resequenced = withSequentialStarts(timeline)
-  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  writeTimelineFile(dir, resequenced)
   return resequenced[index]
 }
 
@@ -772,7 +773,7 @@ export function deleteTimelineItem(
   }
 
   const resequenced = withSequentialStarts(remaining)
-  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  writeTimelineFile(dir, resequenced)
 
   // Narration belongs to a clip, so it goes with it rather than lingering as a segment
   // pointing at something no longer on the timeline.
@@ -847,7 +848,7 @@ export function splitTimelineItem(
 
   const split = [...timeline.slice(0, index), ...halves, ...timeline.slice(index + 1)]
   const resequenced = withSequentialStarts(split)
-  writeJsonAtomic(join(dir, 'timeline.json'), resequenced)
+  writeTimelineFile(dir, resequenced)
   return [resequenced[index], resequenced[index + 1]]
 }
 
@@ -903,6 +904,6 @@ export function reorderTimelineItems(id: string, orderedIds: string[], baseDir: 
   const byId = new Map(timeline.map((item) => [item.id, item]))
   const reordered = withSequentialStarts(orderedIds.map((itemId) => byId.get(itemId) as TimelineItem))
 
-  writeJsonAtomic(join(dir, 'timeline.json'), reordered)
+  writeTimelineFile(dir, reordered)
   return reordered
 }

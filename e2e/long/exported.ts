@@ -5,12 +5,13 @@ import { join } from 'path'
 import { takeShape, type TakeShape } from '../audio'
 import { ffmpegPath, ffprobePath } from '../../src/main/media'
 import { FPS, NARRATION_LEAD_IN_FRAMES } from '../../src/composition/constants'
+import { projectsRootDir } from '../../src/main/project/paths'
 
 export type Clip = { id: string; kind: string; start: number; duration: number }
 
 /** A project on disk, found by its name: its folder, clips, and each voiced clip's take. */
 export function projectOnDisk(home: string, name: string): { dir: string; clips: Clip[]; takes: Map<string, string> } {
-  const root = join(home, 'Talkie', 'Projects')
+  const root = projectsRootDir(home)
   for (const entry of readdirSync(root)) {
     const dir = join(root, entry)
     if (JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).name !== name) continue

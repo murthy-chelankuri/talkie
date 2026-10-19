@@ -42,6 +42,7 @@ import type { ExportProgress, ExportResult } from '../main/render/exportProgress
 import type { SceneRequest, SceneResult } from '../main/agent/writeScene'
 import type { DraftResult } from '../main/agent/draftNarration'
 import type { DiskChange } from '../main/project/diskChange'
+import type { StudioInfo } from '../main/studio/describeStudio'
 
 const projectApi = {
   create: (name: string, context?: ProjectContext): Promise<ProjectMetadata> =>
@@ -85,6 +86,9 @@ const settingsApi = {
   resetSpeech: (): Promise<Settings> => ipcRenderer.invoke('settings:resetSpeech'),
   readiness: (): Promise<ReadinessCheck[]> => ipcRenderer.invoke('settings:readiness'),
   reportProblem: (description: string): Promise<ReportOutcome> => ipcRenderer.invoke('settings:diagnostics:report', description),
+  /** Where the Studio is, and whether it is in git. See studio/studio.ts. */
+  studio: (): Promise<StudioInfo> => ipcRenderer.invoke('settings:studio:describe'),
+  revealStudio: (): Promise<string | null> => ipcRenderer.invoke('settings:studio:reveal'),
   mcpConnection: (): Promise<McpConnection> => ipcRenderer.invoke('settings:mcpConnection'),
   mcpCreateToken: (): Promise<{ token: string; connection: McpConnection }> =>
     ipcRenderer.invoke('settings:mcpCreateToken'),
