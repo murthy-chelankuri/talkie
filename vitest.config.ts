@@ -17,15 +17,24 @@ export default defineConfig({
     // The log goes to a folder of the run's own, so a test that fails on purpose never writes into
     // the person's ~/Talkie/logs — the file a problem report is made from.
     env: { TALKIE_HEADLESS: process.env.TALKIE_HEADLESS ?? '1', TALKIE_LOG_HOME: join(tmpdir(), 'talkie-test-logs') },
-    include: [
-      'src/main/**/*.test.ts',
-      'src/mcp/**/*.test.ts',
-      'src/composition/**/*.test.{ts,tsx}',
-      'src/video/**/*.test.{ts,tsx}',
-      'src/renderer/**/*.test.{ts,tsx}',
-      'src/htmlScene/**/*.test.ts'
+    // Two projects because the renderer's tests need a DOM and nothing else does; vitest 3 took
+    // away matching an environment by path.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          include: [
+            'src/main/**/*.test.ts',
+            'src/mcp/**/*.test.ts',
+            'src/composition/**/*.test.{ts,tsx}',
+            'src/video/**/*.test.{ts,tsx}',
+            'src/htmlScene/**/*.test.ts'
+          ]
+        }
+      },
+      { extends: true, test: { name: 'renderer', environment: 'jsdom', include: ['src/renderer/**/*.test.{ts,tsx}'] } }
     ],
-    environmentMatchGlobs: [['src/renderer/**/*.test.{ts,tsx}', 'jsdom']],
     setupFiles: ['src/renderer/src/test/setup.ts']
   }
 })
