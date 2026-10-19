@@ -133,7 +133,7 @@ export function SettingsDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-xs"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -156,7 +156,7 @@ export function SettingsDialog({
               className={cn(
                 'flex items-center gap-2.5 rounded-lg border-0 px-2.5 py-2 text-left transition-colors',
                 section === item.id
-                  ? 'bg-surface text-text shadow-sm'
+                  ? 'bg-surface text-text shadow-xs'
                   : 'bg-transparent text-text-muted hover:text-text'
               )}
             >
@@ -290,8 +290,8 @@ function Switch({
     >
       <span
         className={cn(
-          'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all',
-          checked ? 'left-[1.125rem]' : 'left-0.5'
+          'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all',
+          checked ? 'left-4.5' : 'left-0.5'
         )}
       />
     </button>
@@ -766,7 +766,7 @@ function KokoroManualPanel({ open, onReady }: { open: boolean; onReady: () => vo
             fetch them on another machine — and add them here. The largest is served from a Hugging
             Face download host (*.hf.co), which the proxy may need to allow as well.
           </p>
-          <ol className="flex flex-col gap-1 rounded bg-raised px-2.5 py-2">
+          <ol className="flex flex-col gap-1 rounded-sm bg-raised px-2.5 py-2">
             {manual.files.map((file) => (
               <li key={file.path} className="flex items-baseline justify-between gap-3 text-[11px]">
                 <a href={file.url} target="_blank" rel="noreferrer" className="truncate text-accent hover:underline">
@@ -1111,7 +1111,7 @@ function RecordingSection({
               aria-label="Pick a highlight colour"
               value={highlightColour}
               onChange={(event) => onPatch({ highlightColour: event.target.value })}
-              className="h-7 w-9 cursor-pointer rounded border border-border bg-transparent p-0"
+              className="h-7 w-9 cursor-pointer rounded-sm border border-border bg-transparent p-0"
             />
           </div>
         </Field>
@@ -1261,7 +1261,7 @@ function Disclosure({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="flex shrink-0 items-center gap-1 self-start rounded border-0 bg-transparent px-0 py-0 text-[11px] text-text-muted hover:text-text"
+      className="flex shrink-0 items-center gap-1 self-start rounded-sm border-0 bg-transparent px-0 py-0 text-[11px] text-text-muted hover:text-text"
     >
       <ChevronRight size={11} className={cn('transition-transform', open && 'rotate-90')} aria-hidden="true" />
       {children}

@@ -17,8 +17,9 @@ const ratio = (a: string, b: string): number => {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-describe.each([[':root', 'light'], ["[data-theme='dark']", 'dark']])('the %s (%s) theme', (selector) => {
-  const t = block(selector.startsWith('[') ? `:root${selector}` : selector)
+// The light values are Tailwind's theme (`@theme static`); the dark ones override them on the root.
+describe.each([['@theme static', 'light'], [":root[data-theme='dark']", 'dark']])('the %s (%s) theme', (selector) => {
+  const t = block(selector)
   const surfaces = ['color-bg', 'color-surface', 'color-raised', 'color-surface-hover']
   it('sets accent text clear of 5.8:1 on every surface', () => {
     for (const s of surfaces) expect(ratio(t['color-accent'], t[s]), s).toBeGreaterThanOrEqual(5.8)
@@ -40,7 +41,7 @@ describe.each([[':root', 'light'], ["[data-theme='dark']", 'dark']])('the %s (%s
   })
 })
 
-it.each([[':root'], [":root[data-theme='dark']"]])('sets text on the filled accent readable in %s', (selector) => {
+it.each([['@theme static'], [":root[data-theme='dark']"]])('sets text on the filled accent readable in %s', (selector) => {
   const t = block(selector)
   expect(ratio(t['color-on-accent'], t['color-accent-fill'])).toBeGreaterThanOrEqual(4.5)
 })

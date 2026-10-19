@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* The dark look is chosen by data-theme on the root, not by the system's setting. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /*
  * Studio: depth instead of outlines, and one solid blue.
@@ -14,7 +15,30 @@
  * is live — recording and the playhead — and the script keeps its warm paper, because writing is
  * a different act. src/renderer/src/styles/contrast.test.ts holds every pairing to its floor.
  */
-:root {
+/*
+ * Talkie's tokens are named the way Tailwind 4 names a theme's colours, --color-<name>, so they are
+ * the theme itself: `bg-surface`, `ring-accent/35` and the rest read these variables, and the dark
+ * block below changes them under every utility at once. The light values are declared here rather
+ * than in a :root of their own, because a theme entry pointing at a variable of the same name is a
+ * variable defined as itself. `static` keeps every one in the stylesheet, used by a class or not:
+ * plenty are read as var() from inline styles Tailwind never sees.
+ */
+@theme static {
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-serif: 'Newsreader Variable', Georgia, serif;
+
+  /*
+   * Tailwind 3's line heights, which were lengths: 4 made them ratios, and a ratio is inherited as
+   * one, so a 10px badge inside a `text-xs` row was set three pixels shorter and every card moved.
+   */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+
   --color-bg: #f3f4f8;
   --color-surface: #ffffff;
   --color-raised: #eef0f5;
@@ -37,7 +61,24 @@
   --color-success: #1f7a52;
   --color-media: #0f766e;
   --color-slides: #6d28d9;
+}
+
+:root {
   color-scheme: light;
+}
+
+/*
+ * Tailwind 3 gave a bare `border` its light grey; 4 gives it the text's colour. Every border here
+ * names its colour, so this only keeps one that does not from turning into a line of text colour.
+ */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentcolor);
+  }
 }
 
 :root[data-theme='dark'] {

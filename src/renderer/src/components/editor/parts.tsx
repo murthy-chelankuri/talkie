@@ -69,8 +69,8 @@ export function Action({
       className={cn(
         'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2.5 text-left transition-colors',
         'hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-        primary ? 'bg-danger/[0.08] ring-1 ring-inset ring-danger/25' : 'bg-raised'
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
+        primary ? 'bg-danger/8 ring-1 ring-inset ring-danger/25' : 'bg-raised'
       )}
     >
       <span

@@ -90,7 +90,7 @@ export function RichTextField({
           aria-label="Pick a colour"
           title="Pick a colour"
           onChange={(event) => apply('foreColor', event.target.value)}
-          className="h-5 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
+          className="h-5 w-6 cursor-pointer rounded-sm border border-border bg-transparent p-0"
         />
 
         <span className="mx-1 h-4 w-px bg-border" />
@@ -124,8 +124,8 @@ export function RichTextField({
           if (event.key === 'Enter' && !multiline) event.preventDefault()
         }}
         className={cn(
-          'min-h-[2.5rem] rounded-md bg-raised px-2.5 py-2 text-[13px] text-text',
-          'focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent',
+          'min-h-10 rounded-md bg-raised px-2.5 py-2 text-[13px] text-text',
+          'focus:outline-hidden focus:ring-1 focus:ring-inset focus:ring-accent',
           'empty:before:text-text-muted empty:before:content-[attr(data-placeholder)]',
           className
         )}
@@ -151,7 +151,7 @@ function FormatButton({
       // Without this the selection is lost before the command can be applied to it.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
-      className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-text-muted hover:bg-surface-hover hover:text-text"
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-text-muted hover:bg-surface-hover hover:text-text"
     >
       {children}
     </button>

@@ -131,7 +131,7 @@ export function ClipNarrationBox({
           readOnly={drafting}
           aria-busy={drafting || undefined}
           className={cn(
-            'min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-paper-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-inset focus:ring-accent',
+            'min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 font-serif text-[13px] leading-relaxed text-paper-text placeholder:text-text-muted focus:outline-hidden focus:ring-1 focus:ring-inset focus:ring-accent',
             drafting && 'animate-pulse opacity-50'
           )}
         />

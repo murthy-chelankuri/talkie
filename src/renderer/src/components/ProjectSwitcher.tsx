@@ -61,7 +61,7 @@ export function ProjectSwitcher({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((wasOpen) => !wasOpen)}
-        className="max-w-[15rem] gap-1.5 text-text"
+        className="max-w-60 gap-1.5 text-text"
       >
         <span className="truncate">{currentProjectName}</span>
         <ChevronsUpDown size={13} className="shrink-0 text-text-muted" aria-hidden="true" />
@@ -70,7 +70,7 @@ export function ProjectSwitcher({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-[26rem] w-[19rem] overflow-y-auto rounded-xl bg-raised p-1.5 shadow-xl"
+          className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-104 w-76 overflow-y-auto rounded-xl bg-raised p-1.5 shadow-xl"
         >
           {projects.map((project) => {
             const isCurrent = project.id === currentProjectId
@@ -89,10 +89,10 @@ export function ProjectSwitcher({
                   isCurrent ? 'bg-surface-hover' : 'bg-transparent hover:bg-surface-hover'
                 )}
               >
-                <span className="relative block h-11 w-[4.75rem] shrink-0 overflow-hidden rounded-md bg-raised">
+                <span className="relative block h-11 w-19 shrink-0 overflow-hidden rounded-md bg-raised">
                   <ProjectPoster project={project} className="h-full w-full" />
                   {project.clipCount > 0 && (
-                    <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1 text-[9px] tabular-nums text-white">
+                    <span className="absolute bottom-0.5 right-0.5 rounded-sm bg-black/70 px-1 text-[9px] tabular-nums text-white">
                       {formatTimecode(project.durationFrames / FPS)}
                     </span>
                   )}

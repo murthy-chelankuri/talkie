@@ -44,7 +44,7 @@ export function ReportProblem(): JSX.Element {
         placeholder="What went wrong, and what were you doing? For example: narration over MCP fails with “Kokoro stopped unexpectedly”."
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        className="min-h-[5rem] text-[13px]"
+        className="min-h-20 text-[13px]"
       />
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="primary" size="sm" disabled={state.status === 'working'} onClick={() => void report()}>

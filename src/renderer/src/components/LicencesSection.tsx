@@ -117,18 +117,18 @@ export function LicencesSection(): JSX.Element {
           Bundled GPL components
         </h3>
         {bundled.map((item) => (
-          <div key={item.name} className="rounded-lg border border-danger/35 bg-danger/[0.06] p-3.5">
+          <div key={item.name} className="rounded-lg border border-danger/35 bg-danger/6 p-3.5">
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="text-[13px] font-medium text-text">{item.name}</span>
               <span className="text-[11px] tabular-nums text-text-muted">{item.version}</span>
-              <span className="rounded bg-danger/15 px-1.5 py-0.5 text-[10px] font-medium text-danger">
+              <span className="rounded-sm bg-danger/15 px-1.5 py-0.5 text-[10px] font-medium text-danger">
                 {item.license}
               </span>
             </span>
             <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">{item.note}</p>
             <details className="mt-2">
               <summary className="cursor-pointer text-[11px] text-accent">Licence text</summary>
-              <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded bg-raised p-2.5 font-mono text-[10px] leading-relaxed text-text-muted">
+              <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap wrap-break-word rounded-sm bg-raised p-2.5 font-mono text-[10px] leading-relaxed text-text-muted">
                 {item.text}
               </pre>
             </details>
@@ -215,7 +215,7 @@ export function LicencesSection(): JSX.Element {
                         {/* The licence text itself, because reproducing it is the obligation —
                             a summary of it would not be the notice these licences ask for. */}
                         {pkg.text ? (
-                          <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded bg-raised p-2.5 font-mono text-[10px] leading-relaxed text-text-muted">
+                          <pre className="max-h-56 overflow-auto whitespace-pre-wrap wrap-break-word rounded-sm bg-raised p-2.5 font-mono text-[10px] leading-relaxed text-text-muted">
                             {pkg.text}
                           </pre>
                         ) : (

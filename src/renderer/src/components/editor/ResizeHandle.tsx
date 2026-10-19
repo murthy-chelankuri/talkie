@@ -74,7 +74,7 @@ export function ResizeHandle({
       onPointerUp={() => (start.current = null)}
       onKeyDown={onKeyDown}
       className={cn(
-        'group relative w-2 shrink-0 cursor-col-resize focus-visible:outline-none'
+        'group relative w-2 shrink-0 cursor-col-resize focus-visible:outline-hidden'
       )}
     >
       <span className="absolute inset-y-3 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors group-hover:bg-accent/60 group-focus-visible:bg-accent" />

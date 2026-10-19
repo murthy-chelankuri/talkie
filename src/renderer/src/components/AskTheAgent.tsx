@@ -186,7 +186,7 @@ export function AskTheAgent({
                   type="button"
                   aria-label={`Stop asking about ${sceneName(timeline, id)}`}
                   onClick={() => toggle(id)}
-                  className="flex h-4 w-4 items-center justify-center rounded border-0 bg-transparent p-0 text-accent hover:bg-accent/20"
+                  className="flex h-4 w-4 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-accent hover:bg-accent/20"
                 >
                   <X size={11} />
                 </button>
@@ -243,7 +243,7 @@ export function AskTheAgent({
                   void ask()
                 }
               }}
-              className="max-h-40 min-h-[2.75rem] w-full resize-none border-0 bg-transparent p-0 text-[13px] leading-relaxed text-text placeholder:text-text-muted focus:outline-none disabled:opacity-60"
+              className="max-h-40 min-h-11 w-full resize-none border-0 bg-transparent p-0 text-[13px] leading-relaxed text-text placeholder:text-text-muted focus:outline-hidden disabled:opacity-60"
             />
             {working ? (
               // A real stop: a run can take minutes, and what looked like Stop used to be disabled.
@@ -377,7 +377,7 @@ function Said({ turn }: { turn: Turn }): JSX.Element {
         {turn.about && turn.about.length > 0 && (
           <span className="flex flex-wrap justify-end gap-1">
             {turn.about.map((name) => (
-              <span key={name} className="rounded bg-accent/15 px-1.5 py-0.5 text-[11px] text-accent">
+              <span key={name} className="rounded-sm bg-accent/15 px-1.5 py-0.5 text-[11px] text-accent">
                 {name}
               </span>
             ))}
@@ -440,7 +440,7 @@ function inline(text: string): ReactNode[] {
     if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={index}>{part.slice(2, -2)}</strong>
     if (/^`[^`]+`$/.test(part)) {
       return (
-        <code key={index} className="rounded bg-raised px-1 font-mono text-[12px]">
+        <code key={index} className="rounded-sm bg-raised px-1 font-mono text-[12px]">
           {part.slice(1, -1)}
         </code>
       )

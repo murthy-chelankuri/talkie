@@ -41,7 +41,7 @@ export function Rail({
             title={item.shortcut ? `${item.label} (${item.shortcut})` : item.label}
             aria-describedby={item.busy ? `${base}-${item.id}` : undefined}
             onClick={() => onSelect(item.id)}
-            className="group flex flex-col items-center gap-1 focus-visible:outline-none"
+            className="group flex flex-col items-center gap-1 focus-visible:outline-hidden"
           >
             {item.busy && (
               <span id={`${base}-${item.id}`} className="sr-only">

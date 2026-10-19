@@ -203,7 +203,7 @@ export function SceneEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6 backdrop-blur-xs"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -214,7 +214,7 @@ export function SceneEditor({
         className={cn(
           'flex max-h-full w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl',
           // Code and a playing scene side by side need more room than a slide's two fields.
-          kind === 'html' ? 'h-[44rem] max-w-6xl' : 'h-[36rem] max-w-4xl'
+          kind === 'html' ? 'h-176 max-w-6xl' : 'h-144 max-w-4xl'
         )}
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
@@ -230,7 +230,7 @@ export function SceneEditor({
         ) : (
         <>
         <div className="flex min-h-0 flex-1">
-          <div className="flex w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto border-r border-border p-4">
+          <div className="flex w-88 shrink-0 flex-col gap-3 overflow-y-auto border-r border-border p-4">
             {kind === 'scene' ? (
               <>
                 <div className="flex flex-col gap-1.5">
@@ -250,7 +250,7 @@ export function SceneEditor({
                     <button
                       type="button"
                       onClick={() => setDraft((d) => ({ ...d, bullets: [...d.bullets, ''] }))}
-                      className="rounded border-0 bg-transparent px-1 py-0 text-[11px] text-accent hover:underline"
+                      className="rounded-sm border-0 bg-transparent px-1 py-0 text-[11px] text-accent hover:underline"
                     >
                       Add a line
                     </button>
@@ -307,7 +307,7 @@ export function SceneEditor({
                     value={draft.source}
                     placeholder={'flowchart LR\n  A[Record] --> B[Narrate] --> C[Export]'}
                     onChange={(event) => setDraft((d) => ({ ...d, source: event.target.value }))}
-                    className="min-h-[11rem] resize-y font-mono text-[12px] leading-relaxed"
+                    className="min-h-44 resize-y font-mono text-[12px] leading-relaxed"
                   />
                 </label>
                 {diagramError && (
@@ -340,7 +340,7 @@ export function SceneEditor({
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void askTheModel()
                 }}
-                className="min-h-[4rem] resize-none text-[13px]"
+                className="min-h-16 resize-none text-[13px]"
               />
               <Button size="sm" disabled={writing || !instruction.trim()} onClick={askTheModel}>
                 {writing ? <Spinner size="sm" /> : <Sparkles size={13} />}
@@ -446,7 +446,7 @@ function SceneStyleControls({
               aria-label="Pick an accent colour"
               value={style.accent}
               onChange={(event) => onChange({ accent: event.target.value })}
-              className="h-6 w-8 cursor-pointer rounded border border-border bg-transparent p-0"
+              className="h-6 w-8 cursor-pointer rounded-sm border border-border bg-transparent p-0"
             />
           </div>
         </div>
@@ -551,7 +551,7 @@ function ScenePreview({
             dangerouslySetInnerHTML={{ __html: draft.title || 'Your title' }}
           />
           <div
-            className="mt-3 h-[3px] w-14 rounded"
+            className="mt-3 h-[3px] w-14 rounded-sm"
             style={{ background: look.accent, marginLeft: centred ? 'auto' : undefined, marginRight: centred ? 'auto' : undefined }}
           />
           <ul className="mt-5 flex flex-col gap-2">

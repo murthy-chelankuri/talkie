@@ -54,14 +54,14 @@ function ProjectCard({
         onClick={() => onOpen(project)}
         className={cn(
           'w-full overflow-hidden bg-surface p-0 text-left transition-colors hover:bg-surface-hover',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
           lead ? 'grid grid-cols-[1.3fr_1fr] rounded-2xl' : 'flex flex-col rounded-xl'
         )}
       >
         <span className="relative block aspect-video w-full overflow-hidden bg-bg">
           <ProjectPoster project={project} className="h-full w-full" />
           {project.clipCount > 0 && (
-            <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] tabular-nums text-white backdrop-blur">
+            <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] tabular-nums text-white backdrop-blur-sm">
               {formatTimecode(project.durationFrames / FPS)}
             </span>
           )}
@@ -101,7 +101,7 @@ function ProjectCard({
         aria-label={`Delete ${project.name}`}
         onClick={() => setConfirming(true)}
         className={cn(
-          'absolute right-2 top-2 bg-surface/90 text-text-muted backdrop-blur',
+          'absolute right-2 top-2 bg-surface/90 text-text-muted backdrop-blur-sm',
           'opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100',
           confirming && 'hidden'
         )}
@@ -110,7 +110,7 @@ function ProjectCard({
       </IconButton>
 
       {confirming && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-surface/95 px-5 text-center ring-1 ring-inset ring-danger backdrop-blur">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-surface/95 px-5 text-center ring-1 ring-inset ring-danger backdrop-blur-sm">
           <p className="text-sm text-text">
             Delete <span className="font-medium">{project.name}</span>?
           </p>
@@ -274,7 +274,7 @@ export function ProjectBrowser({
                 'Acme Ads is a self-serve advertising tool for small shops.\nA saved group of customers is an "audience". Budgets are always daily.'
               }
               disabled={creating}
-              className="min-h-[8.5rem] flex-1 resize-y leading-relaxed"
+              className="min-h-34 flex-1 resize-y leading-relaxed"
             />
           </label>
         </div>

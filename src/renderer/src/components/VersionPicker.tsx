@@ -67,7 +67,7 @@ export function VersionPicker({ versions, onChoose, onCreate, onRename, onDelete
         aria-label={`Version: ${current.name}`}
         title="Which cut of the video you are working on. Scenes left out of it are dimmed, and skipped when it plays and exports."
         onClick={() => (open ? close() : setOpen(true))}
-        className="max-w-[14rem] gap-1.5 text-text"
+        className="max-w-56 gap-1.5 text-text"
       >
         <Layers size={14} className="shrink-0 text-text-muted" aria-hidden="true" />
         <span className="truncate">{current.name}</span>
@@ -75,7 +75,7 @@ export function VersionPicker({ versions, onChoose, onCreate, onRename, onDelete
       </Button>
 
       {open && (
-        <div role="menu" aria-label="Versions" className="absolute left-0 top-[calc(100%+6px)] z-50 w-[17rem] rounded-xl bg-raised p-1.5 shadow-xl">
+        <div role="menu" aria-label="Versions" className="absolute left-0 top-[calc(100%+6px)] z-50 w-68 rounded-xl bg-raised p-1.5 shadow-xl">
           {naming ? (
             <form
               className="flex flex-col gap-2 p-1.5"
@@ -92,7 +92,7 @@ export function VersionPicker({ versions, onChoose, onCreate, onRename, onDelete
                   value={naming.value}
                   placeholder="2-minute cut"
                   onChange={(event) => setNaming({ ...naming, value: event.target.value })}
-                  className="rounded-md border border-border bg-surface px-2 py-1 text-[13px] text-text outline-none focus:ring-2 focus:ring-accent/35"
+                  className="rounded-md border border-border bg-surface px-2 py-1 text-[13px] text-text outline-hidden focus:ring-2 focus:ring-accent/35"
                 />
               </label>
               <div className="flex justify-end gap-1">

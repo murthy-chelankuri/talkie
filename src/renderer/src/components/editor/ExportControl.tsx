@@ -159,7 +159,7 @@ function Ended({
       role={tone === 'danger' ? 'alert' : 'status'}
       className={cn(
         'flex flex-col gap-2.5 rounded-lg p-3',
-        tone === 'danger' ? 'border border-danger/40 bg-danger/[0.06]' : 'bg-raised'
+        tone === 'danger' ? 'border border-danger/40 bg-danger/6' : 'bg-raised'
       )}
     >
       <div className="flex items-start gap-2">
@@ -171,7 +171,7 @@ function Ended({
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-[13px] font-medium text-text">{title}</span>
           {/* Selectable and scrollable: a render error is often long, and someone may need to paste it. */}
-          <span className="max-h-28 select-text overflow-y-auto break-words text-[11px] text-text-muted">{detail}</span>
+          <span className="max-h-28 select-text overflow-y-auto wrap-break-word text-[11px] text-text-muted">{detail}</span>
         </div>
         <IconButton aria-label="Dismiss" onClick={onDismiss} className="-mr-1 -mt-1 h-6 w-6">
           <X size={13} />

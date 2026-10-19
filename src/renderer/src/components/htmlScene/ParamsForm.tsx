@@ -77,13 +77,13 @@ function Plain({ name, value, onChange }: { name: string; value: unknown; onChan
     return <Input aria-label={name} type="number" value={String(value)} onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))} className="w-full" />
   }
   if (typeof value === 'boolean') {
-    return <input aria-label={name} type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 self-start accent-[var(--color-accent-fill)]" />
+    return <input aria-label={name} type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 self-start accent-accent-fill" />
   }
   if (typeof value === 'string' || value === null || value === undefined) {
     const text = value ?? ''
     // A sentence or code wants room; a word or a number does not.
     return text.length > 60 || text.includes('\n') ? (
-      <Textarea aria-label={name} value={text} onChange={(e) => onChange(e.target.value)} className={cn('min-h-[4.5rem] w-full text-[13px]', text.includes('\n') && 'font-mono text-[12px]')} />
+      <Textarea aria-label={name} value={text} onChange={(e) => onChange(e.target.value)} className={cn('min-h-18 w-full text-[13px]', text.includes('\n') && 'font-mono text-[12px]')} />
     ) : (
       <Input aria-label={name} value={text} onChange={(e) => onChange(e.target.value)} className="w-full" />
     )
@@ -172,7 +172,7 @@ function RowButton({ label, disabled, onClick, children }: { label: string; disa
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-6 w-6 items-center justify-center rounded border-0 bg-transparent p-0 text-text-muted hover:text-text disabled:opacity-30"
+      className="flex h-6 w-6 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-text-muted hover:text-text disabled:opacity-30"
     >
       {children}
     </button>
@@ -196,7 +196,7 @@ function JsonField({ name, value, onChange }: { name: string; value: unknown; on
             setBroken(true)
           }
         }}
-        className="min-h-[4.5rem] font-mono text-[11px]"
+        className="min-h-18 font-mono text-[11px]"
       />
       {broken && <span className="text-[11px] text-danger">Not valid JSON yet — the last valid value is kept.</span>}
     </>

@@ -147,7 +147,7 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
           value={description}
           placeholder="An animated bar chart of Q3 revenue by region; each bar grows as its region is mentioned"
           onChange={(e) => setDescription(e.target.value)}
-          className="min-h-[4.5rem] text-[13px]"
+          className="min-h-18 text-[13px]"
         />
         <label className="flex items-center gap-2 text-[12px] text-text-muted">
           Length
@@ -318,7 +318,7 @@ function EditHtmlScene({
   return (
     <>
       <div className="flex min-h-0 flex-1">
-        <div className="flex w-[26rem] shrink-0 flex-col border-r border-border">
+        <div className="flex w-104 shrink-0 flex-col border-r border-border">
           <div role="tablist" aria-label="Change the scene" className="flex shrink-0 gap-1 border-b border-border px-3 py-2">
             {TABS.map((choice) => (
               <button
@@ -372,7 +372,7 @@ function EditHtmlScene({
                 value={instruction}
                 placeholder="Make the bars grow one at a time, and add a fifth region"
                 onChange={(e) => setInstruction(e.target.value)}
-                className="min-h-[5rem] text-[13px]"
+                className="min-h-20 text-[13px]"
               />
               <Button size="sm" className="self-start" disabled={busy !== null || !instruction.trim()} onClick={() => void change()}>
                 {busy === 'change' ? <Spinner size="sm" /> : <Sparkles size={13} />}

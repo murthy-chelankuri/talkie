@@ -42,7 +42,7 @@ export function Segmented<T extends string>({
           tabIndex={value === option.id ? 0 : -1}
           onClick={() => onChange(option.id)}
           className={cn(
-            'flex-1 rounded-[7px] px-2 py-1 text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+            'flex-1 rounded-[7px] px-2 py-1 text-[12px] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
             value === option.id ? 'bg-surface-hover font-medium text-text' : 'text-text-muted hover:text-text'
           )}
         >
