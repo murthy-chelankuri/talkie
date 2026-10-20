@@ -374,10 +374,12 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         setAppVoice(settings.speech.voice)
         setAppEngine(settings.speech.engine)
       })
+      // Every voice a project can be read in, from every engine that is ready. Read again with the
+      // settings, since a Kokoro download makes its voices ready: read once on opening, the list
+      // stayed the engine the app was on then, and a project could not be moved to the other.
+      void projectClient.voices().then(setVoices)
     }
     load()
-    // The list of voices this machine has, for the project's own voice picker.
-    void settingsClient.voices().then(setVoices)
     return onSettingsChanged(load)
   }, [])
 

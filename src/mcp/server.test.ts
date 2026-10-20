@@ -14,6 +14,7 @@ import { GOOD } from '../main/htmlScene/fixtures'
 import { AGENT_TOOLS } from '../main/agent/projectAgent'
 import { readTheme } from '../main/themes/themeApi'
 import { updateSettings } from '../main/settings/settingsStore'
+import { isKokoroDownloaded } from '../main/tts/kokoro/kokoroModel'
 
 /**
  * Driven through a real MCP client rather than by calling the handlers directly, because the
@@ -450,20 +451,31 @@ describe('Talkie over MCP', () => {
       expect(said).toContain('talkie_set_context')
     })
 
-    it('names the voices there are, and which engine they belong to', async () => {
+    it('names the voices there are, under the engine each belongs to', async () => {
       const said = await call('talkie_list_voices')
 
-      expect(said).toMatch(/^Engine: /)
+      expect(said).toMatch(/^Talkie's own voice, for projects without one: /)
+      expect(said).toContain('macOS voices:')
       expect(said).toContain('Daniel')
     }, 60_000)
 
-    it('will not set a voice the engine does not have, since it would quietly read in another', async () => {
+    it('will not set a voice no engine has, since it would quietly read in another', async () => {
       const projectId = await newProject('Voiced')
+
+      const said = await call('talkie_set_voice', { projectId, voice: 'Nobody Real' })
+
+      expect(said).toMatch(/voice called Nobody Real/)
+      expect(await call('talkie_project', { projectId })).toContain('Voice: whatever Talkie is set to')
+    }, 60_000)
+
+    // A project in Kokoro while the app is on the Mac's voices: the voice brings its engine. Only
+    // where Kokoro is downloaded, since an engine that is not ready offers no voices.
+    it.runIf(isKokoroDownloaded())('puts a project in Kokoro while Talkie itself stays on the Mac’s voices', async () => {
+      const projectId = await newProject('Kokoro project')
 
       const said = await call('talkie_set_voice', { projectId, voice: 'af_heart' })
 
-      expect(said).toMatch(/no voice called af_heart/)
-      expect(await call('talkie_project', { projectId })).toContain('Voice: whatever Talkie is set to')
+      expect(said).toContain('af_heart, in Kokoro')
     }, 60_000)
 
     it('says which theme the project is drawn in', async () => {

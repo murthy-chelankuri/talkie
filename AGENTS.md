@@ -415,7 +415,13 @@ colours — kept once in the Studio's `Themes` folder and chosen per project (`t
 - **Agents reach all of it over MCP**: list, read, create (from a site, a logo or guide file, or a
   description), update — colours, fonts, logo — duplicate, delete, apply. A slide's `layout` and
   every scene's look (brand/light/dark) are settable, and `talkie_list_voices` names the voices of
-  whichever engine Talkie is set to, since `talkie_set_voice` refuses one it does not have.
+  every engine that is ready, since `talkie_set_voice` refuses one no engine has.
+- **A project's voice brings its engine** (`projectSpeech` in `engineRegistry.ts`). Kokoro's voices
+  are named `af_heart`, `bm_george` and so on, which no Mac voice is, so the stored name says which
+  engine reads it and the project file needs nothing more. It was read by whichever engine the app
+  was on: a project kept in af_heart, after the app moved to the Mac's voices, was handed to `say`,
+  and its picker — loaded once, listing one engine — had nothing to move it to. The settings schema
+  likewise keeps the app's own voice one its engine has (`voiceOfItsEngine`).
 - **A diagram is painted on its look's own background.** `diagramStamp` carries a drawing version;
   raise it when how a themed diagram is drawn changes, or ones already drawn keep the old look.
 - **Logos are drawn still, and plated where they would vanish.** Brand sites often serve animated

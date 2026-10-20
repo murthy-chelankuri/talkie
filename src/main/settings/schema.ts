@@ -84,9 +84,33 @@ function withoutRemovedEngines(value: unknown): unknown {
   return { ...speech, engine: 'system', voice: DEFAULT_VOICE }
 }
 
+/** Kokoro's voices are named for their language and sex — af_heart, bm_george — as no Mac voice is. */
+export const KOKORO_VOICE_NAME = /^[a-z][fm]_[a-z0-9_]+$/
+
+export const DEFAULT_KOKORO_VOICE = 'af_heart'
+
+/**
+ * The app's voice is always one its engine has.
+ *
+ * Changing the engine in Settings used to leave the voice behind: moved from Kokoro to the Mac's
+ * voices, the app went on naming af_heart, every project following it was handed to `say` with a
+ * voice it has never heard of, and the editor kept showing a Kokoro voice the app no longer used.
+ * Settled here, where every write and every read passes, so a file already in that state reads
+ * right too.
+ */
+function voiceOfItsEngine(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value
+  const speech = value as Record<string, unknown>
+  const voice = typeof speech.voice === 'string' ? speech.voice.trim() : ''
+  const isKokoro = KOKORO_VOICE_NAME.test(voice)
+  if (speech.engine === 'kokoro' && !isKokoro) return { ...speech, voice: DEFAULT_KOKORO_VOICE }
+  if (speech.engine !== 'kokoro' && isKokoro) return { ...speech, voice: DEFAULT_VOICE }
+  return value
+}
+
 /** The voice that reads the narration, and the engine it comes from. */
 export const SpeechSettingsSchema = z.preprocess(
-  withoutRemovedEngines,
+  (value) => voiceOfItsEngine(withoutRemovedEngines(value)),
   z.object({
     /**
      * Which engine speaks. The built-in voices are enough to hear whether the words work; a

@@ -8,9 +8,8 @@ import {
   updateTranscriptSegmentAudio,
   fitClipToNarration
 } from '../project/projectApi'
-import { speechEngine } from '../tts/engineRegistry'
+import { projectSpeech, speechEngine } from '../tts/engineRegistry'
 import { readSettings } from '../settings/settingsStore'
-import { DEFAULT_VOICE } from '../settings/schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { levelTake } from '../render/loudness'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
@@ -43,8 +42,9 @@ export async function narrateSegment(
   // The project's own voice wins over the app's, so a project keeps sounding like itself.
   const speech = readSettings(baseDir).speech
   const project = openProject(projectId, baseDir)
-  const voice = project.voice?.trim() || speech.voice.trim() || DEFAULT_VOICE
-  const engine = speechEngine(speech.engine)
+  const who = projectSpeech(project.voice, speech)
+  const voice = who.voice
+  const engine = speechEngine(who.engine)
   // The voice is handed the words as they should be heard; everything else keeps them as they are
   // written. Every route to the engine below goes through this one. See toSpokenForm.
   const speak = (text: string, outputPath: string, options: SpeechOptions): Promise<void> =>

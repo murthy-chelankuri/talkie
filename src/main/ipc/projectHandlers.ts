@@ -28,7 +28,7 @@ import { describeProviders } from '../agent/providerRegistry'
 import { findLocalServer } from '../agent/localProvider'
 import { listCopilotModels } from '../agent/copilotModels'
 import { previewVoice } from '../tts/listVoices'
-import { describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
+import { allVoices, describeSpeechEngines, speechEngine } from '../tts/engineRegistry'
 import { downloadKokoro, kokoroDownloadStatus } from '../tts/kokoro/kokoroProcess'
 import { checkKokoroFiles, importKokoroFiles, kokoroManual } from '../tts/kokoro/kokoroManual'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
@@ -116,6 +116,8 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:reinstallExamples', () => reinstallExamples().length)
   // Whichever engine is chosen — a list of macOS voices is no use to someone using Kokoro.
   ipcMain.handle('settings:voices', () => speechEngine(readSettings().speech.engine).voices())
+  // A project's own picker: every engine that is ready, so a project can be moved between them.
+  ipcMain.handle('project:voices', () => allVoices())
   ipcMain.handle('settings:speechEngines', () => describeSpeechEngines())
   ipcMain.handle('settings:previewVoice', (_event, voice: string, text: string) => previewVoice(voice, text))
   // Resolves when the download is done; Settings asks for the status meanwhile to draw progress.
