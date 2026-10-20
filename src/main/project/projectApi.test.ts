@@ -971,6 +971,38 @@ describe('sweepUnusedNarrationAudio', () => {
     expect(existsSync(join(dir, 'audio', 'older-take.wav'))).toBe(false)
   })
 
+  it('keeps the recording a take in your own voice was made from', () => {
+    const project = createProject('Sweep Recorded', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Words', timelineItemId: item.id }, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, 'take.wav', 'your own voice', baseDir, {
+      original: 'take.original.wav',
+      cleaned: true
+    })
+
+    const dir = findProjectDir(project.id, baseDir) as string
+    writeFileSync(join(dir, 'audio', 'take.wav'), 'cleaned take')
+    writeFileSync(join(dir, 'audio', 'take.original.wav'), 'as recorded')
+
+    sweepUnusedNarrationAudio(project.id, baseDir)
+
+    expect(existsSync(join(dir, 'audio', 'take.original.wav'))).toBe(true)
+  })
+
+  it('lets the recording go once a voice reads the clip instead', () => {
+    const project = createProject('Sweep Replaced', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Words', timelineItemId: item.id }, baseDir)
+    updateTranscriptSegmentAudio(project.id, segment.id, 'take.wav', 'your own voice', baseDir, {
+      original: 'take.original.wav',
+      cleaned: true
+    })
+
+    const spoken = updateTranscriptSegmentAudio(project.id, segment.id, 'spoken.wav', 'Samantha', baseDir)
+
+    expect(spoken.recording).toBeUndefined()
+  })
+
   it('leaves everything alone when the transcript cannot be read', () => {
     const project = createProject('Sweep Broken', baseDir)
     const dir = findProjectDir(project.id, baseDir) as string

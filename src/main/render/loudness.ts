@@ -46,14 +46,17 @@ function baseFilter(target: LoudnessTarget): string {
  *
  * Null when there is nothing to measure — no audio stream, or nothing but silence — which is a
  * file to leave alone rather than one to raise by an infinite amount.
+ *
+ * `before` is filters the audio goes through first, measured as they will leave it: a cleaned-up
+ * take is quieter than the one recorded, and correcting it by the raw take's reading lands short.
  */
-export async function measuredLoudnessFilter(sourcePath: string, target: LoudnessTarget): Promise<string | null> {
+export async function measuredLoudnessFilter(sourcePath: string, target: LoudnessTarget, before?: string): Promise<string | null> {
   const base = baseFilter(target)
 
   try {
     // Audio only: the null muxer would otherwise want the picture encoded too, which a loudness
     // reading has no use for.
-    const result = await runFfmpeg(['-i', sourcePath, '-vn', '-af', `${base}:print_format=json`, '-f', 'null', '-'])
+    const result = await runFfmpeg(['-i', sourcePath, '-vn', '-af', `${before ? `${before},` : ''}${base}:print_format=json`, '-f', 'null', '-'])
 
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
     const json = output.slice(output.lastIndexOf('{'), output.lastIndexOf('}') + 1)

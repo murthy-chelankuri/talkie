@@ -91,3 +91,31 @@ describe('the inspector', () => {
     expect(screen.getByRole('button', { name: 'Split at playhead' })).toBeDisabled()
   })
 })
+
+describe('a take in your own voice', () => {
+  const own = (recording?: { original: string; cleaned: boolean }) =>
+    [{ id: 'g', timelineItemId: 's', text: 'Hi', voice: 'your own voice', status: 'narrated', recording }] as unknown as TranscriptSegment[]
+
+  it('switches its clean-up off, and back on', async () => {
+    const onCleanRecording = vi.fn()
+    inspect(slide, { segments: own({ original: 'g.original.wav', cleaned: true }), onCleanRecording })
+
+    const toggle = screen.getByRole('switch', { name: 'Clean up my voice' })
+    expect(toggle).toBeChecked()
+    await userEvent.click(toggle)
+    expect(onCleanRecording).toHaveBeenCalledWith(slide, false)
+  })
+
+  it('says why a take recorded before the recording was kept cannot be cleaned', () => {
+    inspect(slide, { segments: own(), onCleanRecording: vi.fn() })
+
+    expect(screen.getByRole('switch', { name: 'Clean up my voice' })).toBeDisabled()
+    expect(screen.getByText(/Record it again to clean it up/)).toBeInTheDocument()
+  })
+
+  it('offers no clean-up for a take a voice read', () => {
+    inspect(slide, { onCleanRecording: vi.fn() })
+
+    expect(screen.queryByRole('switch', { name: 'Clean up my voice' })).not.toBeInTheDocument()
+  })
+})

@@ -107,6 +107,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [narratingItemId, setNarratingItemId] = useState<string | null>(null)
+  const [cleaningItemId, setCleaningItemId] = useState<string | null>(null)
   const [narratingAll, setNarratingAll] = useState(false)
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
@@ -579,6 +580,23 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       setTranscriptError(err instanceof Error ? err.message : String(err))
     } finally {
       setNarratingItemId(null)
+    }
+  }
+
+  /** Make a recorded take again from the recording, with the clean-up on or off. */
+  async function handleCleanRecording(item: TimelineItem, clean: boolean): Promise<void> {
+    const segment = segmentsForItem(segments, item.id)[0]
+    if (!segment) return
+    setTranscriptError(null)
+    setCleaningItemId(item.id)
+    try {
+      await transcriptClient.cleanRecording(projectId, segment.id, clean)
+      await refreshSegments()
+      await refreshTimeline()
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCleaningItemId(null)
     }
   }
 
@@ -1150,11 +1168,16 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               themeName={renderTheme ? renderTheme.company || 'This project’s theme' : null}
               note={exampleVoiceNote({ example: project?.example, engine: appEngine, otherVoiceClips: progress.otherVoice.length })}
               playheadFrame={() => editPlayerRef.current?.getCurrentFrame() ?? 0}
-              busy={{ narrating: narratingItemId === selectedItemId, drafting: draftingItemId === selectedItemId }}
+              busy={{
+                narrating: narratingItemId === selectedItemId,
+                drafting: draftingItemId === selectedItemId,
+                cleaning: cleaningItemId === selectedItemId
+              }}
               onEdit={(item) => setSceneEditing(item)}
               onLook={handleLook}
               onNarrate={(item) => void handleNarrate(item)}
               onDraft={(item) => void handleDraft(item)}
+              onCleanRecording={(item, clean) => void handleCleanRecording(item, clean)}
               onSplit={(item, atFrame) => void handleSplit(item, atFrame)}
               onDelete={(item) => void handleDeleteClip(item)}
               version={{ name: activeVersion(versions).name, frames: computeTimelineDuration(compositionTimeline), leftOut }}

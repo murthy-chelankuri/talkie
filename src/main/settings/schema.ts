@@ -123,7 +123,12 @@ export const SpeechSettingsSchema = z.preprocess(
     /** Silence at a full stop, in milliseconds. */
     sentencePauseMs: z.number().min(0).max(2000).default(420),
     /** Silence at a comma or dash, in milliseconds. */
-    clausePauseMs: z.number().min(0).max(1000).default(300)
+    clausePauseMs: z.number().min(0).max(1000).default(300),
+    /**
+     * Whether a take recorded in the user's own voice is cleaned up — the room's noise taken out,
+     * the voice evened — as it is saved. Each take can still be switched on its own.
+     */
+    cleanRecordings: z.boolean().default(true)
   })
 )
 

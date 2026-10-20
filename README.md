@@ -121,6 +121,17 @@ The picker's first option puts a project back to following the default, so the c
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.
 
+### Recording in your own voice
+
+The microphone button on a clip records you reading its words. As the take is saved, Talkie
+cleans it up: it cuts low rumble, takes out steady background noise (a fan, hum, the room) at the
+level it measured between your words, evens out loud and quiet words, softens harsh "s" sounds,
+and brings the take to the same loudness as the generated voices. It uses only FFmpeg's own filters.
+
+**Clean up my voice** in Settings → Voice turns this on or off for new takes. Each take keeps the
+recording as it was heard, so the same switch in the inspector makes that take again, cleaned or
+not, without recording it again. Takes recorded before Talkie kept the recording can't be switched.
+
 ### Getting the Kokoro voice behind a proxy
 
 Kokoro's model (163 MB) is downloaded from Hugging Face the first time it is chosen, in Settings →
@@ -229,6 +240,7 @@ needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your 
 | `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |
 | `talkie_html_templates`, `talkie_add_html_scene` | Add a scene — a slide, steps, a chart — from a template or a page of its own, as the app does |
 | `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate` | Write the words, have a model write them, speak them |
+| `talkie_clean_recording` | Switch the clean-up on a take recorded in your own voice |
 | `talkie_export` | Render the MP4 |
 
 Two things worth knowing. The agent's browser actions are paced rather than immediate, because a

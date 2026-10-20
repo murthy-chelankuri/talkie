@@ -6,7 +6,7 @@ import {
   deleteTranscriptSegment
 } from '../project/projectApi'
 import { narrateSegment } from '../transcript/narrate'
-import { saveRecordedNarration } from '../transcript/recordNarration'
+import { saveRecordedNarration, setRecordingCleanUp } from '../transcript/recordNarration'
 import { ensureMicrophoneAccess } from '../transcript/microphone'
 import { narrationFidelityFor } from '../transcript/narrationFidelity'
 import { narrationFromText } from '../transcript/narrationBeats'
@@ -55,6 +55,13 @@ export function registerTranscriptHandlers(ipcMain: IpcMain): void {
     'project:transcript:saveRecording',
     (_event, projectId: string, segmentId: string, audio: Uint8Array) =>
       withHistory(projectId, () => saveRecordedNarration(projectId, segmentId, audio))
+  )
+
+  // The same recording made again, with the clean-up on or off.
+  ipcMain.handle(
+    'project:transcript:cleanRecording',
+    (_event, projectId: string, segmentId: string, clean: boolean) =>
+      withHistory(projectId, () => setRecordingCleanUp(projectId, segmentId, clean))
   )
 
   // Undo restores the words and timings around a narration, not the recorded audio itself.

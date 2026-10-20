@@ -184,6 +184,8 @@ export const transcriptClient = {
     window.api.transcript.deleteSegment(projectId, segmentId),
   saveRecording: (projectId: string, segmentId: string, audio: Uint8Array): Promise<TranscriptSegment> =>
     window.api.transcript.saveRecording(projectId, segmentId, audio),
+  cleanRecording: (projectId: string, segmentId: string, clean: boolean): Promise<TranscriptSegment> =>
+    window.api.transcript.cleanRecording(projectId, segmentId, clean),
   requestMicrophone: () => window.api.transcript.requestMicrophone()
 }
 

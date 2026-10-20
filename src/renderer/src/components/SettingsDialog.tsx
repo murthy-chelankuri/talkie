@@ -598,6 +598,21 @@ function VoiceSection({
         </div>
       </Field>
 
+      <div className="flex items-start justify-between gap-6 rounded-lg bg-raised px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-medium text-text">Clean up my voice</span>
+          <span className="text-xs leading-relaxed text-text-muted">
+            When you record narration yourself, take out background noise — a fan, hum, the
+            room — and even out your voice. Each take can be switched in the inspector.
+          </span>
+        </div>
+        <Switch
+          label="Clean up my voice"
+          checked={settings.speech.cleanRecordings}
+          onChange={(cleanRecordings) => void onPatch({ cleanRecordings })}
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
         <p className="text-xs leading-relaxed text-text-muted">
           Narration already voiced keeps the voice and pacing it was recorded with. Narrate a clip
