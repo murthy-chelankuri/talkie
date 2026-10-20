@@ -72,7 +72,7 @@ import { generateTheme, saveGeneratedTheme } from '../main/themes/generate/gener
 import { undo, redo } from '../main/project/history'
 import { ProjectContextSchema } from '../main/project/projectContext'
 import { checkMcpAccess, explainRefusal } from '../main/settings/mcpAccess'
-import { addHtmlScene, checkSceneItem, editHtmlScene, readHtmlScene } from '../main/htmlScene/htmlSceneApi'
+import { addHtmlScene, checkSceneItem, editHtmlScene, readHtmlScene, redrawStalePosters } from '../main/htmlScene/htmlSceneApi'
 import { listTemplates, templateFiles } from '../main/htmlScene/templates'
 import { HTML_SCENE_GUIDE } from '../main/htmlScene/guide'
 import type { CheckResult } from '../main/htmlScene/check'
@@ -712,17 +712,26 @@ export function createTalkieServer(
       title: 'Use a theme for a project',
       description:
         'Draw a project\'s video in a theme, or pass no themeId to go back to Talkie\'s own look. ' +
-        'The first theme a project gets also adds an opening card and a closing card — ordinary ' +
-        'slides, at the start and the end — and never again after that.',
+        'The first theme a project gets also adds an opening card and a closing card — HTML scenes ' +
+        'at the start and the end — and never again after that. The cards show the theme\'s logo, ' +
+        'company, tagline and website as they are drawn, so applying another theme changes them too. ' +
+        'Opening and closing cards that are still classic slides are made HTML cards, keeping their ' +
+        'words and narration.',
       inputSchema: { projectId: z.string(), themeId: z.string().optional() }
     },
     async ({ projectId, themeId }) => {
-      const before = readTimeline(projectId, baseDir).length
+      const before = readTimeline(projectId, baseDir)
       withHistory(projectId, () => setProjectTheme(projectId, themeId ?? null, baseDir), baseDir)
-      const added = readTimeline(projectId, baseDir).length - before
+      const after = readTimeline(projectId, baseDir)
+      const added = after.length - before.length
+      const remade = after.filter((item) => item.kind === 'html' && before.some((was) => was.id === item.id && was.kind === 'scene')).length
+      await redrawStalePosters(projectId, baseDir)
       return text(
         themeId
-          ? `The project now follows ${readTheme(themeId, baseDir).name}.${added ? ' Added an opening card and a closing card.' : ''} Diagrams are redrawn in its colours when the project is next opened or exported.`
+          ? `The project now follows ${readTheme(themeId, baseDir).name}.` +
+            (added ? ' Added an opening card and a closing card.' : '') +
+            (remade ? ` Made ${remade} classic card(s) HTML cards, keeping their words and narration.` : '') +
+            ' Diagrams are redrawn in its colours when the project is next opened or exported.'
           : 'The project is back to Talkie\'s own look.'
       )
     }

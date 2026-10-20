@@ -1,4 +1,5 @@
 import { TALKIE_FONT_FILES, type SceneTheme } from '../protocol'
+import { plateAmong, readLogoColours } from '../../composition/logoLegibility'
 
 /** The theme as CSS variables and loaded faces, so a scene written against them follows any theme. */
 export async function applyTheme(doc: Document, theme: SceneTheme | null, talkieBase: string): Promise<void> {
@@ -11,6 +12,10 @@ export async function applyTheme(doc: Document, theme: SceneTheme | null, talkie
   root.setProperty('--talkie-font-heading', `"${theme.fonts.heading.family}", ui-serif, Georgia, serif`)
   root.setProperty('--talkie-font-body', `"${theme.fonts.body.family}", ui-sans-serif, system-ui, sans-serif`)
   root.setProperty('--talkie-logo', theme.logo ? `url("${theme.logo}")` : 'none')
+  // Read off the logo here, in the page, because only a browser sees an SVG the way the video
+  // will — as LogoMark does for the video's own cards. Before the first frame, so none is bare.
+  theme.logoPlate = theme.logo ? plateAmong(await readLogoColours(theme.logo), theme.background, theme.plates ?? []) : null
+  root.setProperty('--talkie-logo-plate', theme.logoPlate ?? 'transparent')
   const faces = [theme.fonts.heading, theme.fonts.body].flatMap(({ family, urls }) => {
     // Talkie's own families have no files in the theme — every render already has them — so a
     // scene, which has none of the app's fonts, loads them from the runtime's server instead.

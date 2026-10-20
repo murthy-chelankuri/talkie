@@ -27,9 +27,10 @@ Talkie asks for frames in any order. Draw everything as a function of \`talkie.t
 | talkie.time, talkie.frame | Where the video is |
 | talkie.duration, talkie.fps | The scene's length in seconds, and frames per second (30) |
 | talkie.params | Named values the person can change without code — read them, with defaults |
-| talkie.theme | { background, heading, body, accent, fonts, logo } for the scene's look |
+| talkie.theme | { background, heading, body, accent, fonts, logo, logoPlate } for the scene's look, and { company, tagline, website } — who the video is from — when the project has a theme |
 | talkie.beats | Seconds at which each line of narration starts — reveal things as they are said |
 | talkie.onFrame(fn) | fn(time) for every frame; may return a promise |
+| talkie.onTheme(fn) | fn(theme) when the project's theme changes while the scene shows — redo anything built from it |
 | talkie.ready(promise) | Hold the first frame until it resolves |
 | talkie.initialised | Resolves once params, theme and beats have arrived — they are empty before |
 | talkie.anime(timeline), talkie.lottie(animation) | Hand a library animation to Talkie to drive |
@@ -44,6 +45,10 @@ Use these CSS variables, never colours or fonts of your own — the check report
 
     --talkie-bg  --talkie-heading  --talkie-body  --talkie-accent
     --talkie-font-heading  --talkie-font-body  --talkie-logo (a url(), or none)
+    --talkie-logo-plate (what to put behind the logo where this ground would swallow it, or transparent)
+
+Read the company, tagline and website from talkie.theme rather than writing them in: the opening and closing
+templates read them there, so a project given another theme says another company's name.
 
     body { background: var(--talkie-bg); color: var(--talkie-body); font-family: var(--talkie-font-body) }
     h1 { color: var(--talkie-heading); font-family: var(--talkie-font-heading) }

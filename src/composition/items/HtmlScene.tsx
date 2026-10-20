@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Fill, hold, useFrame, useRenderMode, useVideoConfig, type Release } from '../../video'
 import { useRenderTheme } from '../renderTheme'
-import { DEFAULT_SCENE_THEMES, DRAW_TIMEOUT_MS, isSceneMessage, type SceneTheme } from '../../htmlScene/protocol'
+import { DRAW_TIMEOUT_MS, isSceneMessage, sceneThemeOf, type SceneTheme } from '../../htmlScene/protocol'
 
 interface HtmlSceneProps {
   src: string
@@ -40,9 +40,7 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
   const theme = useRenderTheme()
   const variant = scene.style?.theme ?? 'dark'
   // No theme means Talkie's own look, as it does for slides — never no look at all.
-  const sceneTheme: SceneTheme = theme
-    ? { ...theme.variants[variant], fonts: theme.fonts, ...(theme.logo ? { logo: theme.logo.url } : {}) }
-    : DEFAULT_SCENE_THEMES[variant]
+  const sceneTheme: SceneTheme = sceneThemeOf(theme, variant)
   const rendering = useRenderMode() === 'export'
 
   const ref = useRef<HTMLIFrameElement>(null)

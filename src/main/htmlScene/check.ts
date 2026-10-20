@@ -4,7 +4,7 @@ import { getAssetServer, resolveAssetUrl } from '../render/assetServer'
 import { resolveBrowser } from '../capture/resolveBrowser'
 import { FPS, HEIGHT, WIDTH } from '../../composition/constants'
 import type { RenderTheme } from '../../composition/renderTheme'
-import { DEFAULT_SCENE_THEMES, type SceneTheme } from '../../htmlScene/protocol'
+import { sceneThemeOf, type SceneTheme } from '../../htmlScene/protocol'
 
 /**
  * Play a scene in a headless browser the way the video does — the same sandbox, the same messages
@@ -42,8 +42,7 @@ export interface CheckRequest {
 
 /** No theme means Talkie's own look, as in the video — see HtmlScene.tsx. */
 export function sceneThemeFor(theme: RenderTheme | null, variant: 'brand' | 'light' | 'dark'): SceneTheme {
-  if (!theme) return DEFAULT_SCENE_THEMES[variant]
-  return { ...theme.variants[variant], fonts: theme.fonts, ...(theme.logo ? { logo: theme.logo.url } : {}) }
+  return sceneThemeOf(theme, variant)
 }
 
 /**
@@ -195,7 +194,8 @@ function sceneFrame(page: Page): Frame {
  */
 function auditPage(): { offTheme: string[]; overflow: string[]; text: string } {
   const root = getComputedStyle(document.documentElement)
-  const allowed = ['--talkie-bg', '--talkie-heading', '--talkie-body', '--talkie-accent'].map((name) =>
+  // The logo's plate too: it is the theme's light or dark ground, chosen for the logo, not the page.
+  const allowed = ['--talkie-bg', '--talkie-heading', '--talkie-body', '--talkie-accent', '--talkie-logo-plate'].map((name) =>
     root.getPropertyValue(name).trim().toLowerCase()
   )
   const toHex = (colour: string): string | null => {

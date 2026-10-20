@@ -354,6 +354,34 @@ export function updateSceneData(
 }
 
 /**
+ * Make a clip a different kind of clip where it stands — same id, place and length — so what
+ * hangs off its id stays with it: its narration, and the versions that leave it out.
+ */
+export function replaceClipContent(
+  id: string,
+  timelineItemId: string,
+  kind: string,
+  data: unknown,
+  baseDir: string = homedir()
+): TimelineItem {
+  const dir = findProjectDir(id, baseDir)
+  if (!dir) {
+    throw new Error(`No project found with id ${id}`)
+  }
+
+  const timeline = readTimeline(id, baseDir)
+  const index = timeline.findIndex((item) => item.id === timelineItemId)
+  if (index === -1) {
+    throw new Error(`No timeline item found with id ${timelineItemId}`)
+  }
+
+  const updated = TimelineItemSchema.parse({ ...timeline[index], kind, data: normaliseScene(kind, data) })
+  timeline[index] = updated
+  writeTimelineFile(dir, timeline)
+  return updated
+}
+
+/**
  * Save the SVG a diagram was drawn into, beside the project's other sources.
  *
  * A new file per drawing rather than one overwritten in place: the composition caches by URL,
