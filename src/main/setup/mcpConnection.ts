@@ -58,15 +58,16 @@ export function mcpConnection(token?: string, baseDir: string = homedir()): McpC
   }
 }
 
-function resolveServerPath(): string | null {
-  const appPath = app.getAppPath()
+export function resolveServerPath(appPath: string = app.getAppPath(), exists: (path: string) => boolean = existsSync): string | null {
 
   // In a packaged build the app is an asar archive and the server is unpacked beside it, because
-  // an outside `node` process cannot read a file from inside the archive.
+  // an outside `node` process cannot read a file from inside the archive. The unpacked copy is
+  // looked for first: Electron's fs reads inside the archive, so the archive's path exists from
+  // here, and handed out first it gave every agent a server that closed as soon as it started.
   const candidates = [
-    join(appPath, 'out', 'mcp', 'talkie-mcp.mjs'),
-    join(`${appPath}.unpacked`, 'out', 'mcp', 'talkie-mcp.mjs')
+    join(`${appPath}.unpacked`, 'out', 'mcp', 'talkie-mcp.mjs'),
+    join(appPath, 'out', 'mcp', 'talkie-mcp.mjs')
   ]
 
-  return candidates.find((path) => existsSync(path)) ?? null
+  return candidates.find((path) => exists(path)) ?? null
 }
