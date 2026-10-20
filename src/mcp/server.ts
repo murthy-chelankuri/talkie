@@ -25,6 +25,8 @@ import {
 import { withHistory } from '../main/project/history'
 import { draftNarrationForItem, draftNarrationForProject } from '../main/agent/draftNarration'
 import { narrateSegment } from '../main/transcript/narrate'
+import { setRecordingCleanUp } from '../main/transcript/recordNarration'
+import { RECORDED_VOICE, type TranscriptSegment } from '../main/transcript/schema'
 import { logFailure, readLogTail } from '../main/diagnostics/log'
 import { scrub } from '../main/diagnostics/scrub'
 import { formatChecks, runDoctor } from '../main/diagnostics/doctor'
@@ -254,9 +256,9 @@ export function createTalkieServer(
         // invisible.
         const narration = segment
           ? segment.beats?.length
-            ? `\n   narration (${segment.status}), timed:\n` +
+            ? `\n   narration (${segment.status}${whoseTake(segment)}), timed:\n` +
               segment.beats.map((beat) => `     [${beat.at.toFixed(1)}] ${beat.text.replace(/\s*\n\s*/g, ' / ')}`).join('\n')
-            : `\n   narration (${segment.status}), read straight through: ${segment.text}`
+            : `\n   narration (${segment.status}${whoseTake(segment)}), read straight through: ${segment.text}`
           : '\n   no narration yet'
         const out = cut.leftOut.includes(item.id) ? `\n   LEFT OUT of the version "${cut.name}": not played or exported` : ''
         return describeItem(item, index) + out + narration
@@ -1685,6 +1687,29 @@ export function createTalkieServer(
     }
   )
 
+  tool(
+    'talkie_clean_recording',
+    {
+      title: 'Clean up a take in the person’s own voice',
+      description:
+        'Make a take the person recorded themselves again from their recording, with the clean-up ' +
+        'on (background noise out, voice evened) or off (as it was heard). Only for clips ' +
+        'talkie_timeline says are in their own voice. Never use talkie_narrate on those: it replaces ' +
+        'their recording with a synthesised voice.',
+      inputSchema: {
+        projectId: z.string(),
+        timelineItemId: z.string(),
+        clean: z.boolean()
+      }
+    },
+    async ({ projectId, timelineItemId, clean }) => {
+      const segment = readTranscript(projectId, baseDir).find((s) => s.timelineItemId === timelineItemId)
+      if (!segment) throw new Error(`Clip ${timelineItemId} has no narration.`)
+      await withHistory(projectId, () => setRecordingCleanUp(projectId, segment.id, clean, baseDir), baseDir)
+      return text(clean ? 'The take is cleaned up.' : 'The take is back as it was recorded.')
+    }
+  )
+
   // ------------------------------------------------------------- diagnostics
 
   tool(
@@ -1725,4 +1750,12 @@ export function createTalkieServer(
   )
 
   return server
+}
+
+/** Whose voice a take is in, for the timeline: a recording of the person is theirs to replace. */
+function whoseTake(segment: TranscriptSegment): string {
+  if (segment.status !== 'narrated' || !segment.voice) return ''
+  if (segment.voice !== RECORDED_VOICE) return `, voiced as ${segment.voice}`
+  if (!segment.recording) return ', recorded in their own voice'
+  return `, recorded in their own voice, ${segment.recording.cleaned ? 'cleaned up' : 'as heard'}`
 }

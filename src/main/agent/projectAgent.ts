@@ -71,6 +71,7 @@ export const AGENT_TOOLS = [
   'talkie_edit_diagram',
   'talkie_set_narration',
   'talkie_draft_narration',
+  'talkie_clean_recording',
   'talkie_set_duration',
   // Arranging
   'talkie_move_clip',

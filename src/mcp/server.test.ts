@@ -6,7 +6,7 @@ import { join } from 'path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { createTalkieServer } from './server'
-import { addScene, addTimelineItem, readTimeline, readTranscript, writeDiagramSvg } from '../main/project/projectApi'
+import { addScene, addTimelineItem, addTranscriptSegment, readTimeline, readTranscript, writeDiagramSvg } from '../main/project/projectApi'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { createMcpToken } from '../main/settings/mcpAccess'
 import { bandedPng } from '../main/themes/generate/testImages'
@@ -15,6 +15,8 @@ import { AGENT_TOOLS } from '../main/agent/projectAgent'
 import { readTheme } from '../main/themes/themeApi'
 import { updateSettings } from '../main/settings/settingsStore'
 import { isKokoroDownloaded } from '../main/tts/kokoro/kokoroModel'
+import { saveRecordedNarration } from '../main/transcript/recordNarration'
+import { roomyTake } from '../main/transcript/testTakes'
 
 /**
  * Driven through a real MCP client rather than by calling the handlers directly, because the
@@ -735,6 +737,43 @@ describe('Talkie over MCP', () => {
       expect(
         await call('talkie_edit_diagram', { projectId, timelineItemId: slide.id, source: 'graph LR; A-->B' })
       ).toContain('not a diagram')
+    })
+  })
+
+  describe('a take in the person’s own voice', () => {
+    async function recordedClip(name: string) {
+      const projectId = await newProject(name)
+      const slide = addSlide({ projectId, title: 'Recorded' })
+      const segment = addTranscriptSegment(projectId, { text: 'The words they read.', timelineItemId: slide.id }, baseDir)
+      await saveRecordedNarration(projectId, segment.id, await roomyTake(), baseDir)
+      return { projectId, slide }
+    }
+
+    it('is told apart from a synthesised one, and says whether it is cleaned up', async () => {
+      const { projectId } = await recordedClip('Own voice')
+
+      expect(await call('talkie_timeline', { projectId })).toContain('recorded in their own voice, cleaned up')
+    }, 120_000)
+
+    it('switches its clean-up off, and the change is one undo away', async () => {
+      const { projectId, slide } = await recordedClip('Own voice switched')
+
+      const said = await call('talkie_clean_recording', { projectId, timelineItemId: slide.id, clean: false })
+
+      expect(said).toBe('The take is back as it was recorded.')
+      expect(readTranscript(projectId, baseDir)[0].recording?.cleaned).toBe(false)
+      await call('talkie_undo', { projectId })
+      expect(readTranscript(projectId, baseDir)[0].recording?.cleaned).toBe(true)
+    }, 120_000)
+
+    it('refuses a take a voice read', async () => {
+      const projectId = await newProject('Synthesised')
+      const slide = addSlide({ projectId, title: 'Spoken' })
+      addTranscriptSegment(projectId, { text: 'Words.', timelineItemId: slide.id }, baseDir)
+
+      const said = await call('talkie_clean_recording', { projectId, timelineItemId: slide.id, clean: true })
+
+      expect(said).toContain('recorded in your own voice')
     })
   })
 

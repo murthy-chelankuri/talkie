@@ -240,6 +240,7 @@ needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your 
 | `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |
 | `talkie_html_templates`, `talkie_add_html_scene` | Add a scene — a slide, steps, a chart — from a template or a page of its own, as the app does |
 | `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate` | Write the words, have a model write them, speak them |
+| `talkie_clean_recording` | Switch the clean-up on a take recorded in your own voice |
 | `talkie_export` | Render the MP4 |
 
 Two things worth knowing. The agent's browser actions are paced rather than immediate, because a

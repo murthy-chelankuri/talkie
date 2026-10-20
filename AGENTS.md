@@ -266,6 +266,8 @@ under 12 dB between the two has no room to tell apart and gets no denoiser, whic
 eat the voice. The recording itself is kept as `recording.original` beside the take (and spared by
 the audio sweep), so the inspector's switch makes the take again from it rather than cleaning a
 cleaned take. Loudness is measured after the clean-up, which leaves a take quieter.
+Agents can switch it too (`talkie_clean_recording`), and `talkie_timeline` says which takes are
+the person's own voice — a take `talkie_narrate` would otherwise replace with a synthesised one.
 `e2e/recordVoice.e2e.ts` records through Chromium's fake microphone with `--no-sandbox`: in the
 sandbox it cannot read its file and records silence.
 
