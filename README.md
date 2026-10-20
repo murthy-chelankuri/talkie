@@ -19,6 +19,21 @@ npm run dev
 `npm test` runs the suite, `npm run typecheck` the type check. Both are expected to pass before
 a build is packaged.
 
+### After pulling a newer Talkie
+
+```bash
+git pull
+npm install       # new or updated packages, and the pinned ffmpeg if it changed
+npm run build     # everything in out/, including the MCP server agents run
+npm run doctor    # optional: checks the build matches the checkout, and speaks a line
+```
+
+`npm run dev` rebuilds what it needs before it starts. But an agent connected over MCP runs
+`out/mcp/talkie-mcp.mjs` directly, so run `npm run build` after every pull or the agent keeps
+working with the old tools. If Talkie or an agent reports something odd after a pull, `npm run
+doctor` is the first thing to try: the most common cause is a build that doesn't match the
+checkout.
+
 What has changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Building something to hand to someone
@@ -245,17 +260,25 @@ The server is built by `npm run build` and works whether or not the Talkie windo
 projects are files on disk, and it reaches them through exactly the same code the app does. It
 needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your home directory.
 
-| Tool | What it does |
-| --- | --- |
-| `talkie_list_projects`, `talkie_create_project`, `talkie_timeline` | Find or start a project, and read what is in it |
-| `talkie_start_recording` | Open a real browser and start capturing it |
-| `talkie_navigate`, `talkie_click`, `talkie_type`, `talkie_scroll`, `talkie_wait` | Drive that browser |
-| `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |
-| `talkie_import_video` | Bring in a video made elsewhere, cut into scenes |
-| `talkie_html_templates`, `talkie_add_html_scene` | Add a scene — a slide, steps, a chart — from a template or a page of its own, as the app does |
-| `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate` | Write the words, have a model write them, speak them |
-| `talkie_clean_recording` | Switch the clean-up on a take recorded in your own voice |
-| `talkie_export` | Render the MP4 |
+These are all 53 tools:
+
+| Area | Tools | What they do |
+| --- | --- | --- |
+| Projects | `talkie_list_projects`, `talkie_create_project`, `talkie_project`, `talkie_timeline`, `talkie_set_context` | Find or start a project, read it and its clips, and say what it is about so drafted narration fits |
+| Recording | `talkie_start_recording`, `talkie_navigate`, `talkie_click`, `talkie_type`, `talkie_scroll`, `talkie_wait`, `talkie_explore`, `talkie_stop_recording`, `talkie_discard_recording` | Open a real browser, drive it or let it walk the app by itself, then put the recording on the timeline or throw it away |
+| Bringing things in | `talkie_import_video`, `talkie_import_deck`, `talkie_add_image` | A video made elsewhere (cut into scenes), a PDF deck (a scene per page), a picture |
+| HTML scenes | `talkie_html_templates`, `talkie_html_scene_guide`, `talkie_add_html_scene`, `talkie_html_scene`, `talkie_edit_html_scene`, `talkie_check_html_scene` | Add a scene from a template or from a page of its own, read it, change it, and check it plays cleanly; the check returns frames as images |
+| Older scenes | `talkie_edit_slide`, `talkie_edit_diagram` | Change classic slides and mermaid diagrams a project already has. There are no tools to create these; new scenes are HTML. |
+| Arranging | `talkie_move_clip`, `talkie_delete_clip`, `talkie_split_clip`, `talkie_set_duration`, `talkie_clip_actions` | Reorder, remove, split and retime clips, and read what happens during a recording |
+| Narration | `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate`, `talkie_clean_recording` | Write the words or have a model write them, speak them, and switch the clean-up on a take recorded in your own voice |
+| Voice | `talkie_list_voices`, `talkie_set_voice` | Name the voices every ready engine has, and choose the project's |
+| Themes | `talkie_list_themes`, `talkie_theme`, `talkie_create_theme`, `talkie_update_theme`, `talkie_duplicate_theme`, `talkie_delete_theme`, `talkie_apply_theme` | A company's look. Create one from a site, a logo or guide file, or a description; applying it also adds or restyles the opening and closing cards |
+| Versions | `talkie_versions`, `talkie_create_version`, `talkie_choose_version`, `talkie_rename_version`, `talkie_delete_version`, `talkie_include_clip` | Cut the same project several ways, such as a full walkthrough and a two-minute one |
+| History | `talkie_undo`, `talkie_redo` | Step back and forward through changes |
+| Output and help | `talkie_export`, `talkie_diagnostics` | Render the MP4, and find out why something failed |
+
+The agent panel inside the app uses the same server with fewer tools: no recording and no
+exporting, which both take minutes. A whole run there is one undo step.
 
 Two things worth knowing. The agent's browser actions are paced rather than immediate, because a
 recording of instant clicks is unwatchable — the page never settles and a viewer cannot see what
@@ -283,6 +306,44 @@ On the other Mac, quit Talkie, move any `~/Talkie/Studio` already there aside, a
 whether it is in git. Recordings are large; plain git copes, but GitHub refuses any one file over
 100 MB. Pull before you start and push when you stop — two Macs changing one project at once
 conflict like any file.
+
+Day to day, Talkie runs no git itself; you use your own git and its credentials:
+
+```bash
+cd ~/Talkie/Studio
+git pull                                   # before you start
+git add . && git commit -m "Edited the intro" && git push   # when you stop
+```
+
+You can pull while Talkie is open. Coming back to the window reads the projects, settings and
+themes again, and an open project reloads by itself.
+
+**What is not in the Studio's git.** The `.gitignore` Talkie writes leaves out:
+- exports (`Projects/*/renders/`);
+- in-app agent runs (`Projects/*/agents/`);
+- AI themes not yet saved (`Themes/.drafts/`);
+- temporary files;
+- the shipped examples, which every Mac installs for itself.
+
+The file is yours after that, and Talkie never rewrites it.
+
+**Recordings over 100 MB.** For GitHub, use [Git LFS](https://git-lfs.com):
+
+```bash
+git lfs install
+git lfs track "*.mp4" "*.mov" "*.webm"
+git add .gitattributes
+```
+
+**Each Mac sets up its own.** API keys, the agent token and the Kokoro voice stay on each Mac
+(in `~/Talkie/settings.json` and `~/Talkie/Models`). On a new Mac, add your keys in Settings. To
+use an agent there, switch on "Let AI agents connect", create a token, and add the server to your
+agent again with the line Settings shows. A token from another Mac won't work.
+
+**If you also run Talkie from source on both Macs**, update both checkouts the same way (see
+[After pulling a newer Talkie](#after-pulling-a-newer-talkie)). A Studio saved by a newer Talkie
+can need that Talkie: an older one refuses a project in a format it doesn't know rather than
+opening it wrongly.
 
 ## What Talkie needs on the machine it runs on
 
