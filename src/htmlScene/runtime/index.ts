@@ -29,6 +29,7 @@ const clock = createClock()
 clock.install(window)
 
 const handlers: Array<(t: number) => unknown> = []
+const themeHandlers: Array<(theme: SceneTheme | null) => unknown> = []
 const waits: Promise<unknown>[] = []
 let resolveInit: () => void
 const initialised = new Promise<void>((resolve) => { resolveInit = resolve })
@@ -41,6 +42,8 @@ const talkie = {
   theme: null as SceneTheme | null,
   beats: [] as number[],
   onFrame(fn: (t: number) => unknown): void { handlers.push(fn) },
+  /** Called when the project's theme changes while the scene is showing — for words it reads from it. */
+  onTheme(fn: (theme: SceneTheme | null) => unknown): void { themeHandlers.push(fn) },
   ready(promise: Promise<unknown>): void { waits.push(promise) },
   /**
    * Resolves once the theme, values and timings have arrived. A page's script runs before they do,
@@ -90,7 +93,9 @@ window.addEventListener('message', (event) => {
     void applyTheme(document, message.theme, talkieBase).then(() => resolveInit())
   } else if (message?.type === 'talkie:theme') {
     talkie.theme = message.theme
-    void applyTheme(document, message.theme, talkieBase)
+    void applyTheme(document, message.theme, talkieBase).then(() => {
+      for (const handler of themeHandlers) handler(talkie.theme)
+    })
   } else if (message?.type === 'talkie:seek') {
     // In order: a seek waits for the one before it, so replies come back in the order asked.
     queue = queue.then(() => seek(message.frame)).then(

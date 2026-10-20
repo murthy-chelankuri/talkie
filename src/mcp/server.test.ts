@@ -285,7 +285,7 @@ describe('Talkie over MCP', () => {
 
       expect(said).toMatch(/brand: background #[0-9a-f]{6}/)
       expect(said).toContain('Used by: Launch video')
-    })
+    }, 120_000)
 
     it('changes only what it is given, and keeps it readable', async () => {
       const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
@@ -305,7 +305,22 @@ describe('Talkie over MCP', () => {
       expect(await call('talkie_apply_theme', { projectId, themeId })).not.toContain('Added')
       expect(readTimeline(projectId, baseDir)).toHaveLength(2)
       expect(await call('talkie_apply_theme', { projectId })).toContain('back to Talkie')
-    })
+    }, 120_000)
+
+    it('makes a project’s classic cards HTML cards when a theme is applied again', async () => {
+      const projectId = await newProject('Older video')
+      addSlide({ projectId, title: 'Older video', layout: 'title', style: { theme: 'brand', align: 'center' } })
+      addSlide({ projectId, title: 'Thanks', layout: 'closing', style: { theme: 'brand', align: 'center' } })
+
+      const said = await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })
+
+      expect(said).toContain('Made 2 classic card(s) HTML cards')
+      expect(said).not.toContain('Added')
+      expect(readTimeline(projectId, baseDir).map((item) => [item.kind, (item.data as { card?: string }).card])).toEqual([
+        ['html', 'opening'],
+        ['html', 'closing']
+      ])
+    }, 120_000)
 
     it('says which projects lose a theme when it is deleted', async () => {
       const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
@@ -314,7 +329,7 @@ describe('Talkie over MCP', () => {
 
       expect(await call('talkie_delete_theme', { themeId })).toContain('Launch video went back')
       expect(await call('talkie_list_themes')).not.toContain(themeId)
-    })
+    }, 120_000)
 
     it('copies a built-in theme into one that can be changed', async () => {
       const copied = await call('talkie_duplicate_theme', { themeId: 'builtin-sand', name: 'Acme' })
@@ -397,7 +412,7 @@ describe('Talkie over MCP', () => {
       expect(await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })).toContain('Added an opening card')
       expect(await call('talkie_delete_theme', { themeId: 'builtin-midnight' })).toMatch(/cannot be changed or deleted/)
       expect(await call('talkie_list_themes')).toContain('builtin-midnight')
-    })
+    }, 120_000)
   })
 
   describe('knowing what the project is for', () => {
@@ -485,7 +500,7 @@ describe('Talkie over MCP', () => {
       await call('talkie_apply_theme', { projectId, themeId: 'builtin-forest' })
 
       expect(await call('talkie_project', { projectId })).toContain('Theme: Forest (theme id builtin-forest)')
-    })
+    }, 120_000)
 
     it('sets the voice, and says re-voicing is a separate step', async () => {
       const projectId = await newProject('Voiced')
@@ -498,11 +513,10 @@ describe('Talkie over MCP', () => {
 
   describe('slides and cards', () => {
     it('keeps an opening card a card when its words are rewritten', async () => {
-      // The cards a theme adds are slides with a layout; an edit that rebuilt the slide from its
-      // words alone turned the opening card into an ordinary slide.
+      // The cards a theme added before they were HTML are slides with a layout; an edit that rebuilt
+      // the slide from its words alone turned the opening card into an ordinary slide.
       const projectId = await newProject('Launch video')
-      await call('talkie_apply_theme', { projectId, themeId: 'builtin-midnight' })
-      const card = readTimeline(projectId, baseDir).find((item) => (item.data as { layout?: string }).layout === 'title')!
+      const card = addSlide({ projectId, title: 'Launch video', layout: 'title', style: { theme: 'brand', align: 'center' } })
 
       await call('talkie_edit_slide', { projectId, timelineItemId: card.id, title: 'Welcome to Acme' })
 

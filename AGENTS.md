@@ -407,7 +407,14 @@ colours — kept once in the Studio's `Themes` folder and chosen per project (`t
   in reach. `toRenderTheme` builds it for the preview and the export alike.
 - **Diagrams carry their colours**, so each records a `themeStamp`; stale ones are redrawn when
   the project opens and before export (`redrawStaleDiagrams`).
-- **The first theme adds opening and closing cards, once** (`bookendsAdded`).
+- **The first theme adds opening and closing cards, once** (`bookendsAdded`), and they are HTML
+  scenes from the `opening` and `closing` templates, marked `card` so the corner logo stays off
+  them. They read the company, tagline, website and logo from `talkie.theme` as they are drawn, so
+  a new theme changes what they say as well as how they look; the logo's plate is worked out in the
+  page by the runtime (`--talkie-logo-plate`), as `LogoMark` does it for the video. Applying a theme
+  also remakes classic cards (slides with the title or closing layout) as HTML ones in place —
+  same id, so narration and versions stay with them — and leaves a closing card that only said a
+  theme's tagline untitled, to follow the next one.
 - **Built-in themes live in code** (`builtinThemes.ts`, ids `builtin-*`), not in the library folder,
   so they cannot be deleted or edited — `themeApi` refuses, and Duplicate gives an editable copy.
   They use only Geist and Newsreader, the fonts every render already has, so they work offline and
@@ -468,7 +475,7 @@ or edit the code; agents use five MCP tools and get the frames back as images.
   `talkie_add_html_scene` takes `template`, and there is no tool to make a classic slide or a
   mermaid diagram: an agent could once make both, and the person was left with scenes the app had
   no way to add. `talkie_edit_slide` and `talkie_edit_diagram` stay, for the ones a project already
-  has, and a theme still adds its opening and closing cards (`talkie_apply_theme`). The
+  has; a theme's opening and closing cards are HTML scenes too (`talkie_apply_theme`). The
   scene guide asks every page to declare its values, and a page added without values starts with
   the ones it declares — so what an agent or "Describe it" writes is editable in the form too.
   Each template declares its values in a

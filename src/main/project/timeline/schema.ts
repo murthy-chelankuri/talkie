@@ -87,7 +87,12 @@ export const HtmlSceneDataSchema = z.object({
   posterStamp: z.string().optional(),
   /** The words on the poster frame, for the narration drafter. */
   posterText: z.string().optional(),
-  check: z.object({ problems: z.array(z.string()) }).optional()
+  check: z.object({ problems: z.array(z.string()) }).optional(),
+  /**
+   * Which of a theme's cards this is, if one: they show the logo large, so it is never put in their
+   * corner too, and a theme applied again finds them by it.
+   */
+  card: z.enum(['opening', 'closing']).optional()
 })
 export type HtmlSceneData = z.infer<typeof HtmlSceneDataSchema>
 

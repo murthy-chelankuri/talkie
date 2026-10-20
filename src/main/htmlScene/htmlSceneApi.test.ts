@@ -69,7 +69,8 @@ describe('an HTML scene on the timeline', () => {
 
     expect(await redrawStalePosters(id, baseDir)).toBe(0)
     setProjectTheme(id, 'builtin-midnight', baseDir)
-    expect(await redrawStalePosters(id, baseDir)).toBe(1)
+    // This scene, and the opening and closing cards the first theme adds.
+    expect(await redrawStalePosters(id, baseDir)).toBe(3)
   }, 180_000)
 
   it('is read by the narration drafter as its title and the words on screen', async () => {

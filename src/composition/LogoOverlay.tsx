@@ -18,9 +18,9 @@ export function logoPlacement(kind: string, data: unknown, theme: RenderTheme | 
   const logo = theme?.logo
   if (!logo) return null
 
-  const layout = (data as { layout?: string } | null)?.layout
+  const { layout, card } = (data as { layout?: string; card?: string } | null) ?? {}
   const isSlide = kind === 'scene' || kind === 'diagram' || kind === 'html'
-  if (isSlide && layout && layout !== 'standard') return null
+  if (isSlide && ((layout && layout !== 'standard') || card)) return null
   if (isSlide ? !logo.showOn.slides : !logo.showOn.recordings) return null
 
   const [vertical, horizontal] = logo.corner.split('-') as ['top' | 'bottom', 'left' | 'right']

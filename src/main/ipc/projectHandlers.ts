@@ -71,9 +71,12 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
   })
 
   // One undo step: the theme and, the first time, the opening and closing cards it adds.
-  ipcMain.handle('project:setTheme', (_event, projectId: string, themeId: string | null) =>
-    withHistory(projectId, () => setProjectTheme(projectId, themeId))
-  )
+  ipcMain.handle('project:setTheme', (_event, projectId: string, themeId: string | null) => {
+    const project = withHistory(projectId, () => setProjectTheme(projectId, themeId))
+    // The cards it added or remade, and every HTML scene's poster, drawn in the new theme.
+    void redrawStalePosters(projectId).catch((err) => console.error(`Could not redraw HTML scene posters for ${projectId}:`, err))
+    return project
+  })
   ipcMain.handle('project:theme:render', (_event, projectId: string) =>
     toRenderTheme(openProject(projectId).themeId)
   )

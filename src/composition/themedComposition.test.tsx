@@ -58,6 +58,9 @@ describe('the logo on screen', () => {
 
     expect(logoPlacement('scene', { layout: 'title' }, everywhere)).toBeNull()
     expect(logoPlacement('scene', { layout: 'standard' }, everywhere)).not.toBeNull()
+    expect(logoPlacement('html', { card: 'opening' }, everywhere)).toBeNull()
+    expect(logoPlacement('html', { card: 'closing' }, everywhere)).toBeNull()
+    expect(logoPlacement('html', {}, everywhere)).not.toBeNull()
   })
 
   it('is not there at all without a theme', () => {

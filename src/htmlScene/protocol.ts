@@ -3,6 +3,9 @@
  * and the export, or the headless host the check uses. Plain data: both sides are sandboxed from
  * each other and talk only through postMessage.
  */
+import type { RenderTheme } from '../composition/renderTheme'
+import { plateGrounds } from '../composition/logoLegibility'
+
 /** The colours of the scene's look, its fonts as data URLs, and its logo — see toRenderTheme.ts. */
 export interface SceneTheme {
   background: string
@@ -11,6 +14,21 @@ export interface SceneTheme {
   accent: string
   fonts: { heading: { family: string; urls: string[] }; body: { family: string; urls: string[] } }
   logo?: string
+  /**
+   * Who the video is from — the theme's company, tagline and website — for the cards at either
+   * end. Read live, like the colours, so a project that changes theme changes what its cards say.
+   * Absent without a theme.
+   */
+  company?: string
+  tagline?: string
+  website?: string
+  /** What the logo may be plated on where the scene's own ground would swallow it, best first. */
+  plates?: string[]
+  /**
+   * The plate the logo needs on this scene's ground, or null where it reads as it is. Worked out by
+   * the runtime from the logo itself; hosts never send it.
+   */
+  logoPlate?: string | null
 }
 
 export interface InitMessage {
@@ -65,4 +83,20 @@ export const DRAW_TIMEOUT_MS = 5000
 export function isSceneMessage(value: unknown): value is SceneMessage {
   const type = (value as { type?: unknown } | null)?.type
   return type === 'talkie:ready' || type === 'talkie:drawn' || type === 'talkie:error'
+}
+
+/**
+ * The theme a scene is handed for its look, from the project's — one function for the composition
+ * and the check, so a poster and the video never disagree. No theme means Talkie's own look.
+ */
+export function sceneThemeOf(theme: RenderTheme | null, variant: 'brand' | 'light' | 'dark'): SceneTheme {
+  if (!theme) return DEFAULT_SCENE_THEMES[variant]
+  return {
+    ...theme.variants[variant],
+    fonts: theme.fonts,
+    ...(theme.logo ? { logo: theme.logo.url, plates: plateGrounds(theme) } : {}),
+    ...(theme.company ? { company: theme.company } : {}),
+    ...(theme.tagline ? { tagline: theme.tagline } : {}),
+    ...(theme.website ? { website: theme.website } : {})
+  }
 }

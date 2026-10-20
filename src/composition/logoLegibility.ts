@@ -55,8 +55,17 @@ export function lostShare(colours: LogoColours, background: string): number {
  * than a sticker; plain white and black only if neither of those works either.
  */
 export function logoPlate(colours: LogoColours | null, background: string | undefined, theme: RenderTheme): string | null {
-  if (!colours || !background || lostShare(colours, background) <= TOO_MUCH_LOST) return null
-  const candidates = [theme.variants.light.background, theme.variants.dark.background, '#ffffff', '#000000']
+  return plateAmong(colours, background, plateGrounds(theme))
+}
+
+/** What a logo may be plated on, best first. */
+export function plateGrounds(theme: RenderTheme): string[] {
+  return [theme.variants.light.background, theme.variants.dark.background, '#ffffff', '#000000']
+}
+
+/** `logoPlate` with the grounds given, for a page that has only them and not the whole theme. */
+export function plateAmong(colours: LogoColours | null, background: string | undefined, candidates: string[]): string | null {
+  if (!colours || !background || candidates.length === 0 || lostShare(colours, background) <= TOO_MUCH_LOST) return null
   return candidates.reduce((best, candidate) => (lostShare(colours, candidate) < lostShare(colours, best) ? candidate : best))
 }
 
