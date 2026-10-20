@@ -16,7 +16,7 @@ import { readTimelineFile, writeTimelineFile } from './timelineFile'
 import { migrateProjectMetadata } from './migrate'
 import { ProjectContextSchema, hasProjectContext, type ProjectContext } from './projectContext'
 import { TimelineItemSchema, TIMELINE_ITEM_DATA_SCHEMAS, type TimelineItem } from './timeline/schema'
-import { TranscriptSegmentSchema, type NarrationBeat, type TranscriptSegment } from '../transcript/schema'
+import { TranscriptSegmentSchema, type NarrationBeat, type RecordedTake, type TranscriptSegment } from '../transcript/schema'
 import { z } from 'zod'
 
 export function createProject(
@@ -435,7 +435,8 @@ export function sweepUnusedNarrationAudio(id: string, baseDir: string = homedir(
   try {
     referenced = new Set(
       readTranscript(id, baseDir)
-        .map((segment) => segment.audioFile)
+        // A recorded take's original is what its clean-up is switched from, so it stays too.
+        .flatMap((segment) => [segment.audioFile, segment.recording?.original])
         .filter((file): file is string => Boolean(file))
     )
   } catch (err) {
@@ -600,7 +601,9 @@ export function updateTranscriptSegmentAudio(
   segmentId: string,
   audioFile: string,
   voice: string,
-  baseDir: string = homedir()
+  baseDir: string = homedir(),
+  /** The recording a take in the user's own voice was made from. Any other take has none. */
+  recording?: RecordedTake
 ): TranscriptSegment {
   const dir = findProjectDir(id, baseDir)
   if (!dir) {
@@ -615,7 +618,9 @@ export function updateTranscriptSegmentAudio(
 
   let updated: TranscriptSegment
   try {
-    updated = TranscriptSegmentSchema.parse({ ...transcript[index], audioFile, voice, status: 'narrated' })
+    // Set or cleared every time: a synthesised take over a recorded one must not keep the old
+    // recording's original, or the clean-up switch would put the recording back.
+    updated = TranscriptSegmentSchema.parse({ ...transcript[index], audioFile, voice, recording, status: 'narrated' })
   } catch (err) {
     if (err instanceof z.ZodError) {
       throw new Error(err.issues.map((issue) => issue.message).join('; '))

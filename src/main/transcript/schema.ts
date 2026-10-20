@@ -19,6 +19,20 @@ export const NarrationBeatSchema = z.object({
   text: z.string()
 })
 
+/**
+ * A take in the user's own voice, as the microphone heard it.
+ *
+ * Kept beside the take itself so cleaning it up can be switched off, or on, after the fact: the
+ * clean-up is a guess about the room, and a guess that took a word's tail with the noise has to be
+ * undoable by more than recording the line again.
+ */
+export const RecordedTakeSchema = z.object({
+  /** The recording before any clean-up or levelling, in the project's audio folder. */
+  original: z.string(),
+  /** Whether the take now in `audioFile` was cleaned up. */
+  cleaned: z.boolean()
+})
+
 export const TranscriptSegmentSchema = z.object({
   id: z.string(),
   /** The whole narration as prose, which is what is shown and edited. */
@@ -32,8 +46,11 @@ export const TranscriptSegmentSchema = z.object({
   audioFile: z.string().optional(),
   // Which voice read this take. Absent on narration recorded before the voice was choosable.
   voice: z.string().optional(),
+  /** Only on a take recorded in the user's own voice, and only one recorded since this was kept. */
+  recording: RecordedTakeSchema.optional(),
   status: z.enum(['draft', 'edited', 'narrated'])
 })
 
+export type RecordedTake = z.infer<typeof RecordedTakeSchema>
 export type NarrationBeat = z.infer<typeof NarrationBeatSchema>
 export type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>

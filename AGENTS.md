@@ -257,6 +257,18 @@ cursor and lines vanishing. Now the box keeps its own text and compares by meani
 that runs on keeps its break. Both editors show and save the timings: the timeline's box once
 showed the words without them and saved them back that way.
 
+**A take in your own voice is cleaned up, and kept as heard** (`cleanVoice.ts`,
+`recordNarration.ts`). The browser's noise suppression is gentle by design, so a fan or mains hum
+under a take stayed in it. The finished take is measured in tenth-of-a-second windows — the
+quietest tenth is the room, the loudest the voice — and the denoiser is told that floor: told
+-45 dB, it took nothing out of a room at -42; told -38, it took out ten. A take with
+under 12 dB between the two has no room to tell apart and gets no denoiser, which would otherwise
+eat the voice. The recording itself is kept as `recording.original` beside the take (and spared by
+the audio sweep), so the inspector's switch makes the take again from it rather than cleaning a
+cleaned take. Loudness is measured after the clean-up, which leaves a take quieter.
+`e2e/recordVoice.e2e.ts` records through Chromium's fake microphone with `--no-sandbox`: in the
+sandbox it cannot read its file and records silence.
+
 **Slow work says so.** Writing words and voicing a scene take seconds to a minute; a spinner the
 size of an icon looked frozen. `Working` says what is happening with a count that keeps moving,
 in the scene's status, the clip's narration box and on the buttons, and the words are locked while

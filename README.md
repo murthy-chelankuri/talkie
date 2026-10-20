@@ -121,6 +121,17 @@ The picker's first option puts a project back to following the default, so the c
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.
 
+### Recording in your own voice
+
+The microphone button on a clip records you reading its words. As the take is saved, Talkie
+cleans it up: it cuts low rumble, takes out steady background noise (a fan, hum, the room) at the
+level it measured between your words, evens out loud and quiet words, softens harsh "s" sounds,
+and brings the take to the same loudness as the generated voices. It uses only FFmpeg's own filters.
+
+**Clean up my voice** in Settings → Voice turns this on or off for new takes. Each take keeps the
+recording as it was heard, so the same switch in the inspector makes that take again, cleaned or
+not, without recording it again. Takes recorded before Talkie kept the recording can't be switched.
+
 ### Getting the Kokoro voice behind a proxy
 
 Kokoro's model (163 MB) is downloaded from Hugging Face the first time it is chosen, in Settings →

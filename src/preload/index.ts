@@ -234,6 +234,8 @@ const transcriptApi = {
     ipcRenderer.invoke('project:transcript:deleteSegment', projectId, segmentId),
   saveRecording: (projectId: string, segmentId: string, audio: Uint8Array): Promise<TranscriptSegment> =>
     ipcRenderer.invoke('project:transcript:saveRecording', projectId, segmentId, audio),
+  cleanRecording: (projectId: string, segmentId: string, clean: boolean): Promise<TranscriptSegment> =>
+    ipcRenderer.invoke('project:transcript:cleanRecording', projectId, segmentId, clean),
   requestMicrophone: (): Promise<{ granted: boolean; reason?: string }> =>
     ipcRenderer.invoke('project:transcript:requestMicrophone')
 }

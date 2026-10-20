@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { AudioLines, Pencil, Scissors, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
 import type { TimelineItem, TranscriptSegment } from '../../api/projectClient'
 import type { VoiceProgress } from '../../lib/voiceProgress'
-import { segmentsForItem } from '../../lib/clipNarration'
+import { RECORDED_VOICE, segmentsForItem } from '../../lib/clipNarration'
 import { formatTimecode } from '../../lib/timelineLayout'
 import { KIND_NAMES } from '../../lib/clipKinds'
 import { FPS } from '../../../../composition/constants'
@@ -13,6 +13,7 @@ import { Button } from '../ui/Button'
 import { IconButton } from '../ui/IconButton'
 import { Segmented } from '../ui/Segmented'
 import { Spinner } from '../ui/Spinner'
+import { Working } from '../ui/Working'
 
 type Look = 'brand' | 'light' | 'dark'
 
@@ -45,6 +46,7 @@ export function Inspector({
   onLook,
   onNarrate,
   onDraft,
+  onCleanRecording,
   onSplit,
   onDelete,
   version,
@@ -60,11 +62,13 @@ export function Inspector({
   note?: string | null
   /** Where the playhead is, in frames of the whole video — read when Split is pressed. */
   playheadFrame: () => number
-  busy: { narrating: boolean; drafting: boolean }
+  busy: { narrating: boolean; drafting: boolean; cleaning?: boolean }
   onEdit: (item: TimelineItem) => void
   onLook: (item: TimelineItem, look: Look) => void | Promise<void>
   onNarrate: (item: TimelineItem) => void
   onDraft: (item: TimelineItem) => void
+  /** Make a take in the user's own voice again, cleaned up or as it was heard. */
+  onCleanRecording?: (item: TimelineItem, clean: boolean) => void
   onSplit: (item: TimelineItem, atFrame: number) => void
   onDelete: (item: TimelineItem) => void
   /** The version being worked on: its name, how long it plays, and what it leaves out. */
@@ -103,7 +107,9 @@ export function Inspector({
     check?: { problems: string[] }
   }
   const index = timeline.findIndex((clip) => clip.id === item.id)
-  const voice = segmentsForItem(segments, item.id).find((segment) => segment.voice)?.voice
+  const voiced = segmentsForItem(segments, item.id).find((segment) => segment.voice)
+  const voice = voiced?.voice
+  const own = voice === RECORDED_VOICE
   const isScene = SCENE_KINDS.has(item.kind)
   const look = VARIANT_FOR[(data.style?.theme ?? 'dark') as keyof typeof VARIANT_FOR] ?? 'dark'
   const playhead = playheadFrame()
@@ -128,6 +134,32 @@ export function Inspector({
       )}
       <Row label="Length" value={formatTimecode(item.duration / FPS)} />
       <Row label="Voice" value={voice ?? 'No voice yet'} />
+      {own && onCleanRecording && (
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center justify-between gap-3 text-[12px]">
+            <span className="text-text-muted">Clean up my voice</span>
+            <input
+              type="checkbox"
+              role="switch"
+              aria-label="Clean up my voice"
+              checked={voiced?.recording?.cleaned ?? false}
+              // A take from before the recording was kept has nothing to make again from.
+              disabled={!voiced?.recording || busy.cleaning}
+              onChange={(event) => onCleanRecording(item, event.target.checked)}
+              className="h-4 w-4 accent-[var(--color-accent-fill)]"
+            />
+          </label>
+          {busy.cleaning ? (
+            <Working what="Making the take again" />
+          ) : (
+            <span className="text-[11px] leading-relaxed text-text-muted">
+              {voiced?.recording
+                ? 'Takes out background noise and evens out your voice.'
+                : 'Recorded before Talkie kept the recording. Record it again to clean it up.'}
+            </span>
+          )}
+        </div>
+      )}
       {version && onToggleIncluded && (
         <label className="flex items-center justify-between gap-3 text-[12px]">
           <span className="text-text-muted">In {version.name}</span>

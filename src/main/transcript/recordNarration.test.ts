@@ -5,7 +5,10 @@ import { join } from 'path'
 import { runFfmpeg } from '../media'
 import { createProject, addTimelineItem, addTranscriptSegment, readTimeline } from '../project/projectApi'
 import { findProjectDir } from '../project/paths'
-import { saveRecordedNarration } from './recordNarration'
+import { saveRecordedNarration, setRecordingCleanUp } from './recordNarration'
+import { updateTranscriptSegmentAudio } from '../project/projectApi'
+import { updateSettings } from '../settings/settingsStore'
+import { roomyTake, voiceOverRoom } from './testTakes'
 import { RECORDED_VOICE } from './schema'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
@@ -192,4 +195,82 @@ describe('making a take sit alongside the synthesised clips', () => {
     // Downsampling to the synthesiser's 22050 would throw away half the voice's bandwidth.
     expect(header.readUInt32LE(24)).toBe(48000)
   }, 120_000)
+})
+
+describe('cleaning up a take in your own voice', () => {
+  let baseDir: string
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'talkie-clean-'))
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  function clip() {
+    const project = createProject('Clean', baseDir)
+    const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/a.png' } }, baseDir)
+    const segment = addTranscriptSegment(project.id, { text: 'Script', timelineItemId: item.id }, baseDir)
+    return { project, segment, dir: findProjectDir(project.id, baseDir) as string }
+  }
+
+  it('takes the room out from between the words, and keeps the words', async () => {
+    const { project, segment, dir } = clip()
+
+    const saved = await saveRecordedNarration(project.id, segment.id, await roomyTake(0.04), baseDir)
+
+    const before = await voiceOverRoom(join(dir, 'audio', saved.recording!.original))
+    const after = await voiceOverRoom(join(dir, 'audio', saved.audioFile as string))
+    // Measured at 12 dB or more across a quiet, a medium and a loud room when it was tuned.
+    expect(after - before).toBeGreaterThan(8)
+    expect(saved.recording?.cleaned).toBe(true)
+  }, 120_000)
+
+  it('keeps the recording as it was heard, beside the take', async () => {
+    const { project, segment, dir } = clip()
+
+    const saved = await saveRecordedNarration(project.id, segment.id, await roomyTake(), baseDir)
+
+    expect(saved.recording?.original).toMatch(/\.original\.wav$/)
+    expect(existsSync(join(dir, 'audio', saved.recording!.original))).toBe(true)
+    expect(saved.recording?.original).not.toBe(saved.audioFile)
+  }, 120_000)
+
+  it('leaves the take as recorded when the setting is off', async () => {
+    const { project, segment, dir } = clip()
+    updateSettings({ speech: { cleanRecordings: false } }, baseDir)
+
+    const saved = await saveRecordedNarration(project.id, segment.id, await roomyTake(0.04), baseDir)
+
+    const before = await voiceOverRoom(join(dir, 'audio', saved.recording!.original))
+    const after = await voiceOverRoom(join(dir, 'audio', saved.audioFile as string))
+    expect(Math.abs(after - before)).toBeLessThan(3)
+    expect(saved.recording?.cleaned).toBe(false)
+  }, 120_000)
+
+  it('switches a take between cleaned and as heard, from the recording each time', async () => {
+    const { project, segment, dir } = clip()
+    const cleaned = await saveRecordedNarration(project.id, segment.id, await roomyTake(0.04), baseDir)
+
+    const asHeard = await setRecordingCleanUp(project.id, segment.id, false, baseDir)
+    const again = await setRecordingCleanUp(project.id, segment.id, true, baseDir)
+
+    expect(asHeard.recording).toEqual({ original: cleaned.recording!.original, cleaned: false })
+    expect(again.recording?.cleaned).toBe(true)
+    // A new file each time, so undo can still reach the one before.
+    expect(new Set([cleaned.audioFile, asHeard.audioFile, again.audioFile]).size).toBe(3)
+    const cleanedTwice = await voiceOverRoom(join(dir, 'audio', again.audioFile as string))
+    const cleanedOnce = await voiceOverRoom(join(dir, 'audio', cleaned.audioFile as string))
+    expect(Math.abs(cleanedTwice - cleanedOnce)).toBeLessThan(1)
+  }, 180_000)
+
+  it('refuses a take that was not recorded, or was recorded before the recording was kept', async () => {
+    const { project, segment } = clip()
+    updateTranscriptSegmentAudio(project.id, segment.id, 'spoken.wav', 'Samantha', baseDir)
+    await expect(setRecordingCleanUp(project.id, segment.id, true, baseDir)).rejects.toThrow('recorded in your own voice')
+
+    updateTranscriptSegmentAudio(project.id, segment.id, 'old-take.wav', RECORDED_VOICE, baseDir)
+    await expect(setRecordingCleanUp(project.id, segment.id, true, baseDir)).rejects.toThrow('recorded in your own voice')
+  })
 })
