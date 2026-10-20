@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs'
-import { DEFAULT_PACE } from '../settings/schema'
+import { DEFAULT_KOKORO_VOICE, DEFAULT_PACE, KOKORO_VOICE_NAME } from '../settings/schema'
 import { audibleTake, wavSamples } from './audibleTake'
 import type { SpeechOptions, TTSProvider, Voice } from './ttsProvider'
 import { KOKORO_DOWNLOAD_MB, isKokoroDownloaded } from './kokoro/kokoroModel'
@@ -15,7 +15,7 @@ import { speakWithKokoro } from './kokoro/kokoroProcess'
  */
 
 /** The voice Kokoro's own authors grade highest. */
-export const DEFAULT_KOKORO_VOICE = 'af_heart'
+export { DEFAULT_KOKORO_VOICE }
 
 const SAMPLE = 'This is how your narration will sound.'
 
@@ -51,7 +51,7 @@ const VOICES: Array<[name: string, grade: string]> = [
 const LOCALES: Record<string, string> = { a: 'en_US', b: 'en_GB' }
 
 export function isKokoroVoiceName(voice: string): boolean {
-  return /^[a-z][fm]_[a-z0-9_]+$/.test(voice.trim())
+  return KOKORO_VOICE_NAME.test(voice.trim())
 }
 
 /**

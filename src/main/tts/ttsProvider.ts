@@ -34,4 +34,6 @@ export interface Voice {
   locale: string
   sample: string
   novelty: boolean
+  /** Which engine reads it, where voices from more than one are listed together. */
+  engine?: 'system' | 'kokoro'
 }

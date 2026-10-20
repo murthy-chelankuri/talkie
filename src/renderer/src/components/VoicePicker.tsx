@@ -35,17 +35,24 @@ export function VoicePicker({
   defaultOption?: { label: string }
   className?: string
 }): JSX.Element {
+  const shown = resolveVoiceName(value, voices)
+  const missing = shown !== FOLLOWS_DEFAULT && voices.length > 0 && !voices.some((voice) => voice.name === shown)
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <select
         aria-label={ariaLabel}
-        value={resolveVoiceName(value, voices)}
+        value={shown}
         onChange={(event) => onChange(event.target.value)}
         className="min-w-0 flex-1 rounded-md bg-raised px-2.5 py-2 text-[13px] text-text"
       >
         {defaultOption && <option value={FOLLOWS_DEFAULT}>{defaultOption.label}</option>}
-        {groupVoices(voices).map(([locale, group]) => (
-          <optgroup key={locale} label={describeLocale(locale)}>
+        {missing && (
+          // Kept on show rather than falling back to the first option: a select whose value no
+          // option carries displays something else, and touching it would change the voice.
+          <option value={value}>{value} (not ready on this Mac)</option>
+        )}
+        {groupVoices(voices).map(([key, group]) => (
+          <optgroup key={key} label={describeGroup(key)}>
             {group.map((voice) => (
               <option key={voice.name} value={voice.name}>
                 {voice.name}
@@ -64,12 +71,26 @@ export function VoicePicker({
   )
 }
 
+/** What a voice is listed under: its language, and its engine where more than one is offered. */
+function groupKey(voice: Voice): string {
+  return voice.engine ? `${voice.engine}|${voice.locale}` : voice.locale
+}
+
+const ENGINE_LABELS: Record<NonNullable<Voice['engine']>, string> = { kokoro: 'Kokoro', system: 'macOS' }
+
+export function describeGroup(key: string): string {
+  const [engine, locale] = key.includes('|') ? key.split('|') : [null, key]
+  const language = describeLocale(locale)
+  return engine ? `${ENGINE_LABELS[engine as keyof typeof ENGINE_LABELS] ?? engine} · ${language}` : language
+}
+
 export function groupVoices(voices: Voice[]): Array<[string, Voice[]]> {
   const groups = new Map<string, Voice[]>()
   for (const voice of voices) {
-    const existing = groups.get(voice.locale)
+    const key = groupKey(voice)
+    const existing = groups.get(key)
     if (existing) existing.push(voice)
-    else groups.set(voice.locale, [voice])
+    else groups.set(key, [voice])
   }
 
   const preferred = navigator.language.replace('-', '_')
@@ -81,7 +102,11 @@ export function groupVoices(voices: Voice[]): Array<[string, Voice[]]> {
       group.sort((a, b) => Number(a.novelty) - Number(b.novelty) || a.name.localeCompare(b.name))
       return [locale, group] as [string, Voice[]]
     })
-    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    .sort(([a], [b]) => rank(localeOf(a)) - rank(localeOf(b)) || a.localeCompare(b))
+
+  function localeOf(key: string): string {
+    return key.includes('|') ? key.split('|')[1] : key
+  }
 
   function rank(locale: string): number {
     if (locale === preferred) return 0

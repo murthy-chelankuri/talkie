@@ -65,7 +65,7 @@ import { isBuiltinThemeId } from '../main/themes/builtinThemes'
 import { BUILTIN_FONTS, LOGO_CORNERS, ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type FontChoice, type Theme } from '../main/themes/schema'
 import { resolveFonts } from '../main/themes/generate/resolveFonts'
 import { readSettings } from '../main/settings/settingsStore'
-import { speechEngine } from '../main/tts/engineRegistry'
+import { allVoices, engineOfVoice, speechEngine } from '../main/tts/engineRegistry'
 import { fixContrast } from '../main/themes/contrast'
 import { setProjectTheme } from '../main/themes/applyTheme'
 import { generateTheme, saveGeneratedTheme } from '../main/themes/generate/generateTheme'
@@ -347,22 +347,28 @@ export function createTalkieServer(
     {
       title: 'List voices',
       description:
-        'The voices a project can be read in, for whichever speech engine Talkie is set to — the ' +
-        'Mac\'s own voices, or Kokoro, the built-in voice that sounds close to a person. The engine ' +
-        'is chosen by the person in Settings, not here.',
+        'The voices a project can be read in, from every speech engine that is ready on this Mac — ' +
+        'the Mac\'s own voices, and Kokoro, the built-in voice that sounds close to a person, once ' +
+        'it is downloaded. A project\'s voice brings its engine with it, so a project can be read in ' +
+        'Kokoro while Talkie\'s own default is a Mac voice, and the other way round.',
       inputSchema: {},
       annotations: { readOnlyHint: true }
     },
     async () => {
       const { engine: engineId, voice: appVoice } = readSettings(baseDir).speech
-      const engine = speechEngine(engineId)
-      const [voices, availability] = await Promise.all([engine.voices(), engine.isAvailable()])
+      const kokoro = await speechEngine('kokoro').isAvailable().catch(() => ({ available: false, reason: undefined }))
+      const voices = await allVoices()
+      const listed = (engine: 'system' | 'kokoro'): string[] =>
+        voices.filter((voice) => voice.engine === engine).map((voice) => `  ${voice.name}${voice.locale ? ` (${voice.locale})` : ''}`)
       return text(
         [
-          `Engine: ${engine.label}${availability.available ? '' : ` — not ready: ${availability.reason ?? 'unavailable'}`}`,
-          `Talkie's own voice: ${appVoice || 'the default'}`,
+          `Talkie's own voice, for projects without one: ${appVoice || 'the default'} (${speechEngine(engineId).label})`,
           '',
-          ...voices.map((voice) => `${voice.name}${voice.locale ? ` (${voice.locale})` : ''}`)
+          `${speechEngine('system').label}:`,
+          ...listed('system'),
+          '',
+          `${speechEngine('kokoro').label}:`,
+          ...(kokoro.available ? listed('kokoro') : [`  not ready: ${kokoro.reason ?? 'unavailable'}`])
         ].join('\n')
       )
     }
@@ -373,24 +379,24 @@ export function createTalkieServer(
     {
       title: 'Choose the voice',
       description:
-        'Set the voice this project is read in, by name — one from talkie_list_voices, for the engine ' +
-          'Talkie is set to. ' +
-        'Narration already recorded keeps the voice it was read in until it is voiced again.',
+        'Set the voice this project is read in, by name — any from talkie_list_voices, from either ' +
+        'engine; the voice decides which engine reads it. Narration already recorded keeps the voice ' +
+        'it was read in until it is voiced again.',
       inputSchema: {
         projectId: z.string(),
         voice: z.string().describe('A voice name, or empty to follow whatever Talkie is set to')
       }
     },
     async ({ projectId, voice }) => {
-      // A name the engine does not have is read in its default voice, silently — so it is refused
-      // here, where whoever chose it can still choose again.
+      // A name no ready engine has would be read in some default voice, silently — so it is
+      // refused here, where whoever chose it can still choose again.
       const wanted = voice.trim()
       if (wanted) {
-        const voices = await speechEngine(readSettings(baseDir).speech.engine).voices().catch(() => [])
+        const voices = await allVoices()
         // The Mac lists "Daniel (English (UK))" and answers to "Daniel", so either is a match.
         const known = voices.some((v) => [v.name, v.name.split(' (')[0]].some((name) => name.toLowerCase() === wanted.toLowerCase()))
         if (voices.length > 0 && !known) {
-          return text(`Talkie has no voice called ${wanted} with its current engine. talkie_list_voices names the ones it has.`)
+          return text(`No engine ready on this Mac has a voice called ${wanted}. talkie_list_voices names the ones there are.`)
         }
       }
       const project = withHistory(
@@ -400,7 +406,7 @@ export function createTalkieServer(
       )
       return text(
         project.voice
-          ? `This project now speaks as ${project.voice}. Re-voice any clip that should change.`
+          ? `This project now speaks as ${project.voice}, in ${speechEngine(engineOfVoice(project.voice)).label}. Re-voice any clip that should change.`
           : 'This project now follows whatever voice Talkie is set to.'
       )
     }

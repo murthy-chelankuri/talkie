@@ -113,6 +113,10 @@ Every project can hold a voice of its own, chosen in the editor beside the proje
 holds the **default for new projects**; a project that has chosen a voice keeps it, so changing the
 default never turns finished work into work that looks unfinished.
 
+A project's voice brings its engine with it: the picker lists the Mac's voices and Kokoro's (once
+it is downloaded), so one project can be read in Kokoro while the default is a Mac voice, and the
+other way round. Changing the engine in Settings changes the default voice with it.
+
 The picker's first option puts a project back to following the default, so the choice is reversible
 at any point. Changing the voice never re-narrates anything by itself: existing takes stay as
 they are, and the panel then offers to re-speak them in the new voice if that is what you want.

@@ -18,6 +18,8 @@ export interface Voice {
   sample: string
   /** A joke voice rather than a narrator — offered, but sorted last. */
   novelty: boolean
+  /** Which engine reads it, where voices from more than one are listed together. */
+  engine?: 'system' | 'kokoro'
 }
 
 /**
@@ -103,6 +105,10 @@ export async function listVoices(): Promise<Voice[]> {
  */
 export async function previewVoice(name: string, text: string): Promise<void> {
   const speech = readSettings().speech
+  const { engineOfVoice, speechEngine } = await import('./engineRegistry')
+  // Heard in the engine that will read it, which the voice says — not the app's: a project's own
+  // picker offers both engines' voices.
+  const engine = engineOfVoice(name)
   const options = {
     voice: name,
     pace: speech.pace,
@@ -110,16 +116,15 @@ export async function previewVoice(name: string, text: string): Promise<void> {
     clausePauseMs: speech.clausePauseMs
   }
 
-  if (speech.engine === 'system') {
+  if (engine === 'system') {
     const spoken = toSpokenMarkup(text, options)
     await execFileAsync('say', ['-v', name, spoken || text], { timeout: 30_000 })
     return
   }
 
-  const { speechEngine } = await import('./engineRegistry')
   const scratch = join(tmpdir(), `talkie-preview-${Date.now()}.wav`)
   try {
-    await speechEngine(speech.engine).synthesize(text, scratch, options)
+    await speechEngine(engine).synthesize(text, scratch, options)
     await execFileAsync('afplay', [scratch], { timeout: 60_000 })
   } finally {
     try {

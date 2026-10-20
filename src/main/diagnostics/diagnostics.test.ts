@@ -108,12 +108,12 @@ describe('the doctor', () => {
     expect(formatChecks(checks)).toMatch(/✗ Narration voice: Kokoro, af_alloy; the voice is not downloaded\.\n {4}→ Download/)
   })
 
-  it('says which voice Kokoro really reads in when the one set is the Mac’s', async () => {
+  it('names the Kokoro voice the app reads in, which a Mac voice left over from before cannot be', async () => {
     updateSettings({ speech: { engine: 'kokoro', voice: 'Samantha' } }, home)
 
     const voice = (await runDoctor({ baseDir: home })).find((check) => check.id === 'voice')
 
-    expect(voice?.detail).toContain('af_heart (the voice set, Samantha, is not a Kokoro voice)')
+    expect(voice?.detail).toContain('Kokoro, af_heart;')
   })
 })
 

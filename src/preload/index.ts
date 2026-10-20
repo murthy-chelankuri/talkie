@@ -51,6 +51,7 @@ const projectApi = {
   overviews: (): Promise<ProjectOverview[]> => ipcRenderer.invoke('project:overviews'),
   open: (id: string): Promise<ProjectMetadata> => ipcRenderer.invoke('project:open', id),
   remove: (id: string): Promise<void> => ipcRenderer.invoke('project:delete', id),
+  voices: (): Promise<Voice[]> => ipcRenderer.invoke('project:voices'),
   setVoice: (id: string, voice: string | null): Promise<ProjectMetadata> =>
     ipcRenderer.invoke('project:setVoice', id, voice),
   setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>

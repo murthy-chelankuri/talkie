@@ -5,7 +5,6 @@ import { readSettings } from '../settings/settingsStore'
 import { workerPath } from '../tts/kokoro/kokoroProcess'
 import { isKokoroDownloaded } from '../tts/kokoro/kokoroModel'
 import { speechEngine } from '../tts/engineRegistry'
-import { DEFAULT_KOKORO_VOICE, isKokoroVoiceName } from '../tts/kokoroTtsProvider'
 import { toolPath } from '../media'
 import { browserExecutablePath } from '../capture/resolveBrowser'
 import { checkoutCommit, readBuildInfo } from './buildInfo'
@@ -83,9 +82,8 @@ function checkVoice(baseDir: string): DoctorCheck {
   const { speech } = readSettings(baseDir)
   const base = { id: 'voice', label: 'Narration voice' }
   if (speech.engine !== 'kokoro') return { ...base, ok: true, detail: `macOS voice ${speech.voice}` }
-  // A voice left over from the Mac's engine is read in Kokoro's default, without a word — which
-  // sounds like the setting being ignored.
-  const voice = isKokoroVoiceName(speech.voice) ? speech.voice : `${DEFAULT_KOKORO_VOICE} (the voice set, ${speech.voice}, is not a Kokoro voice)`
+  // Always one of Kokoro's: settings move the voice with the engine (voiceOfItsEngine).
+  const voice = speech.voice
   return isKokoroDownloaded(baseDir)
     ? { ...base, ok: true, detail: `Kokoro, ${voice}; the voice is downloaded.` }
     : { ...base, ok: false, detail: `Kokoro, ${voice}; the voice is not downloaded.`, fix: 'Download it in Talkie, under Settings → Narration.' }

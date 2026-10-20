@@ -5,6 +5,7 @@ import { notifySettingsChanged } from '../lib/settingsChanged'
 import type { TranscriptSegment } from '../../../main/transcript/schema'
 import type { ProjectContext } from '../../../main/project/projectContext'
 import type { NarrationFidelity } from '../../../main/tts/voiceFidelity'
+import type { Voice } from '../../../main/tts/listVoices'
 
 export type { TimelineItem }
 export type { TranscriptSegment }
@@ -48,6 +49,8 @@ export const projectClient = {
   overviews: (): Promise<ProjectOverview[]> => window.api.project.overviews(),
   open: (id: string): Promise<ProjectMetadata> => window.api.project.open(id),
   remove: (id: string): Promise<void> => window.api.project.remove(id),
+  /** Every voice a project can be read in, from every engine that is ready. */
+  voices: (): Promise<Voice[]> => window.api.project.voices(),
   setVoice: (id: string, voice: string | null): Promise<ProjectMetadata> =>
     window.api.project.setVoice(id, voice),
   setContext: (id: string, context: ProjectContext): Promise<ProjectMetadata> =>
