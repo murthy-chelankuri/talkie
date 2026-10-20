@@ -23,6 +23,7 @@ import {
 import { beatsByItem } from '../transcript/captions'
 import { withHistory } from '../project/history'
 import { prepareDeck, saveSlides, type PreparedDeck } from '../slides/importSlides'
+import { appendPreparedVideo, prepareVideo, VIDEO_EXTENSIONS } from '../capture/importVideo'
 import { describeExport, openExport, showExportInFinder } from '../render/revealExport'
 import { addScene, updateSceneData, writeDiagramSvg } from '../project/projectApi'
 import { writeScene, type SceneRequest } from '../agent/writeScene'
@@ -115,6 +116,18 @@ export function registerTimelineHandlers(ipcMain: IpcMain, getWindow: () => Brow
     }
 
     return withHistory(id, () => importImage(id, result.filePaths[0]))
+  })
+
+  // Read before anything changes, then added in one step: undo takes the whole video back, and a
+  // video that fails to read leaves the project as it was.
+  ipcMain.handle('project:import:video', async (_event, id: string) => {
+    const window = getWindow()
+    const options = { properties: ['openFile' as const], filters: [{ name: 'Videos', extensions: VIDEO_EXTENSIONS }] }
+    const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+    if (result.canceled || result.filePaths.length === 0) return null
+
+    const video = await prepareVideo(id, result.filePaths[0])
+    return withHistory(id, () => appendPreparedVideo(id, video))
   })
 
   ipcMain.handle('project:scene:add', (_event, id: string, kind: 'scene' | 'diagram', data: unknown) =>

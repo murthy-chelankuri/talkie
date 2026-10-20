@@ -65,6 +65,7 @@ export const projectClient = {
   undo: (id: string): Promise<HistoryState> => window.api.project.undo(id),
   redo: (id: string): Promise<HistoryState> => window.api.project.redo(id),
   importImage: (id: string): Promise<TimelineItem | null> => window.api.project.importImage(id),
+  importVideo: (id: string): Promise<TimelineItem[] | null> => window.api.project.importVideo(id),
   chooseDeck: (id: string) => window.api.project.chooseDeck(id),
   saveSlides: (id: string, pages: Array<{ png: Uint8Array }>, notes: string[]) =>
     window.api.project.saveSlides(id, pages, notes)

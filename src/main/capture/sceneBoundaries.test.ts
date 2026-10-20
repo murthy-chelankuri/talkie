@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { IDLE_GAP_MS, MIN_SCENE_MS, SNAP_MS, TARGET_SCENE_MS, planScenes } from './sceneBoundaries'
+import { IDLE_GAP_MS, MIN_SCENE_MS, SNAP_MS, TARGET_SCENE_MS, planFootageScenes, planScenes } from './sceneBoundaries'
 import type { ActionLogEntry } from './actionLog'
 
 function click(t: number): ActionLogEntry {
@@ -144,5 +144,57 @@ describe('cutting a recorded session into scenes', () => {
       cursor += scene.durationMs
     }
     expect(cursor).toBe(75_000)
+  })
+})
+
+describe('cutting a video made elsewhere into scenes', () => {
+  const none = { shotsMs: [], stillsEndMs: [], pausesMs: [] }
+
+  it('cuts where the edit cut, rather than waiting for the beat', () => {
+    const scenes = planFootageScenes(40_000, { ...none, shotsMs: [7000, 30_000] })
+
+    expect(scenes.map((scene) => [scene.fromMs, scene.because])).toEqual([
+      [0, 'start'],
+      [7000, 'shot'],
+      [22_000, 'clock'],
+      [30_000, 'shot']
+    ])
+  })
+
+  it('takes a cut in the last stretch, where a whole scene is left either side of it', () => {
+    // Twenty seconds left is one scene by the clock; a cut the editor made in it is still a cut.
+    const scenes = planFootageScenes(20_000, { ...none, shotsMs: [8000] })
+
+    expect(scenes.map((scene) => scene.fromMs)).toEqual([0, 8000])
+  })
+
+  it('lands a cut between sentences rather than on the clock in the middle of one', () => {
+    const scenes = planFootageScenes(40_000, { ...none, pausesMs: [13_200, 31_000] })
+
+    expect(scenes[1]).toMatchObject({ fromMs: 13_200, because: 'pause' })
+  })
+
+  it('leaves a short video as one scene, whatever cuts it has', () => {
+    expect(planFootageScenes(8000, { ...none, shotsMs: [3000, 5000] })).toEqual([
+      { fromMs: 0, durationMs: 8000, because: 'start' }
+    ])
+  })
+
+  it('never makes a scene shorter than the shortest a scene may be, however fast the edit cuts', () => {
+    const shotsMs = Array.from({ length: 30 }, (_, i) => (i + 1) * 2000)
+    const scenes = planFootageScenes(62_000, { ...none, shotsMs })
+
+    for (const scene of scenes) expect(scene.durationMs).toBeGreaterThanOrEqual(MIN_SCENE_MS)
+  })
+})
+
+describe('the last stretch of a recording', () => {
+  it('starts a new scene where the person moved to another tab near the end', () => {
+    const scenes = planScenes(20_000, [navigation(2000)], [9000])
+
+    expect(scenes.map((scene) => [scene.fromMs, scene.because])).toEqual([
+      [0, 'start'],
+      [9000, 'page']
+    ])
   })
 })

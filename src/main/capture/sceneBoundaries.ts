@@ -9,7 +9,7 @@ export interface SceneWindow {
   because: CutReason
 }
 
-export type CutReason = 'start' | 'page' | 'topic' | 'note' | 'navigation' | 'wait' | 'clock'
+export type CutReason = 'start' | 'page' | 'shot' | 'topic' | 'note' | 'navigation' | 'pause' | 'wait' | 'clock'
 
 /**
  * How strong a reason to cut is, where two of them fall close together.
@@ -18,13 +18,19 @@ export type CutReason = 'start' | 'page' | 'topic' | 'note' | 'navigation' | 'wa
  * note they pressed during the recording is them saying so themselves, and a change of subject
  * is a model saying so on their behalf. A navigation is only the page changing under them, and
  * a wait is an inference from nothing happening.
+ *
+ * A video brought in from elsewhere has no log, only its picture and its sound. A shot changing is
+ * whoever edited it saying a new thing starts, as plainly as a new tab; a pause in the speech is
+ * where a sentence ended, worth landing on but no reason to cut on its own.
  */
 const STRENGTH: Record<CutReason, number> = {
   start: 5,
   page: 4,
+  shot: 4,
   topic: 3,
   note: 3,
   navigation: 1,
+  pause: 1,
   wait: 0,
   clock: 0
 }
@@ -147,12 +153,52 @@ export function planScenes(
     snapMs: options.snapMs ?? SNAP_MS
   }
 
-  // A recording too short to hold two scenes is one scene, whatever happened during it.
+  return planFrom(cutCandidates(entries, pageChangesMs, topicBreaksMs), totalMs, settings)
+}
+
+/** Where something in a video's own picture and sound could start a scene, in milliseconds. */
+export interface FootageCuts {
+  /** The picture changing all at once: a cut made when the video was edited. */
+  shotsMs: number[]
+  /** The picture starting to move again after holding still. */
+  stillsEndMs: number[]
+  /** The middle of a pause in the speech. */
+  pausesMs: number[]
+}
+
+/**
+ * Cut a video made somewhere else into scenes, on the same beat a recording is cut to.
+ *
+ * It has no log of what happened, so what it shows and says stands in for one: a shot changing
+ * is taken the way a new tab is, and the end of a still stretch the way a wait is — the pause
+ * belongs to what caused it. A cut that lands in a pause in the speech lands between sentences.
+ */
+export function planFootageScenes(
+  totalMs: number,
+  cuts: FootageCuts,
+  options: { minSceneMs?: number; targetSceneMs?: number; snapMs?: number } = {}
+): SceneWindow[] {
+  const candidates: Candidate[] = [
+    ...cuts.shotsMs.map((atMs) => ({ atMs, because: 'shot' as const })),
+    ...cuts.stillsEndMs.map((atMs) => ({ atMs, because: 'wait' as const })),
+    ...cuts.pausesMs.map((atMs) => ({ atMs, because: 'pause' as const }))
+  ]
+  return planFrom(
+    candidates.filter((candidate) => candidate.atMs > 0 && candidate.atMs < totalMs).sort((first, second) => first.atMs - second.atMs),
+    totalMs,
+    {
+      minSceneMs: options.minSceneMs ?? MIN_SCENE_MS,
+      targetSceneMs: options.targetSceneMs ?? TARGET_SCENE_MS,
+      snapMs: options.snapMs ?? SNAP_MS
+    }
+  )
+}
+
+function planFrom(candidates: Candidate[], totalMs: number, settings: Cadence): SceneWindow[] {
+  // Too short to hold two scenes is one scene, whatever happened during it.
   if (totalMs < settings.minSceneMs * 2) {
     return [{ fromMs: 0, durationMs: Math.max(1, totalMs), because: 'start' }]
   }
-
-  const candidates = cutCandidates(entries, pageChangesMs, topicBreaksMs)
   return windowsFrom(chooseCuts(candidates, totalMs, settings), totalMs)
 }
 
@@ -167,15 +213,30 @@ function chooseCuts(candidates: Candidate[], totalMs: number, cadence: Cadence):
   const cuts: Candidate[] = []
   let from = 0
 
-  while (totalMs - from > cadence.targetSceneMs + cadence.snapMs) {
-    const cut = endOfScene(candidates, from, cadence)
+  for (;;) {
+    // What is left fits in one scene, unless something deliberate starts in it: a new tab or a
+    // cut in an edit near the end is as much the start of something as one in the middle.
+    const cut =
+      totalMs - from > cadence.targetSceneMs + cadence.snapMs
+        ? endOfScene(candidates, from, cadence)
+        : deliberateIn(candidates, from, totalMs, cadence)
     // Never leave a last scene too short to be seen and spoken over; it joins this one instead.
-    if (totalMs - cut.atMs < cadence.minSceneMs) break
+    if (!cut || totalMs - cut.atMs < cadence.minSceneMs) break
     cuts.push(cut)
     from = cut.atMs
   }
 
   return cuts
+}
+
+/** The first deliberate break in the last stretch that leaves a whole scene either side of it. */
+function deliberateIn(candidates: Candidate[], from: number, totalMs: number, cadence: Cadence): Candidate | undefined {
+  return candidates.find(
+    (candidate) =>
+      STRENGTH[candidate.because] >= DELIBERATE &&
+      candidate.atMs >= from + cadence.minSceneMs &&
+      candidate.atMs <= totalMs - cadence.minSceneMs
+  )
 }
 
 /**

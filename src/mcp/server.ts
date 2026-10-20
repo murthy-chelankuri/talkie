@@ -38,6 +38,8 @@ import { narrationFromText } from '../main/transcript/narrationBeats'
 import { SceneStyleSchema } from '../main/project/timeline/schema'
 import type { TimelineItem } from '../main/project/timeline/schema'
 import { prepareDeck, saveSlides } from '../main/slides/importSlides'
+import { appendPreparedVideo, prepareVideo, VIDEO_EXTENSIONS } from '../main/capture/importVideo'
+import type { CutReason } from '../main/capture/sceneBoundaries'
 import { activeVersion, playable } from '../main/project/versions'
 import {
   chooseVersion,
@@ -119,6 +121,19 @@ function describeItem(item: TimelineItem, index: number): string {
  * What `style` means, said once. "theme" is the one that changed meaning: in a themed project its
  * three values are the theme's own variants, and accent and font give way to the theme's.
  */
+/** Why an imported video was cut where it was, as the tool reports it. */
+const CUT_WORDS: Record<CutReason, string> = {
+  start: 'the opening',
+  page: 'a new page',
+  shot: 'a change of shot',
+  topic: 'a change of subject',
+  note: 'a note',
+  navigation: 'a navigation',
+  pause: 'a pause in the speech',
+  wait: 'the picture moving again',
+  clock: 'the beat'
+}
+
 const STYLE_HELP =
   'Look: theme "dark", "light" or "brand" — in a project with a theme these are that theme\'s three ' +
   'variants (brand opens a section, light explains, dark sets a scene). font (serif/sans) and accent ' +
@@ -1111,6 +1126,37 @@ export function createTalkieServer(
         `Added the picture at the end (clip id ${item.id}), on screen for ` +
           `${(item.duration / 30).toFixed(1)}s.`
       )
+    }
+  )
+
+  tool(
+    'talkie_import_video',
+    {
+      title: 'Import a video',
+      description:
+        'Bring in a video made elsewhere — a screen recording, an edited demo — as scenes on the end ' +
+        'of the timeline. It is cut where its shots change and, where it has speech, between ' +
+        'sentences, on the same beat (about every 15 seconds, never under 5) a recording is. Each ' +
+        'scene is a stretch of one copy kept in the project, so talkie_split_clip, ' +
+        'talkie_set_duration and talkie_delete_clip work on them as on any clip.\n' +
+        'Its own sound is kept in the file but not played: write and speak narration over each ' +
+        'scene with talkie_draft_narration or talkie_set_narration, then talkie_narrate. A video ' +
+        'the editor cannot play as it is (ProRes, .webm, .mkv …) is converted to H.264 first, ' +
+        'which takes a while for a long one.',
+      inputSchema: {
+        projectId: z.string(),
+        path: z.string().describe(`An absolute path to a video on this machine (${VIDEO_EXTENSIONS.join(', ')})`)
+      }
+    },
+    async ({ projectId, path }) => {
+      const video = await prepareVideo(projectId, path, baseDir)
+      const scenes = withHistory(projectId, () => appendPreparedVideo(projectId, video, baseDir), baseDir)
+      const lines = scenes.map(
+        (scene, i) =>
+          `${i + 1}. clip ${scene.id}: ${(scene.start / 30).toFixed(1)}s, ${(scene.duration / 30).toFixed(1)}s long ` +
+          `(${video.scenes[i].because === 'start' ? 'the opening' : `cut on ${CUT_WORDS[video.scenes[i].because]}`})`
+      )
+      return text(`Added the video as ${scenes.length} scene${scenes.length === 1 ? '' : 's'} at the end:\n${lines.join('\n')}`)
     }
   )
 

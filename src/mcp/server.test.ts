@@ -11,6 +11,7 @@ import type { TimelineItem } from '../main/project/timeline/schema'
 import { createMcpToken } from '../main/settings/mcpAccess'
 import { bandedPng } from '../main/themes/generate/testImages'
 import { GOOD } from '../main/htmlScene/fixtures'
+import { editedVideo } from '../main/capture/testVideos'
 import { AGENT_TOOLS } from '../main/agent/projectAgent'
 import { readTheme } from '../main/themes/themeApi'
 import { updateSettings } from '../main/settings/settingsStore'
@@ -663,6 +664,39 @@ describe('Talkie over MCP', () => {
       // The full version is untouched, and choosing it plays everything again.
       expect(await call('talkie_choose_version', { projectId, versionId: 'full' })).toMatch(/"Full video" \(id full\) — being worked on/)
       expect(await call('talkie_timeline', { projectId })).not.toContain('LEFT OUT')
+    }, 60_000)
+  })
+
+  describe('importing a video', () => {
+    it('adds a video made elsewhere as one scene per shot, and says where it cut', async () => {
+      const projectId = await newProject('Imported')
+      const dir = mkdtempSync(join(tmpdir(), 'talkie-video-mcp-'))
+      const video = join(dir, 'edited.mp4')
+      await editedVideo(video)
+
+      const said = await call('talkie_import_video', { projectId, path: video })
+
+      expect(said).toContain('3 scenes')
+      expect(said).toContain('cut on a change of shot')
+      expect(readTimeline(projectId, baseDir).map((item) => item.kind)).toEqual(['video', 'video', 'video'])
+
+      // The whole video is one step: taking it back takes every scene.
+      await call('talkie_undo', { projectId })
+      expect(readTimeline(projectId, baseDir)).toEqual([])
+
+      rmSync(dir, { recursive: true, force: true })
+    }, 90_000)
+
+    it('says so plainly when the file is not a video, and adds nothing', async () => {
+      const projectId = await newProject('Not a video')
+      const dir = mkdtempSync(join(tmpdir(), 'talkie-video-mcp-'))
+      const notes = join(dir, 'notes.mp4')
+      writeFileSync(notes, 'just words')
+
+      expect(await call('talkie_import_video', { projectId, path: notes })).toContain('no video Talkie can read')
+      expect(readTimeline(projectId, baseDir)).toEqual([])
+
+      rmSync(dir, { recursive: true, force: true })
     }, 60_000)
   })
 
