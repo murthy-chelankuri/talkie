@@ -12,7 +12,7 @@
   "type": "module",
   "main": "./out/main/index.cjs",
   "scripts": {
-    "dev": "node scripts/ensureElectron.mjs && node scripts/fetchFfmpeg.mjs --ensure && electron-vite dev",
+    "dev": "node scripts/ensureElectron.mjs && node scripts/fetchFfmpeg.mjs --ensure && npm run -s build:htmlscene && npm run -s build:exportpage && npm run -s build:mcp && electron-vite dev",
     "build": "electron-vite build && npm run build:mcp && npm run build:htmlscene && npm run build:exportpage && node scripts/writeBuildInfo.mjs",
     "doctor": "node scripts/doctor.mjs",
     "notices": "node scripts/generateNotices.mjs",

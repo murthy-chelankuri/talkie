@@ -195,6 +195,11 @@ These each cost real time to find. None are obvious from the code.
   `npm run dev` straight after a download. Counted from `out/main`, export looked two folders above
   the repository, and the error, thrown inside the asset server, ended the app as "Talkie could not
   start". The tests and e2e never saw it: one runs from `src/`, the other after a full build.
+- **`npm run dev` rebuilds `out/html-scene`, `out/export-page` and `out/mcp` before it starts.**
+  electron-vite rebuilds only main, preload and the renderer, and a built copy of the other three
+  is used over the sources whenever there is one. On a Mac that had pulled the HTML cards and only
+  run `dev`, the templates in `out/html-scene` predated them, and every theme change failed with
+  an `ENOENT` for the `opening` template. The three take about two seconds.
 - **Renderer entries are declared explicitly** in `electron.vite.config.ts` — the editor window
   and the recording toolbar. A new window needs adding there or it will not ship.
 
