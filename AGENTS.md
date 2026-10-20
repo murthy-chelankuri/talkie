@@ -414,8 +414,7 @@ colours — kept once in the Studio's `Themes` folder and chosen per project (`t
   page by the runtime (`--talkie-logo-plate`), as `LogoMark` does it for the video. Applying a theme
   also remakes classic cards (slides with the title or closing layout) as HTML ones in place —
   same id, so narration and versions stay with them — and leaves a closing card that only said a
-  theme's tagline untitled, to follow the next one. The shipped examples still have classic cards
-  until they are rebuilt.
+  theme's tagline untitled, to follow the next one.
 - **Built-in themes live in code** (`builtinThemes.ts`, ids `builtin-*`), not in the library folder,
   so they cannot be deleted or edited — `themeApi` refuses, and Duplicate gives an editable copy.
   They use only Geist and Newsreader, the fonts every render already has, so they work offline and

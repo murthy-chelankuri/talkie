@@ -1,20 +1,24 @@
 [
   {
     "id": "79201b3c-fc75-461c-910c-62e4a3d647df",
-    "kind": "scene",
+    "kind": "html",
     "start": 0,
     "duration": 279,
     "data": {
-      "title": "Meet Talkie",
-      "layout": "title",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/aee2955e-64d8-433d-bc20-e70cd288de0c/index.html",
+      "title": "Opening card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Meet Talkie"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/aee2955e-64d8-433d-bc20-e70cd288de0c:2f670642:brand",
+      "posterText": "Meet Talkie",
+      "check": {
+        "problems": []
+      },
+      "card": "opening"
     }
   },
   {
@@ -227,20 +231,24 @@
   },
   {
     "id": "f52c9fd7-6b13-4fd0-8f69-d09ec5382514",
-    "kind": "scene",
+    "kind": "html",
     "start": 6403,
     "duration": 302,
     "data": {
-      "title": "Make it yours",
-      "layout": "closing",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/b3958212-5015-41c3-aa53-b2a70aa44610/index.html",
+      "title": "Closing card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Make it yours"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/b3958212-5015-41c3-aa53-b2a70aa44610:2f670642:brand",
+      "posterText": "Make it yours",
+      "check": {
+        "problems": []
+      },
+      "card": "closing"
     }
   }
 ]

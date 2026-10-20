@@ -1,20 +1,24 @@
 [
   {
     "id": "de850509-a0d2-420b-a513-367623da5fc1",
-    "kind": "scene",
+    "kind": "html",
     "start": 0,
     "duration": 102,
     "data": {
-      "title": "Introducing Tidewell",
-      "layout": "title",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/8a82d98a-bdf1-43f6-8e8d-6c5f59c45aaa/index.html",
+      "title": "Opening card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Introducing Tidewell"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/8a82d98a-bdf1-43f6-8e8d-6c5f59c45aaa:b5f189ab:brand",
+      "posterText": "Introducing Tidewell",
+      "check": {
+        "problems": []
+      },
+      "card": "opening"
     }
   },
   {
@@ -156,20 +160,24 @@
   },
   {
     "id": "50a703c4-ebbf-44bc-aa2e-bafc3a777388",
-    "kind": "scene",
+    "kind": "html",
     "start": 1649,
     "duration": 155,
     "data": {
-      "title": "Try Tidewell free",
-      "layout": "closing",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/15a01ec2-83ce-4216-9f86-47c94e205f4a/index.html",
+      "title": "Closing card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Try Tidewell free"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/15a01ec2-83ce-4216-9f86-47c94e205f4a:b5f189ab:brand",
+      "posterText": "Try Tidewell free",
+      "check": {
+        "problems": []
+      },
+      "card": "closing"
     }
   }
 ]

@@ -1,20 +1,24 @@
 [
   {
     "id": "019e96d8-5d8e-4ec2-aa15-f823adf5f9bd",
-    "kind": "scene",
+    "kind": "html",
     "start": 0,
     "duration": 197,
     "data": {
-      "title": "Where does a photo go?",
-      "layout": "title",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/9d78f1d7-178a-471f-b20e-4977e75a4c1c/index.html",
+      "title": "Opening card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Where does a photo go?"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/9d78f1d7-178a-471f-b20e-4977e75a4c1c:2f670642:brand",
+      "posterText": "Where does a photo go?",
+      "check": {
+        "problems": []
+      },
+      "card": "opening"
     }
   },
   {
@@ -119,20 +123,24 @@
   },
   {
     "id": "cd9077f9-3b89-4466-aed3-a0b972848fe8",
-    "kind": "scene",
+    "kind": "html",
     "start": 1955,
     "duration": 208,
     "data": {
-      "title": "Explained in sixty seconds",
-      "layout": "closing",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/3437af43-fd89-4f68-a3c3-3a615581c7da/index.html",
+      "title": "Closing card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Explained in sixty seconds"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/3437af43-fd89-4f68-a3c3-3a615581c7da:2f670642:brand",
+      "posterText": "Explained in sixty seconds",
+      "check": {
+        "problems": []
+      },
+      "card": "closing"
     }
   }
 ]

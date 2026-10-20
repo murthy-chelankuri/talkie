@@ -1,20 +1,24 @@
 [
   {
     "id": "dacbebb6-46c2-4513-9874-27f64380296d",
-    "kind": "scene",
+    "kind": "html",
     "start": 0,
     "duration": 201,
     "data": {
-      "title": "Taskboard in a minute",
-      "layout": "title",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/9640ba12-8971-4f52-a195-79565978bbb9/index.html",
+      "title": "Opening card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Taskboard in a minute"
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/9640ba12-8971-4f52-a195-79565978bbb9:c0f306ff:brand",
+      "posterText": "Taskboard in a minute",
+      "check": {
+        "problems": []
+      },
+      "card": "opening"
     }
   },
   {
@@ -73,20 +77,24 @@
   },
   {
     "id": "b82a3d16-ee74-4d8a-a61e-a3a6d6ab32c8",
-    "kind": "scene",
+    "kind": "html",
     "start": 1402,
     "duration": 309,
     "data": {
-      "title": "Recorded once. Narrated by Talkie.",
-      "layout": "closing",
-      "bullets": [],
+      "src": "{{TALKIE_PROJECT_DIR}}/sources/html/24dcab1b-7710-48e6-9b3d-2c6d8a004a98/index.html",
+      "title": "Closing card",
       "style": {
-        "theme": "brand",
-        "font": "serif",
-        "align": "center",
-        "size": "regular",
-        "accent": "#7ab5f0"
-      }
+        "theme": "brand"
+      },
+      "params": {
+        "title": "Recorded once. Narrated by Talkie."
+      },
+      "posterStamp": "{{TALKIE_PROJECT_DIR}}/sources/html/24dcab1b-7710-48e6-9b3d-2c6d8a004a98:c0f306ff:brand",
+      "posterText": "Recorded once. Narrated by Talkie.",
+      "check": {
+        "problems": []
+      },
+      "card": "closing"
     }
   }
 ]
