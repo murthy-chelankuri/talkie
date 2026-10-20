@@ -183,6 +183,19 @@ It is drawn inside the recorded page, so it is kept out of the page's way: nothi
 ever be clicked or reach the action log, and it uses no stylesheet, so a site with a strict
 content policy still gets its highlights.
 
+## Bringing in a video you already have
+
+Add → Import a video (or Project → Import a Video…) takes a screen recording or an edited demo
+made somewhere else — `.mp4`, `.mov`, `.m4v`, `.webm`, `.mkv` or `.avi` — and puts it on the
+timeline as scenes, cut where it was cut when it was edited and, where it has speech, between
+sentences, about every fifteen seconds as a recording is. Each scene is a stretch of one copy kept
+in the project, so splitting, lengthening or dropping one works as on any clip, and each has its
+own narration written and spoken over it.
+
+Its own sound stays in the file but is not played: the narration is the soundtrack. A video the
+editor cannot play as it is (ProRes, `.webm`, `.mkv`, 10-bit) is converted to H.264 on the way in,
+which for a long one takes a little while; an H.264 `.mp4` or `.mov` is copied as it is.
+
 ## Letting an AI agent make the video
 
 Talkie is an MCP server, so any agent that speaks MCP — Claude Code, GitHub Copilot CLI, Cursor
@@ -227,6 +240,7 @@ needs Node 20 or later. Set `TALKIE_HOME` to point it somewhere other than your 
 | `talkie_start_recording` | Open a real browser and start capturing it |
 | `talkie_navigate`, `talkie_click`, `talkie_type`, `talkie_scroll`, `talkie_wait` | Drive that browser |
 | `talkie_stop_recording`, `talkie_discard_recording` | Put the clip on the timeline, or throw it away |
+| `talkie_import_video` | Bring in a video made elsewhere, cut into scenes |
 | `talkie_html_templates`, `talkie_add_html_scene` | Add a scene — a slide, steps, a chart — from a template or a page of its own, as the app does |
 | `talkie_set_narration`, `talkie_draft_narration`, `talkie_narrate` | Write the words, have a model write them, speak them |
 | `talkie_export` | Render the MP4 |

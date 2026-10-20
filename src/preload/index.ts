@@ -73,6 +73,7 @@ const projectApi = {
   undo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:undo', id),
   redo: (id: string): Promise<HistoryState> => ipcRenderer.invoke('project:history:redo', id),
   importImage: (id: string): Promise<TimelineItem | null> => ipcRenderer.invoke('project:import:image', id),
+  importVideo: (id: string): Promise<TimelineItem[] | null> => ipcRenderer.invoke('project:import:video', id),
   chooseDeck: (id: string): Promise<PreparedDeck> => ipcRenderer.invoke('project:import:deck', id),
   saveSlides: (id: string, pages: Array<{ png: Uint8Array }>, notes: string[]): Promise<TimelineItem[]> =>
     ipcRenderer.invoke('project:import:saveSlides', id, pages, notes)

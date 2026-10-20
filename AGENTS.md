@@ -361,6 +361,34 @@ cannot type into; `authWall.ts` calls a page a sign-in only when it asks for an 
 has nowhere to go, so one such button used to be enough for the page to count as somewhere to
 get on to. It was never a wall, nobody was ever waited for, and the walk clicked the button.
 
+## A video made somewhere else
+
+`importVideo.ts` brings in a video someone already has and cuts it into scenes the way a recording
+is cut — it is the same `planScenes` cadence (a scene about every 15 seconds, never under 5,
+snapped to something that happened) and the same `appendVideoScenes`, every scene a stretch of one
+copy in `sources/videos/<id>/`. What it has not got is an action log, so `footageCuts.ts` reads the
+video instead, in one ffmpeg pass at ten frames a second: a shot changing (`scene` score over 0.4)
+is taken the way a new tab is, the picture moving again after holding still the way a wait is, and
+the middle of a pause in the speech (`silencedetect`) is where a cut near the beat lands.
+
+- **0.4 is chosen for screen recordings**, not films. A walkthrough changes a lot without cutting —
+  a page scrolls, a dialog opens — and none of that may read as a cut. Over Meet Talkie's tour
+  clips and the Taskboard recording, scrolling never crossed it, and only one of four joins
+  between tour clips did: a cut between two views of one app is not a change of shot, and the
+  clock still comes round.
+- **A deliberate break in the last stretch is taken.** The planner used to stop once what was left
+  fitted in one scene, so a cut in the final twenty seconds was ignored — for an edit's last shot,
+  and for a tab opened near the end of a recording alike.
+- **Its sound is kept, not played**, as for a recording: the narration is the soundtrack.
+- **Only an H.264 4:2:0 `.mp4`, `.mov` or `.m4v` is copied as it is**; anything else is converted
+  with a keyframe a second, since every scene starts partway into the file and the preview seeks
+  there at each cut.
+- **The slow part runs before anything changes**: the IPC handler and `talkie_import_video` prepare
+  the video, then add its scenes inside one `withHistory`, so undo takes the whole video back and a
+  file that will not read leaves the project as it was.
+- **The drafter describes a scene from its pictures**, as for any video clip: the folder is the
+  import's own, so there is no log beside it to find.
+
 ## Versions: one project, cut several ways
 
 The full walkthrough, a two-minute one, one for sales — the same clips, each version leaving some

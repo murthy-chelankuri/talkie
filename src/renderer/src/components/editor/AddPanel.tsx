@@ -1,4 +1,4 @@
-import { Clapperboard, Film, ImagePlus, LayoutTemplate, Presentation } from 'lucide-react'
+import { Clapperboard, Film, FileVideo, ImagePlus, LayoutTemplate, Presentation } from 'lucide-react'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { Action } from './parts'
 
@@ -6,23 +6,27 @@ import { Action } from './parts'
 export function AddPanel({
   recording,
   importingDeck,
+  importingVideo,
   deckProgress,
   isEmpty,
   importError,
   recordError,
   onRecordSession,
   onImportImage,
+  onImportVideo,
   onAddScene,
   onImportDeck
 }: {
   recording: boolean
   importingDeck: boolean
+  importingVideo: boolean
   deckProgress: string | null
   isEmpty: boolean
   importError: string | null
   recordError: string | null
   onRecordSession: () => void
   onImportImage: () => void
+  onImportVideo: () => void
   onAddScene: () => void
   onImportDeck: () => void
 }): JSX.Element {
@@ -48,6 +52,15 @@ export function AddPanel({
         disabled={importingDeck}
         onClick={onImportDeck}
       />
+      <Action
+        icon={<FileVideo size={15} />}
+        label={importingVideo ? 'Importing a video' : 'Import a video'}
+        hint={importingVideo ? 'Finding where its scenes change…' : 'One already made, cut into scenes'}
+        tone="media"
+        busy={importingVideo}
+        disabled={importingVideo}
+        onClick={onImportVideo}
+      />
       <Action icon={<ImagePlus size={15} />} label="Add an image" hint="Drop in a slide or screenshot" tone="media" onClick={onImportImage} />
 
       {recording && (
@@ -67,7 +80,7 @@ export function AddPanel({
       {isEmpty && (
         <p className="mt-2 flex items-start gap-2 text-[11px] text-text-muted">
           <Film size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
-          Record a session or add an image to start the timeline.
+          Record a session, import a video or add an image to start the timeline.
         </p>
       )}
     </div>

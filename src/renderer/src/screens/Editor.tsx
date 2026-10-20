@@ -115,6 +115,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [voices, setVoices] = useState<Voice[]>([])
   const [editingContext, setEditingContext] = useState(false)
   const [importingDeck, setImportingDeck] = useState(false)
+  const [importingVideo, setImportingVideo] = useState(false)
   const [deckProgress, setDeckProgress] = useState<string | null>(null)
   const [recordingItemId, setRecordingItemId] = useState<string | null>(null)
   /** The scene being written or edited: an item to edit, 'new' to start one, null for neither. */
@@ -463,6 +464,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
       else void handleRedo()
     },
     'import-image': () => void handleImportImage(),
+    'import-video': () => void handleImportVideo(),
     'import-deck': () => void handleImportDeck(),
     'add-scene': () => setSceneEditing('new'),
     'record-session': () => void handleRecordSession(),
@@ -814,6 +816,19 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     }
   }
 
+  async function handleImportVideo(): Promise<void> {
+    setImportError(null)
+    setImportingVideo(true)
+    try {
+      const scenes = await projectClient.importVideo(projectId)
+      if (scenes) await refreshTimeline()
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setImportingVideo(false)
+    }
+  }
+
   async function handleExport(): Promise<void> {
     if (exportState.status === 'running') return
     setExportState({ status: 'running', progress: { stage: 'preparing', fraction: 0, renderedFrames: 0, totalFrames: 0 }, startedAt: Date.now() })
@@ -1053,12 +1068,14 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                     <AddPanel
                       recording={recording}
                       importingDeck={importingDeck}
+                      importingVideo={importingVideo}
                       deckProgress={deckProgress}
                       isEmpty={timeline.length === 0}
                       importError={importError}
                       recordError={recordError}
                       onRecordSession={handleRecordSession}
                       onImportImage={handleImportImage}
+                      onImportVideo={handleImportVideo}
                       onAddScene={() => setSceneEditing('new')}
                       onImportDeck={handleImportDeck}
                     />

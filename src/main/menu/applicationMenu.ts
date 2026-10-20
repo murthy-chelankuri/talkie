@@ -11,6 +11,7 @@ export type MenuAction =
   | 'new-project'
   | 'open-project'
   | 'import-image'
+  | 'import-video'
   | 'import-deck'
   | 'add-scene'
   | 'record-session'
@@ -94,6 +95,7 @@ export function buildMenuTemplate(
         item('Record a Session…', 'record-session', 'CmdOrCtrl+R', state.projectOpen),
         item('Add a Scene…', 'add-scene', 'CmdOrCtrl+Shift+N', state.projectOpen),
         item('Import an Image…', 'import-image', 'CmdOrCtrl+I', state.projectOpen),
+        item('Import a Video…', 'import-video', undefined, state.projectOpen),
         item('Import a Slide Deck…', 'import-deck', 'CmdOrCtrl+Shift+I', state.projectOpen),
         { type: 'separator' },
         item('Export Video…', 'export-video', 'CmdOrCtrl+E', state.projectOpen),

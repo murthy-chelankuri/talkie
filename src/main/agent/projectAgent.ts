@@ -59,6 +59,7 @@ export const AGENT_TOOLS = [
   'talkie_apply_theme',
   // Making
   'talkie_add_image',
+  'talkie_import_video',
   'talkie_import_deck',
   'talkie_html_templates',
   'talkie_html_scene_guide',

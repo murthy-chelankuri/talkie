@@ -56,9 +56,11 @@ function renderPanel(props: Partial<PanelProps> = {}) {
     recordError: null,
     isEmpty: true,
     onImportImage: vi.fn(),
+    onImportVideo: vi.fn(),
     onImportDeck: vi.fn(),
     onAddScene: vi.fn(),
     importingDeck: false,
+    importingVideo: false,
     deckProgress: null,
     onRecordSession: vi.fn(),
     onExport: vi.fn(),
@@ -82,9 +84,17 @@ describe('the editor\'s panels', () => {
   it('offers every way to add something, and Export', () => {
     renderPanel()
 
-    for (const action of ['Record a session', 'Add an image', 'Import slides', 'Export video']) {
+    for (const action of ['Record a session', 'Import a video', 'Add an image', 'Import slides', 'Export video']) {
       expect(screen.getByRole('button', { name: action })).toBeInTheDocument()
     }
+  })
+
+  it('says it is reading an imported video, and holds the button while it does', () => {
+    renderPanel({ importingVideo: true })
+
+    const button = screen.getByRole('button', { name: 'Importing a video' })
+    expect(button).toBeDisabled()
+    expect(screen.getByText('Finding where its scenes change…')).toBeInTheDocument()
   })
 
   it('leads with the finished length', () => {

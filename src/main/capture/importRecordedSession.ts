@@ -4,7 +4,7 @@ import { addTimelineItem, readTimeline } from '../project/projectApi'
 import { stitchRecording, type RecordedClip } from './stitchRecording'
 import { rebaseActionLog, VIDEO_TIME_LOG } from './rebaseActionLog'
 import { readActionLog } from './actionLog'
-import { planScenes } from './sceneBoundaries'
+import { planScenes, type SceneWindow } from './sceneBoundaries'
 import { cleanActionLog } from '../agent/cleanActionLog'
 import { findTopicBreaks } from '../agent/topicBreaks'
 import { probeMedia } from '../media'
@@ -111,6 +111,20 @@ export async function importRecordedSession(
     topics
   )
 
+  return appendVideoScenes(projectId, { src: playablePath, durationFrames, trimBefore }, scenes, baseDir)
+}
+
+/**
+ * One video's scenes, laid end to end after whatever the timeline already holds. Every scene is a
+ * stretch of the same file, so the split costs nothing to make and nothing to undo.
+ */
+export function appendVideoScenes(
+  projectId: string,
+  video: { src: string; durationFrames: number; trimBefore: number },
+  scenes: SceneWindow[],
+  baseDir: string = homedir()
+): TimelineItem[] {
+  const { src: playablePath, durationFrames, trimBefore } = video
   const timeline = readTimeline(projectId, baseDir)
   let start = timeline.length === 0 ? 0 : Math.max(...timeline.map((item) => item.start + item.duration))
 
