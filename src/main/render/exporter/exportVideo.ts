@@ -13,6 +13,7 @@ import { closeReaders } from './frameSource'
 import { closeBrowserServer } from './closeWithin'
 import { splitFrames, tabCount } from './ranges'
 import { soundtrackArgs, takesFor } from './soundtrack'
+import { raceAbort } from './raceAbort'
 
 // The page declares window.talkie for the web project; this one is type-checked as node, so it
 // names the two calls it makes rather than importing the page's sources (as exportPage.test.ts).
@@ -173,8 +174,8 @@ async function captureRange(
   captured: () => void
 ): Promise<void> {
   const page: Page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 })
-  const crashed = new Promise<never>((_, reject) => page.on('crash', () => reject(new Error(`The export tab drawing frames ${range.from}–${range.to - 1} crashed`))))
-  crashed.catch(() => undefined)
+  const crash = new AbortController()
+  page.on('crash', () => crash.abort(new Error(`The export tab drawing frames ${range.from}–${range.to - 1} crashed`)))
   let encoder: RunningTool | null = null
   try {
     await page.goto(`${input.serverUrl}/__talkie/export/index.html`)
@@ -200,11 +201,11 @@ async function captureRange(
     encoder.done.catch(() => undefined)
     for (let frame = range.from; frame < range.to; frame++) {
       signal.throwIfAborted()
-      await Promise.race([page.evaluate((f) => (window as unknown as { talkie: TalkiePage }).talkie.seek(f), frame), crashed])
+      await raceAbort(page.evaluate((f) => (window as unknown as { talkie: TalkiePage }).talkie.seek(f), frame), crash.signal)
       // JPEG at 80: the quality the export was matched at, frame for frame, against the renderer it
       // replaced. Higher left saturated buttons and brand marks visibly different from the exports
       // people already had, where the 4:2:0 ringing on their edges changed.
-      const { data } = await Promise.race([cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 }), crashed])
+      const { data } = await raceAbort(cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 80 }), crash.signal)
       if (!encoder.process.stdin.write(Buffer.from(data, 'base64'))) await writable(encoder, signal)
       captured()
     }
