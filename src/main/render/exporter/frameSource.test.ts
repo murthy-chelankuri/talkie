@@ -69,6 +69,7 @@ describe('a recording’s frames, for the export', () => {
 
 describe('decoders that must not outlive their use', () => {
   let long: string
+  let next: string
   let short: string
   beforeAll(async () => {
     // The earlier tests' decoders are still running; these count what is live from nothing.
@@ -76,6 +77,9 @@ describe('decoders that must not outlive their use', () => {
     await vi.waitFor(() => expect(liveDecoders()).toBe(0), { timeout: 5000 })
     long = join(dir, 'long.mp4')
     await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=20', '-c:v', 'mpeg4', '-q:v', '2', '-y', long])
+    // A second recording as long, so its decoder is still running too when a tab moves on to it.
+    next = join(dir, 'next.mp4')
+    await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=20', '-c:v', 'mpeg4', '-q:v', '2', '-y', next])
     // Audio outlasts the picture, so the container says two seconds and the video has one.
     short = join(dir, 'short.mp4')
     await runFfmpeg(['-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=30:duration=1', '-f', 'lavfi', '-i', 'sine=duration=2', '-c:v', 'mpeg4', '-q:v', '2', '-y', short])
@@ -99,6 +103,29 @@ describe('decoders that must not outlive their use', () => {
     await new Promise((resolve) => setTimeout(resolve, 1000))
     closeReaders('q')
     await vi.waitFor(() => expect(liveDecoders()).toBe(0), { timeout: 5000 })
+  }, 60_000)
+
+  it('ends a tab’s decoder for a recording once the tab has drawn past it', async () => {
+    await footageFrame('m-0', long, 10)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    expect(liveDecoders()).toBe(1)
+
+    // The next clip, a recording of its own, well after the first one's last frame.
+    await footageFrame('m-0', next, 200)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // Only the recording it is drawing from now is still being decoded.
+    await vi.waitFor(() => expect(liveDecoders()).toBe(1), { timeout: 5000 })
+    closeReaders('m')
+  }, 60_000)
+
+  it('keeps a tab’s decoders for recordings it is still drawing from', async () => {
+    await footageFrame('n-0', long, 10)
+    await footageFrame('n-0', next, 20)
+    const before = decodersStarted()
+    await footageFrame('n-0', long, 11)
+    expect(decodersStarted()).toBe(before)
+    closeReaders('n')
   }, 60_000)
 
   it('starts nothing for a reader whose export has closed', async () => {
