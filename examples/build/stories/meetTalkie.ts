@@ -53,10 +53,10 @@ export const meetTalkie: Story = {
     shot('voice', 'Choose a voice — the Mac’s own, or Kokoro, built in and close to a person — and press Speak.')
     shot('voiced', 'Every scene gets its own take, and the scene is sized to fit it.')
 
-    shot('slide', "Not every scene is a recording. Add a slide, say what should be on it, and the AI writes it.")
+    shot('slide', 'Not every scene is a recording. Add one from the gallery of templates, and change its words in a simple form.')
     shot('slide-written', 'Its points appear as they are spoken.')
-    shot('diagram', 'Diagrams are written in Mermaid, and drawn box by box, in the order the narration names them.')
-    shot('html', 'An HTML scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours.')
+    shot('diagram', 'Steps, timelines and charts are templates too, each drawn in step with the narration.')
+    shot('html', 'Every scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours.')
     shot('html-changed', 'Every scene is checked before it reaches the timeline: that it runs, stays in its sandbox, and fits the frame.')
 
     shot(

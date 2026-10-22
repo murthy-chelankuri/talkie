@@ -15,6 +15,15 @@ const RESTART_AHEAD = FPS * 2
  */
 const MAX_BUFFERED = 60
 
+/**
+ * How far past a recording a tab may draw before its decoder for it is stopped. A tab only moves
+ * forward, so once it is drawing frames this far beyond the last one it asked of a file, that
+ * file is behind it. Kept until the export ended, each decoder sat paused with a pipe's worth of
+ * decoded PNGs — a few megabytes each — and a twenty-minute video cut from two dozen recordings
+ * ran the export out of memory once every frame was drawn.
+ */
+const RELEASE_BEHIND = FPS * 2
+
 type Decoder = {
   file: string
   /** The frame the next JPEG off the pipe will be. */
@@ -26,6 +35,8 @@ type Decoder = {
   error: Error | null
   waiting: (() => void) | null
   tool: RunningTool
+  /** The composition frame last asked of it, to tell when its tab has moved past the recording. */
+  askedAt: number
 }
 
 const decoders = new Map<string, Decoder>()
@@ -107,7 +118,7 @@ function start(file: string, from: number, rate: number, startSeconds: number): 
   const seek = Math.max(0, startSeconds + (from - 2) / rate)
   const at = startSeconds + (from - 0.5) / rate
   const tool = spawnFfmpeg(['-v', 'error', '-ss', seek.toFixed(4), '-copyts', '-i', file, '-vf', `select=gte(t\\,${at.toFixed(6)})`, '-fps_mode', 'passthrough', '-f', 'image2pipe', '-c:v', 'png', '-compression_level', '1', 'pipe:1'])
-  const decoder: Decoder = { file, next: from, frames: [], last: null, ended: false, error: null, waiting: null, tool }
+  const decoder: Decoder = { file, next: from, frames: [], last: null, ended: false, error: null, waiting: null, tool, askedAt: 0 }
   live.add(decoder)
   let pending = Buffer.alloc(0)
   tool.process.stdout.on('data', (chunk: Buffer) => {
@@ -164,6 +175,8 @@ async function serve(reader: string, file: string, frame: number): Promise<Buffe
     decoder = start(file, wanted, rate, startSeconds)
     decoders.set(key, decoder)
   }
+  decoder.askedAt = frame
+  releaseBehind(reader, key, frame)
   // The frame handed out last time, asked for again (a held frame), is still the last one taken.
   if (wanted === decoder.next - 1 && decoder.last) return decoder.last
   while (decoder.next <= wanted) {
@@ -175,6 +188,17 @@ async function serve(reader: string, file: string, frame: number): Promise<Buffe
   if (decoder.next <= wanted && decoder.error) throw decoder.error
   if (!decoder.last) throw new Error(`No frame ${wanted} in ${file}`)
   return decoder.last
+}
+
+/** Stops the tab's decoders for recordings it has drawn past. */
+function releaseBehind(reader: string, current: string, frame: number): void {
+  const prefix = `${reader}\u0000`
+  for (const [key, decoder] of decoders) {
+    if (key !== current && key.startsWith(prefix) && decoder.askedAt < frame - RELEASE_BEHIND) {
+      stopDecoder(decoder)
+      decoders.delete(key)
+    }
+  }
 }
 
 export function footageFrame(reader: string, file: string, frame: number): Promise<Buffer> {

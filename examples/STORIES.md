@@ -25,10 +25,10 @@ someone would meet it. The waits — the walk, drafting, voicing, exporting — 
 | 8 | The script view, with timings | The script shows it all in one column. The numbers in brackets are timings: each line is spoken at that second of its scene. |
 | 9 | The Voice panel; Speak | Choose a voice — the Mac's own, or Kokoro, built in and close to a person — and press Speak. |
 | 10 | Every clip voiced, waveforms in place | Every scene gets its own take, and the scene is sized to fit it. |
-| 11 | Add a scene → Slide, asking the AI to write it | Not every scene is a recording. Add a slide, say what should be on it, and the AI writes it. |
-| 12 | The slide's points | Its points appear as they are spoken. |
-| 13 | A Mermaid diagram typed in | Diagrams are written in Mermaid, and drawn box by box, in the order the narration names them. |
-| 14 | An HTML template, changed with AI | An HTML scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours. |
+| 11 | Add a scene → the template gallery → Slide, its words changed in the form | Not every scene is a recording. Add one from the gallery of templates, and change its words in a simple form. |
+| 12 | The slide saved and checked | Its points appear as they are spoken. |
+| 13 | The Steps template, retitled | Steps, timelines and charts are templates too, each drawn in step with the narration. |
+| 14 | Big number, changed with Ask AI | Every scene is a web page played frame by frame. Start from a template, and ask the AI to make it yours. |
 | 15 | The changed scene, checked | Every scene is checked before it reaches the timeline: that it runs, stays in its sandbox, and fits the frame. |
 | 16 | Settings: AI, Recording, Export, System (agents switched on) | Settings decide who writes and who speaks — Claude, Copilot or a local model; the Mac's voices or Kokoro. Recording sets the click highlight, Export can burn in captions, and System lets AI agents connect. |
 | 17 | Themes → Create with AI from Taskboard's site | A theme is a company's look. Give Talkie a website, and it reads the real colours, fonts and logo. |

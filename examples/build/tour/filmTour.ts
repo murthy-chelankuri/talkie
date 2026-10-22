@@ -102,55 +102,58 @@ export async function filmTour(home: string, env: Record<string, string>, appUrl
     if (await done('voiced')) return await film.finish()
 
     // ------------------------------------------------------------ the scenes
-    const dialog = win.getByRole('dialog', { name: 'Add a scene' })
+    // Every scene added is an HTML scene: a gallery of templates, then a form of the values each
+    // one declares. The dialog is named for adding until a template is chosen, then for editing.
+    const dialog = win.getByRole('dialog')
+    const saved = async (): Promise<void> => {
+      await win.getByText('Saving and checking…').waitFor({ state: 'hidden', timeout: 3 * 60_000 })
+    }
     await film.shot('slide', async () => {
       await film.openPanel('Add')
-      await film.click(win.getByRole('button', { name: /Add a scene/ }))
-      await film.replace(dialog.getByRole('textbox', { name: 'Scene title' }), 'Why teams switch')
-      await film.type(dialog.getByRole('textbox', { name: 'Scene instruction' }), 'Three short reasons a small team would switch to Taskboard', { delayMs: 25 })
-      await film.click(dialog.getByRole('button', { name: 'Write it' }), { settleMs: 1500 })
+      await film.click(win.getByRole('button', { name: /Add a scene/ }), { settleMs: 1500 })
+      await film.pointAt(dialog.getByRole('button', { name: 'Start from Steps' }))
+      await film.pause(1000)
+      await film.click(dialog.getByRole('button', { name: 'Start from Slide' }), { settleMs: 2500 })
+      await film.replace(dialog.getByRole('textbox', { name: 'Title', exact: true }), 'Why teams switch')
+      await film.replace(dialog.getByRole('textbox', { name: 'Point 1' }), 'See the whole week at a glance', { delayMs: 20 })
     })
-    await dialog.getByRole('button', { name: 'Write it' }).waitFor({ state: 'visible', timeout: 3 * 60_000 })
-    await win.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 3 * 60_000 }).catch(() => undefined)
-    await film.pause(1500)
     await film.shot('slide-written', async () => {
-      await film.pause(2500)
-      await film.click(dialog.getByRole('button', { name: 'Add to timeline' }), { settleMs: 2000 })
+      await film.pause(1500)
+      await film.click(dialog.getByRole('button', { name: 'Save scene' }), { settleMs: 500 })
+      await saved()
+      await film.pause(1500)
+      await film.click(dialog.getByRole('button', { name: 'Close', exact: true }).first(), { settleMs: 1500 })
     })
 
     await film.shot('diagram', async () => {
-      await film.click(win.getByRole('button', { name: /Add a scene/ }))
-      await film.click(dialog.getByRole('button', { name: 'Diagram', exact: true }))
-      await film.type(dialog.getByRole('textbox', { name: 'Diagram title' }), 'How a task moves')
-      // Quickly: the preview redraws on every key, and half-typed mermaid is a parse error.
-      await film.replace(
-        dialog.getByRole('textbox', { name: 'Diagram source' }),
-        'flowchart LR\n  A[To do] --> B[Doing]\n  B --> C[Done]',
-        { delayMs: 12 }
-      )
+      await film.click(win.getByRole('button', { name: /Add a scene/ }), { settleMs: 1500 })
+      await film.click(dialog.getByRole('button', { name: 'Start from Steps' }), { settleMs: 2500 })
+      await film.replace(dialog.getByRole('textbox', { name: 'Title', exact: true }), 'How a task moves')
       await film.pause(2000)
-      await film.click(dialog.getByRole('button', { name: 'Add to timeline' }), { settleMs: 2000 })
+      await film.click(dialog.getByRole('button', { name: 'Save scene' }), { settleMs: 500 })
+      await saved()
+      await film.click(dialog.getByRole('button', { name: 'Close', exact: true }).first(), { settleMs: 1500 })
     })
 
     await film.shot('html', async () => {
-      await film.click(win.getByRole('button', { name: /Add a scene/ }))
-      await film.click(dialog.getByRole('button', { name: 'HTML', exact: true }))
+      await film.click(win.getByRole('button', { name: /Add a scene/ }), { settleMs: 1500 })
       await film.pointAt(dialog.getByRole('textbox', { name: 'Describe the scene' }))
       await film.pause(800)
       // A template lands on the timeline as soon as it is chosen; the AI then makes it this project's.
-      await film.click(dialog.getByRole('button', { name: /^Big number/ }), { settleMs: 3000 })
+      await film.click(dialog.getByRole('button', { name: 'Start from Big number' }), { settleMs: 2500 })
+      await film.click(dialog.getByRole('tab', { name: 'Ask AI' }), { settleMs: 800 })
       await film.type(
-        win.getByRole('textbox', { name: 'Change the scene' }),
+        dialog.getByRole('textbox', { name: 'Change the scene' }),
         'Count up to 6.5, with the line "hours saved every week"',
         { delayMs: 25 }
       )
-      await film.click(win.getByRole('button', { name: 'Change it' }), { settleMs: 2000 })
+      await film.click(dialog.getByRole('button', { name: 'Change it' }), { settleMs: 2000 })
     })
-    await win.getByText('Changing and checking…').waitFor({ state: 'hidden', timeout: 5 * 60_000 })
+    await dialog.getByRole('button', { name: 'Change it' }).waitFor({ timeout: 5 * 60_000 })
     await film.shot('html-changed', async () => {
       await film.pause(1500)
-      await film.click(win.getByRole('dialog').getByRole('button', { name: 'Play' }).first(), { settleMs: 5000 })
-      await film.click(win.getByRole('button', { name: 'Close', exact: true }).last(), { settleMs: 1500 })
+      await film.click(dialog.getByRole('tab', { name: 'Content' }), { settleMs: 2500 })
+      await film.click(dialog.getByRole('button', { name: 'Close', exact: true }).first(), { settleMs: 1500 })
     })
     if (await done('html')) return await film.finish()
 
