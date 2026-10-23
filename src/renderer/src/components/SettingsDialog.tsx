@@ -81,7 +81,9 @@ export function SettingsDialog({
 }): JSX.Element {
   const [section, setSection] = useState<SectionId>(initialSection)
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [providers, setProviders] = useState<ProviderDescription[]>([])
+  // Null until the first answer: finding the CLIs takes a moment, and an empty list under its
+  // heading read as there being nothing to choose.
+  const [providers, setProviders] = useState<ProviderDescription[] | null>(null)
   const [voices, setVoices] = useState<Voice[]>([])
   const [engines, setEngines] = useState<SpeechEngineDescription[]>([])
   const [localServer, setLocalServer] = useState<LocalServer | null>(null)
@@ -306,7 +308,7 @@ function NarrationSection({
   onPatch
 }: {
   settings: Settings
-  providers: ProviderDescription[]
+  providers: ProviderDescription[] | null
   localServer: LocalServer | null
   copilotModels: string[]
   onPatch: (next: Partial<Settings['narration']>) => Promise<void>
@@ -330,9 +332,18 @@ function NarrationSection({
         />
       </div>
 
-      <Field label="Who writes the draft">
+      <Field
+        label="Which AI does the writing"
+        hint="It drafts narration, writes scenes and themes, and — as the Claude or Copilot CLI — runs Ask Talkie."
+      >
         <div className="flex flex-col gap-1.5">
-          {providers.map((provider) => (
+          {providers === null && (
+            <span className="flex items-center gap-2 rounded-lg bg-raised px-3.5 py-3 text-[12px] text-text-muted">
+              <Spinner size="sm" />
+              Checking which are set up on this Mac…
+            </span>
+          )}
+          {(providers ?? []).map((provider) => (
             <div
               key={provider.id}
               className={cn(
@@ -366,6 +377,13 @@ function NarrationSection({
                     {provider.sendsDataOffMachine ? <Cloud size={11} /> : <Laptop size={11} />}
                     {provider.sendsDataOffMachine ? 'Sends data out' : 'Stays on this machine'}
                   </span>
+                  {/* Only an agent that can call tools can change a whole project. */}
+                  {(provider.id === 'claude-cli' || provider.id === 'copilot-cli') && (
+                    <span className="flex items-center gap-1 text-[11px] text-accent">
+                      <Sparkles size={11} aria-hidden="true" />
+                      Runs Ask Talkie
+                    </span>
+                  )}
                 </span>
                 {/* A provider that works says nothing; only a problem is worth the user's eye. */}
                 {!provider.available && provider.reason && (

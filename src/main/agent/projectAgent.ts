@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { randomUUID } from 'crypto'
 import { homedir } from 'os'
 import { promisify } from 'util'
@@ -123,6 +123,101 @@ export interface AgentRequest {
    * people wanted and could not say.
    */
   scenes?: string[]
+  /** Told each thing the agent sets about, as it starts it — a run can take minutes. */
+  onStep?: (step: string) => void
+}
+
+/** Why the agent cannot run here, and where in Settings that is put right. */
+export type AgentReadiness =
+  | { ready: true; by: string }
+  | { ready: false; reason: string; fix: 'narration' | 'system' | null }
+
+/**
+ * Whether a run would start, asked before anything is typed. The panel used to find out only
+ * after someone had written their request and sent it, and then as an error in the conversation.
+ */
+export async function agentReadiness(serverPath: string | null, baseDir: string = homedir()): Promise<AgentReadiness> {
+  const { mcp, narration } = readSettings(baseDir)
+  if (!serverPath) return { ready: false, reason: 'This build has no agent server to connect to.', fix: null }
+  if (!mcp.enabled) {
+    return {
+      ready: false,
+      reason: 'Turn on "Let AI agents connect" in Settings → System. Talkie drives its own agent through that same door.',
+      fix: 'system'
+    }
+  }
+  // Only the CLI providers bring an agent that can call tools. The others answer one question
+  // at a time, which is not enough to work out what a project needs and then change it.
+  if (narration.provider !== 'claude-cli' && narration.provider !== 'copilot-cli') {
+    return {
+      ready: false,
+      reason: 'This needs the Claude CLI or the GitHub Copilot CLI. Choose one under Settings → AI, and make sure it is installed and signed in.',
+      fix: 'narration'
+    }
+  }
+  const binary = await findCli(narration.provider === 'claude-cli' ? 'claude' : 'copilot')
+  if (!binary) {
+    return {
+      ready: false,
+      reason:
+        narration.provider === 'claude-cli'
+          ? 'This needs the Claude CLI. Choose it under Settings → AI, and make sure `claude` is installed and signed in.'
+          : COPILOT_INSTALL_HINT,
+      fix: 'narration'
+    }
+  }
+  return { ready: true, by: narration.provider === 'claude-cli' ? 'Claude CLI' : 'GitHub Copilot CLI' }
+}
+
+/**
+ * What the agent is doing, in the panel's words, from the tool it called. A run is minutes of
+ * tool calls, and "Working… 140s" over all of them looked the same as a run that had hung.
+ */
+const STEPS: Record<string, string> = {
+  talkie_project: 'Reading the project',
+  talkie_timeline: 'Reading the timeline',
+  talkie_clip_actions: 'Reading what happens in a recording',
+  talkie_set_context: 'Noting what the project is about',
+  talkie_list_voices: 'Looking at the voices',
+  talkie_set_voice: 'Changing the voice',
+  talkie_list_themes: 'Looking at the themes',
+  talkie_theme: 'Reading a theme',
+  talkie_create_theme: 'Making a theme',
+  talkie_update_theme: 'Changing a theme',
+  talkie_duplicate_theme: 'Copying a theme',
+  talkie_apply_theme: 'Applying a theme',
+  talkie_add_image: 'Adding a picture',
+  talkie_import_video: 'Importing a video',
+  talkie_import_deck: 'Importing a deck',
+  talkie_html_templates: 'Looking at the scene templates',
+  talkie_html_scene_guide: 'Reading how scenes are made',
+  talkie_add_html_scene: 'Adding a scene',
+  talkie_html_scene: 'Reading a scene',
+  talkie_edit_html_scene: 'Changing a scene',
+  talkie_check_html_scene: 'Checking a scene',
+  talkie_edit_slide: 'Changing a slide',
+  talkie_edit_diagram: 'Changing a diagram',
+  talkie_set_narration: 'Writing narration',
+  talkie_draft_narration: 'Drafting narration',
+  talkie_clean_recording: 'Cleaning up a voice recording',
+  talkie_set_duration: "Changing a scene's length",
+  talkie_move_clip: 'Moving a scene',
+  talkie_split_clip: 'Splitting a scene',
+  talkie_delete_clip: 'Removing a scene',
+  talkie_versions: 'Reading the versions',
+  talkie_include_clip: 'Changing what a version includes',
+  talkie_create_version: 'Making a version',
+  talkie_choose_version: 'Choosing a version',
+  talkie_rename_version: 'Renaming a version',
+  talkie_delete_version: 'Removing a version',
+  talkie_undo: 'Undoing its own change',
+  talkie_redo: 'Redoing a change',
+  talkie_diagnostics: 'Checking what went wrong'
+}
+
+/** A tool's name as the CLI reports it (`mcp__talkie__talkie_timeline`), as a step. */
+export function stepFor(tool: string): string {
+  return STEPS[tool.replace(/^mcp__talkie__/, '')] ?? 'Working'
 }
 
 const KIND_NAMES: Record<string, string> = { scene: 'slide', video: 'recording', image: 'picture', diagram: 'diagram', html: 'HTML scene' }
@@ -205,38 +300,13 @@ export async function runProjectAgent(
   request: AgentRequest,
   baseDir: string = homedir()
 ): Promise<AgentOutcome> {
-  const { mcp, narration } = readSettings(baseDir)
-
-  if (!request.serverPath) {
-    return { status: 'failed', reason: 'This build has no agent server to connect to.' }
-  }
-  if (!mcp.enabled) {
-    return {
-      status: 'failed',
-      reason: 'Turn on "Let AI agents connect" in Settings → System. Talkie drives its own agent through that same door.'
-    }
-  }
-
-  // Only the CLI providers bring an agent that can call tools. The others answer one question
-  // at a time, which is not enough to work out what a project needs and then change it.
-  if (narration.provider !== 'claude-cli' && narration.provider !== 'copilot-cli') {
-    return {
-      status: 'failed',
-      reason:
-        'This needs the Claude CLI or the GitHub Copilot CLI. Choose one under Settings → Narration, and make sure it is installed and signed in.'
-    }
-  }
-
-  const binary = await findCli(narration.provider === 'claude-cli' ? 'claude' : 'copilot')
-  if (!binary) {
-    return {
-      status: 'failed',
-      reason:
-        narration.provider === 'claude-cli'
-          ? 'This needs the Claude CLI. Choose it under Settings → Narration, and make sure `claude` is installed and signed in.'
-          : COPILOT_INSTALL_HINT
-    }
-  }
+  const readiness = await agentReadiness(request.serverPath, baseDir)
+  if (!readiness.ready) return { status: 'failed', reason: readiness.reason }
+  const { narration } = readSettings(baseDir)
+  // Found again rather than carried out of the check: it is a lookup on PATH, and the check
+  // answers a question, not a handle.
+  const binary = (await findCli(narration.provider === 'claude-cli' ? 'claude' : 'copilot'))!
+  const serverPath = request.serverPath!
 
   const project = projectFacts(request.projectId, baseDir)
   const { token, withdraw } = grantRunToken(baseDir)
@@ -248,7 +318,7 @@ export async function runProjectAgent(
   const mcpServers = {
     talkie: {
       command: 'node',
-      args: [request.serverPath],
+      args: [serverPath],
       // An environment variable rather than an argument: arguments are visible to anything that
       // can list processes.
       env: { TALKIE_MCP_TOKEN: token, TALKIE_HOME: baseDir }
@@ -260,7 +330,7 @@ export async function runProjectAgent(
   try {
     const { said, sessionId, costUsd } =
       narration.provider === 'claude-cli'
-        ? await runClaude(binary, prompt, mcpServers, request.resumeSessionId, narration.claudeCli.model, stop.signal)
+        ? await runClaude(binary, prompt, mcpServers, request.resumeSessionId, narration.claudeCli.model, stop.signal, request.onStep)
         : await runCopilot(binary, prompt, mcpServers, request.resumeSessionId, narration.copilotCli.model, stop.signal)
 
     return said.trim()
@@ -304,9 +374,12 @@ async function runClaude(
   mcpServers: McpServers,
   resumeSessionId?: string,
   model?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onStep?: (step: string) => void
 ): Promise<AgentSaid> {
-  const child = execFileAsync(
+  // Streamed, a line an event, so each tool call can be shown as it starts; the last line is the
+  // same result the single JSON answer used to be. `--verbose` is required with it in print mode.
+  const stdout = await runStreaming(
     binary,
     [
       '-p',
@@ -314,7 +387,8 @@ async function runClaude(
       ...(resumeSessionId ? ['--resume', resumeSessionId] : []),
       ...(model ? ['--model', model] : []),
       '--output-format',
-      'json',
+      'stream-json',
+      '--verbose',
       '--mcp-config',
       JSON.stringify({ mcpServers }),
       // Talkie's tools and nothing else: whatever else this machine has configured is not part
@@ -323,13 +397,64 @@ async function runClaude(
       '--allowedTools',
       AGENT_TOOLS.map((tool) => `mcp__talkie__${tool}`).join(',')
     ],
-    { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, signal }
+    signal,
+    (line) => {
+      for (const tool of toolsCalled(line)) onStep?.(stepFor(tool))
+    }
   )
+  return readStream(stdout)
+}
 
-  // Closed at once, or the CLI waits three seconds for input that is never coming.
-  child.child.stdin?.end()
-  const { stdout } = await child
-  return readResult(stdout)
+/**
+ * The CLI run with its output read as it comes, failing the way execFile did — `stderr` and
+ * `killed` on the error — so whyItFailed reads both the same.
+ */
+function runStreaming(binary: string, args: string[], signal: AbortSignal | undefined, onLine: (line: string) => void): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(binary, args, { signal, stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    let pending = ''
+    let killed = false
+    const timer = setTimeout(() => {
+      killed = true
+      child.kill('SIGTERM')
+    }, TIMEOUT_MS)
+    child.stdout.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      if (stdout.length < 16 * 1024 * 1024) stdout += chunk
+      pending += chunk
+      const lines = pending.split('\n')
+      pending = lines.pop() ?? ''
+      lines.forEach(onLine)
+    })
+    child.stderr.setEncoding('utf8')
+    child.stderr.on('data', (chunk: string) => {
+      if (stderr.length < 1024 * 1024) stderr += chunk
+    })
+    child.on('error', (err) => {
+      clearTimeout(timer)
+      reject(Object.assign(err, { stderr }))
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (code === 0 && !killed) resolve(stdout)
+      else reject(Object.assign(new Error(`${binary} exited with code ${code}`), { stderr, killed }))
+    })
+  })
+}
+
+/** The tools an event line says the agent has just called. */
+export function toolsCalled(line: string): string[] {
+  try {
+    const event = JSON.parse(line) as { type?: unknown; message?: { content?: unknown } }
+    if (event.type !== 'assistant' || !Array.isArray(event.message?.content)) return []
+    return (event.message.content as { type?: unknown; name?: unknown }[])
+      .filter((part) => part.type === 'tool_use' && typeof part.name === 'string')
+      .map((part) => part.name as string)
+  } catch {
+    return []
+  }
 }
 
 /**
@@ -389,23 +514,25 @@ interface AgentSaid {
   costUsd?: number
 }
 
-function readResult(stdout: string): AgentSaid {
-  try {
-    const parsed = JSON.parse(stdout) as {
-      result?: unknown
-      session_id?: unknown
-      total_cost_usd?: unknown
+/** The result line of a streamed run: the last line carrying one. */
+export function readStream(stdout: string): AgentSaid {
+  const lines = stdout.split('\n').filter((line) => line.trim())
+  for (const line of lines.reverse()) {
+    try {
+      const parsed = JSON.parse(line) as { result?: unknown; session_id?: unknown; total_cost_usd?: unknown }
+      if (!('result' in parsed)) continue
+      return {
+        said: typeof parsed.result === 'string' ? parsed.result : '',
+        sessionId: typeof parsed.session_id === 'string' ? parsed.session_id : undefined,
+        costUsd: typeof parsed.total_cost_usd === 'number' ? parsed.total_cost_usd : undefined
+      }
+    } catch {
+      // Not an event; plain text is handled below.
     }
-    return {
-      said: typeof parsed.result === 'string' ? parsed.result : '',
-      sessionId: typeof parsed.session_id === 'string' ? parsed.session_id : undefined,
-      costUsd: typeof parsed.total_cost_usd === 'number' ? parsed.total_cost_usd : undefined
-    }
-  } catch {
-    // Not the shape expected, but the agent may still have done the work and said so in plain
-    // text — losing that would be worse than showing it.
-    return { said: stdout.trim().slice(0, 2000) }
   }
+  // Not the shape expected, but the agent may still have done the work and said so in plain
+  // text — losing that would be worse than showing it.
+  return { said: stdout.trim().slice(0, 2000) }
 }
 
 /** What the CLI said went wrong, rather than the prompt it was handed. */

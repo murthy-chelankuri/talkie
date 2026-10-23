@@ -119,6 +119,8 @@ export const agentClient = {
   instruct: (projectId: string, instruction: string, resumeSessionId?: string, scenes: string[] = []) =>
     window.api.agent.instruct(projectId, instruction, resumeSessionId, scenes),
   stop: (projectId: string) => window.api.agent.stop(projectId),
+  readiness: () => window.api.agent.readiness(),
+  onStep: (callback: (projectId: string, step: string) => void) => window.api.agent.onStep(callback),
   draftItem: (projectId: string, itemId: string, force = false) =>
     window.api.agent.draftItem(projectId, itemId, force),
   draftAll: (projectId: string, force = false) => window.api.agent.draftAll(projectId, force),

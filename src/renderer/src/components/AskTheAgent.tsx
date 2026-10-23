@@ -1,6 +1,9 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowUp, Check, Plus, Sparkles, Square, X } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { ArrowUp, Check, CornerDownLeft, Loader2, Plus, RotateCcw, Settings as SettingsIcon, Sparkles, SquarePen, Square, TriangleAlert, X } from 'lucide-react'
 import { agentClient, type TimelineItem } from '../api/projectClient'
+import type { AgentReadiness } from '../../../main/agent/projectAgent'
+import { onSettingsChanged } from '../lib/settingsChanged'
+import { openSettings } from '../lib/openSettings'
 import { richTextToPlain } from '../../../main/project/timeline/richText'
 import { cn } from '../lib/cn'
 import { IconButton } from './ui/IconButton'
@@ -30,6 +33,10 @@ export interface Turn {
   from: 'you' | 'talkie'
   text: string
   failed?: boolean
+  /** What was asked, on a failed answer, to put back in the box and try again. */
+  retry?: string
+  /** An answer from a run that finished, which Undo takes back whole. */
+  changed?: boolean
   /** The scenes this turn was about, as they were named when it was sent. */
   about?: string[]
 }
@@ -72,17 +79,46 @@ export function AskTheAgent({
   const [spent, setSpent] = useState(0)
   const [about, setAbout] = useState<string[]>([])
   const [picking, setPicking] = useState(false)
+  /** What the run has set about so far, newest last. */
+  const [steps, setSteps] = useState<string[]>([])
+  const [readiness, setReadiness] = useState<AgentReadiness | null>(null)
   const sessionRef = useRef<string | undefined>(undefined)
   const endRef = useRef<HTMLDivElement>(null)
   const boxRef = useRef<HTMLTextAreaElement>(null)
 
-  // A conversation belongs to the project it is about. Opening another one starts again.
-  useEffect(() => {
+  const startAgain = useCallback(() => {
     setTurns([])
     setSpent(0)
     setAbout([])
     sessionRef.current = undefined
-  }, [projectId])
+  }, [])
+
+  // A conversation belongs to the project it is about. Opening another one starts again.
+  useEffect(startAgain, [projectId, startAgain])
+
+  // Whether a run would start, known before anything is typed: finding out from an error after
+  // writing the request was the commonest first experience of this panel. Asked again when
+  // settings change and when the window comes back, since the fix is made elsewhere.
+  const check = useCallback(() => {
+    void agentClient.readiness().then(setReadiness, () => setReadiness(null))
+  }, [])
+  useEffect(() => {
+    check()
+    window.addEventListener('focus', check)
+    const off = onSettingsChanged(check)
+    return () => {
+      window.removeEventListener('focus', check)
+      off()
+    }
+  }, [check])
+
+  useEffect(
+    () =>
+      agentClient.onStep((project, step) => {
+        if (project === projectId) setSteps((said) => (said[said.length - 1] === step ? said : [...said, step]))
+      }),
+    [projectId]
+  )
 
   // A scene deleted while it was picked is not something to ask about.
   useEffect(() => {
@@ -107,19 +143,21 @@ export function AskTheAgent({
     const scenes = about.filter((id) => timeline.some((item) => item.id === id))
     setInstruction('')
     setTurns((said) => [...said, { from: 'you', text: asked, about: scenes.map((id) => sceneName(timeline, id)) }])
+    setSteps([])
     setWorking(true)
     try {
       const outcome = await agentClient.instruct(projectId, asked, sessionRef.current, scenes)
       if (outcome.status === 'done') {
         sessionRef.current = outcome.sessionId ?? sessionRef.current
         if (outcome.costUsd) setSpent((total) => total + outcome.costUsd!)
-        setTurns((said) => [...said, { from: 'talkie', text: outcome.say }])
+        setTurns((said) => [...said, { from: 'talkie', text: outcome.say, changed: true }])
       } else {
-        setTurns((said) => [...said, { from: 'talkie', text: outcome.reason, failed: true }])
+        setTurns((said) => [...said, { from: 'talkie', text: outcome.reason, failed: true, retry: asked }])
+        check()
       }
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err)
-      setTurns((said) => [...said, { from: 'talkie', text, failed: true }])
+      setTurns((said) => [...said, { from: 'talkie', text, failed: true, retry: asked }])
     } finally {
       setWorking(false)
       // Whatever happened, the files may have moved under the editor.
@@ -136,6 +174,8 @@ export function AskTheAgent({
     boxRef.current?.focus()
   }
 
+  const blocked = readiness?.ready === false
+  const lastChanged = turns.reduce((at, turn, index) => (turn.changed ? index : at), -1)
   const offered = selectedItemId && !about.includes(selectedItemId) && timeline.some((item) => item.id === selectedItemId) ? selectedItemId : null
 
   return (
@@ -143,31 +183,56 @@ export function AskTheAgent({
     // room a conversation gets is the reader's to decide. Kept mounted while its panel is shut,
     // so neither the conversation nor a run in progress is lost by looking at something else.
     <aside aria-label="Agent conversation" className="flex h-full w-full flex-col rounded-xl bg-surface">
-      <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-3">
-        <Sparkles size={14} className="shrink-0 text-accent" aria-hidden="true" />
-        <h2 className="font-serif text-[15px] leading-none text-text">Ask Talkie</h2>
-        {/* A run is not free, and the last one ran into a usage limit. Quiet, but there. */}
-        {spent > 0 && <span className="font-mono text-[10px] tabular-nums text-text-muted">${spent.toFixed(2)}</span>}
-        <IconButton aria-label="Close the agent" className="-mr-1.5 ml-auto" onClick={onClose}>
-          <X size={15} />
-        </IconButton>
+      <header className="flex shrink-0 items-start gap-2 border-b border-border px-4 pb-2.5 pt-3">
+        <Sparkles size={14} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+        <div className="flex min-w-0 flex-col gap-1">
+          <h2 className="font-serif text-[15px] leading-none text-text">Ask Talkie</h2>
+          {/* Who does the work, so the person knows before asking whether anyone will. */}
+          {readiness && (
+            <span className="flex items-center gap-1.5 text-[11px] leading-none text-text-muted">
+              <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', readiness.ready ? 'bg-success' : 'bg-warning')} aria-hidden="true" />
+              {readiness.ready ? readiness.by : 'Not set up'}
+              {/* A run is not free, and the last one ran into a usage limit. Quiet, but there. */}
+              {spent > 0 && <span className="font-mono tabular-nums">· ${spent.toFixed(2)}</span>}
+            </span>
+          )}
+        </div>
+        <span className="-mr-1.5 ml-auto flex shrink-0 items-center">
+          {turns.length > 0 && !working && (
+            <IconButton aria-label="New conversation" title="New conversation — the agent forgets this one" onClick={startAgain}>
+              <SquarePen size={14} />
+            </IconButton>
+          )}
+          <IconButton aria-label="Close the agent" onClick={onClose}>
+            <X size={15} />
+          </IconButton>
+        </span>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {/* Capped even when the rail is dragged wide: a line of text that runs the width of
             half the window is one nobody can find their way back across. */}
         {turns.length === 0 && !working ? (
-          <Opening onPick={fill} aboutScenes={about.length > 0} />
+          blocked ? (
+            <NotSetUp readiness={readiness} onCheck={check} />
+          ) : (
+            <Opening onPick={fill} aboutScenes={about.length > 0} />
+          )
         ) : (
           <ol className="mx-auto flex max-w-2xl flex-col gap-4">
             {turns.map((turn, index) => (
               <li key={index}>
-                <Said turn={turn} />
+                <Said
+                  turn={turn}
+                  // Undo takes back the newest change, so only the newest answer says it.
+                  undoable={index === lastChanged && index === turns.length - 1}
+                  onRetry={index === turns.length - 1 && turn.retry ? () => fill(turn.retry!) : undefined}
+                />
               </li>
             ))}
             {working && (
               <li>
-                <Thinking />
+                <Thinking steps={steps} />
               </li>
             )}
           </ol>
@@ -229,7 +294,7 @@ export function AskTheAgent({
                     ? 'What should change in this scene?'
                     : 'What should change in these scenes?'
                   : turns.length === 0
-                    ? 'Ask for a change — to the whole project, or pick a scene above'
+                    ? 'Ask for a change to this project…'
                     : 'Ask for another change…'
               }
               rows={2}
@@ -262,7 +327,7 @@ export function AskTheAgent({
                 aria-label="Send"
                 title="Send (Enter). Shift-Enter for a new line."
                 onClick={() => void ask()}
-                disabled={!instruction.trim()}
+                disabled={!instruction.trim() || blocked}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-0 bg-accent-fill p-0 text-white transition-opacity hover:brightness-110 disabled:opacity-30"
               >
                 <ArrowUp size={15} />
@@ -270,6 +335,9 @@ export function AskTheAgent({
             )}
           </div>
         </div>
+        <p className="mx-auto mt-1.5 flex max-w-2xl items-center gap-1 px-1 text-[10px] text-text-muted">
+          <CornerDownLeft size={10} aria-hidden="true" /> to send · Shift-Enter for a new line
+        </p>
       </div>
     </aside>
   )
@@ -293,7 +361,10 @@ function ScenePicker({
       if (!ref.current?.contains(event.target as Node)) onClose()
     }
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+      // Handled here: Esc closing the list must not also close the panel it is in.
+      event.preventDefault()
+      onClose()
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -325,7 +396,15 @@ function ScenePicker({
               on ? 'bg-surface-hover' : 'bg-transparent hover:bg-surface-hover'
             )}
           >
-            <span className="w-3.5 shrink-0">{on && <Check size={13} className="text-accent" />}</span>
+            <span
+              className={cn(
+                'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border',
+                on ? 'border-accent-fill bg-accent-fill text-white' : 'border-text-muted/50'
+              )}
+              aria-hidden="true"
+            >
+              {on && <Check size={10} strokeWidth={3} />}
+            </span>
             <span className="min-w-0 flex-1 truncate">{sceneName(timeline, item.id)}</span>
           </button>
         )
@@ -340,25 +419,61 @@ function Opening({ onPick, aboutScenes }: { onPick: (text: string) => void; abou
     ? ['Make the narration shorter and plainer.', 'Rewrite the slide to match what is said.', 'Split this into two scenes.']
     : ['Add an introduction and a closing statement.', 'The middle three all say the same thing — fix it.', 'Make the narration less salesy throughout.']
   return (
-    <div className="flex h-full flex-col justify-center gap-3">
-      <p className="font-serif text-[14px] leading-relaxed text-text">
+    <div className="flex h-full flex-col justify-end gap-3 pb-1">
+      <p className="text-[13px] leading-relaxed text-text">
         {aboutScenes
           ? 'Ask for a change to the scenes you picked.'
-          : 'Ask for a change to the whole project — or pick a scene below to ask about just that one.'}
+          : 'Ask for a change to the whole project, or pick scenes below to change just those.'}
       </p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-text-muted">Try</p>
       <ul className="flex flex-col gap-1.5">
         {examples.map((example) => (
           <li key={example}>
             <button
               type="button"
               onClick={() => onPick(example)}
-              className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-left font-serif text-[13px] leading-relaxed text-text-muted hover:border-accent hover:text-text"
+              className="group flex w-full items-start gap-2 rounded-lg border-0 bg-raised px-3 py-2 text-left text-[13px] leading-snug text-text hover:bg-surface-hover"
             >
+              <Sparkles size={12} className="mt-0.5 shrink-0 text-accent opacity-70 group-hover:opacity-100" aria-hidden="true" />
               {example}
             </button>
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/** Why nothing can be asked yet, and the way to Settings to put it right. */
+function NotSetUp({ readiness, onCheck }: { readiness: AgentReadiness | null; onCheck: () => void }): JSX.Element | null {
+  if (!readiness || readiness.ready) return null
+  return (
+    <div role="alert" className="flex flex-col gap-3 rounded-lg bg-raised p-3.5">
+      <span className="flex items-center gap-2 text-[13px] font-medium text-text">
+        <TriangleAlert size={14} className="shrink-0 text-warning" aria-hidden="true" />
+        The agent is not set up yet
+      </span>
+      <p className="text-[12px] leading-relaxed text-text-muted">{readiness.reason}</p>
+      <span className="flex flex-wrap gap-2">
+        {readiness.fix && (
+          <button
+            type="button"
+            onClick={() => openSettings(readiness.fix!)}
+            className="inline-flex items-center gap-1.5 rounded-md border-0 bg-accent-fill px-2.5 py-1.5 text-[12px] font-medium text-white hover:brightness-110"
+          >
+            <SettingsIcon size={12} aria-hidden="true" />
+            Open {readiness.fix === 'system' ? 'Settings → System' : 'Settings → AI'}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onCheck}
+          className="inline-flex items-center gap-1.5 rounded-md border-0 bg-transparent px-2.5 py-1.5 text-[12px] text-text-muted hover:bg-surface-hover hover:text-text"
+        >
+          <RotateCcw size={12} aria-hidden="true" />
+          Check again
+        </button>
+      </span>
     </div>
   )
 }
@@ -370,7 +485,7 @@ function Opening({ onPick, aboutScenes }: { onPick: (text: string) => void; abou
  * as prose, because it is Talkie talking about the project and the project's own writing
  * surface is serif. Two shapes rather than two colours of the same shape.
  */
-function Said({ turn }: { turn: Turn }): JSX.Element {
+function Said({ turn, undoable, onRetry }: { turn: Turn; undoable?: boolean; onRetry?: () => void }): JSX.Element {
   if (turn.from === 'you') {
     return (
       <div className="ml-8 flex flex-col items-end gap-1">
@@ -388,14 +503,34 @@ function Said({ turn }: { turn: Turn }): JSX.Element {
     )
   }
 
+  if (turn.failed) {
+    // Set apart as a problem rather than as red prose: it is not the agent talking about the project.
+    return (
+      <div role="alert" className="flex flex-col gap-2 rounded-lg bg-danger-bg px-3 py-2.5">
+        <span className="flex items-start gap-2 text-[13px] leading-relaxed text-danger">
+          <TriangleAlert size={13} className="mt-1 shrink-0" aria-hidden="true" />
+          <span className="min-w-0">{turn.text}</span>
+        </span>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex w-fit items-center gap-1.5 rounded-md border-0 bg-transparent px-1.5 py-0.5 text-[12px] text-text-muted hover:text-text"
+          >
+            <RotateCcw size={11} aria-hidden="true" />
+            Try again
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-2 border-l-2 pl-3 font-serif text-[14px] leading-relaxed',
-        turn.failed ? 'border-l-danger text-danger' : 'border-l-accent text-text'
-      )}
-    >
+    <div className="flex flex-col gap-2 border-l-2 border-l-accent pl-3 font-serif text-[14px] leading-relaxed text-text">
       {formatReply(turn.text)}
+      {undoable && (
+        <span className="font-sans text-[11px] text-text-muted">Undo (⌘Z) takes this whole change back.</span>
+      )}
     </div>
   )
 }
@@ -450,26 +585,41 @@ function inline(text: string): ReactNode[] {
 }
 
 /**
- * That it is working, how long it has been, and the one rule while it is.
+ * That it is working, how long it has been, what it has done so far, and the one rule while it is.
  *
- * Three dots would say it is busy; this has to say more than that, because the agent is writing
- * the same files the editor is showing and the only safe thing to do meanwhile is nothing.
+ * Three dots would say it is busy; this has to say more than that, because a run takes minutes and
+ * the agent is writing the same files the editor is showing — the only safe thing to do meanwhile
+ * is nothing. The steps come from the tools it calls; a provider that does not report them shows
+ * the time alone.
  */
-function Thinking(): JSX.Element {
+function Thinking({ steps }: { steps: string[] }): JSX.Element {
   const seconds = useElapsedSeconds(true)
   return (
-    <div className="flex flex-col gap-1.5 border-l-2 border-l-accent pl-3">
-      <span className="flex items-center gap-2 text-[12px] font-medium text-accent" aria-label="Working">
-        <span className="flex items-center gap-1">
-          {[0, 1, 2].map((dot) => (
-            <span key={dot} className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" style={{ animationDelay: `${dot * 180}ms` }} />
-          ))}
-        </span>
+    <div className="flex flex-col gap-2 border-l-2 border-l-accent pl-3">
+      <span role="status" className="flex items-center gap-2 text-[12px] font-medium text-accent" aria-label="Working">
+        <Loader2 size={12} className="shrink-0 animate-spin" aria-hidden="true" />
         Working… <span className="tabular-nums text-text-muted">{seconds}s</span>
       </span>
-      <p className="text-[12px] leading-relaxed text-text-muted">
-        Reading the project and making the changes. Leave it be until it is done — it is writing the same files you are
-        looking at. Stop ends it; Undo puts the whole thing back.
+      {steps.length > 0 && (
+        <ol aria-label="What it has done so far" className="flex flex-col gap-1">
+          {steps.map((step, index) => {
+            const current = index === steps.length - 1
+            return (
+              <li key={index} className={cn('flex items-center gap-2 text-[12px]', current ? 'text-text' : 'text-text-muted')}>
+                {current ? (
+                  <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" aria-hidden="true" />
+                ) : (
+                  <Check size={11} className="shrink-0 text-success" aria-hidden="true" />
+                )}
+                {step}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+      <p className="text-[11px] leading-relaxed text-text-muted">
+        Leave the project be until it is done — it is writing the same files you are looking at. Stop ends it; Undo
+        puts the whole thing back.
       </p>
     </div>
   )

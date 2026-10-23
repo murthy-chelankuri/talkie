@@ -84,7 +84,7 @@ describe('rewriting through the configured provider', () => {
       NoRewriteProviderError
     )
     await expect(rewriteText({ text: 'x', style: 'rephrase' }, baseDir)).rejects.toThrow(
-      /Settings → Narration/
+      /Settings → AI/
     )
   })
 

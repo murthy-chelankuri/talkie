@@ -90,7 +90,7 @@ export function buildRewritePrompt({ text, style, seconds, context, pace }: Rewr
 export class NoRewriteProviderError extends Error {
   constructor(label: string) {
     super(
-      `${label} cannot rewrite text. Choose a provider with a model behind it in Settings → Narration.`
+      `${label} cannot rewrite text. Choose a provider with a model behind it in Settings → AI.`
     )
   }
 }

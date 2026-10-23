@@ -1,10 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { IconButton } from './ui/IconButton'
 import { SettingsDialog } from './SettingsDialog'
 import { useMenuActions } from '../lib/menuActions'
+import { onSettingsRequested, type SettingsSection } from '../lib/openSettings'
 
 /**
  * Where a screen puts its own actions in the top bar — the editor's Export. A slot rather than a
@@ -29,7 +30,7 @@ export function AppShell({
   const [showSettings, setShowSettings] = useState(false)
   // Which section the menu asked for; the button opens where it always did.
   const [slot, setSlot] = useState<HTMLElement | null>(null)
-  const [settingsSection, setSettingsSection] = useState<'narration' | 'system' | 'licences'>('narration')
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('narration')
 
   useMenuActions({
     settings: () => {
@@ -46,6 +47,15 @@ export function AppShell({
       setShowSettings(true)
     }
   })
+
+  useEffect(
+    () =>
+      onSettingsRequested((section) => {
+        setSettingsSection(section)
+        setShowSettings(true)
+      }),
+    []
+  )
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">

@@ -48,7 +48,8 @@ export function useRailPanel(): {
         toggle(RAIL_ORDER[Number(event.key) - 1])
         return
       }
-      if (event.key !== 'Escape') return
+      // A list or menu inside a panel that took the Esc for itself closes alone, not with its panel.
+      if (event.key !== 'Escape' || event.defaultPrevented) return
       const active = document.activeElement as HTMLElement | null
       const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)
       if (typing || document.querySelector('[role="dialog"]')) return
