@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'fs'
 import { readFontInfo } from './fontInfo'
 import { homedir } from 'os'
 import { basename, extname, join, normalize, sep } from 'path'
-import { findThemeDir, readTheme } from './themeApi'
-import { BUILTIN_FONTS, type FontChoice, type ThemeDraft } from './schema'
+import { findThemeDir, readTheme, MAX_BACKGROUND_BYTES } from './themeApi'
+import { BUILTIN_FONTS, type BackgroundFit, type FontChoice, type ThemeDraft, type VariantId } from './schema'
 import { themeStamp, type RenderTheme } from '../../composition/renderTheme'
 import { stillLogo } from './stillLogo'
 
@@ -73,13 +73,61 @@ export function renderThemeFrom(draft: ThemeDraft, dir: string | undefined): Ren
     return { family: choice.family, urls: files.map(({ file, bytes }) => dataUrl(bytes as Buffer, file)) }
   }
 
-  const stored = draft.logo && dir ? readInside(dir, draft.logo.file) : null
-  // Settled here rather than when saved, so logos already in the library are fixed too, and the
-  // file itself stays exactly as the brand published it.
-  const logoBytes =
-    stored && draft.logo && extname(draft.logo.file).toLowerCase() === '.svg'
-      ? Buffer.from(stillLogo(stored.toString('utf-8')))
-      : stored
+  const warnings: string[] = []
+
+  // One logo slot as a data URL. Settled here rather than when saved, so logos already in the
+  // library are fixed too, and the file itself stays exactly as the brand published it.
+  const logoSlot = (file: string | undefined): string | undefined => {
+    if (!file || !dir) return undefined
+    const stored = readInside(dir, file)
+    if (!stored) return undefined
+    const bytes = extname(file).toLowerCase() === '.svg' ? Buffer.from(stillLogo(stored.toString('utf-8'))) : stored
+    return dataUrl(bytes, file)
+  }
+
+  const light = logoSlot(draft.logo?.light?.file)
+  const dark = logoSlot(draft.logo?.dark?.file)
+  const logo =
+    draft.logo && (light || dark)
+      ? {
+          ...(light ? { light } : {}),
+          ...(dark ? { dark } : {}),
+          corner: draft.logo.corner,
+          showOn: draft.logo.showOn,
+          ...(draft.logo.clearSpace !== undefined ? { clearSpace: draft.logo.clearSpace } : {}),
+          ...(draft.logo.minHeight !== undefined ? { minHeight: draft.logo.minHeight } : {})
+        }
+      : undefined
+
+  const background = (
+    entry: { file: string; fit: BackgroundFit; scrim: number } | undefined,
+    label: string
+  ): { url: string; fit: BackgroundFit; scrim: number } | undefined => {
+    if (!entry || !dir) return undefined
+    const bytes = readInside(dir, entry.file)
+    if (!bytes) return undefined
+    // Left off rather than shrunk: the file keeps its quality on disk, and the brand check says why.
+    if (bytes.length > MAX_BACKGROUND_BYTES) {
+      warnings.push(`The ${label} background (${entry.file}) is too large to show — over 12 MB — so it was left off. Save a smaller file.`)
+      return undefined
+    }
+    return { url: dataUrl(bytes, entry.file), fit: entry.fit, scrim: entry.scrim }
+  }
+
+  const backgroundsFor = (ctx: 'card' | 'content'): Partial<Record<VariantId, { url: string; fit: BackgroundFit; scrim: number }>> | undefined => {
+    const group = draft.backgrounds?.[ctx]
+    if (!group) return undefined
+    const out: Partial<Record<VariantId, { url: string; fit: BackgroundFit; scrim: number }>> = {}
+    for (const v of ['brand', 'light', 'dark'] as const) {
+      const built = background(group[v], `${ctx} ${v}`)
+      if (built) out[v] = built
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+
+  const card = dir ? backgroundsFor('card') : undefined
+  const content = dir ? backgroundsFor('content') : undefined
+  const backgrounds = card || content ? { ...(card ? { card } : {}), ...(content ? { content } : {}) } : undefined
 
   return {
     stamp: themeStamp(draft),
@@ -91,9 +139,11 @@ export function renderThemeFrom(draft: ThemeDraft, dir: string | undefined): Ren
       heading: font(draft.fonts.heading, BUILTIN_FONTS.serif),
       body: font(draft.fonts.body, BUILTIN_FONTS.sans)
     },
-    ...(draft.logo && logoBytes
-      ? { logo: { url: dataUrl(logoBytes, draft.logo.file), corner: draft.logo.corner, showOn: draft.logo.showOn } }
-      : {}),
+    ...(logo ? { logo } : {}),
+    ...(backgrounds ? { backgrounds } : {}),
+    ...(draft.brand ? { brand: draft.brand } : {}),
+    ...(draft.locks ? { locks: draft.locks } : {}),
+    ...(warnings.length ? { warnings } : {}),
     caption: draft.overlays.caption
   }
 }

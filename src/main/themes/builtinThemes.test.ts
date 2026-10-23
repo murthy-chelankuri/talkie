@@ -76,7 +76,7 @@ describe('the themes Talkie comes with', () => {
 
     expect(() => deleteTheme(id, baseDir)).toThrow(/cannot be changed or deleted/)
     expect(() => updateTheme(id, { ...BUILTIN_THEMES[0], name: 'Mine now' }, baseDir)).toThrow(/cannot be changed/)
-    expect(() => writeThemeAsset(id, 'logo', 'logo.svg', Buffer.from('<svg/>'), baseDir)).toThrow(/cannot be changed/)
+    expect(() => writeThemeAsset(id, 'logo', 'light', 'logo.svg', Buffer.from('<svg/>'), baseDir)).toThrow(/cannot be changed/)
     expect(findThemeDir(id, baseDir)).toBeUndefined()
     expect(readTheme(id, baseDir).name).toBe(BUILTIN_THEMES[0].name)
   })
@@ -96,18 +96,18 @@ describe('duplicating one of your own themes', () => {
   it('brings its logo and fonts with it, as files of its own', () => {
     const source = createTheme(defaultThemeDraft('Acme'), baseDir)
     const dir = findThemeDir(source.id, baseDir) as string
-    const logo = writeAssetInto(dir, 'logo', 'mark.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'))
-    writeAssetInto(dir, 'font', 'Acme-400.woff2', Buffer.from('font'))
-    updateTheme(source.id, { ...source, logo: { file: logo, corner: 'top-right', showOn: { recordings: true, slides: true } } }, baseDir)
+    const logo = writeAssetInto(dir, 'logo', 'dark', 'mark.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'))
+    writeAssetInto(dir, 'font', '', 'Acme-400.woff2', Buffer.from('font'))
+    updateTheme(source.id, { ...source, logo: { dark: { file: logo }, corner: 'top-right', showOn: { recordings: true, slides: true } } }, baseDir)
 
     const copy = duplicateTheme(source.id, baseDir)
     const copyDir = findThemeDir(copy.id, baseDir) as string
     deleteTheme(source.id, baseDir)
 
-    expect(copy.logo?.file).toBe('logo.svg')
-    expect(readdirSync(copyDir).sort()).toEqual(['fonts', 'logo.svg', 'theme.json'])
+    expect(copy.logo?.dark?.file).toBe('logos/dark.svg')
+    expect(readdirSync(copyDir).sort()).toEqual(['fonts', 'logos', 'theme.json'])
     expect(readdirSync(join(copyDir, 'fonts'))).toEqual(['Acme-400.woff2'])
-    expect(toRenderTheme(copy.id, baseDir)?.logo?.url).toMatch(/^data:image\/svg\+xml/)
+    expect(toRenderTheme(copy.id, baseDir)?.logo?.dark).toMatch(/^data:image\/svg\+xml/)
   })
 })
 

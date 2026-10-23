@@ -11,7 +11,13 @@ export interface BrandFacts {
   colours: { hex: string; weight: number; role: ColourRole }[]
   fonts: { family: string; role: 'heading' | 'body' | 'document' }[]
   logo?: { bytes: Buffer; fileName: string }
-  sources: ('website' | 'logo' | 'pdf' | 'description')[]
+  /** Every logo read, with the ground it is made for — the slot it belongs in (light-ink → dark ground). */
+  logos?: { bytes: Buffer; fileName: string; ink: 'light' | 'dark' }[]
+  /** Imagery to sit behind scenes, tagged by where it suits. Carried as bytes to copy in verbatim. */
+  backgrounds?: { bytes: Buffer; fileName: string; suggest: 'card' | 'content' }[]
+  /** Named brand colours, from a guide or folder, for the palette and the off-palette check. */
+  palette?: { name: string; hex: string }[]
+  sources: ('website' | 'logo' | 'pdf' | 'description' | 'folder')[]
   /** What went wrong on the way, said plainly — "acme.com asked for a sign-in". */
   problems: string[]
 }
@@ -37,12 +43,18 @@ export function mergeFacts(...all: BrandFacts[]): BrandFacts {
   }
 
   const fonts = all.flatMap((facts) => facts.fonts)
+  const palette = all.flatMap((facts) => facts.palette ?? [])
+  const logos = all.flatMap((facts) => facts.logos ?? [])
+  const backgrounds = all.flatMap((facts) => facts.backgrounds ?? [])
   return {
     colours: [...colours.values()]
       .sort((a, b) => b.weight - a.weight)
       .map(({ hex, weight, role }) => ({ hex, weight, role })),
     fonts: fonts.filter((font, i) => fonts.findIndex((other) => other.family === font.family && other.role === font.role) === i),
     logo: all.find((facts) => facts.logo)?.logo,
+    ...(logos.length ? { logos } : {}),
+    ...(backgrounds.length ? { backgrounds } : {}),
+    ...(palette.length ? { palette: palette.filter((p, i) => palette.findIndex((other) => other.hex === p.hex) === i) } : {}),
     sources: [...new Set(all.flatMap((facts) => facts.sources))],
     problems: all.flatMap((facts) => facts.problems)
   }

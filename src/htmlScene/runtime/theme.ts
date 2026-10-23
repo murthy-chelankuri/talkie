@@ -16,6 +16,12 @@ export async function applyTheme(doc: Document, theme: SceneTheme | null, talkie
   // will — as LogoMark does for the video's own cards. Before the first frame, so none is bare.
   theme.logoPlate = theme.logo ? plateAmong(await readLogoColours(theme.logo), theme.background, theme.plates ?? []) : null
   root.setProperty('--talkie-logo-plate', theme.logoPlate ?? 'transparent')
+  if (theme.bgImage) {
+    root.setProperty('--talkie-bg-image', `url("${theme.bgImage.url}")`)
+    root.setProperty('--talkie-bg-fit', theme.bgImage.fit)
+    root.setProperty('--talkie-bg-scrim', String(theme.bgImage.scrim))
+    injectBackgroundLayer(doc, theme)
+  }
   const faces = [theme.fonts.heading, theme.fonts.body].flatMap(({ family, urls }) => {
     // Talkie's own families have no files in the theme — every render already has them — so a
     // scene, which has none of the app's fonts, loads them from the runtime's server instead.
@@ -30,4 +36,28 @@ export async function applyTheme(doc: Document, theme: SceneTheme | null, talkie
   for (const face of faces) {
     try { doc.fonts.add(await face.load()) } catch { /* a face that will not load falls back to the stack */ }
   }
+}
+
+/**
+ * A full-bleed layer behind the page carrying the theme's background image and a scrim — the same
+ * solid → image → scrim order the native scenes paint — so a scene written against the theme
+ * variables gets the imagery without its template knowing of it. The image is a data URL from the
+ * theme's own folder, so connect-src 'none' is untouched. Idempotent, because applyTheme runs
+ * again on every talkie:theme message; a template that paints its own body background opts out.
+ */
+function injectBackgroundLayer(doc: Document, theme: SceneTheme): void {
+  const id = '__talkie-bg'
+  if (!theme.bgImage || doc.getElementById(id)) return
+  const fit = theme.bgImage.fit
+  const size = fit === 'tile' ? 'background-repeat:repeat;background-size:auto' : `background-repeat:no-repeat;background-position:center;background-size:${fit}`
+  const layer = doc.createElement('div')
+  layer.id = id
+  layer.setAttribute('aria-hidden', 'true')
+  layer.style.cssText = `position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:${theme.background}`
+  const image = doc.createElement('div')
+  image.style.cssText = `position:absolute;inset:0;background-image:var(--talkie-bg-image);${size}`
+  const scrim = doc.createElement('div')
+  scrim.style.cssText = `position:absolute;inset:0;background:${theme.background};opacity:${theme.bgImage.scrim}`
+  layer.append(image, scrim)
+  ;(doc.body ?? doc.documentElement).prepend(layer)
 }

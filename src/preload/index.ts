@@ -15,12 +15,15 @@ import type { Theme, ThemeDraft } from '../main/themes/schema'
 import type { GeneratedTheme, GenerateStatus } from '../main/themes/generate/generateTheme'
 import type { ThemeTarget } from '../main/ipc/themeHandlers'
 import type { ThemeFontFile } from '../main/themes/themeApi'
+import type { ComplianceWarning } from '../main/themes/compliance'
 
 /** A file goes over IPC as its bytes, since the window has no path the main process could open. */
 export interface GenerateThemeRequest {
   name: string
   url?: string
   description?: string
+  /** An absolute path to a local brand folder to read fonts, logos, imagery and docs from. */
+  folder?: string
   file?: { bytes: Uint8Array; fileName: string }
 }
 import type { KokoroDownload } from '../main/tts/kokoro/kokoroProcess'
@@ -118,8 +121,12 @@ const themesApi = {
   usage: (id: string): Promise<{ id: string; name: string }[]> => ipcRenderer.invoke('settings:themes:usage', id),
   generate: (request: GenerateThemeRequest): Promise<GeneratedTheme> => ipcRenderer.invoke('settings:themes:generate', request),
   generateStatus: (): Promise<GenerateStatus> => ipcRenderer.invoke('settings:themes:generateStatus'),
-  addAsset: (target: ThemeTarget, kind: 'logo' | 'font', fileName: string, bytes: Uint8Array): Promise<string> =>
-    ipcRenderer.invoke('settings:themes:addAsset', target, kind, fileName, bytes),
+  /** The native folder picker, so the window never names a path on disk to read. Null if cancelled. */
+  chooseBrandFolder: (): Promise<string | null> => ipcRenderer.invoke('settings:themes:chooseBrandFolder'),
+  /** The brand check for a draft: the warnings the editor's panel and agents both show. */
+  compliance: (draft: ThemeDraft): Promise<ComplianceWarning[]> => ipcRenderer.invoke('settings:themes:compliance', draft),
+  addAsset: (target: ThemeTarget, kind: 'logo' | 'background' | 'font', slot: string, fileName: string, bytes: Uint8Array): Promise<string> =>
+    ipcRenderer.invoke('settings:themes:addAsset', target, kind, slot, fileName, bytes),
   /** A font of the person's own, read as it is saved: its family, face and weight come back. */
   addFont: (target: ThemeTarget, fileName: string, bytes: Uint8Array): Promise<ThemeFontFile> =>
     ipcRenderer.invoke('settings:themes:addFont', target, fileName, bytes),

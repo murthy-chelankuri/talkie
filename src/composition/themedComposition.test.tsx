@@ -30,7 +30,12 @@ const theme: RenderTheme = {
     dark: { background: '#06111f', heading: '#f6f9fc', body: '#adbdcc', accent: '#80e9ff' }
   },
   fonts: { heading: { family: 'Inter', urls: ['data:font/woff2;base64,AAA'] }, body: { family: 'Inter', urls: [] } },
-  logo: { url: 'data:image/png;base64,AAA', corner: 'top-left', showOn: { recordings: true, slides: false } },
+  logo: {
+    light: 'data:image/png;base64,AAA',
+    dark: 'data:image/png;base64,BBB',
+    corner: 'top-left',
+    showOn: { recordings: true, slides: false }
+  },
   caption: 'brand'
 }
 

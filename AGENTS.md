@@ -454,12 +454,31 @@ drawn in the order it is explained rather than arriving whole.
 
 ## Themes
 
-A theme is a company's look — three variants (brand, light, dark), fonts, logo, caption and click
-colours — kept once in the Studio's `Themes` folder and chosen per project (`themeId`). `src/main/themes/`.
+A theme is a company's look — three variants (brand, light, dark), fonts, a logo pair, background
+imagery, a brand palette, caption and click colours — kept once in the Studio's `Themes` folder and
+chosen per project (`themeId`). `src/main/themes/`. The schema is v2 (`THEME_SCHEMA_VERSION`);
+`migrateTheme` upgrades a v1 library on read, mirroring its one logo into both slots.
 
-- **The composition gets a `RenderTheme`, with logo and fonts as data URLs.** Not asset-server
-  URLs: that server is rooted at the projects folder, and widening it would put `settings.json`
-  in reach. `toRenderTheme` builds it for the preview and the export alike.
+- **The composition gets a `RenderTheme`, with logo, backgrounds and fonts as data URLs.** Not
+  asset-server URLs: that server is rooted at the projects folder, and widening it would put
+  `settings.json` in reach. `toRenderTheme` builds it for the preview and the export alike.
+- **A logo is a light-ground and a dark-ground mark** (`logo.light`/`logo.dark`), picked per
+  surface by `logoUrlFor(theme, surfaceHex)` on the composition's side — so a scene is still handed
+  one logo URL and the HTML sandbox is untouched. Below 0.18 luminance a surface counts as dark.
+- **Backgrounds sit behind cards and content slides**, never diagrams (a diagram keeps its solid
+  ground so its structure reads). Each entry is `{file, fit, scrim}`, stored byte-for-byte — never
+  re-encoded or downscaled — and inlined with a ~12 MB ceiling (`MAX_BACKGROUND_BYTES`) that drops
+  the image and records a warning rather than shrinking it. Native scenes paint solid → image →
+  scrim → content via the box's own layered backgrounds; HTML scenes get `--talkie-bg-image/-fit/
+  -scrim` and a runtime-injected layer, so templates need no edits. `writeThemeAsset(id, kind, slot,
+  …)` is the one copier for logos (`logos/<slot>`), backgrounds (`backgrounds/<ctx>-<variant>`) and
+  fonts; `themeStamp` folds in their paths so swapping one invalidates cached diagrams and posters.
+- **Locks and the brand check are warn-only** (`locks: LockKey[]`, a closed enum). A locked group
+  freezes both automation and the editor's inputs: `fixContrast(draft, locks)` leaves a locked
+  variant as it is and reports it as `unresolved`, and `talkie_update_theme` refuses a change to a
+  locked group with a note. `checkCompliance(theme)` is a pure function returning warnings only —
+  contrast floors, a low scrim, off-palette colours, a missing counterpart logo — shown live in the
+  editor's Brand check panel and in `talkie_theme`'s read; it never blocks apply or export.
 - **Diagrams carry their colours**, so each records a `themeStamp`; stale ones are redrawn when
   the project opens and before export (`redrawStaleDiagrams`).
 - **The first theme adds opening and closing cards, once** (`bookendsAdded`), and they are HTML
@@ -474,10 +493,11 @@ colours — kept once in the Studio's `Themes` folder and chosen per project (`t
   so they cannot be deleted or edited — `themeApi` refuses, and Duplicate gives an editable copy.
   They use only Geist and Newsreader, the fonts every render already has, so they work offline and
   bring no new licences; a test holds every colour to the contrast floors.
-- **Agents reach all of it over MCP**: list, read, create (from a site, a logo or guide file, or a
-  description), update — colours, fonts, logo — duplicate, delete, apply. A slide's `layout` and
-  every scene's look (brand/light/dark) are settable, and `talkie_list_voices` names the voices of
-  every engine that is ready, since `talkie_set_voice` refuses one no engine has.
+- **Agents reach all of it over MCP**: list, read (with the brand check), create (from a site, a
+  logo or guide file, a local brand folder, or a description), update — colours, fonts, the logo
+  pair, backgrounds, palette, locks — duplicate, delete, apply. A slide's `layout` and every
+  scene's look (brand/light/dark) are settable, and `talkie_list_voices` names the voices of every
+  engine that is ready, since `talkie_set_voice` refuses one no engine has.
 - **A project's voice brings its engine** (`projectSpeech` in `engineRegistry.ts`). Kokoro is the
   only speech engine now — the macOS `say` voices it replaced sounded plainly synthetic and were
   dropped — but a project still stores the engine with the voice, and `engineOfVoice` stays the one
@@ -494,9 +514,11 @@ colours — kept once in the Studio's `Themes` folder and chosen per project (`t
   as published). `LogoMark` reads the logo's colours in the browser and, on a slide or card whose
   background would hide too much of it, puts it on a plate in the theme's light or dark colour.
 - **No theme means the old look, exactly** — the old palette names still render as they did.
-- **AI themes**: `generate/` reads the site headless (one page, no clicks), the narration
-  provider chooses (rules if not), fonts come only from Google Fonts' `ofl/`/`apache/`, contrast
-  is fixed, and the result waits in `Themes/.drafts` until saved.
+- **AI themes**: `generate/` reads the site headless (one page, no clicks) or a local brand folder
+  (`readBrandFolder` classifies fonts, logos, imagery and md/txt/pdf docs), the narration provider
+  chooses colours and fonts (rules if not), fonts come only from Google Fonts' `ofl/`/`apache/`,
+  logos are assigned to a slot by ink and backgrounds by where they suit, contrast is fixed, and the
+  result waits in `Themes/.drafts` at full quality until saved. AI themes start unlocked.
 - **A company's own fonts** go in through the editor's Fonts section (first, above the colours)
   or "Company fonts" when creating with AI, which then replaces the open fonts it would pick. Each
   file is read for what it is — family, weight, italic, variable — from its own name and OS/2

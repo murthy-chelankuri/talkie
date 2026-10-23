@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
-import type { LogoCorner, Theme, Variant, VariantId } from '../main/themes/schema'
+import type { BackgroundFit, LockKey, LogoCorner, Theme, Variant, VariantId } from '../main/themes/schema'
+import { luminance } from '../main/themes/contrast'
 
 /**
  * A theme as the composition receives it: everything it needs to draw, with nothing left to
@@ -21,9 +22,48 @@ export interface RenderTheme {
     heading: { family: string; urls: string[] }
     body: { family: string; urls: string[] }
   }
-  logo?: { url: string; corner: LogoCorner; showOn: { recordings: boolean; slides: boolean } }
+  /**
+   * The logo for each ground, as data URLs — resolved to one per surface by logoUrlFor on the
+   * composition's side, so an HTML scene is still handed a single URL and its sandbox need know
+   * nothing of the pair.
+   */
+  logo?: {
+    light?: string
+    dark?: string
+    corner: LogoCorner
+    showOn: { recordings: boolean; slides: boolean }
+    clearSpace?: number
+    minHeight?: number
+  }
+  /** Background imagery per surface, as data URLs, with each one's fit and scrim. */
+  backgrounds?: {
+    card?: Partial<Record<VariantId, { url: string; fit: BackgroundFit; scrim: number }>>
+    content?: Partial<Record<VariantId, { url: string; fit: BackgroundFit; scrim: number }>>
+  }
+  /** The brand's own named colours, for the off-palette check. */
+  brand?: { palette?: { name: string; hex: string }[] }
+  /** Groups the person has frozen. */
+  locks?: LockKey[]
+  /** Assets left out of the render for being too large to inline — surfaced by the brand check. */
+  warnings?: string[]
   /** Which variant the caption bar is drawn in. */
   caption: VariantId
+}
+
+/**
+ * The logo to show on a surface: the dark-ground mark on a dark background, the light-ground mark
+ * on a light one, falling back to whichever slot exists. Resolved here, on the composition's side,
+ * so an HTML scene is still handed a single logo URL and its sandbox need know nothing of the pair.
+ * A surface is dark below the same 0.18 luminance the contrast fix uses to decide which way to move
+ * text; with no surface known — over a recording — the dark-ground mark is preferred.
+ */
+export function logoUrlFor(theme: RenderTheme, surfaceBackgroundHex: string | undefined): string | undefined {
+  const logo = theme.logo
+  if (!logo) return undefined
+  const wantsDark = surfaceBackgroundHex === undefined || !/^#[0-9a-f]{6}$/i.test(surfaceBackgroundHex) || luminance(surfaceBackgroundHex) <= 0.18
+  const first = wantsDark ? logo.dark : logo.light
+  const second = wantsDark ? logo.light : logo.dark
+  return first ?? second
 }
 
 export const ThemeContext = createContext<RenderTheme | null>(null)
@@ -40,8 +80,14 @@ export function useRenderTheme(): RenderTheme | null {
  * whether the theme it was drawn in is still the one in force. FNV-1a over the colours and font
  * names: no crypto, because this runs in the composition as well as in main.
  */
-export function themeStamp(theme: Pick<Theme, 'variants' | 'fonts'>): string {
-  const text = JSON.stringify([theme.variants, theme.fonts.heading.family, theme.fonts.body.family])
+export function themeStamp(theme: Pick<Theme, 'variants' | 'fonts'> & Pick<Partial<Theme>, 'logo' | 'backgrounds'>): string {
+  const logoPaths = theme.logo ? [theme.logo.light?.file ?? '', theme.logo.dark?.file ?? ''] : []
+  const bgPaths = theme.backgrounds
+    ? (['card', 'content'] as const).flatMap((ctx) =>
+        (['brand', 'light', 'dark'] as const).map((v) => theme.backgrounds?.[ctx]?.[v]?.file ?? '')
+      )
+    : []
+  const text = JSON.stringify([theme.variants, theme.fonts.heading.family, theme.fonts.body.family, logoPaths, bgPaths])
   let hash = 0x811c9dc5
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i)

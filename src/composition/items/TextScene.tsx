@@ -1,9 +1,38 @@
+import type { CSSProperties } from 'react'
 import { Fill, interpolate, spring, useFrame, useVideoConfig } from '../../video'
 import { LogoMark } from '../LogoMark'
 import { revealFrames, type Beat } from '../revealOnBeat'
 import type { TextSceneData } from '../../main/project/timeline/schema'
-import { resolveSceneTheme, type ResolvedSceneTheme } from '../sceneTheme'
-import { useRenderTheme, type RenderTheme } from '../renderTheme'
+import type { VariantId } from '../../main/themes/schema'
+import { resolveSceneTheme, VARIANT_FOR, type ResolvedSceneTheme } from '../sceneTheme'
+import { backgroundFor } from '../backgroundFor'
+import { logoUrlFor, useRenderTheme, type RenderTheme } from '../renderTheme'
+
+function hexToRgb(hex: string): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex)
+  if (!match) return '0,0,0'
+  const value = parseInt(match[1], 16)
+  return `${(value >> 16) & 255},${(value >> 8) & 255},${value & 255}`
+}
+
+/**
+ * A scene's ground: the variant's solid colour, a theme background image over it, and a scrim —
+ * a wash of that same colour — on top, so text and logo always sit on a controlled tone and never
+ * raw imagery. Painted as the box's own layered backgrounds rather than inserted elements, so the
+ * content stacks above it with nothing restructured. With no image it is the solid colour, as before.
+ */
+function groundStyle(solid: string, bg: { url: string; fit: 'cover' | 'contain' | 'tile'; scrim: number } | undefined): CSSProperties {
+  if (!bg) return { background: solid }
+  const scrim = `linear-gradient(rgba(${hexToRgb(solid)}, ${bg.scrim}), rgba(${hexToRgb(solid)}, ${bg.scrim}))`
+  const tile = bg.fit === 'tile'
+  return {
+    backgroundColor: solid,
+    backgroundImage: `${scrim}, url("${bg.url}")`,
+    backgroundRepeat: tile ? 'no-repeat, repeat' : 'no-repeat, no-repeat',
+    backgroundPosition: 'center, center',
+    backgroundSize: tile ? 'auto, auto' : `auto, ${bg.fit}`
+  }
+}
 
 /**
  * A slide written in the app.
@@ -19,11 +48,12 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
   const { title, bullets, style, beats, layout } = data as TextSceneData & { beats?: Beat[] }
   const project = useRenderTheme()
   const theme = resolveSceneTheme(style, project)
+  const variant: VariantId = VARIANT_FOR[style?.theme ?? 'dark'] ?? 'dark'
   const frame = useFrame()
   const { fps } = useVideoConfig()
 
   if (layout === 'title' || layout === 'closing') {
-    return <Card layout={layout} title={title} look={theme} project={project} frame={frame} fps={fps} />
+    return <Card layout={layout} title={title} look={theme} project={project} variant={variant} frame={frame} fps={fps} />
   }
 
   /**
@@ -54,7 +84,7 @@ export function TextScene({ data }: { data: unknown }): JSX.Element {
   return (
     <Fill
       style={{
-        background: theme.background,
+        ...groundStyle(theme.background, backgroundFor(project, 'content', variant)),
         padding: '9% 11%',
         justifyContent: 'center',
         alignItems: centred ? 'center' : 'stretch',
@@ -150,6 +180,7 @@ function Card({
   title,
   look,
   project,
+  variant,
   frame,
   fps
 }: {
@@ -157,17 +188,19 @@ function Card({
   title: string
   look: ResolvedSceneTheme
   project: RenderTheme | null
+  variant: VariantId
   frame: number
   fps: number
 }): JSX.Element {
   const settle = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 14 })
   const { width: videoWidth, height: videoHeight } = useVideoConfig()
   const tagline = project?.tagline && project.tagline !== title ? project.tagline : ''
+  const logo = project ? logoUrlFor(project, look.background) : undefined
 
   return (
     <Fill
       style={{
-        background: look.background,
+        ...groundStyle(look.background, backgroundFor(project, 'card', variant)),
         padding: '9% 11%',
         justifyContent: 'center',
         alignItems: 'center',
@@ -177,9 +210,10 @@ function Card({
         opacity: interpolate(settle, [0, 1], [0.82, 1])
       }}
     >
-      {project?.logo && (
+      {project && logo && (
         <LogoMark
-          theme={{ ...project, logo: project.logo }}
+          theme={project}
+          url={logo}
           height={Math.round(videoHeight * 0.18)}
           maxWidth={Math.round(videoWidth * 0.5)}
           background={look.background}

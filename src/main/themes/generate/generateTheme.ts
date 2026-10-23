@@ -12,6 +12,7 @@ import { NO_FACTS, mergeFacts, type BrandFacts } from './facts'
 import { readWebsite as readWebsiteDefault } from './readWebsite'
 import { readLogo as readLogoDefault } from './readLogo'
 import { readBrandGuide as readBrandGuideDefault } from './readBrandGuide'
+import { readBrandFolder as readBrandFolderDefault } from './readBrandFolder'
 import { proposeTheme } from './proposeTheme'
 import { resolveFonts } from './resolveFonts'
 
@@ -21,6 +22,8 @@ export interface GenerateRequest {
   description?: string
   /** A logo image or a brand-guide PDF. */
   file?: { bytes: Buffer; fileName: string }
+  /** A local brand folder: fonts, logos, imagery and guide docs are read from it, at full quality. */
+  folder?: string
 }
 
 /** A theme that has been made but not saved: its draft, and the folder its files wait in. */
@@ -40,6 +43,7 @@ export interface GenerateDeps {
   readWebsite: (url: string) => Promise<BrandFacts>
   readLogo: (bytes: Buffer, fileName: string) => Promise<BrandFacts>
   readBrandGuide: (bytes: Buffer) => Promise<BrandFacts>
+  readBrandFolder: (dir: string) => Promise<BrandFacts>
   provider: NarrationProvider
   fetcher: typeof fetch
   baseDir: string
@@ -66,6 +70,7 @@ function defaults(): GenerateDeps {
     readWebsite: (url) => readWebsiteDefault(url),
     readLogo: readLogoDefault,
     readBrandGuide: readBrandGuideDefault,
+    readBrandFolder: (dir) => readBrandFolderDefault(dir),
     provider: narrationProvider(readSettings().narration.provider),
     fetcher: fetch,
     baseDir: homedir()
@@ -82,8 +87,8 @@ function defaults(): GenerateDeps {
 export async function generateTheme(request: GenerateRequest, deps: Partial<GenerateDeps> = {}): Promise<GeneratedTheme> {
   const use = { ...defaults(), ...deps }
   const description = request.description?.trim() ?? ''
-  if (!request.url?.trim() && !description && !request.file) {
-    throw new Error('Give a website, a description, or a logo or brand guide to make a theme from.')
+  if (!request.url?.trim() && !description && !request.file && !request.folder?.trim()) {
+    throw new Error('Give a website, a description, a brand folder, or a logo or brand guide to make a theme from.')
   }
   if (status.running) throw new Error('A theme is already being made. Wait for it to finish.')
 
@@ -112,6 +117,15 @@ export async function generateTheme(request: GenerateRequest, deps: Partial<Gene
       }
     }
 
+    if (request.folder?.trim()) {
+      status = { running: true, step: 'Reading the brand folder…' }
+      try {
+        read.push(await use.readBrandFolder(request.folder.trim()))
+      } catch (err) {
+        read.push({ ...NO_FACTS, problems: [`Could not read ${request.folder}: ${err instanceof Error ? err.message : String(err)}`] })
+      }
+    }
+
     const facts = mergeFacts(NO_FACTS, ...read)
     if (description) facts.sources.push('description')
     if (facts.colours.length === 0 && facts.fonts.length === 0 && !description) {
@@ -124,20 +138,43 @@ export async function generateTheme(request: GenerateRequest, deps: Partial<Gene
     status = { running: true, step: 'Getting fonts…' }
     const fonts = await resolveFonts(proposal.draft, proposal.fallbacks, use.fetcher)
 
+    // AI themes start unlocked, so the contrast fix is free to move every variant.
     status = { running: true, step: 'Checking readability…' }
-    const readable = fixContrast(fonts.draft)
+    const readable = fixContrast(fonts.draft, [])
 
     const stagingDir = join(themesRootDir(use.baseDir), '.drafts', randomUUID())
     mkdirSync(stagingDir, { recursive: true })
-    for (const file of fonts.files) writeAssetInto(stagingDir, 'font', file.fileName, file.bytes)
-    const logo = facts.logo ? writeAssetInto(stagingDir, 'logo', facts.logo.fileName, facts.logo.bytes) : undefined
+    for (const file of fonts.files) writeAssetInto(stagingDir, 'font', '', file.fileName, file.bytes)
+
+    // Logos: the ones the folder gave, each in the slot its ink suits (light ink reads on a dark
+    // ground); failing that, the single legacy logo in both slots.
+    const logoFacts = facts.logos && facts.logos.length > 0 ? facts.logos : facts.logo ? [{ ...facts.logo, ink: 'dark' as const }] : []
+    const logoSlots: { light?: { file: string }; dark?: { file: string } } = {}
+    for (const found of logoFacts) {
+      const slot = found.ink === 'light' ? 'dark' : 'light'
+      if (logoSlots[slot]) continue
+      logoSlots[slot] = { file: writeAssetInto(stagingDir, 'logo', slot, found.fileName, found.bytes) }
+    }
+
+    // Backgrounds: the first the folder suggests for each context, on the dark variant.
+    const backgrounds: NonNullable<ThemeDraft['backgrounds']> = {}
+    for (const ctx of ['card', 'content'] as const) {
+      const pick = facts.backgrounds?.find((candidate) => candidate.suggest === ctx)
+      if (!pick) continue
+      const file = writeAssetInto(stagingDir, 'background', `${ctx}-dark`, pick.fileName, pick.bytes)
+      backgrounds[ctx] = { dark: { file, fit: 'cover', scrim: 0.35 } }
+    }
 
     const draft: ThemeDraft = {
       ...readable.draft,
-      ...(logo ? { logo: { file: logo, corner: 'bottom-right', showOn: { recordings: true, slides: true } } } : {}),
+      ...(logoSlots.light || logoSlots.dark
+        ? { logo: { ...logoSlots, corner: 'bottom-right', showOn: { recordings: true, slides: true } } }
+        : {}),
+      ...(Object.keys(backgrounds).length ? { backgrounds } : {}),
+      ...(facts.palette && facts.palette.length ? { brand: { palette: facts.palette.slice(0, 12) } } : {}),
       provenance: {
         from: facts.sources,
-        notes: [...facts.problems, ...proposal.notes, ...fonts.notes, ...readable.notes]
+        notes: [...facts.problems, ...proposal.notes, ...fonts.notes, ...readable.notes, ...readable.unresolved]
       }
     }
     status = { running: false, step: 'Done' }

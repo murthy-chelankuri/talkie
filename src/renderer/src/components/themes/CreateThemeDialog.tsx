@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Sparkles, TriangleAlert, Upload } from 'lucide-react'
+import { ArrowLeft, FolderOpen, Sparkles, TriangleAlert, Upload } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Textarea } from '../ui/Textarea'
@@ -24,6 +24,8 @@ export function CreateThemeDialog({
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  // A brand folder on disk, chosen through the native picker; its absolute path, which main reads.
+  const [folder, setFolder] = useState<string | null>(null)
   // The company's own font files, used in place of whatever open fonts the theme would choose.
   const [fonts, setFonts] = useState<File[]>([])
   const fontPicker = useRef<HTMLInputElement>(null)
@@ -44,7 +46,13 @@ export function CreateThemeDialog({
     return () => clearInterval(timer)
   }, [running])
 
-  const hasSomething = Boolean(url.trim() || description.trim() || file)
+  const hasSomething = Boolean(url.trim() || description.trim() || file || folder)
+
+  async function pickFolder(): Promise<void> {
+    setError(null)
+    const chosen = await themeClient.chooseBrandFolder()
+    if (chosen) setFolder(chosen)
+  }
 
   async function create(): Promise<void> {
     setError(null)
@@ -54,6 +62,7 @@ export function CreateThemeDialog({
         name: name.trim() || url.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '') || 'New theme',
         url: url.trim() || undefined,
         description: description.trim() || undefined,
+        folder: folder ?? undefined,
         file: file ? { bytes: new Uint8Array(await file.arrayBuffer()), fileName: file.name } : undefined
       })
       onCreated(fonts.length > 0 ? await withOwnFonts(generated, fonts) : generated)
@@ -84,77 +93,94 @@ export function CreateThemeDialog({
           Create a theme with AI
         </h3>
         <p className="text-xs leading-relaxed text-text-muted">
-          Any one of these is enough; more is better. Talkie reads the real colours, fonts and logo, and checks
-          every colour for readability. You see the theme before it is saved.
+          Start from a company's website or a folder of its brand. Talkie reads the real colours, fonts and logo,
+          checks every colour for readability, and shows you the theme before it is saved.
         </p>
       </div>
 
       <fieldset disabled={running} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0 disabled:opacity-60">
-        <Field label="Website">
+        {/* Two sources, one or the other: a live site, or a folder of the brand on disk. */}
+        <Source title="Start from a website" hint="Its real colours, fonts and logo are read from the page.">
           <Input aria-label="Website" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="acme.com" />
-        </Field>
-        <Field label="Describe it">
-          <Textarea
-            aria-label="Describe it"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Payments for small businesses. Calm and trustworthy; navy and green."
-            className="min-h-[4rem]"
-          />
-        </Field>
-        <Field label="Logo or brand guide">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => picker.current?.click()}>
-              <Upload size={14} />
-              {file ? 'Choose another' : 'Choose file…'}
-            </Button>
-            <span className="truncate text-[12px] text-text-muted">{file?.name ?? 'An image, or a PDF of the brand guidelines'}</span>
-            <input
-              ref={picker}
-              type="file"
-              aria-label="Logo or brand guide"
-              accept=".svg,.png,.jpg,.jpeg,.webp,.pdf"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
-        </Field>
+        </Source>
 
-        <Field label="Company fonts (optional)">
-          <div className="flex flex-col gap-1">
+        <Source
+          title="Start from a brand folder"
+          hint="Logos, fonts, imagery and brand-guide documents — Talkie reads them all and copies what it uses into the theme, so sharing it over git carries the brand."
+        >
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => void pickFolder()}>
+              <FolderOpen size={14} />
+              {folder ? 'Choose another folder' : 'Choose a folder…'}
+            </Button>
+            <span className="truncate text-[12px] text-text-muted">{folder ?? 'A folder of brand documents and assets'}</span>
+          </div>
+        </Source>
+
+        {/* Optional refinements, either way. */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-text-muted">Refine (optional)</span>
+          <Field label="Describe it">
+            <Textarea
+              aria-label="Describe it"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Payments for small businesses. Calm and trustworthy; navy and green."
+              className="min-h-[4rem]"
+            />
+          </Field>
+          <Field label="Logo or brand guide">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => fontPicker.current?.click()}>
+              <Button variant="ghost" onClick={() => picker.current?.click()}>
                 <Upload size={14} />
-                {fonts.length > 0 ? 'Choose others' : 'Choose font files…'}
+                {file ? 'Choose another' : 'Choose file…'}
               </Button>
-              <span className="truncate text-[12px] text-text-muted">
-                {fonts.length > 0 ? fonts.map((font) => font.name).join(', ') : '.otf, .ttf, .woff or .woff2 — every weight you use'}
-              </span>
+              <span className="truncate text-[12px] text-text-muted">{file?.name ?? 'A single image, or a PDF of the brand guidelines'}</span>
               <input
-                ref={fontPicker}
+                ref={picker}
                 type="file"
-                multiple
-                aria-label="Company fonts"
-                accept=".woff2,.woff,.ttf,.otf"
+                aria-label="Logo or brand guide"
+                accept=".svg,.png,.jpg,.jpeg,.webp,.pdf"
                 className="hidden"
-                onChange={(e) => setFonts(Array.from(e.target.files ?? []))}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <span className="text-[11px] leading-relaxed text-text-muted">
-              Used instead of the fonts Talkie would pick. One family is used throughout; with two, the first is for
-              headings and the second for body text.
-            </span>
-          </div>
-        </Field>
-
-        <Field label="Theme name (optional)">
-          <Input
-            aria-label="Theme name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={url.trim() ? url.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '') : 'Named after the website'}
-          />
-        </Field>
+          </Field>
+          <Field label="Company fonts">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => fontPicker.current?.click()}>
+                  <Upload size={14} />
+                  {fonts.length > 0 ? 'Choose others' : 'Choose font files…'}
+                </Button>
+                <span className="truncate text-[12px] text-text-muted">
+                  {fonts.length > 0 ? fonts.map((font) => font.name).join(', ') : '.otf, .ttf, .woff or .woff2 — every weight you use'}
+                </span>
+                <input
+                  ref={fontPicker}
+                  type="file"
+                  multiple
+                  aria-label="Company fonts"
+                  accept=".woff2,.woff,.ttf,.otf"
+                  className="hidden"
+                  onChange={(e) => setFonts(Array.from(e.target.files ?? []))}
+                />
+              </div>
+              <span className="text-[11px] leading-relaxed text-text-muted">
+                Used instead of the fonts Talkie would pick. One family is used throughout; with two, the first is for
+                headings and the second for body text.
+              </span>
+            </div>
+          </Field>
+          <Field label="Theme name">
+            <Input
+              aria-label="Theme name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={url.trim() ? url.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '') : 'Named after the source'}
+            />
+          </Field>
+        </div>
       </fieldset>
 
       {error && (
@@ -180,7 +206,7 @@ export function CreateThemeDialog({
           <Sparkles size={14} />
           {running ? 'Creating…' : 'Create theme'}
         </Button>
-        {!hasSomething && <span className="text-[11px] text-text-muted">Give a website, a description or a file first.</span>}
+        {!hasSomething && <span className="text-[11px] text-text-muted">Give a website or a brand folder to start.</span>}
       </div>
     </div>
   )
@@ -191,6 +217,17 @@ function Field({ label, children }: { label: string; children: JSX.Element }): J
     <div className="flex flex-col gap-1.5">
       <span className="text-[13px] font-medium text-text">{label}</span>
       {children}
+    </div>
+  )
+}
+
+/** One of the two ways to begin — a website or a brand folder — set apart as a card of its own. */
+function Source({ title, hint, children }: { title: string; hint: string; children: JSX.Element }): JSX.Element {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl bg-raised p-3">
+      <span className="text-[13px] font-medium text-text">{title}</span>
+      {children}
+      <span className="text-[11px] leading-relaxed text-text-muted">{hint}</span>
     </div>
   )
 }

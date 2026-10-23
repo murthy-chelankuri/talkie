@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Check, Copy, ImageUp, Trash2, TriangleAlert, Upload, X } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ImageUp, Lock, LockOpen, Trash2, TriangleAlert, Upload, X } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { cn } from '../../lib/cn'
@@ -7,7 +7,8 @@ import { contrastRatio } from '../../../../main/themes/contrast'
 import { ThemePreview } from './ThemePreview'
 import { themeClient, type Theme, type ThemeDraft, type ThemeTarget, type VariantId } from '../../api/projectClient'
 import { isBuiltinThemeId } from '../../../../main/themes/builtinThemes'
-import { BUILTIN_FONTS } from '../../../../main/themes/schema'
+import { BUILTIN_FONTS, VARIANT_IDS, type LockKey } from '../../../../main/themes/schema'
+import type { ComplianceWarning } from '../../../../main/themes/compliance'
 import { describeFace } from '../../../../main/themes/fontFace'
 import type { ThemeFontFile } from '../../../../main/themes/themeApi'
 
@@ -49,6 +50,20 @@ export function ThemeEditor({
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<{ id: string; name: string }[] | null>(null)
   const target: ThemeTarget = themeId ? { themeId } : stagingDir ? { stagingDir } : null
+  // The brand check, run on the draft as it changes — the same warnings an agent sees.
+  const [warnings, setWarnings] = useState<ComplianceWarning[]>([])
+  useEffect(() => {
+    let cancelled = false
+    const handle = setTimeout(() => {
+      void themeClient.compliance(draft).then((w) => {
+        if (!cancelled) setWarnings(w)
+      })
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [draft])
   // What each of the person's font files is — family, face, weight — read from the files.
   const [faces, setFaces] = useState<Record<'heading' | 'body', ThemeFontFile[]>>({ heading: [], body: [] })
   const headingFiles = draft.fonts.heading.source === 'user' ? draft.fonts.heading.files : []
@@ -102,24 +117,42 @@ export function ThemeEditor({
   const setVariant = (id: VariantId, role: 'background' | 'heading' | 'body' | 'accent', value: string): void =>
     setDraft((d) => ({ ...d, variants: { ...d.variants, [id]: { ...d.variants[id], [role]: value } } }))
 
-  async function addFile(kind: 'logo' | 'font', file: File, role?: 'heading' | 'body'): Promise<void> {
+  async function addLogo(slot: 'light' | 'dark', file: File): Promise<void> {
     setError(null)
     try {
-      const path = await themeClient.addAsset(target, kind, file.name, new Uint8Array(await file.arrayBuffer()))
-      if (kind === 'logo') {
-        setDraft((d) => ({ ...d, logo: { corner: 'bottom-right', showOn: { recordings: true, slides: true }, ...d.logo, file: path } }))
-      } else if (role) {
-        setDraft((d) => {
-          const current = d.fonts[role]
-          // The person's own files replace a downloaded stand-in rather than joining it.
-          const files = current.source === 'user' ? [...current.files, path] : [path]
-          return { ...d, fonts: { ...d.fonts, [role]: { ...current, source: 'user', files } } }
-        })
-      }
+      const path = await themeClient.addAsset(target, 'logo', slot, file.name, new Uint8Array(await file.arrayBuffer()))
+      setDraft((d) => ({
+        ...d,
+        logo: { corner: 'bottom-right', showOn: { recordings: true, slides: true }, ...d.logo, [slot]: { file: path } }
+      }))
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
+
+  async function addBackground(context: 'card' | 'content', variant: VariantId, file: File): Promise<void> {
+    setError(null)
+    try {
+      const path = await themeClient.addAsset(target, 'background', `${context}-${variant}`, file.name, new Uint8Array(await file.arrayBuffer()))
+      setDraft((d) => ({
+        ...d,
+        backgrounds: {
+          ...d.backgrounds,
+          [context]: { ...d.backgrounds?.[context], [variant]: { fit: 'cover', scrim: 0.35, ...d.backgrounds?.[context]?.[variant], file: path } }
+        }
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const locked = (key: LockKey): boolean => (draft.locks ?? []).includes(key)
+  const toggleLock = (keys: LockKey[]): void =>
+    setDraft((d) => {
+      const on = keys.every((k) => (d.locks ?? []).includes(k))
+      const rest = (d.locks ?? []).filter((k) => !keys.includes(k))
+      return { ...d, locks: on ? rest : [...rest, ...keys] }
+    })
 
   async function save(): Promise<void> {
     setSaving(true)
@@ -208,7 +241,11 @@ export function ThemeEditor({
 
       {/* Before the colours: a company's typeface is half of what makes a video look like theirs,
           and it was a button below every colour, easy to miss. */}
-      <Group title="Fonts">
+      <Group
+        title="Fonts"
+        locked={locked('fonts.heading') && locked('fonts.body')}
+        onToggleLock={() => toggleLock(['fonts.heading', 'fonts.body'])}
+      >
         <div className="grid grid-cols-2 gap-2">
           {(['heading', 'body'] as const).map((role) => (
             <FontField
@@ -231,7 +268,11 @@ export function ThemeEditor({
         </div>
       </Group>
 
-      <Group title="Colours">
+      <Group
+        title="Colours"
+        locked={VARIANT_IDS.every((id) => locked(`variants.${id}`))}
+        onToggleLock={() => toggleLock(VARIANT_IDS.map((id) => `variants.${id}` as LockKey))}
+      >
         {VARIANTS.map((variant) => {
           const colours = draft.variants[variant.id]
           return (
@@ -256,38 +297,187 @@ export function ThemeEditor({
         })}
       </Group>
 
-      <Group title="Logo">
-        <div className="flex flex-wrap items-end gap-3">
-          <FilePicker label={draft.logo ? 'Replace logo' : 'Choose logo'} accept=".svg,.png,.jpg,.jpeg,.webp" icon={<ImageUp size={14} />} onFile={(file) => void addFile('logo', file)} disabled={target === null} />
-          {draft.logo && (
-            <>
-              <Labelled label="Corner">
-                <select
-                  aria-label="Logo corner"
-                  value={draft.logo.corner}
-                  onChange={(e) => setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, corner: e.target.value as NonNullable<ThemeDraft['logo']>['corner'] } }))}
-                  className="rounded-md bg-raised px-1.5 py-1 text-[12px] text-text"
-                >
-                  <option value="top-left">Top left</option>
-                  <option value="top-right">Top right</option>
-                  <option value="bottom-left">Bottom left</option>
-                  <option value="bottom-right">Bottom right</option>
-                </select>
+      <Group title="Logos" locked={locked('logo')} onToggleLock={() => toggleLock(['logo'])}>
+        <div className="grid grid-cols-2 gap-2">
+          {(['light', 'dark'] as const).map((slot) => (
+            <div key={slot} className="flex flex-col gap-1.5 rounded-xl bg-raised p-3">
+              <span className="text-[12px] text-text">
+                {slot === 'light' ? 'Light backgrounds' : 'Dark backgrounds'}{' '}
+                <span className="text-text-muted">— {slot === 'light' ? 'dark ink' : 'light ink'}</span>
+              </span>
+              <FilePicker
+                label={draft.logo?.[slot] ? `Replace logo for ${slot} backgrounds` : `Logo for ${slot} backgrounds`}
+                accept=".svg,.png,.jpg,.jpeg,.webp"
+                icon={<ImageUp size={14} />}
+                onFile={(file) => void addLogo(slot, file)}
+                disabled={target === null}
+              />
+              {draft.logo?.[slot] && <span className="truncate text-[10px] text-text-muted">{draft.logo[slot]?.file}</span>}
+            </div>
+          ))}
+        </div>
+        {draft.logo && (draft.logo.light || draft.logo.dark) && (
+          <div className="flex flex-wrap items-end gap-3">
+            <Labelled label="Corner">
+              <select
+                aria-label="Logo corner"
+                value={draft.logo.corner}
+                onChange={(e) => setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, corner: e.target.value as NonNullable<ThemeDraft['logo']>['corner'] } }))}
+                className="rounded-md bg-raised px-1.5 py-1 text-[12px] text-text"
+              >
+                <option value="top-left">Top left</option>
+                <option value="top-right">Top right</option>
+                <option value="bottom-left">Bottom left</option>
+                <option value="bottom-right">Bottom right</option>
+              </select>
+            </Labelled>
+            {(['recordings', 'slides'] as const).map((where) => (
+              <label key={where} className="flex items-center gap-1.5 text-[12px] text-text">
+                <input
+                  type="checkbox"
+                  checked={draft.logo?.showOn[where] ?? false}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, showOn: { ...d.logo.showOn, [where]: e.target.checked } } }))
+                  }
+                />
+                On {where}
+              </label>
+            ))}
+            <Labelled label="Clear space (×height)">
+              <Input
+                aria-label="Logo clear space"
+                type="number"
+                step="0.1"
+                value={draft.logo.clearSpace ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, clearSpace: e.target.value ? Number(e.target.value) : undefined } }))}
+                className="h-7 w-20 px-1.5 text-[12px]"
+              />
+            </Labelled>
+            <Labelled label="Min height (px)">
+              <Input
+                aria-label="Logo minimum height"
+                type="number"
+                value={draft.logo.minHeight ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, minHeight: e.target.value ? Number(e.target.value) : undefined } }))}
+                className="h-7 w-20 px-1.5 text-[12px]"
+              />
+            </Labelled>
+          </div>
+        )}
+      </Group>
+
+      <Group title="Backgrounds" locked={locked('backgrounds')} onToggleLock={() => toggleLock(['backgrounds'])}>
+        <p className="text-[11px] text-text-muted">
+          Imagery behind cards and content slides. Kept at full quality; a scrim of the variant colour sits over it so text stays readable.
+        </p>
+        {(['card', 'content'] as const).map((context) => (
+          <div key={context} className="flex flex-col gap-2 rounded-xl bg-raised p-3">
+            <span className="text-[12px] capitalize text-text">{context} slides</span>
+            <div className="grid grid-cols-3 gap-2">
+              {VARIANTS.map((variant) => {
+                const entry = draft.backgrounds?.[context]?.[variant.id]
+                return (
+                  <div key={variant.id} className="flex flex-col gap-1.5">
+                    <span className="text-[11px] text-text-muted">{variant.label}</span>
+                    <FilePicker
+                      label={entry ? 'Replace' : 'Choose image'}
+                      accept=".svg,.png,.jpg,.jpeg,.webp"
+                      icon={<ImageUp size={13} />}
+                      onFile={(file) => void addBackground(context, variant.id, file)}
+                      disabled={target === null}
+                    />
+                    {entry && (
+                      <>
+                        <select
+                          aria-label={`${context} ${variant.id} fit`}
+                          value={entry.fit}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              backgrounds: { ...d.backgrounds, [context]: { ...d.backgrounds?.[context], [variant.id]: { ...entry, fit: e.target.value as 'cover' | 'contain' | 'tile' } } }
+                            }))
+                          }
+                          className="rounded-md bg-surface px-1.5 py-1 text-[11px] text-text"
+                        >
+                          <option value="cover">Cover</option>
+                          <option value="contain">Contain</option>
+                          <option value="tile">Tile</option>
+                        </select>
+                        <label className="flex flex-col gap-0.5 text-[10px] text-text-muted">
+                          Scrim {Math.round(entry.scrim * 100)}%
+                          <input
+                            type="range"
+                            aria-label={`${context} ${variant.id} scrim`}
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={entry.scrim}
+                            onChange={(e) =>
+                              setDraft((d) => ({
+                                ...d,
+                                backgrounds: { ...d.backgrounds, [context]: { ...d.backgrounds?.[context], [variant.id]: { ...entry, scrim: Number(e.target.value) } } }
+                              }))
+                            }
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </Group>
+
+      <Group title="Brand palette">
+        <p className="text-[11px] text-text-muted">The approved colours. A variant colour far from all of them is flagged in the brand check.</p>
+        <div className="flex flex-col gap-2">
+          {(draft.brand?.palette ?? []).map((colour, index) => (
+            <div key={index} className="flex items-end gap-2">
+              <Labelled label="Name">
+                <Input
+                  aria-label={`Palette colour ${index + 1} name`}
+                  value={colour.name}
+                  onChange={(e) =>
+                    setDraft((d) => {
+                      const palette = [...(d.brand?.palette ?? [])]
+                      palette[index] = { ...palette[index], name: e.target.value }
+                      return { ...d, brand: { ...d.brand, palette } }
+                    })
+                  }
+                  className="h-7 px-1.5 text-[12px]"
+                />
               </Labelled>
-              {(['recordings', 'slides'] as const).map((where) => (
-                <label key={where} className="flex items-center gap-1.5 text-[12px] text-text">
-                  <input
-                    type="checkbox"
-                    checked={draft.logo?.showOn[where] ?? false}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, logo: d.logo && { ...d.logo, showOn: { ...d.logo.showOn, [where]: e.target.checked } } }))
-                    }
-                  />
-                  On {where}
-                </label>
-              ))}
-            </>
-          )}
+              <ColourField
+                label={`Palette colour ${index + 1}`}
+                value={colour.hex}
+                onChange={(hex) =>
+                  setDraft((d) => {
+                    const palette = [...(d.brand?.palette ?? [])]
+                    palette[index] = { ...palette[index], hex }
+                    return { ...d, brand: { ...d.brand, palette } }
+                  })
+                }
+              />
+              <button
+                type="button"
+                aria-label={`Remove palette colour ${index + 1}`}
+                onClick={() => setDraft((d) => ({ ...d, brand: { ...d.brand, palette: (d.brand?.palette ?? []).filter((_, i) => i !== index) } }))}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-text-muted hover:text-danger"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="self-start"
+            onClick={() => setDraft((d) => ({ ...d, brand: { ...d.brand, palette: [...(d.brand?.palette ?? []), { name: 'Colour', hex: '#1a5fb4' }] } }))}
+          >
+            Add colour
+          </Button>
         </div>
       </Group>
 
@@ -317,6 +507,17 @@ export function ThemeEditor({
       </Group>
 
       </fieldset>
+
+      {warnings.length > 0 && (
+        <section aria-label="Brand check" className="flex flex-col gap-1 rounded-lg bg-raised p-3">
+          <span className="text-[12px] font-medium text-text">Brand check — {warnings.length} to look at</span>
+          {warnings.map((warning, index) => (
+            <span key={index} className="text-[11px] leading-relaxed text-text-muted">
+              {warning.message}
+            </span>
+          ))}
+        </section>
+      )}
 
       {error && (
         <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
@@ -361,11 +562,45 @@ export function ThemeEditor({
   )
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+/**
+ * A titled section. Given lock props it shows a lock toggle and disables its own inputs while
+ * locked — the "frozen until unlocked" model, so automation and a slip of the hand are both held
+ * off a brand-critical group until the person deliberately unlocks it.
+ */
+function Group({
+  title,
+  locked,
+  onToggleLock,
+  children
+}: {
+  title: string
+  locked?: boolean
+  onToggleLock?: () => void
+  children: ReactNode
+}): JSX.Element {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-[13px] font-medium text-text">{title}</h3>
-      {children}
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[13px] font-medium text-text">{title}</h3>
+        {onToggleLock && (
+          <button
+            type="button"
+            onClick={onToggleLock}
+            aria-pressed={locked}
+            className="flex items-center gap-1 rounded border-0 bg-transparent p-0 text-[11px] text-text-muted hover:text-text"
+          >
+            {locked ? <Lock size={12} /> : <LockOpen size={12} />}
+            {locked ? 'Locked' : 'Lock'}
+          </button>
+        )}
+      </div>
+      {onToggleLock ? (
+        <fieldset disabled={locked} className="contents">
+          {children}
+        </fieldset>
+      ) : (
+        children
+      )}
     </section>
   )
 }

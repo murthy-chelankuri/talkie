@@ -1,4 +1,4 @@
-import type { IpcMain } from 'electron'
+import { BrowserWindow, dialog, type IpcMain } from 'electron'
 import { homedir } from 'os'
 import { join, normalize, sep } from 'path'
 import {
@@ -15,6 +15,7 @@ import {
 } from '../themes/themeApi'
 import { ThemeDraftSchema } from '../themes/schema'
 import { renderThemeFrom } from '../themes/toRenderTheme'
+import { checkCompliance } from '../themes/compliance'
 import { generateStatus, generateTheme, saveGeneratedTheme } from '../themes/generate/generateTheme'
 
 /**
@@ -43,19 +44,29 @@ export function registerThemeHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings:themes:usage', (_event, id: string) => projectsUsingTheme(id))
   ipcMain.handle(
     'settings:themes:generate',
-    (_event, request: { name: string; url?: string; description?: string; file?: { bytes: Uint8Array; fileName: string } }) =>
+    (_event, request: { name: string; url?: string; description?: string; folder?: string; file?: { bytes: Uint8Array; fileName: string } }) =>
       generateTheme({
         ...request,
         file: request.file ? { bytes: Buffer.from(request.file.bytes), fileName: request.file.fileName } : undefined
       })
   )
   ipcMain.handle('settings:themes:generateStatus', () => generateStatus())
+  // A brand folder to read a theme from. Chosen through the native picker here rather than named
+  // by the window, as the Kokoro import is: the window never gets to name a path on disk to read.
+  ipcMain.handle('settings:themes:chooseBrandFolder', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const options = { title: 'Choose a brand folder', properties: ['openDirectory' as const] }
+    const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+    return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
+  // The brand check: the draft's own warnings, the same ones agents see, for the editor's panel.
+  ipcMain.handle('settings:themes:compliance', (_event, draft: unknown) => checkCompliance(ThemeDraftSchema.parse(draft)))
   ipcMain.handle(
     'settings:themes:addAsset',
-    (_event, target: ThemeTarget, kind: 'logo' | 'font', fileName: string, bytes: Uint8Array) => {
+    (_event, target: ThemeTarget, kind: 'logo' | 'background' | 'font', slot: string, fileName: string, bytes: Uint8Array) => {
       const dir = dirFor(target)
       if (!dir) throw new Error('There is nowhere to keep that file yet. Save the theme first.')
-      return writeAssetInto(dir, kind, fileName, Buffer.from(bytes))
+      return writeAssetInto(dir, kind, slot, fileName, Buffer.from(bytes))
     }
   )
   // The person's own fonts: read as they arrive, so the family names itself and a file that is not
