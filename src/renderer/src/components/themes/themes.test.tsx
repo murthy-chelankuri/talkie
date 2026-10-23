@@ -20,6 +20,7 @@ vi.mock('../../api/projectClient', () => ({
     usage: vi.fn(),
     generate: vi.fn(),
     generateStatus: vi.fn(),
+    chooseBrandFolder: vi.fn(),
     compliance: vi.fn(),
     addAsset: vi.fn(),
     addFont: vi.fn(),

@@ -121,6 +121,8 @@ const themesApi = {
   usage: (id: string): Promise<{ id: string; name: string }[]> => ipcRenderer.invoke('settings:themes:usage', id),
   generate: (request: GenerateThemeRequest): Promise<GeneratedTheme> => ipcRenderer.invoke('settings:themes:generate', request),
   generateStatus: (): Promise<GenerateStatus> => ipcRenderer.invoke('settings:themes:generateStatus'),
+  /** The native folder picker, so the window never names a path on disk to read. Null if cancelled. */
+  chooseBrandFolder: (): Promise<string | null> => ipcRenderer.invoke('settings:themes:chooseBrandFolder'),
   /** The brand check for a draft: the warnings the editor's panel and agents both show. */
   compliance: (draft: ThemeDraft): Promise<ComplianceWarning[]> => ipcRenderer.invoke('settings:themes:compliance', draft),
   addAsset: (target: ThemeTarget, kind: 'logo' | 'background' | 'font', slot: string, fileName: string, bytes: Uint8Array): Promise<string> =>

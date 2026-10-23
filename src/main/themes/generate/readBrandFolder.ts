@@ -58,6 +58,9 @@ export async function readBrandFolder(dir: string, deps: Partial<BrandFolderDeps
               const [r, g, b] = [1, 3, 5].map((at) => parseInt(top.hex.slice(at, at + 2), 16))
               ink = 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 ? 'light' : 'dark'
             }
+            // The logo's own colours are brand colours; they drive the AI's palette as they do when
+            // a logo is uploaded on its own, so a folder designs a theme the way a website does.
+            facts.colours.push(...read.colours)
           } catch {
             facts.problems.push(`Could not read the colours of ${name}; it was taken as a dark-ink logo.`)
           }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Sparkles, TriangleAlert, Upload } from 'lucide-react'
+import { ArrowLeft, FolderOpen, Sparkles, TriangleAlert, Upload } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Textarea } from '../ui/Textarea'
@@ -24,6 +24,8 @@ export function CreateThemeDialog({
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  // A brand folder on disk, chosen through the native picker; its absolute path, which main reads.
+  const [folder, setFolder] = useState<string | null>(null)
   // The company's own font files, used in place of whatever open fonts the theme would choose.
   const [fonts, setFonts] = useState<File[]>([])
   const fontPicker = useRef<HTMLInputElement>(null)
@@ -44,7 +46,13 @@ export function CreateThemeDialog({
     return () => clearInterval(timer)
   }, [running])
 
-  const hasSomething = Boolean(url.trim() || description.trim() || file)
+  const hasSomething = Boolean(url.trim() || description.trim() || file || folder)
+
+  async function pickFolder(): Promise<void> {
+    setError(null)
+    const chosen = await themeClient.chooseBrandFolder()
+    if (chosen) setFolder(chosen)
+  }
 
   async function create(): Promise<void> {
     setError(null)
@@ -54,6 +62,7 @@ export function CreateThemeDialog({
         name: name.trim() || url.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '') || 'New theme',
         url: url.trim() || undefined,
         description: description.trim() || undefined,
+        folder: folder ?? undefined,
         file: file ? { bytes: new Uint8Array(await file.arrayBuffer()), fileName: file.name } : undefined
       })
       onCreated(fonts.length > 0 ? await withOwnFonts(generated, fonts) : generated)
@@ -120,6 +129,22 @@ export function CreateThemeDialog({
           </div>
         </Field>
 
+        <Field label="Brand folder">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={() => void pickFolder()}>
+                <FolderOpen size={14} />
+                {folder ? 'Choose another folder' : 'Choose a folder…'}
+              </Button>
+              <span className="truncate text-[12px] text-text-muted">{folder ?? 'A folder of logos, fonts, imagery and brand-guide documents'}</span>
+            </div>
+            <span className="text-[11px] leading-relaxed text-text-muted">
+              Talkie reads everything in it — colours and typefaces from the documents, the logos and background
+              images themselves — and copies what it uses into the theme, so sharing it over git carries the brand.
+            </span>
+          </div>
+        </Field>
+
         <Field label="Company fonts (optional)">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -180,7 +205,7 @@ export function CreateThemeDialog({
           <Sparkles size={14} />
           {running ? 'Creating…' : 'Create theme'}
         </Button>
-        {!hasSomething && <span className="text-[11px] text-text-muted">Give a website, a description or a file first.</span>}
+        {!hasSomething && <span className="text-[11px] text-text-muted">Give a website, a description, a file or a brand folder first.</span>}
       </div>
     </div>
   )

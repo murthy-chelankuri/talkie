@@ -27,6 +27,8 @@ describe('readBrandFolder', () => {
     expect(facts.logos?.length).toBe(1)
     expect(facts.logos?.[0].ink).toBe('light')
     expect(facts.backgrounds?.length).toBe(1)
+    // The logo's own colours reach the facts, so the AI designs from them as it does for a website.
+    expect(facts.colours.some((c) => c.hex === '#ffffff' && c.role === 'logo')).toBe(true)
   })
 
   it('reads hex colours and font labels out of a text brand note', async () => {
