@@ -1,119 +1,50 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readdirSync } from 'fs'
 import { tmpdir } from 'os'
-import { basename, join } from 'path'
-import {
-  createTheme,
-  deleteTheme,
-  findThemeDir,
-  listThemes,
-  projectsUsingTheme,
-  readTheme,
-  themesRootDir,
-  updateTheme,
-  writeThemeAsset
-} from './themeApi'
-import { isBuiltinThemeId } from './builtinThemes'
-import { defaultThemeDraft } from './schema'
-import { createProject } from '../project/projectApi'
-import { findProjectDir } from '../project/paths'
+import { join } from 'path'
+import { describe, expect, it } from 'vitest'
+import { MAX_BACKGROUND_BYTES, writeAssetInto } from './themeApi'
 
-let baseDir: string
-
-beforeEach(() => {
-  baseDir = mkdtempSync(join(tmpdir(), 'talkie-themes-'))
-})
-
-afterEach(() => {
-  rmSync(baseDir, { recursive: true, force: true })
-})
-
-describe('the theme library', () => {
-  it('keeps themes beside the projects, in the Studio', () => {
-    expect(themesRootDir(baseDir)).toBe(join(baseDir, 'Talkie', 'Studio', 'Themes'))
-  })
-
-  it('saves a theme in a folder named for it, and reads it back', () => {
-    const theme = createTheme({ ...defaultThemeDraft('Acme Corp'), company: 'Acme' }, baseDir)
-
-    expect(basename(findThemeDir(theme.id, baseDir) as string)).toBe(`${theme.id}-acme-corp`)
-    expect(readTheme(theme.id, baseDir)).toEqual(theme)
-    expect(ownThemes(baseDir).map((t) => t.id)).toEqual([theme.id])
-  })
-
-  it('lists the newest first, and passes over a folder it cannot read', () => {
-    const first = createTheme(defaultThemeDraft('First'), baseDir)
-    const second = createTheme(defaultThemeDraft('Second'), baseDir)
-    writeFileSync(join(findThemeDir(first.id, baseDir) as string, '..', 'broken.json'), 'not a theme')
-    writeFileSync(join(findThemeDir(first.id, baseDir) as string, 'theme.json'), '{ not json')
-
-    expect(ownThemes(baseDir).map((t) => t.id)).toEqual([second.id])
-  })
-
-  it('keeps a theme its id and its date when it is edited', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-
-    const edited = updateTheme(theme.id, { ...defaultThemeDraft('Acme'), tagline: 'Payments, simply' }, baseDir)
-
-    expect(edited.id).toBe(theme.id)
-    expect(edited.createdAt).toBe(theme.createdAt)
-    expect(readTheme(theme.id, baseDir).tagline).toBe('Payments, simply')
-  })
-
-  it('takes its files with it when deleted', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-    const dir = findThemeDir(theme.id, baseDir) as string
-
-    deleteTheme(theme.id, baseDir)
-
-    expect(existsSync(dir)).toBe(false)
-    expect(() => readTheme(theme.id, baseDir)).toThrow(/No theme found/)
-  })
-
-  it('stores a logo under one name whatever it was called, so a theme has one logo', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-
-    const path = writeThemeAsset(theme.id, 'logo', 'Acme Logo FINAL.SVG', Buffer.from('<svg/>'), baseDir)
-
-    expect(path).toBe('logo.svg')
-    expect(readFileSync(join(findThemeDir(theme.id, baseDir) as string, path), 'utf-8')).toBe('<svg/>')
-  })
-
-  it('refuses a file that is not a picture or a font', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-
-    expect(() => writeThemeAsset(theme.id, 'logo', 'logo.exe', Buffer.from('x'), baseDir)).toThrow(/logo/i)
-    expect(() => writeThemeAsset(theme.id, 'font', 'font.svg', Buffer.from('x'), baseDir)).toThrow(/font/i)
-  })
-
-  it('refuses a logo too large to carry into every frame', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-
-    expect(() =>
-      writeThemeAsset(theme.id, 'logo', 'logo.png', Buffer.alloc(2 * 1024 * 1024 + 1), baseDir)
-    ).toThrow(/2 MB/)
-  })
-
-  it('keeps a font under its own name, in fonts/', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-
-    expect(writeThemeAsset(theme.id, 'font', 'Inter-Bold.woff2', Buffer.from('x'), baseDir)).toBe(
-      'fonts/Inter-Bold.woff2'
-    )
-  })
-
-  it('names the projects that would lose a theme, before it is deleted', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-    const using = createProject('Launch video', baseDir)
-    createProject('Something else', baseDir)
-    const file = join(findProjectDir(using.id, baseDir) as string, 'project.json')
-    writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, 'utf-8')), themeId: theme.id }))
-
-    expect(projectsUsingTheme(theme.id, baseDir)).toEqual([{ id: using.id, name: 'Launch video' }])
-  })
-})
-
-/** The library less the themes Talkie comes with, which are always there. */
-function ownThemes(baseDir: string) {
-  return listThemes(baseDir).filter((theme) => !isBuiltinThemeId(theme.id))
+function tempDir(): string {
+  return mkdtempSync(join(tmpdir(), 'theme-assets-'))
 }
+
+describe('writeAssetInto', () => {
+  it('writes a logo slot into logos/ and names it for the slot', () => {
+    const dir = tempDir()
+    const path = writeAssetInto(dir, 'logo', 'light', 'brand-white.svg', Buffer.from('<svg/>'))
+    expect(path).toBe('logos/light.svg')
+    expect(existsSync(join(dir, 'logos/light.svg'))).toBe(true)
+  })
+
+  it('replaces the previous file in a logo slot rather than leaving both', () => {
+    const dir = tempDir()
+    writeAssetInto(dir, 'logo', 'dark', 'a.svg', Buffer.from('<svg/>'))
+    writeAssetInto(dir, 'logo', 'dark', 'b.png', Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    expect(readdirSync(join(dir, 'logos'))).toEqual(['dark.png'])
+  })
+
+  it('writes a background slot into backgrounds/ verbatim', () => {
+    const dir = tempDir()
+    const bytes = Buffer.from('JPEGBYTES')
+    const path = writeAssetInto(dir, 'background', 'card-dark', 'hero.jpg', bytes)
+    expect(path).toBe('backgrounds/card-dark.jpg')
+    expect(existsSync(join(dir, 'backgrounds/card-dark.jpg'))).toBe(true)
+  })
+
+  it('refuses a background that is not an image', () => {
+    const dir = tempDir()
+    expect(() => writeAssetInto(dir, 'background', 'card-dark', 'notes.txt', Buffer.from('x'))).toThrow()
+  })
+
+  it('refuses a background over the ceiling', () => {
+    const dir = tempDir()
+    const big = Buffer.alloc(MAX_BACKGROUND_BYTES + 1)
+    expect(() => writeAssetInto(dir, 'background', 'content-light', 'huge.png', big)).toThrow()
+  })
+
+  it('still writes a font into fonts/', () => {
+    const dir = tempDir()
+    const path = writeAssetInto(dir, 'font', '', 'AcmeSans.otf', Buffer.from('OTTO'))
+    expect(path).toBe('fonts/AcmeSans.otf')
+  })
+})

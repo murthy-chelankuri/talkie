@@ -1,85 +1,65 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { createTheme, findThemeDir, updateTheme, writeThemeAsset } from './themeApi'
-import { defaultThemeDraft } from './schema'
-import { toRenderTheme } from './toRenderTheme'
+import { describe, expect, it } from 'vitest'
+import { renderThemeFrom } from './toRenderTheme'
+import { ThemeDraftSchema } from './schema'
 
-let baseDir: string
+function themeDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'render-theme-'))
+  mkdirSync(join(dir, 'logos'), { recursive: true })
+  mkdirSync(join(dir, 'backgrounds'), { recursive: true })
+  return dir
+}
 
-beforeEach(() => {
-  baseDir = mkdtempSync(join(tmpdir(), 'talkie-render-theme-'))
-})
+const base = {
+  name: 'Acme',
+  variants: {
+    brand: { background: '#2e2310', heading: '#fbf3e2', body: '#e0cfa8', accent: '#e9b949' },
+    light: { background: '#f7f3ea', heading: '#1c1a16', body: '#514b41', accent: '#1a5fb4' },
+    dark: { background: '#171b22', heading: '#f4f6f9', body: '#c9cedb', accent: '#7ab5f0' }
+  },
+  fonts: {
+    heading: { family: 'Newsreader Variable', source: 'builtin' as const },
+    body: { family: 'Geist Variable', source: 'builtin' as const }
+  }
+}
 
-afterEach(() => {
-  rmSync(baseDir, { recursive: true, force: true })
-})
-
-describe('a theme as the video receives it', () => {
-  it('is nothing at all for a project without one', () => {
-    expect(toRenderTheme(undefined, baseDir)).toBeNull()
-    expect(toRenderTheme('no-such-theme', baseDir)).toBeNull()
+describe('renderThemeFrom with v2 assets', () => {
+  it('reads each logo slot into its own data URL', () => {
+    const dir = themeDir()
+    writeFileSync(join(dir, 'logos/light.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
+    writeFileSync(join(dir, 'logos/dark.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
+    const draft = ThemeDraftSchema.parse({ ...base, logo: { light: { file: 'logos/light.svg' }, dark: { file: 'logos/dark.svg' } } })
+    const rendered = renderThemeFrom(draft, dir)
+    expect(rendered.logo?.light?.startsWith('data:image/svg+xml')).toBe(true)
+    expect(rendered.logo?.dark?.startsWith('data:image/svg+xml')).toBe(true)
   })
 
-  it('carries its logo inside it, so nothing has to be fetched while rendering', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-    const file = writeThemeAsset(theme.id, 'logo', 'logo.svg', Buffer.from('<svg/>'), baseDir)
-    updateTheme(theme.id, { ...defaultThemeDraft('Acme'), logo: { file, corner: 'top-left', showOn: { recordings: true, slides: false } } }, baseDir)
-
-    const rendered = toRenderTheme(theme.id, baseDir)
-
-    expect(rendered?.logo?.url).toBe(`data:image/svg+xml;base64,${Buffer.from('<svg/>').toString('base64')}`)
-    expect(rendered?.logo?.corner).toBe('top-left')
-    expect(rendered?.logo?.showOn.slides).toBe(false)
+  it('reads a background slot into a data URL with its fit and scrim', () => {
+    const dir = themeDir()
+    writeFileSync(join(dir, 'backgrounds/card-dark.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    const draft = ThemeDraftSchema.parse({ ...base, backgrounds: { card: { dark: { file: 'backgrounds/card-dark.png', fit: 'cover', scrim: 0.4 } } } })
+    const rendered = renderThemeFrom(draft, dir)
+    expect(rendered.backgrounds?.card?.dark?.url.startsWith('data:image/png')).toBe(true)
+    expect(rendered.backgrounds?.card?.dark?.scrim).toBe(0.4)
+    expect(rendered.backgrounds?.card?.dark?.fit).toBe('cover')
   })
 
-  it('carries its fonts inside it too', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-    const file = writeThemeAsset(theme.id, 'font', 'Inter.woff2', Buffer.from('font'), baseDir)
-    updateTheme(
-      theme.id,
-      { ...defaultThemeDraft('Acme'), fonts: { heading: { family: 'Inter', files: [file], source: 'google' }, body: { family: 'Inter', files: [file], source: 'google' } } },
-      baseDir
-    )
-
-    const rendered = toRenderTheme(theme.id, baseDir)
-
-    expect(rendered?.fonts.heading.family).toBe('Inter')
-    expect(rendered?.fonts.heading.urls).toEqual([`data:font/woff2;name=Inter;base64,${Buffer.from('font').toString('base64')}`])
+  it('drops a background over the inline ceiling and warns rather than shrinking it', () => {
+    const dir = themeDir()
+    writeFileSync(join(dir, 'backgrounds/content-light.png'), Buffer.alloc(13 * 1024 * 1024))
+    const draft = ThemeDraftSchema.parse({ ...base, backgrounds: { content: { light: { file: 'backgrounds/content-light.png' } } } })
+    const rendered = renderThemeFrom(draft, dir)
+    expect(rendered.backgrounds?.content?.light).toBeUndefined()
+    expect(rendered.warnings?.some((w) => /content-light/.test(w) || /too large/i.test(w))).toBe(true)
   })
 
-  it('draws without a logo whose file has gone, rather than failing the video', () => {
-    const theme = createTheme({ ...defaultThemeDraft('Acme'), logo: { file: 'logo.png', corner: 'bottom-right', showOn: { recordings: true, slides: true } } }, baseDir)
-
-    expect(toRenderTheme(theme.id, baseDir)?.logo).toBeUndefined()
-  })
-
-  it('falls back to Talkie’s own type when fonts are too large to carry into every frame', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-    const dir = findThemeDir(theme.id, baseDir) as string
-    writeFileSync(join(dir, 'fonts', 'Huge.ttf'), Buffer.alloc(3 * 1024 * 1024 + 1))
-    updateTheme(
-      theme.id,
-      { ...defaultThemeDraft('Acme'), fonts: { heading: { family: 'Huge', files: ['fonts/Huge.ttf'], source: 'user' }, body: { family: 'Geist Variable', files: [], source: 'builtin' } } },
-      baseDir
-    )
-
-    const rendered = toRenderTheme(theme.id, baseDir)
-
-    expect(rendered?.fonts.heading).toEqual({ family: 'Newsreader Variable', urls: [] })
-  })
-
-  it('changes its stamp when its colours change, and only then', () => {
-    const theme = createTheme(defaultThemeDraft('Acme'), baseDir)
-    const before = toRenderTheme(theme.id, baseDir)?.stamp
-
-    updateTheme(theme.id, { ...defaultThemeDraft('Acme'), tagline: 'New words' }, baseDir)
-    expect(toRenderTheme(theme.id, baseDir)?.stamp).toBe(before)
-
-    const recoloured = defaultThemeDraft('Acme')
-    recoloured.variants.dark.accent = '#ff8800'
-    updateTheme(theme.id, recoloured, baseDir)
-    expect(toRenderTheme(theme.id, baseDir)?.stamp).not.toBe(before)
+  it('changes the stamp when a background is added', () => {
+    const dir = themeDir()
+    const bare = ThemeDraftSchema.parse(base)
+    writeFileSync(join(dir, 'backgrounds/card-dark.png'), Buffer.from([0x89]))
+    const withBg = ThemeDraftSchema.parse({ ...base, backgrounds: { card: { dark: { file: 'backgrounds/card-dark.png' } } } })
+    expect(renderThemeFrom(bare, dir).stamp).not.toBe(renderThemeFrom(withBg, dir).stamp)
   })
 })

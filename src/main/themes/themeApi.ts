@@ -9,7 +9,7 @@ import { ROOT_NAME } from '../project/migrateStorageRoot'
 import { studioDir } from '../studio/studio'
 import { listProjects, openProject } from '../project/projectApi'
 import { BUILTIN_THEMES, builtinTheme, isBuiltinThemeId } from './builtinThemes'
-import { THEME_SCHEMA_VERSION, ThemeDraftSchema, ThemeSchema, type Theme, type ThemeDraft } from './schema'
+import { THEME_SCHEMA_VERSION, ThemeDraftSchema, ThemeSchema, migrateTheme, type Theme, type ThemeDraft } from './schema'
 
 /**
  * The theme library: one folder per theme, beside the projects.
@@ -21,7 +21,15 @@ import { THEME_SCHEMA_VERSION, ThemeDraftSchema, ThemeSchema, type Theme, type T
 /** Carried into every frame as a data URL; much more than this and the render slows to a crawl. */
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024
 
-const LOGO_TYPES = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp'])
+/**
+ * A background rides into every frame it is on as a data URL too. The ceiling is higher than a
+ * logo's because imagery needs the detail, and the file is kept verbatim — never downscaled, so
+ * no quality is lost — but past this it is left off the render and the brand check says so, rather
+ * than silently dragging the export.
+ */
+export const MAX_BACKGROUND_BYTES = 12 * 1024 * 1024
+
+const IMAGE_TYPES = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp'])
 const FONT_TYPES = new Set(['.woff2', '.woff', '.ttf', '.otf'])
 
 export function themesRootDir(baseDir: string = homedir()): string {
@@ -53,7 +61,7 @@ export function readTheme(id: string, baseDir: string = homedir()): Theme {
   const builtIn = builtinTheme(id)
   if (builtIn) return builtIn
   const dir = themeDirOrThrow(id, baseDir)
-  return ThemeSchema.parse(JSON.parse(readFileSync(join(dir, 'theme.json'), 'utf-8')))
+  return ThemeSchema.parse(migrateTheme(JSON.parse(readFileSync(join(dir, 'theme.json'), 'utf-8'))))
 }
 
 /**
@@ -69,7 +77,7 @@ export function listThemes(baseDir: string = homedir()): Theme[] {
     // Dot-folders hold drafts not yet saved — see generateTheme.ts.
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue
     try {
-      themes.push(ThemeSchema.parse(JSON.parse(readFileSync(join(root, entry.name, 'theme.json'), 'utf-8'))))
+      themes.push(ThemeSchema.parse(migrateTheme(JSON.parse(readFileSync(join(root, entry.name, 'theme.json'), 'utf-8')))))
     } catch (err) {
       console.error(`Skipping the theme in ${entry.name}, which could not be read:`, err)
     }
@@ -138,26 +146,45 @@ export function deleteTheme(id: string, baseDir: string = homedir()): void {
  */
 export function writeThemeAsset(
   id: string,
-  kind: 'logo' | 'font',
+  kind: 'logo' | 'background' | 'font',
+  slot: string,
   fileName: string,
   bytes: Buffer,
   baseDir: string = homedir()
 ): string {
-  return writeAssetInto(themeDirOrThrow(id, baseDir), kind, fileName, bytes)
+  return writeAssetInto(themeDirOrThrow(id, baseDir), kind, slot, fileName, bytes)
 }
 
-/** The same, into any folder — a saved theme's, or a draft's that has not been saved yet. */
-export function writeAssetInto(dir: string, kind: 'logo' | 'font', fileName: string, bytes: Buffer): string {
+/**
+ * The same, into any folder — a saved theme's, or a draft's that has not been saved yet.
+ *
+ * A logo or a background goes into its own subfolder, named for the slot it fills (`logos/light.svg`,
+ * `backgrounds/card-dark.jpg`), so one file to a slot and replacing it cannot leave the old one
+ * behind to be picked up. A font keeps its own name under `fonts/`, since a family is several files.
+ * Everything is written exactly as it arrived.
+ */
+export function writeAssetInto(
+  dir: string,
+  kind: 'logo' | 'background' | 'font',
+  slot: string,
+  fileName: string,
+  bytes: Buffer
+): string {
   mkdirSync(dir, { recursive: true })
   const extension = extname(fileName).toLowerCase()
+  const ext = extension === '.jpeg' ? '.jpg' : extension
 
-  if (kind === 'logo') {
-    if (!LOGO_TYPES.has(extension)) throw new Error('A logo has to be an SVG, PNG, JPEG or WebP image.')
-    if (bytes.length > MAX_LOGO_BYTES) throw new Error('A logo has to be under 2 MB.')
-    for (const old of readdirSync(dir).filter((name) => name.startsWith('logo.'))) rmSync(join(dir, old))
-    const name = `logo${extension === '.jpeg' ? '.jpg' : extension}`
-    writeFileSync(join(dir, name), bytes)
-    return name
+  if (kind === 'logo' || kind === 'background') {
+    if (!IMAGE_TYPES.has(extension)) throw new Error('A logo or background has to be an SVG, PNG, JPEG or WebP image.')
+    const ceiling = kind === 'logo' ? MAX_LOGO_BYTES : MAX_BACKGROUND_BYTES
+    if (bytes.length > ceiling) throw new Error(kind === 'logo' ? 'A logo has to be under 2 MB.' : 'A background has to be under 12 MB.')
+    const subdir = kind === 'logo' ? 'logos' : 'backgrounds'
+    const into = join(dir, subdir)
+    mkdirSync(into, { recursive: true })
+    for (const old of readdirSync(into).filter((name) => name.startsWith(`${slot}.`))) rmSync(join(into, old))
+    const name = `${slot}${ext}`
+    writeFileSync(join(into, name), bytes)
+    return `${subdir}/${name}`
   }
 
   if (!FONT_TYPES.has(extension)) throw new Error('A font has to be a WOFF2, WOFF, TTF or OTF file.')
@@ -177,7 +204,7 @@ export type ThemeFontFile = { file: string } & FontInfo
 export function addFontInto(dir: string, fileName: string, bytes: Buffer): ThemeFontFile {
   const info = readFontInfo(bytes)
   if (!info) throw new Error(`${basename(fileName)} is not a font Talkie can read. Use the .otf, .ttf, .woff or .woff2 files the company's font came in.`)
-  return { file: writeAssetInto(dir, 'font', fileName, bytes), ...info }
+  return { file: writeAssetInto(dir, 'font', '', fileName, bytes), ...info }
 }
 
 /** What each of a theme's font files is, for listing them; a file gone or unreadable is left out. */
