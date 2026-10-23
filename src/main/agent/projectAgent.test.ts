@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { AGENT_TOOLS, buildAgentPrompt, describeScenes, runProjectAgent } from './projectAgent'
+import { AGENT_TOOLS, agentReadiness, buildAgentPrompt, describeScenes, readStream, runProjectAgent, stepFor, toolsCalled } from './projectAgent'
 import { addScene, addTranscriptSegment, createProject } from '../project/projectApi'
 import { updateSettings } from '../settings/settingsStore'
 import { checkMcpAccess, grantRunToken } from '../settings/mcpAccess'
@@ -292,6 +292,81 @@ describe('asking the agent to change a project', () => {
     })
   })
 
+  describe('with Claude chosen as the provider', () => {
+    beforeEach(() => {
+      binDir = mkdtempSync(join(tmpdir(), 'talkie-agent-claude-'))
+    })
+
+    afterEach(() => {
+      process.env.PATH = originalPath
+      rmSync(binDir, { recursive: true, force: true })
+    })
+
+    it('says each thing it sets about as it starts it, and what it did at the end', async () => {
+      // A run is minutes of tool calls; "Working… 140s" over all of them looked like a hang.
+      const events = [
+        { type: 'system', subtype: 'init', session_id: 's1' },
+        { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__talkie__talkie_timeline', input: {} }] } },
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'Adding one.' }, { type: 'tool_use', name: 'mcp__talkie__talkie_add_html_scene', input: {} }] } },
+        { type: 'result', subtype: 'success', result: 'Added an introduction.', session_id: 's1', total_cost_usd: 0.12 }
+      ]
+      writeFileSync(join(binDir, 'claude'), `#!/bin/sh\n/bin/cat <<'EOF'\n${events.map((event) => JSON.stringify(event)).join('\n')}\nEOF\n`)
+      chmodSync(join(binDir, 'claude'), 0o755)
+      process.env.PATH = binDir
+
+      const baseDir = fresh()
+      const project = createProject('Steps', baseDir)
+      updateSettings({ mcp: { enabled: true, tokenHash: 'a'.repeat(64) }, narration: { provider: 'claude-cli' } }, baseDir)
+
+      const steps: string[] = []
+      const outcome = await runProjectAgent(
+        { projectId: project.id, instruction: 'add an introduction', serverPath: '/tmp/fake.mjs', onStep: (step) => steps.push(step) },
+        baseDir
+      )
+
+      expect(steps).toEqual(['Reading the timeline', 'Adding a scene'])
+      expect(outcome).toEqual({ status: 'done', say: 'Added an introduction.', sessionId: 's1', costUsd: 0.12 })
+      rmSync(baseDir, { recursive: true, force: true })
+    })
+
+    it('says what the CLI said when it fails', async () => {
+      writeFileSync(join(binDir, 'claude'), '#!/bin/sh\necho "Invalid API key · Please run /login" >&2\nexit 1\n')
+      chmodSync(join(binDir, 'claude'), 0o755)
+      process.env.PATH = binDir
+
+      const baseDir = fresh()
+      const project = createProject('Fails', baseDir)
+      updateSettings({ mcp: { enabled: true, tokenHash: 'a'.repeat(64) }, narration: { provider: 'claude-cli' } }, baseDir)
+
+      const outcome = await runProjectAgent({ projectId: project.id, instruction: 'x', serverPath: '/tmp/fake.mjs' }, baseDir)
+      expect(outcome).toEqual({ status: 'failed', reason: 'Invalid API key · Please run /login' })
+      rmSync(baseDir, { recursive: true, force: true })
+    })
+
+    it('is ready before anything is typed, and says which CLI will do the work', async () => {
+      writeFileSync(join(binDir, 'claude'), '#!/bin/sh\n')
+      chmodSync(join(binDir, 'claude'), 0o755)
+      process.env.PATH = binDir
+      const baseDir = fresh()
+      updateSettings({ mcp: { enabled: true, tokenHash: 'a'.repeat(64) }, narration: { provider: 'claude-cli' } }, baseDir)
+
+      expect(await agentReadiness('/tmp/fake.mjs', baseDir)).toEqual({ ready: true, by: 'Claude CLI' })
+      rmSync(baseDir, { recursive: true, force: true })
+    })
+  })
+
+  it('says where in Settings to put it right when it cannot run', async () => {
+    const baseDir = fresh()
+    updateSettings({ mcp: { enabled: false }, narration: { provider: 'claude-cli' } }, baseDir)
+    expect(await agentReadiness('/tmp/fake.mjs', baseDir)).toMatchObject({ ready: false, fix: 'system' })
+
+    updateSettings({ mcp: { enabled: true, tokenHash: 'a'.repeat(64) }, narration: { provider: 'template' } }, baseDir)
+    expect(await agentReadiness('/tmp/fake.mjs', baseDir)).toMatchObject({ ready: false, fix: 'narration' })
+
+    expect(await agentReadiness(null, baseDir)).toMatchObject({ ready: false, fix: null })
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
   it('leaves no run token behind when the run fails', async () => {
     // The token is written to a file so a child process can read it. One that outlives its run
     // is just a second permanent credential.
@@ -356,5 +431,22 @@ describe('what the agent is told', () => {
   it('tells it to do what was asked and nothing else', () => {
     // A change nobody asked for is one they have to find and undo.
     expect(buildAgentPrompt('abc', 'x', { name: 'L' })).toContain('no more')
+  })
+})
+
+describe('reading a streamed run', () => {
+  it('names the tools an event calls, and nothing for any other line', () => {
+    const line = JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'mcp__talkie__talkie_move_clip' }] } })
+    expect(toolsCalled(line)).toEqual(['mcp__talkie__talkie_move_clip'])
+    expect(toolsCalled('{"type":"user"}')).toEqual([])
+    expect(toolsCalled('not json')).toEqual([])
+  })
+
+  it('puts every tool the agent may call into words', () => {
+    for (const tool of AGENT_TOOLS) expect(stepFor(`mcp__talkie__${tool}`), tool).not.toBe('Working')
+  })
+
+  it('keeps plain text when there is no result line, rather than losing what was said', () => {
+    expect(readStream('Done it.\n')).toEqual({ said: 'Done it.' })
   })
 })

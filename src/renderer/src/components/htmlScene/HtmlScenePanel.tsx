@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Preview, type PreviewHandle } from '../../../../video/preview'
-import { FolderInput, Sparkles, TriangleAlert } from 'lucide-react'
+import { Check, FolderInput, Sparkles, TriangleAlert } from 'lucide-react'
 import {
   htmlSceneClient,
   timelineClient,
@@ -78,14 +78,22 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
   const [templates, setTemplates] = useState<Template[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** What the error is about, so it is shown beside what was tried rather than at the bottom. */
+  const [lastTried, setLastTried] = useState<string | null>(null)
 
   useEffect(() => {
     void htmlSceneClient.templates().then(setTemplates)
   }, [])
 
+  const canDescribe = busy === null && Boolean(description.trim()) && !(length.trim() && !parseLength(length))
+  function describeIt(): void {
+    void run('describe', () => htmlSceneClient.describe(projectId, description.trim(), parseLength(length) ?? lengthInDescription(description) ?? undefined))
+  }
+
   async function run(label: string, action: () => Promise<HtmlSceneResult | null | { status: 'failed'; reason: string } | ({ status: 'written' } & HtmlSceneResult)>): Promise<void> {
     setBusy(label)
     setError(null)
+    setLastTried(label)
     try {
       const result = await action()
       if (!result) return
@@ -104,6 +112,55 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
+      <section className="flex flex-col gap-2 rounded-xl bg-raised p-4">
+        <span className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+          <Sparkles size={14} className="text-accent" aria-hidden="true" /> Describe it
+          <span className="font-normal text-text-muted">— the AI writes it in this project&rsquo;s theme, timed to its narration</span>
+        </span>
+        <Textarea
+          aria-label="Describe the scene"
+          value={description}
+          placeholder="An animated bar chart of Q3 revenue by region; each bar grows as its region is mentioned"
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault()
+              if (canDescribe) describeIt()
+            }
+          }}
+          className="min-h-[4.5rem] text-[13px]"
+        />
+        <label className="flex items-center gap-2 text-[12px] text-text-muted">
+          Length
+          <Input
+            aria-label="Length"
+            value={length}
+            placeholder={lengthInDescription(description) ? describeSeconds(lengthInDescription(description)!) : '5s'}
+            onChange={(e) => setLength(e.target.value)}
+            className="h-7 w-28 text-[12px]"
+          />
+          <span>
+            {length.trim() && !parseLength(length)
+              ? 'Try 10s, 2 min or 1:30'
+              : 'Long, busy scenes take a model a few minutes to write.'}
+          </span>
+        </label>
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            disabled={!canDescribe}
+            onClick={describeIt}
+            title="Make it (⌘Enter)"
+          >
+            {busy === 'describe' ? <Spinner size="sm" /> : <Sparkles size={13} />}
+            {busy === 'describe' ? 'Writing…' : 'Make it'}
+          </Button>
+          {busy === 'describe' && <Working what="Writing the page and checking it" slowNote="a model can take a minute" />}
+        </div>
+        {error && busy === null && lastTried === 'describe' && <Problem text={error} />}
+      </section>
+
+      <span className="-mb-2 text-[13px] font-medium text-text">Or start from a template</span>
       {groups.map((group) => (
         <section key={group.category} aria-label={group.category} className="flex flex-col gap-2">
           <span className="text-[12px] font-medium uppercase tracking-wide text-text-muted">{group.category}</span>
@@ -135,52 +192,6 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
         </section>
       ))}
 
-      <section className="flex flex-col gap-2 rounded-xl bg-raised p-4">
-        <span className="flex items-center gap-1.5 text-[13px] font-medium text-text">
-          <Sparkles size={14} className="text-accent" /> Or describe it
-        </span>
-        <span className="text-[11px] leading-relaxed text-text-muted">
-          Your AI model writes the page, in this project&rsquo;s theme and timed to its narration. Talkie checks it before it reaches the timeline.
-        </span>
-        <Textarea
-          aria-label="Describe the scene"
-          value={description}
-          placeholder="An animated bar chart of Q3 revenue by region; each bar grows as its region is mentioned"
-          onChange={(e) => setDescription(e.target.value)}
-          className="min-h-[4.5rem] text-[13px]"
-        />
-        <label className="flex items-center gap-2 text-[12px] text-text-muted">
-          Length
-          <Input
-            aria-label="Length"
-            value={length}
-            placeholder={lengthInDescription(description) ? describeSeconds(lengthInDescription(description)!) : '5s'}
-            onChange={(e) => setLength(e.target.value)}
-            className="h-7 w-28 text-[12px]"
-          />
-          <span>
-            {length.trim() && !parseLength(length)
-              ? 'Try 10s, 2 min or 1:30'
-              : 'The page is paced for it. Long, busy scenes take a model a few minutes to write.'}
-          </span>
-        </label>
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            disabled={busy !== null || !description.trim() || Boolean(length.trim() && !parseLength(length))}
-            onClick={() =>
-              void run('describe', () =>
-                htmlSceneClient.describe(projectId, description.trim(), parseLength(length) ?? lengthInDescription(description) ?? undefined)
-              )
-            }
-          >
-            {busy === 'describe' ? <Spinner size="sm" /> : <Sparkles size={13} />}
-            {busy === 'describe' ? 'Writing…' : 'Make it'}
-          </Button>
-          {busy === 'describe' && <Working what="Writing the page and checking it" slowNote="a model can take a minute" />}
-        </div>
-      </section>
-
       <section className="flex items-center gap-3">
         <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => void run('import', () => htmlSceneClient.import(projectId))}>
           {busy === 'import' ? <Spinner size="sm" /> : <FolderInput size={13} />}
@@ -191,17 +202,25 @@ function StartHtmlScene({ projectId, onCreated }: { projectId: string; onCreated
         </span>
       </section>
 
-      {error && (
-        <p role="alert" className="flex items-start gap-1.5 text-[12px] text-danger">
-          <TriangleAlert size={13} className="mt-0.5 shrink-0" />
-          {error}
-        </p>
-      )}
+      {error && lastTried !== 'describe' && <Problem text={error} />}
     </div>
   )
 }
 
+/** Why it did not work, beside what was tried. */
+function Problem({ text }: { text: string }): JSX.Element {
+  return (
+    <p role="alert" className="flex items-start gap-1.5 rounded-lg bg-danger-bg px-3 py-2 text-[12px] leading-relaxed text-danger">
+      <TriangleAlert size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+      {text}
+    </p>
+  )
+}
+
 type Tab = 'content' | 'look' | 'ai' | 'code'
+
+/** Changes that suit any scene, offered while the box is empty — the old example was about bar charts on every scene. */
+const CHANGES = ['Slow the animation down', 'Make the text larger', 'Use fewer words', 'Bring each part in as it is spoken']
 
 /**
  * Changing a scene: what it says first, as a form, beside the scene playing. The values and the
@@ -231,6 +250,8 @@ function EditHtmlScene({
   const [look, setLook] = useState<'brand' | 'light' | 'dark'>(data.style?.theme ?? 'dark')
   const [problems, setProblems] = useState<string[]>(data.check?.problems ?? [])
   const [instruction, setInstruction] = useState('')
+  /** What has been asked of the AI in this dialog, and how it went, so it reads back as a history. */
+  const [asked, setAsked] = useState<{ text: string; failed?: string }[]>([])
   const [busy, setBusy] = useState<'save' | 'change' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>(Object.keys(data.params ?? {}).length > 0 ? 'content' : 'look')
@@ -291,18 +312,22 @@ function EditHtmlScene({
   }
 
   async function change(): Promise<void> {
-    if (!instruction.trim()) return
+    const text = instruction.trim()
+    if (!text || busy !== null) return
     setBusy('change')
     setError(null)
     try {
-      const result = await htmlSceneClient.change(projectId, item.id, instruction.trim())
+      const result = await htmlSceneClient.change(projectId, item.id, text)
       if (result.status === 'failed') {
-        setError(result.reason)
+        setAsked((all) => [...all, { text, failed: result.reason }])
         return
       }
+      setAsked((all) => [...all, { text }])
       setProblems(result.problems)
       setInstruction('')
       await onSaved(result)
+    } catch (err) {
+      setAsked((all) => [...all, { text, failed: err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err) }])
     } finally {
       setBusy(null)
     }
@@ -332,6 +357,7 @@ function EditHtmlScene({
                   tab === choice.id ? 'bg-accent text-accent-foreground' : 'bg-transparent text-text-muted hover:text-text'
                 )}
               >
+                {choice.id === 'ai' && <Sparkles size={11} className="-mt-0.5 mr-1 inline" aria-hidden="true" />}
                 {choice.label}
                 {choice.id === 'code' && changed.size > 0 ? ' •' : ''}
               </button>
@@ -365,20 +391,65 @@ function EditHtmlScene({
           )}
 
           {tab === 'ai' && (
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
-              <span className="text-[12px] text-text-muted">Say what to change. The AI rewrites the page, and Talkie checks it again.</span>
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+              <span className="text-[12px] leading-relaxed text-text-muted">
+                Say what to change. The AI rewrites the page and Talkie checks it again; each change is kept as it is made.
+              </span>
+              {asked.length > 0 && (
+                <ol aria-label="Asked so far" className="flex flex-col gap-1.5">
+                  {asked.map((each, index) => (
+                    <li key={index} className="flex flex-col gap-1 rounded-lg bg-raised px-3 py-2 text-[12px] leading-relaxed">
+                      <span className="text-text">{each.text}</span>
+                      {each.failed ? (
+                        <span className="flex items-start gap-1.5 text-danger">
+                          <TriangleAlert size={11} className="mt-1 shrink-0" aria-hidden="true" />
+                          {each.failed}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-text-muted">
+                          <Check size={11} className="shrink-0 text-success" aria-hidden="true" />
+                          Changed and checked
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
               <Textarea
                 aria-label="Change the scene"
                 value={instruction}
-                placeholder="Make the bars grow one at a time, and add a fifth region"
+                placeholder="Say what should be different"
+                disabled={busy === 'change'}
                 onChange={(e) => setInstruction(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault()
+                    void change()
+                  }
+                }}
                 className="min-h-[5rem] text-[13px]"
               />
-              <Button size="sm" className="self-start" disabled={busy !== null || !instruction.trim()} onClick={() => void change()}>
-                {busy === 'change' ? <Spinner size="sm" /> : <Sparkles size={13} />}
-                {busy === 'change' ? 'Changing…' : 'Change it'}
-              </Button>
-              {busy === 'change' && <Working what="Rewriting the page and checking it" slowNote="a model can take a minute" />}
+              {!instruction && busy === null && (
+                <span className="flex flex-wrap gap-1.5">
+                  {CHANGES.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      onClick={() => setInstruction(example)}
+                      className="rounded-md border-0 bg-raised px-2 py-1 text-[11px] text-text-muted hover:bg-surface-hover hover:text-text"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </span>
+              )}
+              <div className="flex items-center gap-3">
+                <Button size="sm" disabled={busy !== null || !instruction.trim()} onClick={() => void change()} title="Change it (⌘Enter)">
+                  {busy === 'change' ? <Spinner size="sm" /> : <Sparkles size={13} />}
+                  {busy === 'change' ? 'Changing…' : 'Change it'}
+                </Button>
+                {busy === 'change' && <Working what="Rewriting the page and checking it" slowNote="a model can take a minute" />}
+              </div>
             </div>
           )}
 

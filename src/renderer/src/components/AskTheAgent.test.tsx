@@ -1,16 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AskTheAgent } from './AskTheAgent'
 
 const instruct = vi.fn()
 const stop = vi.fn()
+const readiness = vi.fn()
+let step: (projectId: string, step: string) => void = () => undefined
 
 beforeEach(() => {
   instruct.mockReset()
   stop.mockReset()
+  readiness.mockReset().mockResolvedValue({ ready: true, by: 'Claude CLI' })
+  const onStep = (callback: typeof step): (() => void) => {
+    step = callback
+    return () => undefined
+  }
   // @ts-expect-error — the preload bridge, as the renderer sees it.
-  window.api = { agent: { instruct, stop } }
+  window.api = { agent: { instruct, stop, readiness, onStep } }
   // jsdom has no layout, so scrolling to the newest turn would throw.
   Element.prototype.scrollIntoView = vi.fn()
 })
@@ -111,7 +118,7 @@ describe('asking Talkie to change the project', () => {
     await say('second')
     await screen.findByText('Two.')
 
-    expect(screen.getByText('$0.20')).toBeInTheDocument()
+    expect(screen.getByText(/\$0\.20/)).toBeInTheDocument()
   })
 
   it('says what it can be asked for before it has been asked anything', async () => {
@@ -224,4 +231,98 @@ describe('asking Talkie to change the project', () => {
     expect(item.querySelector('strong')).toHaveTextContent('Scene 2')
     expect(screen.queryByText(/\*\*/)).toBeNull()
   })
+
+  it('says who will do the work before anything is asked', async () => {
+    panel()
+    expect(await screen.findByText('Claude CLI')).toBeInTheDocument()
+  })
+
+  it('says what is missing, and opens Settings where it is put right, before anything is typed', async () => {
+    // Finding out from an error after writing the request was the commonest first go at this.
+    readiness.mockResolvedValue({ ready: false, reason: 'Turn on "Let AI agents connect" in Settings → System.', fix: 'system' })
+    const { onSettingsRequested } = await import('../lib/openSettings')
+    const opened = vi.fn()
+    const off = onSettingsRequested(opened)
+    panel()
+
+    expect(await screen.findByText(/Let AI agents connect/)).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText(/ask talkie/i), 'add an introduction')
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: /Open Settings → System/ }))
+    expect(opened).toHaveBeenCalledWith('system')
+    off()
+  })
+
+  it('shows each thing the agent sets about while it works', async () => {
+    instruct.mockReturnValue(new Promise(() => undefined))
+    panel()
+
+    await say('add an introduction')
+    act(() => {
+      step('p1', 'Reading the timeline')
+      step('p1', 'Adding a scene')
+      step('p2', 'Something in another project')
+    })
+
+    const steps = await screen.findByRole('list', { name: 'What it has done so far' })
+    expect(steps).toHaveTextContent('Reading the timeline')
+    expect(steps).toHaveTextContent('Adding a scene')
+    expect(steps).not.toHaveTextContent('another project')
+  })
+
+  it('starts a new conversation when asked, forgetting the old one', async () => {
+    instruct.mockResolvedValue({ status: 'done', say: 'Done.', sessionId: 'sess-1' })
+    panel()
+    await say('do a thing')
+    await screen.findByText('Done.')
+
+    await userEvent.click(screen.getByRole('button', { name: 'New conversation' }))
+    expect(screen.queryByText('Done.')).not.toBeInTheDocument()
+
+    await say('something else')
+    await waitFor(() => expect(instruct).toHaveBeenLastCalledWith('p1', 'something else', undefined, []))
+  })
+
+  it('puts a failed request back in the box to try again', async () => {
+    instruct.mockResolvedValue({ status: 'failed', reason: 'Usage limit reached.' })
+    panel()
+    await say('add an introduction')
+    await screen.findByText('Usage limit reached.')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.getByLabelText(/ask talkie/i)).toHaveValue('add an introduction')
+  })
+
+  it('says Undo takes back the newest change, on the newest answer only', async () => {
+    instruct
+      .mockResolvedValueOnce({ status: 'done', say: 'One.', sessionId: 's' })
+      .mockResolvedValueOnce({ status: 'done', say: 'Two.', sessionId: 's' })
+    panel()
+    await say('first')
+    await screen.findByText('One.')
+    await say('second')
+    await screen.findByText('Two.')
+
+    expect(screen.getAllByText(/takes this whole change back/)).toHaveLength(1)
+  })
+
+  it('closes the scene list on Esc without closing the panel around it', async () => {
+    const timeline = [{ id: 'c1', kind: 'scene', start: 0, duration: 150, data: { title: 'Welcome', bullets: [] } }]
+    panel({ timeline })
+    await userEvent.click(screen.getByRole('button', { name: 'Ask about a scene' }))
+
+    const seen: boolean[] = []
+    const listen = (event: KeyboardEvent): void => {
+      seen.push(event.defaultPrevented)
+    }
+    window.addEventListener('keydown', listen)
+    await userEvent.keyboard('{Escape}')
+    window.removeEventListener('keydown', listen)
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    // The rail closes its panel on an Esc nothing else took.
+    expect(seen).toEqual([true])
+  })
 })
+

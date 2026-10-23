@@ -27,7 +27,7 @@ import type { KokoroDownload } from '../main/tts/kokoro/kokoroProcess'
 import type { KokoroCheck, KokoroImport, KokoroManual } from '../main/tts/kokoro/kokoroManual'
 import type { ProviderDescription } from '../main/agent/providerRegistry'
 import type { LocalServer } from '../main/agent/localProvider'
-import type { AgentOutcome } from '../main/agent/projectAgent'
+import type { AgentOutcome, AgentReadiness } from '../main/agent/projectAgent'
 import type { Voice } from '../main/tts/listVoices'
 import type { NarrationFidelity } from '../main/tts/voiceFidelity'
 import type { MenuAction, MenuState } from '../main/menu/applicationMenu'
@@ -135,6 +135,13 @@ const agentApi = {
     ipcRenderer.invoke('project:agent:instruct', projectId, instruction, resumeSessionId, scenes),
   /** Stops the run going on for this project; what it changed stays, as one undo step. */
   stop: (projectId: string): Promise<boolean> => ipcRenderer.invoke('project:agent:stop', projectId),
+  readiness: (): Promise<AgentReadiness> => ipcRenderer.invoke('project:agent:readiness'),
+  // Each thing a run sets about, as it starts it.
+  onStep: (callback: (projectId: string, step: string) => void): (() => void) => {
+    const listener = (_event: unknown, projectId: string, step: string): void => callback(projectId, step)
+    ipcRenderer.on('project:agent:step', listener)
+    return () => ipcRenderer.removeListener('project:agent:step', listener)
+  },
   draftItem: (projectId: string, itemId: string, force = false): Promise<DraftResult> =>
     ipcRenderer.invoke('project:agent:draftItem', projectId, itemId, force),
   draftAll: (projectId: string, force = false): Promise<DraftResult[]> =>

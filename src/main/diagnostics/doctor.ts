@@ -86,7 +86,7 @@ function checkVoice(baseDir: string): DoctorCheck {
   const voice = speech.voice
   return isKokoroDownloaded(baseDir)
     ? { ...base, ok: true, detail: `Kokoro, ${voice}; the voice is downloaded.` }
-    : { ...base, ok: false, detail: `Kokoro, ${voice}; the voice is not downloaded.`, fix: 'Download it in Talkie, under Settings → Narration.' }
+    : { ...base, ok: false, detail: `Kokoro, ${voice}; the voice is not downloaded.`, fix: 'Download it in Talkie, under Settings → AI.' }
 }
 
 function checkMedia(fromDir: string): DoctorCheck {

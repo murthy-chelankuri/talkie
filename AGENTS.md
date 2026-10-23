@@ -329,6 +329,14 @@ implementation to keep in step.
   go with every turn, described the way `talkie_timeline` numbers them (`describeScenes`).
 - **A run can be stopped** (`stopProjectAgent`, an abort signal on the CLI). What it already
   changed stays, inside the one undo step.
+- **It says whether it can run before anything is typed** (`agentReadiness`, `project:agent:readiness`),
+  and opens Settings at the section that fixes it. Finding out from an error after writing the
+  request was most people's first go at the panel.
+- **A run says what it is doing.** The Claude CLI is run with `--output-format stream-json`, and
+  each tool it calls reaches the panel as a step in words (`stepFor`, `project:agent:step`): a run
+  is minutes of tool calls, and "Working… 140s" over all of them looked like a hang. Copilot reports
+  no steps in `-s` mode, so it shows the time alone. A tool added to `AGENT_TOOLS` needs a step;
+  a test fails without one.
 
 Rewrites from the right-click menu (Rephrase, Proofread, …) take seconds, so the window is told
 as they start and end (`menu:rewrite`, `RewriteStatus.tsx`): the field is held, a note says what

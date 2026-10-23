@@ -129,6 +129,11 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   // Which side panel is open — at most one — and how wide it is, both remembered on this Mac.
   const rail = useRailPanel()
   const [sideWidth, setSideWidth] = useResizableWidth('talkie.sidePanelWidth', 300, 260, 420)
+  // The agent's own width: a conversation at 300px wrapped its placeholder and every answer, and
+  // it is read rather than glanced at, so it opens wider and may be dragged much wider.
+  const [agentWidth, setAgentWidth] = useResizableWidth('talkie.agentPanelWidth', 380, 300, 640)
+  const panelWidth = rail.open === 'agent' ? agentWidth : sideWidth
+  const setPanelWidth = rail.open === 'agent' ? setAgentWidth : setSideWidth
   // The agent can be working with its panel shut; the rail says so.
   const [agentWorking, setAgentWorking] = useState(false)
   const [inspectorWidth, setInspectorWidth] = useResizableWidth('talkie.inspectorWidth', 280, 240, 380)
@@ -1068,7 +1073,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
         <div className="flex h-full min-h-0">
           {/* One panel at a time beside the stage. The agent stays mounted while it is shut, so
               its conversation — and a run still going — survive looking at something else. */}
-          <div className={cn('flex h-full shrink-0', !rail.open && 'hidden')} style={{ width: sideWidth }}>
+          <div className={cn('flex h-full shrink-0', !rail.open && 'hidden')} style={{ width: panelWidth }}>
             <div className="min-w-0 flex-1">
               {rail.open && rail.open !== 'agent' && (
                 <SidePanel title={RAIL_TITLES[rail.open]} onClose={rail.close}>
@@ -1129,7 +1134,7 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
                 />
               </div>
             </div>
-            <ResizeHandle label="Resize the panel" side="left" width={sideWidth} onWidth={setSideWidth} />
+            <ResizeHandle label="Resize the panel" side="left" width={panelWidth} onWidth={setPanelWidth} />
           </div>
           <div className="flex h-full min-w-0 flex-1 flex-col">
           <div className="flex h-full flex-col bg-bg">

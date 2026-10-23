@@ -32,7 +32,7 @@ import { allVoices, describeSpeechEngines, speechEngine } from '../tts/engineReg
 import { downloadKokoro, kokoroDownloadStatus } from '../tts/kokoro/kokoroProcess'
 import { checkKokoroFiles, importKokoroFiles, kokoroManual } from '../tts/kokoro/kokoroManual'
 import { draftNarrationForItem, draftNarrationForProject } from '../agent/draftNarration'
-import { runProjectAgent, stopProjectAgent } from '../agent/projectAgent'
+import { agentReadiness, runProjectAgent, stopProjectAgent } from '../agent/projectAgent'
 import { setProjectTheme } from '../themes/applyTheme'
 import { toRenderTheme } from '../themes/toRenderTheme'
 
@@ -164,17 +164,21 @@ export function registerProjectHandlers(ipcMain: IpcMain): void {
    */
   ipcMain.handle(
     'project:agent:instruct',
-    (_event, projectId: string, instruction: string, resumeSessionId?: string, scenes: string[] = []) =>
+    (event, projectId: string, instruction: string, resumeSessionId?: string, scenes: string[] = []) =>
       withHistory(projectId, () =>
         runProjectAgent({
           projectId,
           instruction,
           resumeSessionId,
           scenes,
-          serverPath: mcpConnection().serverPath
+          serverPath: mcpConnection().serverPath,
+          onStep: (step) => {
+            if (!event.sender.isDestroyed()) event.sender.send('project:agent:step', projectId, step)
+          }
         })
       ).finally(() => acceptWatchedProject(projectId))
   )
+  ipcMain.handle('project:agent:readiness', () => agentReadiness(mcpConnection().serverPath))
   ipcMain.handle('project:agent:stop', (_event, projectId: string) => stopProjectAgent(projectId))
 
   ipcMain.handle('project:agent:draftAll', (_event, projectId: string, force: boolean) =>
