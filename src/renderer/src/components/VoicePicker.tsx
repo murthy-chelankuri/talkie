@@ -49,7 +49,7 @@ export function VoicePicker({
         {missing && (
           // Kept on show rather than falling back to the first option: a select whose value no
           // option carries displays something else, and touching it would change the voice.
-          <option value={value}>{value} (not ready on this Mac)</option>
+          <option value={value}>{value} (not ready)</option>
         )}
         {groupVoices(voices).map(([key, group]) => (
           <optgroup key={key} label={describeGroup(key)}>
@@ -76,7 +76,7 @@ function groupKey(voice: Voice): string {
   return voice.engine ? `${voice.engine}|${voice.locale}` : voice.locale
 }
 
-const ENGINE_LABELS: Record<NonNullable<Voice['engine']>, string> = { kokoro: 'Kokoro', system: 'macOS' }
+const ENGINE_LABELS: Record<NonNullable<Voice['engine']>, string> = { kokoro: 'Kokoro' }
 
 export function describeGroup(key: string): string {
   const [engine, locale] = key.includes('|') ? key.split('|') : [null, key]

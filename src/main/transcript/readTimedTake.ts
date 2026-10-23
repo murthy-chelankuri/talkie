@@ -3,7 +3,6 @@ import { getWavDurationSeconds } from '../tts/wavDuration'
 import { assembleTake } from './assembleTake'
 import { placeBeats, spokenLine } from './narrationBeats'
 import { AIM_INSIDE, MAX_SPEED_UP, hurriedBy, roomFor } from './fitToFootage'
-import { arcFor } from '../tts/prosody'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 import type { SpeechOptions } from '../tts/ttsProvider'
 import type { NarrationBeat } from './schema'
@@ -88,9 +87,9 @@ async function layOne(
   try {
     for (const [index, beat] of beats.entries()) {
       const beatPath = `${audioPath}.beat${index}.wav`
-      // Its own slice of the take's pitch fall. Each beat is a separate call to the voice, so
-      // without this they all start from the baseline and the take has no shape. See prosody.ts.
-      await request.synthesize(spokenLine(beat.text), beatPath, { ...delivery, arc: arcFor(index, beats.length) })
+      // Each beat is a separate call to the voice. Kokoro shapes a line's pitch by itself, so the
+      // beats are read plainly and joined with real silence below rather than pitched by hand.
+      await request.synthesize(spokenLine(beat.text), beatPath, delivery)
       spoken.push(getWavDurationSeconds(beatPath))
       pieces.push({ at: beat.at, wavPath: beatPath })
     }

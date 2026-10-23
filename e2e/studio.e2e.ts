@@ -57,7 +57,7 @@ describe('the Studio', () => {
     expect(JSON.parse(readFileSync(join(moved, 'project.json'), 'utf8')).schemaVersion).toBe(2)
     expect(readFileSync(join(studioDir(fixture.home), '.gitignore'), 'utf8')).toContain('Projects/*/renders/')
     // The voice went with the Studio; the key stayed with the Mac.
-    expect(readFileSync(sharedSettingsPath(fixture.home), 'utf8')).toContain('"engine": "system"')
+    expect(readFileSync(sharedSettingsPath(fixture.home), 'utf8')).toContain('"engine": "kokoro"')
     expect(readFileSync(sharedSettingsPath(fixture.home), 'utf8')).not.toContain('sk-ant-kept-here')
     expect(readFileSync(settingsPath(fixture.home), 'utf8')).toContain('sk-ant-kept-here')
   }, 120_000)

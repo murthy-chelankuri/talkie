@@ -49,7 +49,7 @@ async function chooseTheme(win: Talkie['win'], themeId: string): Promise<void> {
 
 describe('the cards at either end', () => {
   it('become HTML cards when a theme is applied, and follow the next theme', async () => {
-    fixture = makeFixture('system')
+    fixture = makeFixture()
     const cards = withClassicCards()
     talkie = await launchTalkie(fixture)
     const { win } = talkie

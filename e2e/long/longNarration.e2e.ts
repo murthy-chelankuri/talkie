@@ -34,7 +34,7 @@ const paragraph = (topic: string): string =>
  */
 describe('long narration across many scenes', () => {
   it.skipIf(!kokoroAvailable())('is spoken in full in Kokoro and heard all the way through the export', async () => {
-    fixture = makeFixture('kokoro')
+    fixture = makeFixture({ kokoro: true })
     for (const topic of ['planning', 'reporting', 'onboarding', 'support']) {
       const item = addScene(fixture.projectId, 'scene', { title: topic, bullets: ['One', 'Two'] }, fixture.home)
       addTranscriptSegment(fixture.projectId, { text: paragraph(topic), timelineItemId: item.id }, fixture.home)

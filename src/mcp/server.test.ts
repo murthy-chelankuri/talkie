@@ -469,12 +469,13 @@ describe('Talkie over MCP', () => {
       expect(said).toContain('talkie_set_context')
     })
 
-    it('names the voices there are, under the engine each belongs to', async () => {
+    it('names the voices there are, under Kokoro', async () => {
       const said = await call('talkie_list_voices')
 
       expect(said).toMatch(/^Talkie's own voice, for projects without one: /)
-      expect(said).toContain('macOS voices:')
-      expect(said).toContain('Daniel')
+      expect(said).toContain('Kokoro:')
+      // Downloaded here, the Kokoro voices are listed; without the model it says it is not ready.
+      expect(said).toMatch(/af_heart|not ready/)
     }, 60_000)
 
     it('will not set a voice no engine has, since it would quietly read in another', async () => {
@@ -508,8 +509,8 @@ describe('Talkie over MCP', () => {
     it('sets the voice, and says re-voicing is a separate step', async () => {
       const projectId = await newProject('Voiced')
 
-      const said = await call('talkie_set_voice', { projectId, voice: 'Daniel' })
-      expect(said).toContain('Daniel')
+      const said = await call('talkie_set_voice', { projectId, voice: 'bm_george' })
+      expect(said).toContain('bm_george')
       expect(said).toMatch(/re-voice/i)
     })
   })

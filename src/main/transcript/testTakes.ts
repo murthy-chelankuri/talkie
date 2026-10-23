@@ -1,15 +1,17 @@
-import { execFile } from 'child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { promisify } from 'util'
 import { runFfmpeg } from '../media'
 
 /**
  * Takes for the tests, made the way a person at a desk would make one.
  *
- * A tone has no pauses and no room, so it says nothing about a clean-up; a real voice with a fan
- * and mains hum under it, and a second of the room before the first word, does.
+ * A plain tone has no pauses and no room, so it says nothing about a clean-up; a voice with a fan
+ * and mains hum under it, and a second of the room before the first word, does. The "voice" was
+ * once the macOS `say` voice, dropped with the rest of it (see schema.ts). In its place is a
+ * band-limited noise burst train — speech-band energy with real gaps between the words — which
+ * is not words but is exactly what the clean-up ever measured: a loud band standing over a quiet
+ * room with pauses in it. It needs nothing installed and reads the same on any machine.
  */
 
 /** Where the room is heard alone, and where the voice is, in seconds of a take from `roomyTake`. */
@@ -17,27 +19,23 @@ export const ROOM_ALONE = { start: 0.1, end: 0.9 }
 export const VOICE_SPOKEN = { start: 1.5, end: 4 }
 
 /**
- * A spoken line over room noise, written to `path` — opus in webm, as the browser hands a take
- * over, or WAV for Chromium's fake microphone to play. `noise` is the fan's amplitude, 0.005 a
- * quiet room and 0.12 a loud one.
+ * A voice-like signal over room noise, written to `path` — opus in webm, as the browser hands a
+ * take over, or WAV for Chromium's fake microphone to play. `noise` is the fan's amplitude, 0.005
+ * a quiet room and 0.12 a loud one. The voice is a second in, so the first second is room alone.
  */
 export async function writeRoomyTake(path: string, noise = 0.04): Promise<void> {
-  const dir = mkdtempSync(join(tmpdir(), 'talkie-roomy-'))
-  try {
-    const voice = join(dir, 'voice.aiff')
-    await promisify(execFile)('say', ['-v', 'Samantha', '-o', voice, 'Here is the dashboard. Click the new task button, give it a name, and press save.'])
-    const codec = path.endsWith('.wav') ? ['-c:a', 'pcm_s16le'] : ['-c:a', 'libopus', '-b:a', '64k']
-    await runFfmpeg([
-      '-i', voice,
-      '-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=${noise}:sample_rate=48000`,
-      '-f', 'lavfi', '-i', 'sine=f=60:sample_rate=48000',
-      '-filter_complex',
-      `[0]aresample=48000,adelay=1000,apad=pad_dur=1[v];[2]volume=${noise}[hum];[v][1][hum]amix=inputs=3:duration=first:normalize=0`,
-      '-ac', '1', '-ar', '48000', ...codec, '-y', path
-    ])
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+  const codec = path.endsWith('.wav') ? ['-c:a', 'pcm_s16le'] : ['-c:a', 'libopus', '-b:a', '64k']
+  await runFfmpeg([
+    // The voice: three seconds of white noise, band-limited to the speech range, gated into
+    // 0.4s bursts with 0.2s gaps — words and the pauses between them.
+    '-f', 'lavfi', '-i', 'anoisesrc=color=white:amplitude=0.5:sample_rate=48000:d=3',
+    '-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=${noise}:sample_rate=48000`,
+    '-f', 'lavfi', '-i', 'sine=f=60:sample_rate=48000',
+    '-filter_complex',
+    `[0]highpass=f=250,lowpass=f=3400,volume='if(lt(mod(t,0.6),0.4),1,0)':eval=frame,adelay=1000,apad=pad_dur=1[v];` +
+      `[2]volume=${noise}[hum];[v][1][hum]amix=inputs=3:duration=first:normalize=0`,
+    '-ac', '1', '-ar', '48000', ...codec, '-y', path
+  ])
 }
 
 /** The same take as the browser's bytes. */
