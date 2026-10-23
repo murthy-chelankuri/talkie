@@ -120,11 +120,11 @@ describe('who may drive Talkie from outside', () => {
   })
 
   it('keeps the rest of the settings when a token is made', () => {
-    updateSettings({ speech: { voice: 'Daniel' } }, baseDir)
+    updateSettings({ speech: { voice: 'bm_george' } }, baseDir)
 
     createMcpToken(baseDir)
 
-    expect(readSettings(baseDir).speech.voice).toBe('Daniel')
+    expect(readSettings(baseDir).speech.voice).toBe('bm_george')
   })
 })
 

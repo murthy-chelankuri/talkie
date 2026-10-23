@@ -6,7 +6,7 @@ second copy that drifts.
 
 An Electron app that records a browser session silently, writes and speaks the narration, and
 exports an MP4. macOS only, Apple Silicon. React in the renderer, drawn and exported by Talkie's
-own renderer (`src/video/`), Playwright for capture, `say` or the built-in Kokoro voice for speech.
+own renderer (`src/video/`), Playwright for capture, the built-in Kokoro voice for speech.
 
 ## Commands
 
@@ -57,8 +57,8 @@ video's own soundtrack — a take on disk and a silent scene in the export were 
 every example exported whole, at its full length, voiced where it has narration; and a fresh clone
 taken through `npm ci`, the build and an export, which is the only place install scripts run.
 
-A test that speaks through `say`, drives a browser or runs ffmpeg gets at least 60 seconds,
-and 90 where it asks for a voice macOS has to fetch and warm up first. None of them are
+A test that speaks through Kokoro, drives a browser or runs ffmpeg gets at least 60 seconds,
+and 90 where it loads the Kokoro model and warms it up first. None of them are
 testing the clock, and a limit close to the real cost turns the suite into a report on how
 busy the machine is — which it did three times before they were all raised together.
 
@@ -478,12 +478,14 @@ colours — kept once in the Studio's `Themes` folder and chosen per project (`t
   description), update — colours, fonts, logo — duplicate, delete, apply. A slide's `layout` and
   every scene's look (brand/light/dark) are settable, and `talkie_list_voices` names the voices of
   every engine that is ready, since `talkie_set_voice` refuses one no engine has.
-- **A project's voice brings its engine** (`projectSpeech` in `engineRegistry.ts`). Kokoro's voices
-  are named `af_heart`, `bm_george` and so on, which no Mac voice is, so the stored name says which
-  engine reads it and the project file needs nothing more. It was read by whichever engine the app
-  was on: a project kept in af_heart, after the app moved to the Mac's voices, was handed to `say`,
-  and its picker — loaded once, listing one engine — had nothing to move it to. The settings schema
-  likewise keeps the app's own voice one its engine has (`voiceOfItsEngine`).
+- **A project's voice brings its engine** (`projectSpeech` in `engineRegistry.ts`). Kokoro is the
+  only speech engine now — the macOS `say` voices it replaced sounded plainly synthetic and were
+  dropped — but a project still stores the engine with the voice, and `engineOfVoice` stays the one
+  place that answers which engine reads a name, so a second engine (a Windows voice, say) can slot
+  back in without the project format changing. The settings schema keeps the app's own voice one its
+  engine has (`voiceOfItsEngine`): a stored Mac voice name, from before the change, reads as Kokoro's
+  default rather than failing every clip. A settings file still naming `system` migrates to Kokoro
+  the way the older `openai` and `azure` engines do, so it is not thrown out whole.
 - **A diagram is painted on its look's own background.** `diagramStamp` carries a drawing version;
   raise it when how a themed diagram is drawn changes, or ones already drawn keep the old look.
 - **Logos are drawn still, and plated where they would vanish.** Brand sites often serve animated
@@ -713,8 +715,8 @@ the app stays the only writer.
   fetched by `npm install`. It is not in this repository.
 - Publishing *source* carries no ffmpeg obligation. **Shipping a built `.dmg` does**, including
   offering ffmpeg's source to every recipient. That is why no prebuilt binaries are published
-  here, and why the Mac App Store is not a route (App Sandbox also blocks `say`, `afconvert`,
-  driving a browser, and the MCP server).
+  here, and why the Mac App Store is not a route (App Sandbox also blocks `afplay`, running
+  ffmpeg as a subprocess, driving a browser, and the MCP server).
 - **eSpeak NG, inside the Kokoro voice, is GPL-3.0**, and unlike ffmpeg it is in the repository,
   compiled, in `packages/phonemizer` — so passing on the source carries the obligation as well as
   shipping a build. Its source is the pinned commit plus `packages/phonemizer/build/`, which

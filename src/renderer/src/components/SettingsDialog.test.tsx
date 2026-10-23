@@ -41,8 +41,8 @@ const defaults = {
   },
   export: { burnCaptions: false },
   speech: {
-    engine: 'system' as const,
-    voice: 'Samantha',
+    engine: 'kokoro' as const,
+    voice: 'af_heart',
     pace: 170,
     sentencePauseMs: 420,
     clausePauseMs: 300
@@ -63,11 +63,10 @@ beforeEach(() => {
   vi.mocked(settingsClient.resetSpeech).mockResolvedValue(defaults as never)
   vi.mocked(settingsClient.providers).mockResolvedValue([provider()] as never)
   vi.mocked(settingsClient.speechEngines).mockResolvedValue([
-    { id: 'system', label: 'macOS voices', description: 'Nothing to install or start.', available: true },
     { id: 'kokoro', label: 'Kokoro', description: 'Sounds close to a person.', available: false, reason: 'Download the voice first — about 163 MB, once.' }
   ] as never)
   vi.mocked(settingsClient.voices).mockResolvedValue([
-    { name: 'Samantha', locale: 'en_US', sample: 'Hello.', novelty: false }
+    { name: 'af_heart', locale: 'en_US', sample: 'Hello.', novelty: false }
   ] as never)
   vi.mocked(settingsClient.localServer).mockResolvedValue(null as never)
   vi.mocked(settingsClient.copilotModels).mockResolvedValue([] as never)
@@ -96,13 +95,12 @@ beforeEach(() => {
 })
 
 describe('SettingsDialog', () => {
-  it('offers only the two voices that run on this Mac, and says what each is', async () => {
+  it('names Kokoro as the one voice, with no engine to choose between', async () => {
     render(<SettingsDialog onClose={vi.fn()} />)
 
-    expect(await screen.findByRole('radio', { name: /macOS voices/ })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Kokoro/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('radio', { name: /voices|Kokoro/ }).filter((r) => r.getAttribute('name') === 'speech-engine')).toHaveLength(2)
-    expect(screen.getByText('Sounds close to a person.')).toBeInTheDocument()
+    // Kokoro is the only engine, so there is nothing to pick between — the old engine radios are gone.
+    expect(await screen.findByText('Sounds close to a person.')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /Kokoro|macOS/ })).not.toBeInTheDocument()
   })
 
   it('offers the Kokoro download where Kokoro is chosen, saying how big it is', async () => {
@@ -195,16 +193,6 @@ describe('SettingsDialog', () => {
     expect(
       await screen.findByText('Added config.json. Not one of the voice’s files: blocked.html. Still needed: onnx/model_fp16.onnx.')
     ).toBeInTheDocument()
-  })
-
-  it('lists the voices of the engine just chosen, not the one before it', async () => {
-    render(<SettingsDialog onClose={vi.fn()} />)
-    await screen.findByRole('combobox', { name: 'Narration voice' })
-    vi.mocked(settingsClient.voices).mockClear()
-
-    await userEvent.click(screen.getByRole('radio', { name: /Kokoro/ }))
-
-    await vi.waitFor(() => expect(settingsClient.voices).toHaveBeenCalled())
   })
 
   it('opens on the section most people came to change', async () => {

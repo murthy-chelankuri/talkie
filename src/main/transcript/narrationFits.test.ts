@@ -16,7 +16,13 @@ import { narrateSegment } from './narrate'
 import { saveRecordedNarration } from './recordNarration'
 import { repairNarrationDurations } from './repairNarrationDurations'
 import { getWavDurationSeconds } from '../tts/wavDuration'
+import { isKokoroDownloaded } from '../tts/kokoro/kokoroModel'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
+
+// The synthesising cases read for real through Kokoro, from the voice in the real home; where it
+// has not been downloaded they skip. The recording and repair cases below need no voice and run
+// regardless.
+const downloaded = isKokoroDownloaded()
 
 /**
  * The regression that reached the user, written as the rule it broke.
@@ -61,7 +67,6 @@ describe('narration always fits inside its clip', () => {
 
   beforeEach(() => {
     baseDir = mkdtempSync(join(tmpdir(), 'talkie-fits-'))
-    process.env.HOME = baseDir
   })
 
   afterEach(() => {
@@ -75,7 +80,7 @@ describe('narration always fits inside its clip', () => {
     return { project, item, segment }
   }
 
-  it('after synthesising a short line', async () => {
+  it.skipIf(!downloaded)('after synthesising a short line', async () => {
     const { project, segment } = clip('image', 30, 'Short.')
 
     await narrateSegment(project.id, segment.id, baseDir)
@@ -83,7 +88,7 @@ describe('narration always fits inside its clip', () => {
     assertNarrationFits(project.id, baseDir)
   }, 90_000)
 
-  it('after synthesising a line far longer than the clip started out', async () => {
+  it.skipIf(!downloaded)('after synthesising a line far longer than the clip started out', async () => {
     const { project, segment } = clip(
       'image',
       5,
@@ -95,7 +100,7 @@ describe('narration always fits inside its clip', () => {
     assertNarrationFits(project.id, baseDir)
   }, 90_000)
 
-  it('after synthesising over a recording that outlasts the words', async () => {
+  it.skipIf(!downloaded)('after synthesising over a recording that outlasts the words', async () => {
     const { project, segment } = clip('video', 600, 'Short line over a long recording.')
 
     await narrateSegment(project.id, segment.id, baseDir)
@@ -111,7 +116,7 @@ describe('narration always fits inside its clip', () => {
     assertNarrationFits(project.id, baseDir)
   }, 60_000)
 
-  it('after a take is recorded over a clip that already had synthesised narration', async () => {
+  it.skipIf(!downloaded)('after a take is recorded over a clip that already had synthesised narration', async () => {
     const { project, segment } = clip('image', 30, 'The script.')
     await narrateSegment(project.id, segment.id, baseDir)
 
@@ -139,7 +144,7 @@ describe('narration always fits inside its clip', () => {
     )
   })
 
-  it('leaves the tail of silence the pause was added for', async () => {
+  it.skipIf(!downloaded)('leaves the tail of silence the pause was added for', async () => {
     const { project, item, segment } = clip('image', 30, 'A line to time.')
 
     const saved = await narrateSegment(project.id, segment.id, baseDir)

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { exportsIn, launchTalkie, openProject, type Talkie } from './app'
 import { takeShape, type TakeShape } from './audio'
-import { makeFixture, type Fixture } from './fixture'
+import { kokoroAvailable, makeFixture, type Fixture } from './fixture'
 import { ffmpegPath, ffprobePath } from '../src/main/media'
 
 let fixture: Fixture
@@ -39,8 +39,10 @@ function soundtrack(video: string): TakeShape {
 }
 
 describe('exporting', () => {
-  it('exports the narrated project as a video you can hear', async () => {
-    fixture = makeFixture('system')
+  // Kokoro reads the narration this exports and measures, so it runs only where the voice is on
+  // disk to borrow.
+  it.skipIf(!kokoroAvailable())('exports the narrated project as a video you can hear', async () => {
+    fixture = makeFixture({ kokoro: true })
     talkie = await launchTalkie(fixture)
     const { win } = talkie
     await openProject(win)
@@ -57,8 +59,10 @@ describe('exporting', () => {
     const [video] = exportsIn(fixture)
     expect(video, 'no MP4 was written').toBeTruthy()
     const { seconds, audio } = probe(video)
+    // Two scenes voiced by Kokoro and a third silent; Kokoro reads a shade longer than the Mac
+    // voices it replaced, and the silent-line retry can shift a take, so the window has room.
     expect(seconds).toBeGreaterThan(14)
-    expect(seconds).toBeLessThan(20)
+    expect(seconds).toBeLessThan(24)
     expect(audio, 'the video has no soundtrack').toBe(true)
     // Narration over the first two scenes, and the third has none: the track is heard, and
     // starts within the lead-in rather than seconds into the video.
@@ -68,7 +72,7 @@ describe('exporting', () => {
   }, 240_000)
 
   it('can be cancelled part way, and says so', async () => {
-    fixture = makeFixture('system')
+    fixture = makeFixture()
     talkie = await launchTalkie(fixture)
     const { win } = talkie
     await openProject(win)
@@ -93,7 +97,7 @@ describe('exporting', () => {
           .trim()
       )
     const before = browsers()
-    fixture = makeFixture('system')
+    fixture = makeFixture()
     talkie = await launchTalkie(fixture)
     const { win } = talkie
     await openProject(win)

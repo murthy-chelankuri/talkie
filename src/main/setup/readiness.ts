@@ -2,6 +2,7 @@ import { systemPreferences } from 'electron'
 import { findInstalledBrowser, hasBundledChromium } from '../capture/resolveBrowser'
 import { findLibreOffice } from '../slides/libreOffice'
 import { runFfmpeg } from '../media'
+import { KOKORO_DOWNLOAD_MB, isKokoroDownloaded } from '../tts/kokoro/kokoroModel'
 
 export interface ReadinessCheck {
   id: 'recording' | 'voice' | 'export' | 'microphone' | 'decks'
@@ -86,13 +87,17 @@ async function checkExport(): Promise<ReadinessCheck> {
 }
 
 function checkVoice(): ReadinessCheck {
+  // Kokoro reads the narration, and the voice is a one-time download rather than something built
+  // into the OS — so until it is fetched the app cannot speak, which is said here rather than
+  // discovered at the first clip someone asks to voice.
+  const ready = isKokoroDownloaded()
   return {
     id: 'voice',
     label: 'Narration voice',
     purpose: 'Read narration aloud',
-    ready: process.platform === 'darwin',
-    detail: process.platform === 'darwin' ? "macOS's built-in voices" : undefined,
-    fix: process.platform === 'darwin' ? undefined : 'Speech synthesis is only available on macOS.',
+    ready,
+    detail: ready ? 'Kokoro, built in' : undefined,
+    fix: ready ? undefined : `Download the Kokoro voice — about ${KOKORO_DOWNLOAD_MB} MB, once — in Settings, under the voice.`,
     required: true
   }
 }

@@ -42,7 +42,7 @@ function refusingProxy(): Promise<{ port: number; asked: string[] }> {
 describe('behind a proxy', () => {
   it('asks the system proxy for the Kokoro voice, and says plainly when it refuses', async () => {
     const { port, asked } = await refusingProxy()
-    fixture = makeFixture('system')
+    fixture = makeFixture()
     talkie = await launchTalkie(fixture, { switches: [`--proxy-server=http://127.0.0.1:${port}`] })
     const { win } = talkie
 

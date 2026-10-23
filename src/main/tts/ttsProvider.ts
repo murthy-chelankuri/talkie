@@ -1,21 +1,15 @@
-import type { PitchArc } from './prosody'
-
 /** How a take should sound, decided by the caller rather than read from settings by each engine. */
 export interface SpeechOptions {
   voice: string
   /** Words a minute. Honoured by engines that can be told; ignored by those that cannot. */
   pace: number
+  /**
+   * Silence at a full stop and at a comma, in milliseconds. Kokoro shapes a paragraph's pauses
+   * by itself and ignores these; they are kept because settings still carry them and a second
+   * engine may yet honour them.
+   */
   sentencePauseMs: number
   clausePauseMs: number
-  /**
-   * Which part of the take's pitch fall this piece covers.
-   *
-   * Absent means the text is the whole take and owns the whole fall. Timed narration is read a
-   * beat at a time in separate processes, so without this every beat restarts the contour from
-   * the voice's baseline and a take comes out as a row of flat, identical utterances. See
-   * prosody.ts. Ignored by engines whose pitch cannot be directed.
-   */
-  arc?: PitchArc
 }
 
 export interface TTSProvider {
@@ -35,5 +29,5 @@ export interface Voice {
   sample: string
   novelty: boolean
   /** Which engine reads it, where voices from more than one are listed together. */
-  engine?: 'system' | 'kokoro'
+  engine?: 'kokoro'
 }
