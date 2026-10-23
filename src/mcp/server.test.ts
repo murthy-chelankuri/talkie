@@ -300,6 +300,30 @@ describe('Talkie over MCP', () => {
       expect(said).toContain('Acme (theme id')
     })
 
+    it('reports a brand-check warning when reading a theme with one logo slot', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const logo = join(baseDir, 'mark.svg')
+      writeFileSync(logo, '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#ffffff"/></svg>')
+      await call('talkie_update_theme', { themeId, logos: { dark: logo } })
+
+      const said = await call('talkie_theme', { themeId })
+
+      expect(said).toContain('Brand check:')
+      expect(said).toMatch(/no light-background logo/)
+    })
+
+    it('refuses to change a locked group and leaves it as it was', async () => {
+      const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
+      const before = await call('talkie_theme', { themeId })
+      const brandBackground = /brand: background (#[0-9a-f]{6})/.exec(before)?.[1]
+
+      await call('talkie_update_theme', { themeId, locks: ['variants.brand'] })
+      const said = await call('talkie_update_theme', { themeId, brand: { background: '#010203' } })
+
+      expect(said).toMatch(/Locked and left unchanged: variants\.brand/)
+      expect(said).toContain(`brand: background ${brandBackground}`)
+    })
+
     it('puts a theme on a project with its opening and closing cards, once', async () => {
       const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
       const projectId = await newProject('Launch video')
@@ -369,16 +393,16 @@ describe('Talkie over MCP', () => {
       const logo = join(baseDir, 'acme.png')
       writeFileSync(logo, bandedPng(['#e4572e']))
 
-      expect(await call('talkie_update_theme', { themeId, logo: { path: logo, corner: 'top-left' } })).toContain('Logo: logo.png, top-left')
-      expect(await call('talkie_update_theme', { themeId, logo: { onRecordings: false } })).toContain('Logo: logo.png, top-left')
+      expect(await call('talkie_update_theme', { themeId, logos: { dark: logo, corner: 'top-left' } })).toContain('dark logos/dark.png; top-left')
+      expect(await call('talkie_update_theme', { themeId, logos: { onRecordings: false } })).toContain('dark logos/dark.png; top-left')
       expect(readTheme(themeId, baseDir).logo?.showOn).toEqual({ recordings: false, slides: true })
-      expect(await call('talkie_update_theme', { themeId, logo: { remove: true } })).toContain('Logo: none')
+      expect(await call('talkie_update_theme', { themeId, logos: { remove: true } })).toContain('Logo: none')
     })
 
     it('will only read a logo from an absolute path', async () => {
       const themeId = themeIdIn(await call('talkie_create_theme', { name: 'Acme' }))
 
-      expect(await call('talkie_update_theme', { themeId, logo: { path: 'acme.png' } })).toMatch(/not an absolute path/)
+      expect(await call('talkie_update_theme', { themeId, logos: { light: 'acme.png' } })).toMatch(/not an absolute path/)
     })
 
     it('sets a theme’s type, from Talkie’s own fonts or the person’s files', async () => {
@@ -404,7 +428,7 @@ describe('Talkie over MCP', () => {
       const said = await call('talkie_create_theme', { name: 'Acme', file: logo })
 
       expect(said).toContain('Made it.')
-      expect(said).toMatch(/Logo: logo\.png/)
+      expect(said).toMatch(/Logo: (light|dark) logos\//)
     }, 120_000)
 
     it('offers the built-in themes, and will not change or delete them', async () => {

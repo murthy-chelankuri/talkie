@@ -23,7 +23,7 @@ describe('changing a theme while a project is open', () => {
     const stop = onSettingsChanged(heard)
 
     await themeClient.update('t1', {} as never)
-    await themeClient.addAsset({ themeId: 't1' }, 'logo', 'logo.svg', new Uint8Array())
+    await themeClient.addAsset({ themeId: 't1' }, 'logo', 'light', 'logo.svg', new Uint8Array())
     await themeClient.remove('t1')
     stop()
 

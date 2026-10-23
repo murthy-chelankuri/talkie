@@ -20,6 +20,7 @@ vi.mock('../../api/projectClient', () => ({
     usage: vi.fn(),
     generate: vi.fn(),
     generateStatus: vi.fn(),
+    compliance: vi.fn(),
     addAsset: vi.fn(),
     addFont: vi.fn(),
     fontFiles: vi.fn(),
@@ -36,6 +37,7 @@ beforeEach(() => {
   vi.mocked(themeClient.usage).mockResolvedValue([] as never)
   vi.mocked(themeClient.generateStatus).mockResolvedValue({ running: true, step: 'Reading acme.com…' } as never)
   vi.mocked(themeClient.fontFiles).mockResolvedValue([] as never)
+  vi.mocked(themeClient.compliance).mockResolvedValue([] as never)
 })
 
 describe('the theme library', () => {
@@ -118,6 +120,32 @@ describe('editing a theme', () => {
     await userEvent.click(screen.getByRole('button', { name: /Save theme/ }))
 
     expect(themeClient.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Acme' }), '/drafts/x')
+  })
+
+  it('offers a light-background and a dark-background logo', () => {
+    render(<ThemeEditor initial={defaultThemeDraft('Acme')} stagingDir="/drafts/x" onDone={() => {}} />)
+
+    expect(screen.getByLabelText(/Logo for light backgrounds/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Logo for dark backgrounds/)).toBeInTheDocument()
+  })
+
+  it('lists the brand-check warnings it is told about', async () => {
+    vi.mocked(themeClient.compliance).mockResolvedValue([
+      { severity: 'warn', group: 'variants.light', message: 'light body (#f0f0f0) is hard to read on #ffffff.' }
+    ] as never)
+    render(<ThemeEditor initial={defaultThemeDraft('Acme')} themeId="t1" onDone={() => {}} />)
+
+    expect(await screen.findByText(/hard to read on #ffffff/)).toBeInTheDocument()
+  })
+
+  it('freezes the colours when they are locked', async () => {
+    render(<ThemeEditor initial={defaultThemeDraft('Acme')} themeId="t1" onDone={() => {}} />)
+
+    const coloursHeading = screen.getByRole('heading', { name: 'Colours' })
+    const section = coloursHeading.closest('section')!
+    await userEvent.click(within(section).getByRole('button', { name: /Lock/ }))
+
+    expect(within(section).getByLabelText('Brand background colour')).toBeDisabled()
   })
 
   describe('the company’s own fonts', () => {

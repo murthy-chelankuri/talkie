@@ -66,7 +66,8 @@ import {
 } from '../main/themes/themeApi'
 import { describeFace } from '../main/themes/fontFace'
 import { isBuiltinThemeId } from '../main/themes/builtinThemes'
-import { BUILTIN_FONTS, LOGO_CORNERS, ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type FontChoice, type Theme } from '../main/themes/schema'
+import { BUILTIN_FONTS, LOCK_KEYS, LOGO_CORNERS, ThemeDraftSchema, VARIANT_IDS, defaultThemeDraft, type FontChoice, type Theme, type ThemeDraft } from '../main/themes/schema'
+import { checkCompliance } from '../main/themes/compliance'
 import { resolveFonts } from '../main/themes/generate/resolveFonts'
 import { readSettings } from '../main/settings/settingsStore'
 import { allVoices, engineOfVoice, speechEngine } from '../main/tts/engineRegistry'
@@ -480,7 +481,7 @@ export function createTalkieServer(
     probe.fonts[role] = { family: wanted.family, source: 'google', files: [] }
     const resolved = await resolveFonts(probe, {})
     for (const file of resolved.files.filter((f) => f.role === role)) {
-      writeThemeAsset(themeId, 'font', basename(file.fileName), file.bytes, baseDir)
+      writeThemeAsset(themeId, 'font', '', basename(file.fileName), file.bytes, baseDir)
     }
     notes.push(...resolved.notes)
     return resolved.draft.fonts[role]
@@ -495,6 +496,26 @@ export function createTalkieServer(
     return `${choice.family} (the company's own: ${faces.map((face) => (face.variable ? `${face.face}, every weight` : describeFace(face.weight, face.italic))).join(', ') || 'files missing'})`
   }
 
+  const describeLogo = (theme: Theme): string => {
+    const logo = theme.logo
+    if (!logo) return 'none'
+    const slots = [logo.light ? `light ${logo.light.file}` : '', logo.dark ? `dark ${logo.dark.file}` : ''].filter(Boolean)
+    return slots.length ? `${slots.join(', ')}; ${logo.corner}` : 'none'
+  }
+
+  const describeBackgrounds = (theme: Theme): string => {
+    const backgrounds = theme.backgrounds
+    if (!backgrounds) return ''
+    const parts: string[] = []
+    for (const ctx of ['card', 'content'] as const) {
+      for (const id of VARIANT_IDS) {
+        const entry = backgrounds[ctx]?.[id]
+        if (entry) parts.push(`${ctx} ${id} ${entry.file} (${entry.fit}, scrim ${entry.scrim})`)
+      }
+    }
+    return parts.join(', ')
+  }
+
   const describeTheme = (theme: Theme): string =>
     [
       `${theme.name} (theme id ${theme.id})`,
@@ -506,7 +527,10 @@ export function createTalkieServer(
         return `${id}: background ${v.background}, heading ${v.heading}, body ${v.body}, accent ${v.accent}`
       }),
       `Fonts: ${describeFont(theme, 'heading')} for headings, ${describeFont(theme, 'body')} for text`,
-      `Logo: ${theme.logo ? `${theme.logo.file}, ${theme.logo.corner}` : 'none'}`,
+      `Logo: ${describeLogo(theme)}`,
+      ...(describeBackgrounds(theme) ? [`Backgrounds: ${describeBackgrounds(theme)}`] : []),
+      ...(theme.brand?.palette?.length ? [`Palette: ${theme.brand.palette.map((p) => `${p.name} ${p.hex}`).join(', ')}`] : []),
+      ...(theme.locks?.length ? [`Locked: ${theme.locks.join(', ')}`] : []),
       `Click highlight ${theme.overlays.highlight}; captions in the ${theme.overlays.caption} variant`,
       ...(theme.provenance?.notes.length ? ['Notes from when it was made:', ...theme.provenance.notes.map((n) => `  - ${n}`)] : [])
     ]
@@ -542,8 +566,11 @@ export function createTalkieServer(
       annotations: { readOnlyHint: true }
     },
     async ({ themeId }) => {
+      const theme = readTheme(themeId, baseDir)
       const using = projectsUsingTheme(themeId, baseDir).map((p) => p.name)
-      return text(`${describeTheme(readTheme(themeId, baseDir))}\nUsed by: ${using.join(', ') || 'no project'}`)
+      const warnings = checkCompliance(theme).map((w) => `  - ${w.message}`)
+      const brand = warnings.length ? `\nBrand check:\n${warnings.join('\n')}` : ''
+      return text(`${describeTheme(theme)}\nUsed by: ${using.join(', ') || 'no project'}${brand}`)
     }
   )
 
@@ -566,16 +593,20 @@ export function createTalkieServer(
           .string()
           .optional()
           .describe('An absolute path to the company\'s logo (svg, png, jpg, webp) or a PDF of its brand guidelines'),
+        folder: z
+          .string()
+          .optional()
+          .describe('An absolute path to a local brand folder — fonts, logos, imagery and guide docs are read from it'),
         company: z.string().optional(),
         tagline: z.string().optional(),
         website: z.string().optional()
       }
     },
-    async ({ name, url, description, file, company, tagline, website }) => {
+    async ({ name, url, description, file, folder, company, tagline, website }) => {
       let theme: Theme
-      if (url || description || file) {
+      if (url || description || file || folder) {
         const { draft, stagingDir } = await generateTheme(
-          { name, url, description, ...(file ? { file: readLocalFile(file) } : {}) },
+          { name, url, description, folder, ...(file ? { file: readLocalFile(file) } : {}) },
           { baseDir }
         )
         theme = saveGeneratedTheme(
@@ -595,9 +626,11 @@ export function createTalkieServer(
     {
       title: 'Change a theme',
       description:
-        'Change some of a theme — colours, fonts, logo, words, overlays. Only what is given changes. ' +
-          'Built-in themes cannot be changed; duplicate one first. Every project using the theme follows ' +
-        'the change; colours are checked for readability and adjusted if they would be hard to read.',
+        'Change some of a theme — colours, fonts, logo, backgrounds, palette, words, overlays, locks. ' +
+          'Only what is given changes. Built-in themes cannot be changed; duplicate one first. A locked ' +
+          'group is left as it is and the change is refused with a note — unlock it first. Every project ' +
+          'using the theme follows the change; colours are checked for readability and adjusted if they ' +
+          'would be hard to read, unless their variant is locked.',
       inputSchema: {
         themeId: z.string(),
         name: z.string().optional(),
@@ -611,48 +644,108 @@ export function createTalkieServer(
         caption: z.enum(VARIANT_IDS).optional().describe('Which variant the caption bar is drawn in'),
         headingFont: FontInput.optional().describe('The family for titles. ' + FONT_HELP),
         bodyFont: FontInput.optional().describe('The family for text. ' + FONT_HELP),
-        logo: z
+        logos: z
           .object({
-            path: z.string().optional().describe('An absolute path to an svg, png, jpg or webp, under 2 MB'),
+            light: z.string().optional().describe('Absolute path to the logo for light backgrounds (dark ink), under 2 MB'),
+            dark: z.string().optional().describe('Absolute path to the logo for dark backgrounds (light ink), under 2 MB'),
             corner: z.enum(LOGO_CORNERS).optional(),
             onRecordings: z.boolean().optional(),
             onSlides: z.boolean().optional(),
+            clearSpace: z.number().optional().describe('Multiples of logo height kept clear around it'),
+            minHeight: z.number().optional().describe('px; below this the logo is too small to show'),
             remove: z.boolean().optional().describe('Take the logo off the theme')
           })
+          .optional(),
+        backgrounds: z
+          .array(
+            z.object({
+              context: z.enum(['card', 'content']),
+              variant: z.enum(VARIANT_IDS),
+              path: z.string().describe('Absolute path to an image under 12 MB, stored verbatim'),
+              fit: z.enum(['cover', 'contain', 'tile']).optional(),
+              scrim: z.number().min(0).max(1).optional()
+            })
+          )
           .optional()
+          .describe('Background images per surface; kept at full quality'),
+        palette: z.array(z.object({ name: z.string(), hex: z.string() })).optional().describe('The brand palette, for the off-palette check'),
+        locks: z.array(z.enum(LOCK_KEYS)).optional().describe('Groups to freeze from automation and edits')
       }
     },
-    async ({ themeId, name, company, tagline, website, brand, light, dark, highlight, caption, headingFont, bodyFont, logo }) => {
+    async ({ themeId, name, company, tagline, website, brand, light, dark, highlight, caption, headingFont, bodyFont, logos, backgrounds, palette, locks }) => {
       const current = readTheme(themeId, baseDir)
       if (isBuiltinThemeId(themeId)) {
         return text(`${current.name} is built into Talkie and cannot be changed. talkie_duplicate_theme makes a copy that can.`)
       }
       const notes: string[] = []
 
-      // Files first, so a refusal — a built-in theme, a file that is not a picture — leaves the
-      // theme as it was rather than half-changed.
+      // A locked group is frozen: the change is refused with a note rather than applied, as the
+      // editor disables it. Gated on the theme's current locks, so unlocking and changing a group
+      // are two calls — the same one-step-at-a-time model a person follows.
+      const held = current.locks ?? []
+      const rejected: string[] = []
+      const guard = <T>(key: (typeof LOCK_KEYS)[number], value: T | undefined): T | undefined => {
+        if (value !== undefined && held.includes(key)) {
+          rejected.push(key)
+          return undefined
+        }
+        return value
+      }
+      brand = guard('variants.brand', brand)
+      light = guard('variants.light', light)
+      dark = guard('variants.dark', dark)
+      headingFont = guard('fonts.heading', headingFont)
+      bodyFont = guard('fonts.body', bodyFont)
+      logos = guard('logo', logos)
+      backgrounds = guard('backgrounds', backgrounds)
+
+      // Files first, so a refusal — a file that is not a picture — leaves the theme as it was.
       const fonts = { ...current.fonts }
       for (const [role, wanted] of [['heading', headingFont], ['body', bodyFont]] as const) {
         if (!wanted) continue
-        const chosen = await chooseFont(themeId, role, wanted, notes)
-        fonts[role] = chosen
+        fonts[role] = await chooseFont(themeId, role, wanted, notes)
       }
+
       let nextLogo = current.logo
-      if (logo?.remove) nextLogo = undefined
-      else if (logo) {
-        const picked = logo.path ? readLocalFile(logo.path) : undefined
-        const file = picked ? writeThemeAsset(themeId, 'logo', picked.fileName, picked.bytes, baseDir) : current.logo?.file
-        if (!file) return text('That theme has no logo yet, so give a path to one.')
+      if (logos?.remove) nextLogo = undefined
+      else if (logos) {
+        const slot = (path: string | undefined, which: 'light' | 'dark'): { file: string } | undefined => {
+          if (!path) return current.logo?.[which]
+          const picked = readLocalFile(path)
+          return { file: writeThemeAsset(themeId, 'logo', which, picked.fileName, picked.bytes, baseDir) }
+        }
+        const lightSlot = slot(logos.light, 'light')
+        const darkSlot = slot(logos.dark, 'dark')
+        if (!lightSlot && !darkSlot) return text('That theme has no logo yet, so give a path to a light or dark one.')
         nextLogo = {
-          file,
-          corner: logo.corner ?? current.logo?.corner ?? 'bottom-right',
+          ...(lightSlot ? { light: lightSlot } : {}),
+          ...(darkSlot ? { dark: darkSlot } : {}),
+          corner: logos.corner ?? current.logo?.corner ?? 'bottom-right',
           showOn: {
-            recordings: logo.onRecordings ?? current.logo?.showOn.recordings ?? true,
-            slides: logo.onSlides ?? current.logo?.showOn.slides ?? true
-          }
+            recordings: logos.onRecordings ?? current.logo?.showOn.recordings ?? true,
+            slides: logos.onSlides ?? current.logo?.showOn.slides ?? true
+          },
+          ...(logos.clearSpace ?? current.logo?.clearSpace ? { clearSpace: logos.clearSpace ?? current.logo?.clearSpace } : {}),
+          ...(logos.minHeight ?? current.logo?.minHeight ? { minHeight: logos.minHeight ?? current.logo?.minHeight } : {})
         }
       }
 
+      // Backgrounds merge over the current ones, each written verbatim into its surface's slot.
+      let nextBackgrounds = current.backgrounds
+      if (backgrounds?.length) {
+        const merged: NonNullable<ThemeDraft['backgrounds']> = JSON.parse(JSON.stringify(current.backgrounds ?? {}))
+        for (const entry of backgrounds) {
+          const picked = readLocalFile(entry.path)
+          const file = writeThemeAsset(themeId, 'background', `${entry.context}-${entry.variant}`, picked.fileName, picked.bytes, baseDir)
+          merged[entry.context] = {
+            ...merged[entry.context],
+            [entry.variant]: { file, fit: entry.fit ?? 'cover', scrim: entry.scrim ?? 0.35 }
+          }
+        }
+        nextBackgrounds = merged
+      }
+
+      const nextLocks = locks ?? current.locks
       const fixed = fixContrast(
         ThemeDraftSchema.parse({
           ...current,
@@ -670,10 +763,15 @@ export function createTalkieServer(
             caption: caption ?? current.overlays.caption
           },
           fonts,
-          logo: nextLogo
-        })
+          logo: nextLogo,
+          backgrounds: nextBackgrounds,
+          ...(palette ? { brand: { palette } } : {}),
+          ...(nextLocks ? { locks: nextLocks } : {})
+        }),
+        nextLocks ?? []
       )
-      notes.push(...fixed.notes)
+      notes.push(...fixed.notes, ...fixed.unresolved)
+      if (rejected.length) notes.unshift(`Locked and left unchanged: ${rejected.join(', ')}. Unlock them (locks) to change them.`)
       const theme = updateTheme(themeId, fixed.draft, baseDir)
       return text(`Changed.${notes.length ? `\n${notes.join('\n')}` : ''}\n${describeTheme(theme)}`)
     }
