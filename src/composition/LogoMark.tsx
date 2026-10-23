@@ -12,17 +12,19 @@ import { logoPlate, readLogoColours, type LogoColours } from './logoLegibility'
  */
 export function LogoMark({
   theme,
+  url,
   height,
   maxWidth,
   background
 }: {
-  theme: RenderTheme & { logo: NonNullable<RenderTheme['logo']> }
+  theme: RenderTheme
+  /** The logo chosen for this surface — see logoUrlFor, which picks the light or dark mark. */
+  url: string
   height: number
   maxWidth: number
   /** What it sits on, when that is known — not over a recording, which is footage of anything. */
   background?: string
 }): JSX.Element {
-  const url = theme.logo.url
   const [colours, setColours] = useState<LogoColours | null | undefined>(undefined)
 
   useEffect(() => {

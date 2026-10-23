@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useVideoConfig } from '../video'
-import { useRenderTheme, type RenderTheme } from './renderTheme'
+import { useRenderTheme, logoUrlFor, type RenderTheme } from './renderTheme'
 import { resolveSceneTheme } from './sceneTheme'
 import { LogoMark } from './LogoMark'
 import type { SceneStyle } from '../main/project/timeline/schema'
@@ -37,10 +37,12 @@ export function LogoOverlay({ kind, data }: { kind: string; data: unknown }): JS
   // A slide's ground is known; a recording's is whatever was on screen, so it is left alone.
   const isSlide = kind === 'scene' || kind === 'diagram' || kind === 'html'
   const background = isSlide ? resolveSceneTheme((data as { style?: SceneStyle } | null)?.style, theme).background : undefined
+  const url = logoUrlFor(theme, background)
+  if (!url) return null
 
   return (
     <div style={{ position: 'absolute', ...placement, pointerEvents: 'none' }}>
-      <LogoMark theme={{ ...theme, logo: theme.logo }} height={Math.round(height * 0.06)} maxWidth={Math.round(width * 0.18)} background={background} />
+      <LogoMark theme={theme} url={url} height={Math.round(height * 0.06)} maxWidth={Math.round(width * 0.18)} background={background} />
     </div>
   )
 }

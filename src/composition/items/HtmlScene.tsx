@@ -7,6 +7,8 @@ interface HtmlSceneProps {
   src: string
   title: string
   style?: { theme?: 'brand' | 'light' | 'dark' }
+  /** One of a theme's opening/closing cards, if it is one — so it draws on the card background. */
+  card?: 'opening' | 'closing'
   params?: Record<string, unknown>
   beats?: { at: number }[]
 }
@@ -40,7 +42,7 @@ export function HtmlScene({ data }: { data: unknown }): JSX.Element {
   const theme = useRenderTheme()
   const variant = scene.style?.theme ?? 'dark'
   // No theme means Talkie's own look, as it does for slides — never no look at all.
-  const sceneTheme: SceneTheme = sceneThemeOf(theme, variant)
+  const sceneTheme: SceneTheme = sceneThemeOf(theme, variant, scene.card ? 'card' : 'content')
   const rendering = useRenderMode() === 'export'
 
   const ref = useRef<HTMLIFrameElement>(null)
