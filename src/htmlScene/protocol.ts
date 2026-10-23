@@ -3,8 +3,9 @@
  * and the export, or the headless host the check uses. Plain data: both sides are sandboxed from
  * each other and talk only through postMessage.
  */
-import type { RenderTheme } from '../composition/renderTheme'
+import { logoUrlFor, type RenderTheme } from '../composition/renderTheme'
 import { plateGrounds } from '../composition/logoLegibility'
+import { backgroundFor } from '../composition/backgroundFor'
 
 /** The colours of the scene's look, its fonts as data URLs, and its logo — see toRenderTheme.ts. */
 export interface SceneTheme {
@@ -24,6 +25,8 @@ export interface SceneTheme {
   website?: string
   /** What the logo may be plated on where the scene's own ground would swallow it, best first. */
   plates?: string[]
+  /** The background image behind this scene, with its fit and scrim; absent for a scene with none. */
+  bgImage?: { url: string; fit: 'cover' | 'contain' | 'tile'; scrim: number }
   /**
    * The plate the logo needs on this scene's ground, or null where it reads as it is. Worked out by
    * the runtime from the logo itself; hosts never send it.
@@ -89,12 +92,19 @@ export function isSceneMessage(value: unknown): value is SceneMessage {
  * The theme a scene is handed for its look, from the project's — one function for the composition
  * and the check, so a poster and the video never disagree. No theme means Talkie's own look.
  */
-export function sceneThemeOf(theme: RenderTheme | null, variant: 'brand' | 'light' | 'dark'): SceneTheme {
+export function sceneThemeOf(
+  theme: RenderTheme | null,
+  variant: 'brand' | 'light' | 'dark',
+  context: 'card' | 'content' = 'content'
+): SceneTheme {
   if (!theme) return DEFAULT_SCENE_THEMES[variant]
+  const logo = logoUrlFor(theme, theme.variants[variant].background)
+  const bgImage = backgroundFor(theme, context, variant)
   return {
     ...theme.variants[variant],
     fonts: theme.fonts,
-    ...(theme.logo ? { logo: theme.logo.url, plates: plateGrounds(theme) } : {}),
+    ...(logo ? { logo, plates: plateGrounds(theme) } : {}),
+    ...(bgImage ? { bgImage } : {}),
     ...(theme.company ? { company: theme.company } : {}),
     ...(theme.tagline ? { tagline: theme.tagline } : {}),
     ...(theme.website ? { website: theme.website } : {})

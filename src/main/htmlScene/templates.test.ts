@@ -64,7 +64,9 @@ describe('the cards a theme puts at either end', () => {
 
   function acme(logoColour?: string) {
     const theme = { ...renderThemeFrom(BUILTIN_THEMES.find((t) => t.id === 'builtin-midnight')!, undefined), company: 'Acme', tagline: 'Payments, simply', website: 'acme.example' }
-    return logoColour ? { ...theme, logo: { url: brandLogo(logoColour), corner: 'top-right' as const, showOn: { recordings: false, slides: true } } } : theme
+    return logoColour
+      ? { ...theme, logo: { light: brandLogo(logoColour), dark: brandLogo(logoColour), corner: 'top-right' as const, showOn: { recordings: false, slides: true } } }
+      : theme
   }
 
   async function poster(id: string, theme: ReturnType<typeof acme>, params: Record<string, unknown>) {
