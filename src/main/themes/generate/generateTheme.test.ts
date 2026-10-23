@@ -50,8 +50,8 @@ describe('making a theme', () => {
     const { draft, stagingDir } = await generateTheme({ name: 'Acme', url: 'acme.com' }, deps())
 
     expect(draft.variants.brand.background).toBe('#635bff')
-    expect(draft.logo?.file).toBe('logo.svg')
-    expect(existsSync(join(stagingDir, 'logo.svg'))).toBe(true)
+    expect(draft.logo?.light?.file).toBe('logos/light.svg')
+    expect(existsSync(join(stagingDir, 'logos/light.svg'))).toBe(true)
     expect(ownThemes(baseDir)).toEqual([])
   })
 
@@ -102,7 +102,7 @@ describe('saving a made theme', () => {
     const theme = saveGeneratedTheme(draft, stagingDir, baseDir)
 
     expect(ownThemes(baseDir).map((t) => t.id)).toEqual([theme.id])
-    expect(readdirSync(findThemeDir(theme.id, baseDir) as string)).toContain('logo.svg')
+    expect(readdirSync(join(findThemeDir(theme.id, baseDir) as string, 'logos'))).toContain('light.svg')
     expect(existsSync(stagingDir)).toBe(false)
   })
 })
