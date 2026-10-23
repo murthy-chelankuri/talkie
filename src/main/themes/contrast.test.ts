@@ -53,3 +53,27 @@ describe('making a theme readable', () => {
     expect(notes).toEqual([])
   })
 })
+
+describe('respecting locks', () => {
+  const unreadable = () => {
+    const draft = defaultThemeDraft('Acme')
+    draft.variants.light = { background: '#ffffff', heading: '#eeeeee', body: '#dddddd', accent: '#eeeeee' }
+    return draft
+  }
+
+  it('fixes an unlocked variant and leaves nothing unresolved', () => {
+    const { draft, unresolved } = fixContrast(unreadable())
+    expect(draft.variants.light.body).not.toBe('#dddddd')
+    expect(unresolved).toEqual([])
+  })
+
+  it('leaves a locked variant untouched and reports it as unresolved', () => {
+    const { draft, unresolved } = fixContrast(unreadable(), ['variants.light'])
+    expect(draft.variants.light.body).toBe('#dddddd')
+    expect(unresolved.some((u) => /light/.test(u))).toBe(true)
+  })
+
+  it('still returns an empty unresolved when nothing is locked', () => {
+    expect(fixContrast(defaultThemeDraft('Acme')).unresolved).toEqual([])
+  })
+})

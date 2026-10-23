@@ -1,4 +1,4 @@
-import type { ThemeDraft, VariantId } from './schema'
+import type { LockKey, ThemeDraft, VariantId } from './schema'
 import { VARIANT_IDS } from './schema'
 
 /**
@@ -80,26 +80,34 @@ function readableAgainst(colour: string, background: string, minimum: number): s
   return towardsDark ? '#000000' : '#ffffff'
 }
 
-export function fixContrast(draft: ThemeDraft): { draft: ThemeDraft; notes: string[] } {
+/**
+ * A locked variant is left exactly as it is — automation never moves a group a person has frozen —
+ * so a role of it still below the floor is reported as `unresolved` rather than changed. Called
+ * with no locks, nothing is locked and `unresolved` is empty, which is how it behaved before locks.
+ */
+export function fixContrast(draft: ThemeDraft, locks: LockKey[] = []): { draft: ThemeDraft; notes: string[]; unresolved: string[] } {
   const notes: string[] = []
+  const unresolved: string[] = []
   const variants = { ...draft.variants }
 
   for (const id of VARIANT_IDS as readonly VariantId[]) {
+    const locked = locks.includes(`variants.${id}` as LockKey)
     const variant = { ...variants[id] }
     for (const role of ['heading', 'body', 'accent'] as const) {
       const before = variant[role]
       const after = readableAgainst(before, variant.background, MINIMUM[role])
-      if (after !== before) {
-        variant[role] = after
-        notes.push(
-          `${id} ${role}: ${before} was hard to read on ${variant.background}, so it was changed to ${after}.`
-        )
+      if (after === before) continue
+      if (locked) {
+        unresolved.push(`${id} ${role} (${before}) is hard to read on ${variant.background}, but ${id} is locked, so it was left as it is.`)
+        continue
       }
+      variant[role] = after
+      notes.push(`${id} ${role}: ${before} was hard to read on ${variant.background}, so it was changed to ${after}.`)
     }
     variants[id] = variant
   }
 
-  return notes.length === 0 ? { draft, notes } : { draft: { ...draft, variants }, notes }
+  return notes.length === 0 ? { draft, notes, unresolved } : { draft: { ...draft, variants }, notes, unresolved }
 }
 
 /** How far a colour is from grey, 0 to 1 — HSL saturation, enough to tell a brand colour from a neutral. */
