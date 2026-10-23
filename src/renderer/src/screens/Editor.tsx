@@ -36,7 +36,6 @@ import { ResizeHandle, useResizableWidth } from '../components/editor/ResizeHand
 import { ProjectPanel } from '../components/editor/ProjectPanel'
 import { AddPanel } from '../components/editor/AddPanel'
 import { VoicePanel } from '../components/editor/VoicePanel'
-import { exampleVoiceNote } from '../lib/exampleVoice'
 import { ExportControl, type ExportState } from '../components/editor/ExportControl'
 import { Inspector } from '../components/editor/Inspector'
 import { useScriptFocus } from '../components/editor/useScriptFocus'
@@ -112,7 +111,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
   const [draftingItemId, setDraftingItemId] = useState<string | null>(null)
   const [draftingAll, setDraftingAll] = useState(false)
   const [appVoice, setAppVoice] = useState('')
-  const [appEngine, setAppEngine] = useState('')
   const [voices, setVoices] = useState<Voice[]>([])
   const [editingContext, setEditingContext] = useState(false)
   const [importingDeck, setImportingDeck] = useState(false)
@@ -379,7 +377,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
     const load = (): void => {
       void settingsClient.read().then((settings) => {
         setAppVoice(settings.speech.voice)
-        setAppEngine(settings.speech.engine)
       })
       // Every voice a project can be read in, from every engine that is ready. Read again with the
       // settings, since a Kokoro download makes its voices ready: read once on opening, the list
@@ -1188,7 +1185,6 @@ export function Editor({ projectId }: { projectId: string }): JSX.Element {
               segments={segments}
               progress={progress}
               themeName={renderTheme ? renderTheme.company || 'This project’s theme' : null}
-              note={exampleVoiceNote({ example: project?.example, engine: appEngine, otherVoiceClips: progress.otherVoice.length })}
               playheadFrame={() => editPlayerRef.current?.getCurrentFrame() ?? 0}
               busy={{
                 narrating: narratingItemId === selectedItemId,

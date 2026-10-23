@@ -39,9 +39,9 @@ describe('settings store', () => {
     expect(readSettings(baseDir).narration.provider).toBe('local')
   })
 
-  it('moves a voice from an engine that is gone onto the built-in voices, keeping everything else', () => {
-    // OpenAI and Azure voices were offered by an earlier build. A file still naming one must not
-    // be thrown out whole, which is what an invalid file is.
+  it('moves a voice from an engine that is gone onto Kokoro, keeping everything else', () => {
+    // OpenAI, Azure and the macOS `say` voices were offered by earlier builds. A file still naming
+    // one must not be thrown out whole, which is what an invalid file is.
     mkdirSync(join(baseDir, 'Talkie'), { recursive: true })
     writeFileSync(
       settingsPath(baseDir),
@@ -53,8 +53,8 @@ describe('settings store', () => {
 
     const settings = readSettings(baseDir)
 
-    expect(settings.speech.engine).toBe('system')
-    expect(settings.speech.voice).toBe('Samantha')
+    expect(settings.speech.engine).toBe('kokoro')
+    expect(settings.speech.voice).toBe('af_heart')
     expect(settings.speech.pace).toBe(150)
     expect(settings.narration.provider).toBe('claude-cli')
   })

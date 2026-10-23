@@ -2,124 +2,36 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 
 import { readSettings } from '../settings/settingsStore'
-import { toSpokenMarkup } from './prosody'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { unlinkSync } from 'fs'
 
 const execFileAsync = promisify(execFile)
 
-export interface Voice {
-  /** The name `say -v` expects, which is also what is stored in settings. */
-  name: string
-  /** BCP-ish locale as macOS reports it, e.g. `en_US`. */
-  locale: string
-  /** The voice speaking its own name, useful as preview text. */
-  sample: string
-  /** A joke voice rather than a narrator — offered, but sorted last. */
-  novelty: boolean
-  /** Which engine reads it, where voices from more than one are listed together. */
-  engine?: 'system' | 'kokoro'
-}
+// The voice list used to be read from `say -v`; with Kokoro the only engine the voices are a
+// fixed set the engine names itself (see kokoroTtsProvider). The shared type lives with the
+// provider interface; it is re-exported here because the renderer and preload reach it through
+// this module.
+export type { Voice } from './ttsProvider'
 
-/**
- * Voices that exist for novelty rather than for reading anything aloud. They are still offered,
- * just not among the first things someone scrolling for a narrator has to wade through.
- */
-const NOVELTY_VOICES = new Set([
-  'Albert',
-  'Bad News',
-  'Bahh',
-  'Bells',
-  'Boing',
-  'Bubbles',
-  'Cellos',
-  'Good News',
-  'Jester',
-  'Organ',
-  'Superstar',
-  'Trinoids',
-  'Whisper',
-  'Wobble',
-  'Zarvox'
-])
-
-export function isNoveltyVoice(name: string): boolean {
-  return NOVELTY_VOICES.has(name)
-}
-
-/**
- * Parse the table `say -v '?'` prints.
- *
- * Names are not a single word — `Eddy (German (Germany))` is one voice — and they are separated
- * from the locale by a single space in some rows and many in others, so the locale itself is
- * what the line is split on.
- *
- * macOS 27 lists a handful of voices twice under one name — the Siri variant of Samantha, Daniel,
- * Moira, Aman, Rishi and Tara — differing only in the sample line. `say -v` cannot tell them
- * apart either, so a second row is not a second choice: it is a duplicate option in the picker
- * and a repeated React key. The first row of a name and locale wins.
- */
-export function parseVoiceList(raw: string): Voice[] {
-  const voices: Voice[] = []
-  const seen = new Set<string>()
-
-  for (const line of raw.split('\n')) {
-    const match = line.match(/^(.*?)\s+([a-z]{2,3}(?:_[A-Z]{2})?)\s+#\s?(.*)$/)
-    if (!match) continue
-
-    const [, rawName, locale, sample] = match
-    const name = rawName.trim()
-    if (!name) continue
-
-    const key = `${name}\u0000${locale}`
-    if (seen.has(key)) continue
-    seen.add(key)
-
-    voices.push({ name, locale, sample: sample.trim(), novelty: isNoveltyVoice(name) })
-  }
-
-  return voices
-}
-
-export async function listVoices(): Promise<Voice[]> {
-  try {
-    const { stdout } = await execFileAsync('say', ['-v', '?'], { maxBuffer: 4 * 1024 * 1024 })
-    return parseVoiceList(stdout)
-  } catch (err) {
-    console.error('Could not list the installed voices:', err)
-    return []
-  }
-}
-
-/**
- * Speak a short line so the user can hear a voice before choosing it — with the same pacing and
- * pauses the narration will use, otherwise the preview is not what they will get.
- */
 /**
  * Hear a voice before committing a project to it.
  *
- * A cloud engine has no way to play audio of its own, so its preview is synthesised to a scratch
- * file and played by the system — the same words through the same engine that will read the
- * narration, which is the only preview worth having.
+ * Kokoro has no way to play audio of its own, so its preview is synthesised to a scratch file and
+ * played by the system — the same words through the same engine that will read the narration,
+ * which is the only preview worth having.
  */
 export async function previewVoice(name: string, text: string): Promise<void> {
   const speech = readSettings().speech
   const { engineOfVoice, speechEngine } = await import('./engineRegistry')
   // Heard in the engine that will read it, which the voice says — not the app's: a project's own
-  // picker offers both engines' voices.
+  // picker offers the voice it is set to.
   const engine = engineOfVoice(name)
   const options = {
     voice: name,
     pace: speech.pace,
     sentencePauseMs: speech.sentencePauseMs,
     clausePauseMs: speech.clausePauseMs
-  }
-
-  if (engine === 'system') {
-    const spoken = toSpokenMarkup(text, options)
-    await execFileAsync('say', ['-v', name, spoken || text], { timeout: 30_000 })
-    return
   }
 
   const scratch = join(tmpdir(), `talkie-preview-${Date.now()}.wav`)

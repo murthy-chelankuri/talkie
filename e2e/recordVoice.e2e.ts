@@ -38,7 +38,7 @@ describe('recording narration in your own voice', () => {
     const mic = join(micDir, 'room.wav')
     await writeRoomyTake(mic, 0.04)
 
-    fixture = makeFixture('system')
+    fixture = makeFixture()
     talkie = await launchTalkie(fixture, {
       // The sandbox, here only: the fake microphone reads its file from inside the sandboxed
       // process, which Chromium refuses ("Try disabling the sandbox"), and it records silence.

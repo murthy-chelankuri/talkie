@@ -529,48 +529,22 @@ function VoiceSection({
   onReset: () => void | Promise<void>
   onEnginesChanged: () => void | Promise<void>
 }): JSX.Element {
+  // Kokoro is the only engine; its one missing piece is the one-time download, offered here when
+  // it is not yet on disk rather than reported as an error.
+  const kokoro = engines.find((engine) => engine.id === 'kokoro')
   return (
     <div className="flex flex-col gap-6">
-      <Field label="Which voice reads it" hint="Both run on this Mac. Narration never leaves it.">
-        <div className="flex flex-col gap-1.5">
-          {engines.map((engine) => {
-            // Kokoro's only missing piece is its download, which is offered rather than reported.
-            const needsDownload = engine.id === 'kokoro' && !engine.available
-            return (
-              <div
-                key={engine.id}
-                className={cn(
-                  'rounded-lg border transition-colors',
-                  settings.speech.engine === engine.id
-                    ? 'border-accent bg-bg'
-                    : 'border-border hover:border-text-muted/40'
-                )}
-              >
-                <label className="flex cursor-pointer items-start gap-3 px-3.5 py-3">
-                  <input
-                    type="radio"
-                    name="speech-engine"
-                    className="mt-1 accent-accent"
-                    checked={settings.speech.engine === engine.id}
-                    onChange={() => void onPatch({ engine: engine.id })}
-                  />
-                  <span className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-[13px] text-text">{engine.label}</span>
-                    <span className="text-[11px] leading-relaxed text-text-muted">{engine.description}</span>
-                    {!engine.available && engine.reason && !needsDownload && (
-                      <span className="flex items-start gap-1.5 text-[11px] leading-relaxed text-danger">
-                        <TriangleAlert size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
-                        {engine.reason}
-                      </span>
-                    )}
-                  </span>
-                </label>
-                {needsDownload && <KokoroDownloadRow reason={engine.reason} onReady={onEnginesChanged} />}
-              </div>
-            )
-          })}
-        </div>
-      </Field>
+      {kokoro && !kokoro.available && (
+        <Field label="Narration voice" hint="Kokoro reads it on this Mac. Narration never leaves it.">
+          <div className="rounded-lg border border-border">
+            <div className="flex flex-col gap-1 px-3.5 pt-3">
+              <span className="text-[13px] text-text">{kokoro.label}</span>
+              <span className="text-[11px] leading-relaxed text-text-muted">{kokoro.description}</span>
+            </div>
+            <KokoroDownloadRow reason={kokoro.reason} onReady={onEnginesChanged} />
+          </div>
+        </Field>
+      )}
 
       {/* A default rather than the answer: a project that has chosen a voice keeps it, which is
           what stops changing this from making finished work look unfinished. */}
@@ -590,7 +564,7 @@ function VoiceSection({
 
       <Field
         label="Delivery"
-        hint="Explaining runs slower than reading, and a real stop at a full stop is what keeps it from sounding recited."
+        hint="Explaining runs slower than reading. Kokoro shapes its own pauses, so pace is the one to set."
       >
         <div className="flex flex-col gap-4 rounded-lg bg-raised px-4 py-3.5">
           <Slider
@@ -602,16 +576,6 @@ function VoiceSection({
             step={5}
             current={settings.speech.pace}
             onChange={(pace) => onPatch({ pace })}
-          />
-          <Slider
-            label="Pause at a full stop"
-            value={`${(settings.speech.sentencePauseMs / 1000).toFixed(2)} seconds`}
-            ariaLabel="Pause between sentences"
-            min={0}
-            max={1200}
-            step={20}
-            current={settings.speech.sentencePauseMs}
-            onChange={(sentencePauseMs) => onPatch({ sentencePauseMs })}
           />
         </div>
       </Field>

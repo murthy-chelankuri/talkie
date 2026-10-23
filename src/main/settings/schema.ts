@@ -1,8 +1,5 @@
 import { z } from 'zod'
 
-/** Ships with every macOS and is known to produce real audio. */
-export const DEFAULT_VOICE = 'Samantha'
-
 /** Words per minute. Lower sounds like explaining; higher like reading out. */
 export const DEFAULT_PACE = 170
 
@@ -65,46 +62,48 @@ export const NarrationSettingsSchema = z.object({
 })
 
 /**
- * Engines that can read narration aloud, both on this machine. `system` needs nothing installed;
- * `kokoro` needs its server running and sounds much closer to a person.
+ * The engines that can read narration aloud. Kokoro is the only one now: a small open neural
+ * voice, built in, that reads close to a person. The macOS `say` voices it replaced sounded
+ * plainly synthetic, so they were dropped rather than kept as a lesser choice. The list stays an
+ * array, and the engine a setting, so a second engine — a Windows voice, say — can slot back in.
  */
-export const SPEECH_ENGINE_IDS = ['system', 'kokoro'] as const
+export const SPEECH_ENGINE_IDS = ['kokoro'] as const
+
+/** Kokoro's voices are named for their language and sex — af_heart, bm_george. */
+export const KOKORO_VOICE_NAME = /^[a-z][fm]_[a-z0-9_]+$/
+
+/** The voice Kokoro's own authors grade highest; the default for a fresh install. */
+export const DEFAULT_KOKORO_VOICE = 'af_heart'
 
 /**
- * Earlier builds could also speak through OpenAI and Azure. A settings file that still names one
- * would otherwise fail to parse — and an invalid file is replaced wholesale with defaults, which
- * would quietly cost someone every other setting they had. So the engine falls back to the
- * built-in voices, and the voice with it: "nova" means nothing to `say`.
+ * Engines earlier builds could speak through — OpenAI, Azure, and the macOS `say` voices
+ * (`system`) — and the voice names that went with them. A settings file that still names one would
+ * otherwise fail to parse, and an invalid file is replaced wholesale with defaults, which would
+ * quietly cost someone every other setting they had. So any of them falls back to Kokoro, and the
+ * voice with it: "nova" and "Samantha" mean nothing to Kokoro.
  */
 function withoutRemovedEngines(value: unknown): unknown {
   if (typeof value !== 'object' || value === null) return value
   const speech = value as Record<string, unknown>
-  // Only the engines that existed: anything else is still an invalid setting, not a migration.
-  if (speech.engine !== 'openai' && speech.engine !== 'azure') return value
-  return { ...speech, engine: 'system', voice: DEFAULT_VOICE }
+  // Only the engines that once existed: anything else is still an invalid setting, not a migration.
+  const removed = speech.engine === 'openai' || speech.engine === 'azure' || speech.engine === 'system'
+  if (!removed) return value
+  return { ...speech, engine: 'kokoro', voice: DEFAULT_KOKORO_VOICE }
 }
 
-/** Kokoro's voices are named for their language and sex — af_heart, bm_george — as no Mac voice is. */
-export const KOKORO_VOICE_NAME = /^[a-z][fm]_[a-z0-9_]+$/
-
-export const DEFAULT_KOKORO_VOICE = 'af_heart'
-
 /**
- * The app's voice is always one its engine has.
+ * The voice is always one its engine has.
  *
- * Changing the engine in Settings used to leave the voice behind: moved from Kokoro to the Mac's
- * voices, the app went on naming af_heart, every project following it was handed to `say` with a
- * voice it has never heard of, and the editor kept showing a Kokoro voice the app no longer used.
- * Settled here, where every write and every read passes, so a file already in that state reads
- * right too.
+ * With only Kokoro left, a stored Mac voice name — the app's own default before this, or a project
+ * it never left — is no voice Kokoro knows, so it reads in the default rather than failing every
+ * clip. Settled here, where every write and every read passes, so a file already in that state
+ * reads right too.
  */
 function voiceOfItsEngine(value: unknown): unknown {
   if (typeof value !== 'object' || value === null) return value
   const speech = value as Record<string, unknown>
   const voice = typeof speech.voice === 'string' ? speech.voice.trim() : ''
-  const isKokoro = KOKORO_VOICE_NAME.test(voice)
-  if (speech.engine === 'kokoro' && !isKokoro) return { ...speech, voice: DEFAULT_KOKORO_VOICE }
-  if (speech.engine !== 'kokoro' && isKokoro) return { ...speech, voice: DEFAULT_VOICE }
+  if (speech.engine === 'kokoro' && !KOKORO_VOICE_NAME.test(voice)) return { ...speech, voice: DEFAULT_KOKORO_VOICE }
   return value
 }
 
@@ -112,12 +111,9 @@ function voiceOfItsEngine(value: unknown): unknown {
 export const SpeechSettingsSchema = z.preprocess(
   (value) => voiceOfItsEngine(withoutRemovedEngines(value)),
   z.object({
-    /**
-     * Which engine speaks. The built-in voices are enough to hear whether the words work; a
-     * published video usually wants Kokoro.
-     */
-    engine: z.enum(SPEECH_ENGINE_IDS).default('system'),
-    voice: z.string().default(DEFAULT_VOICE),
+    /** Which engine speaks. Kokoro for now; kept a setting so another can be added later. */
+    engine: z.enum(SPEECH_ENGINE_IDS).default('kokoro'),
+    voice: z.string().default(DEFAULT_KOKORO_VOICE),
     /** Words per minute. Lower sounds like explaining; higher like reading out. */
     pace: z.number().min(90).max(300).default(DEFAULT_PACE),
     /** Silence at a full stop, in milliseconds. */

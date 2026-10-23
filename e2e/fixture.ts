@@ -11,7 +11,6 @@ import {
 import { h264, runFfmpeg } from '../src/main/media'
 import { updateSettings } from '../src/main/settings/settingsStore'
 import { isKokoroDownloaded, kokoroCacheDir } from '../src/main/tts/kokoro/kokoroModel'
-import type { SpeechEngineId } from '../src/main/settings/schema'
 import { addHtmlScene } from '../src/main/htmlScene/htmlSceneApi'
 import { templateFiles } from '../src/main/htmlScene/templates'
 import { projectsRootDir } from '../src/main/project/paths'
@@ -41,8 +40,16 @@ export type Fixture = { home: string; projectId: string; dispose: () => void }
  * The app reads everything from `~/Talkie`, so pointing HOME here is what keeps a run away from
  * the person's own projects and — more to the point — their settings, which hold API keys.
  */
-export function makeFixture(engine: SpeechEngineId = 'system'): Fixture {
-  return buildFixture(engine)
+/**
+ * Options for a fixture. Kokoro is the only speech engine now, so the choice that used to be
+ * "which engine" is "does this run borrow the downloaded voice". Off by default — that is a fresh
+ * install, the voice offered but not yet on disk, which is what the tests that are not about
+ * speaking want. A test that voices a scene turns it on and skips itself where there is no model.
+ */
+export type FixtureOptions = { kokoro?: boolean }
+
+export function makeFixture(options: FixtureOptions = {}): Fixture {
+  return buildFixture(options)
 }
 
 /**
@@ -50,7 +57,7 @@ export function makeFixture(engine: SpeechEngineId = 'system'): Fixture {
  * Async because a scene is checked in a headless browser before it is added.
  */
 export async function makeFixtureWithHtmlScene(): Promise<Fixture> {
-  const fixture = buildFixture('system')
+  const fixture = buildFixture({})
   await addHtmlScene(
     fixture.projectId,
     { title: 'Kinetic', files: templateFiles('kinetic-title') as Record<string, string>, params: { title: 'In a frame', subtitle: HTML_SCENE_SUBTITLE } },
@@ -72,7 +79,9 @@ export const CUT_FRAME = 90
  */
 export async function makeFixtureWithCut(): Promise<Fixture> {
   const home = mkdtempSync(join(tmpdir(), 'talkie-e2e-'))
-  updateSettings({ speech: { engine: 'system' }, narration: { autoDraft: false } }, home)
+  // The take here is a tone written straight to disk, not synthesised, so the engine setting is
+  // cosmetic — Kokoro, like the rest of the app, without borrowing the model.
+  updateSettings({ speech: { engine: 'kokoro' }, narration: { autoDraft: false } }, home)
   const project = createProject(PROJECT_NAME, home)
   const root = projectsRootDir(home)
   const dir = join(root, readdirSync(root).find((entry) => entry.startsWith(project.id))!)
@@ -91,16 +100,17 @@ export async function makeFixtureWithCut(): Promise<Fixture> {
   return { home, projectId: project.id, dispose: () => rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }) }
 }
 
-function buildFixture(engine: SpeechEngineId): Fixture {
+function buildFixture({ kokoro = false }: FixtureOptions): Fixture {
   const home = mkdtempSync(join(tmpdir(), 'talkie-e2e-'))
   updateSettings(
-    { speech: engine === 'kokoro' ? { engine, voice: KOKORO_VOICE } : { engine }, narration: { autoDraft: false } },
+    { speech: kokoro ? { engine: 'kokoro', voice: KOKORO_VOICE } : { engine: 'kokoro' }, narration: { autoDraft: false } },
     home
   )
 
-  // The Kokoro weights are hundreds of megabytes and pinned by hash, so the run borrows the
-  // copy already downloaded rather than fetching its own. Only the model folder is shared.
-  if (engine === 'kokoro') symlinkSync(kokoroCacheDir(homedir()), kokoroCacheDir(home))
+  // The Kokoro weights are hundreds of megabytes and pinned by hash, so a run that voices a scene
+  // borrows the copy already downloaded rather than fetching its own. Only the model folder is
+  // shared; a run that does not speak leaves the home without it, as a fresh install is.
+  if (kokoro) symlinkSync(kokoroCacheDir(homedir()), kokoroCacheDir(home))
 
   // Playwright keeps its browsers under ~/Library/Caches, and export renders with its headless
   // shell when it finds one there. Without this the run would export through a full Chrome —
@@ -111,7 +121,7 @@ function buildFixture(engine: SpeechEngineId): Fixture {
     symlinkSync(browsers, join(home, 'Library', 'Caches', 'ms-playwright'))
   }
 
-  const script = engine === 'kokoro' ? [KOKORO_SILENT_LINE, SCRIPT[1]] : SCRIPT
+  const script = kokoro ? [KOKORO_SILENT_LINE, SCRIPT[1]] : SCRIPT
   const project = createProject(PROJECT_NAME, home)
   for (const [index, title] of ['Welcome', 'How it works', 'The end'].entries()) {
     const item = addScene(project.id, 'scene', { title, bullets: ['One point', 'Another'] }, home)

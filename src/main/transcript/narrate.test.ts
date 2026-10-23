@@ -12,14 +12,20 @@ import {
   setProjectContext
 } from '../project/projectApi'
 import { EMPTY_CONTEXT } from '../project/projectContext'
-import { sayTtsProvider } from '../tts/sayTtsProvider'
+import { kokoroTtsProvider } from '../tts/kokoroTtsProvider'
+import { isKokoroDownloaded } from '../tts/kokoro/kokoroModel'
 import { findProjectDir } from '../project/paths'
 import { narrateSegment } from './narrate'
 import { updateSettings } from '../settings/settingsStore'
 import { getWavDurationSeconds } from '../tts/wavDuration'
 import { FPS, NARRATION_LEAD_IN_FRAMES, NARRATION_TAIL_FRAMES } from '../../composition/constants'
 
-describe('narrateSegment (real say + afconvert)', () => {
+// Kokoro reads the narration for real; where its voice has not been downloaded there is nothing
+// to read with, so these skip rather than fail. Two voices stand in for "the app's" and "the
+// project's": af_heart, the default, and bm_george, plainly a different one.
+const downloaded = isKokoroDownloaded()
+
+describe.skipIf(!downloaded)('narrateSegment (real Kokoro)', () => {
   it('synthesizes real audio and extends the linked timeline item to fit', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-test-'))
     const project = createProject('Narrate Test', baseDir)
@@ -93,16 +99,14 @@ describe('narrateSegment (real say + afconvert)', () => {
 })
 
 /**
- * These speak for real, through `say`, and two of them ask for a voice the system has to fetch
- * and warm up before it will say anything — measured at twenty-one seconds against a thirty
- * second limit on an idle machine, which is a test of how busy the machine is rather than of
- * the code. Ninety gives it room to be slow without giving a hang anywhere to hide.
+ * These speak for real, through Kokoro, which has to load its model before it will say anything —
+ * a cost measured in seconds, not of the code but of the machine. Ninety gives it room to be slow
+ * without giving a hang anywhere to hide.
  */
-describe('voice', () => {
+describe.skipIf(!downloaded)('voice', () => {
   it('records which voice read the narration', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-voice-test-'))
-    process.env.HOME = baseDir
-    updateSettings({ speech: { voice: 'Daniel' } }, baseDir)
+    updateSettings({ speech: { voice: 'bm_george' } }, baseDir)
 
     const project = createProject('Voice Test', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
@@ -110,7 +114,7 @@ describe('voice', () => {
 
     const result = await narrateSegment(project.id, segment.id, baseDir)
 
-    expect(result.voice).toBe('Daniel')
+    expect(result.voice).toBe('bm_george')
     rmSync(baseDir, { recursive: true, force: true })
   }, 90_000)
 
@@ -118,58 +122,56 @@ describe('voice', () => {
     // The point of pinning a voice to a project: new takes have to match the ones already in it,
     // or the mismatch this was meant to settle comes straight back.
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-project-voice-test-'))
-    updateSettings({ speech: { voice: 'Samantha' } }, baseDir)
+    updateSettings({ speech: { voice: 'af_heart' } }, baseDir)
 
     const project = createProject('Own Voice', baseDir)
-    setProjectVoice(project.id, 'Daniel', baseDir)
+    setProjectVoice(project.id, 'bm_george', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: 'x.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'In the project voice.', timelineItemId: item.id }, baseDir)
 
     const result = await narrateSegment(project.id, segment.id, baseDir)
 
-    expect(result.voice).toBe('Daniel')
+    expect(result.voice).toBe('bm_george')
     rmSync(baseDir, { recursive: true, force: true })
   }, 90_000)
 
   it('goes back to the app voice when the project keeps none', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-unpinned-voice-test-'))
-    updateSettings({ speech: { voice: 'Samantha' } }, baseDir)
+    updateSettings({ speech: { voice: 'af_heart' } }, baseDir)
 
     const project = createProject('Unpinned', baseDir)
-    setProjectVoice(project.id, 'Daniel', baseDir)
+    setProjectVoice(project.id, 'bm_george', baseDir)
     setProjectVoice(project.id, null, baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 90, data: { src: 'x.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Back to the default.', timelineItemId: item.id }, baseDir)
 
-    expect((await narrateSegment(project.id, segment.id, baseDir)).voice).toBe('Samantha')
+    expect((await narrateSegment(project.id, segment.id, baseDir)).voice).toBe('af_heart')
     rmSync(baseDir, { recursive: true, force: true })
   }, 90_000)
 
   it('re-narrating in a new voice replaces the recorded voice', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-renarrate-voice-test-'))
-    process.env.HOME = baseDir
-    updateSettings({ speech: { voice: 'Samantha' } }, baseDir)
+    updateSettings({ speech: { voice: 'af_heart' } }, baseDir)
 
     const project = createProject('Revoice Test', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'Reading this line aloud.', timelineItemId: item.id }, baseDir)
 
     const first = await narrateSegment(project.id, segment.id, baseDir)
-    updateSettings({ speech: { voice: 'Daniel' } }, baseDir)
+    updateSettings({ speech: { voice: 'bm_george' } }, baseDir)
     const second = await narrateSegment(project.id, segment.id, baseDir)
 
-    expect(first.voice).toBe('Samantha')
-    expect(second.voice).toBe('Daniel')
+    expect(first.voice).toBe('af_heart')
+    expect(second.voice).toBe('bm_george')
     // A new take is a new file, so the old recording is never overwritten.
     expect(second.audioFile).not.toBe(first.audioFile)
     rmSync(baseDir, { recursive: true, force: true })
-  }, 60_000)
+  }, 90_000)
 })
 
-describe('pauses between clips', () => {
+describe.skipIf(!downloaded)('pauses between clips', () => {
   it('makes the clip long enough to hold silence either side of the words', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-pause-test-'))
-    process.env.HOME = baseDir
     const project = createProject('Pause Test', baseDir)
     const item = addTimelineItem(project.id, { kind: 'image', start: 0, duration: 30, data: { src: '/tmp/a.png' } }, baseDir)
     const segment = addTranscriptSegment(project.id, { text: 'A line of narration to time.', timelineItemId: item.id }, baseDir)
@@ -190,7 +192,6 @@ describe('pauses between clips', () => {
 
   it('still never shortens a recording to fit the pause', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-pause-video-test-'))
-    process.env.HOME = baseDir
     const project = createProject('Pause Video', baseDir)
     const item = addTimelineItem(
       project.id,
@@ -206,7 +207,7 @@ describe('pauses between clips', () => {
   }, 90_000)
 })
 
-describe('pronunciation', () => {
+describe.skipIf(!downloaded)('pronunciation', () => {
   it('says a listed word the way it should be heard, and keeps the script as written', async () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'demo-editor-narrate-pronounce-test-'))
     const project = createProject('Pronounce Test', baseDir)
@@ -221,7 +222,7 @@ describe('pronunciation', () => {
       { text: 'SecOps flags the change.', timelineItemId: item.id },
       baseDir
     )
-    const heard = vi.spyOn(sayTtsProvider, 'synthesize')
+    const heard = vi.spyOn(kokoroTtsProvider, 'synthesize')
 
     try {
       await narrateSegment(project.id, segment.id, baseDir)

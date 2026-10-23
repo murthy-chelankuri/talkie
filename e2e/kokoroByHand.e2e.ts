@@ -28,7 +28,7 @@ const SCREENSHOT = process.env.TALKIE_E2E_SCREENSHOT
  */
 describe('the Kokoro voice, added by hand', () => {
   it.skipIf(!kokoroAvailable())('links each file, takes them however they were named, and makes Kokoro ready', async () => {
-    fixture = makeFixture('system')
+    fixture = makeFixture()
     const downloads = join(fixture.home, 'Downloads')
     mkdirSync(downloads)
     const chosen = KOKORO_FILES.map((file, index) => {

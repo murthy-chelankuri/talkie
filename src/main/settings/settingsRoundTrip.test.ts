@@ -55,6 +55,11 @@ describe('settings survive a round trip', () => {
 
   it('keeps every sibling when one field is changed', () => {
     for (const path of paths) {
+      // The voice is constrained to a name its engine has: the schema rewrites an unknown one to
+      // the default rather than throwing, so it cannot take an arbitrary `<value>-changed` the way
+      // a free string does. Its own tests cover that normalisation.
+      if (path.join('.') === 'speech.voice') continue
+
       rmSync(baseDir, { recursive: true, force: true })
       mkdirSync(baseDir, { recursive: true })
 
@@ -92,9 +97,9 @@ describe('settings survive a round trip', () => {
     const { speech } = defaults
     expect(speech.pace).toBeGreaterThanOrEqual(90)
     expect(speech.pace).toBeLessThanOrEqual(300)
-    // Below roughly a quarter second there is no pause at a full stop worth the name.
+    // Below roughly a quarter second there is no pause at a full stop worth the name. Kokoro
+    // shapes its own pauses and ignores these, but they are kept in range for a future engine.
     expect(speech.sentencePauseMs).toBeGreaterThan(250)
-    // `say` makes its own comma pause of about 200ms, which an explicit one replaces.
     expect(speech.clausePauseMs).toBeGreaterThan(200)
   })
 })
@@ -115,7 +120,7 @@ describe('resetting the voice', () => {
   it('puts every speech setting back to what a fresh install has', async () => {
     const { resetSpeechSettings } = await import('./settingsStore')
     updateSettings(
-      { speech: { voice: 'Daniel', pace: 120, sentencePauseMs: 900, clausePauseMs: 50 } },
+      { speech: { voice: 'bm_george', pace: 120, sentencePauseMs: 900, clausePauseMs: 50 } },
       baseDir
     )
 

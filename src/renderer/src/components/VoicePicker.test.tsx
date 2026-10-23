@@ -4,36 +4,37 @@ import userEvent from '@testing-library/user-event'
 import { FOLLOWS_DEFAULT, VoicePicker } from './VoicePicker'
 import type { Voice } from '../api/projectClient'
 
-const voice = (name: string, engine: Voice['engine'], locale = 'en_US'): Voice => ({ name, locale, sample: '', novelty: false, engine })
+const voice = (name: string, locale = 'en_US'): Voice => ({ name, locale, sample: '', novelty: false })
 
-const BOTH = [voice('Samantha', 'system'), voice('Daniel', 'system', 'en_GB'), voice('af_heart', 'kokoro'), voice('bm_george', 'kokoro', 'en_GB')]
+const VOICES = [voice('af_heart'), voice('af_bella'), voice('bm_george', 'en_GB'), voice('bf_emma', 'en_GB')]
 
 describe('the voice picker', () => {
-  it('offers both engines’ voices, each under its engine', () => {
-    render(<VoicePicker ariaLabel="Voice for this project" value="af_heart" voices={BOTH} onChange={() => undefined} />)
+  it('lists Kokoro’s voices by language, with no engine to name when there is only one', () => {
+    render(<VoicePicker ariaLabel="Voice for this project" value="af_heart" voices={VOICES} onChange={() => undefined} />)
 
     const picker = screen.getByRole('combobox', { name: 'Voice for this project' })
     const groups = within(picker).getAllByRole('group').map((group) => group.getAttribute('label'))
-    expect(groups.some((label) => label?.startsWith('Kokoro · '))).toBe(true)
-    expect(groups.some((label) => label?.startsWith('macOS · '))).toBe(true)
+    // Grouped by language, and with a single engine no "Kokoro · " prefix cluttering every group.
+    expect(groups.every((label) => !label?.includes('·'))).toBe(true)
+    expect(groups.length).toBeGreaterThan(1)
   })
 
-  it('moves a project from a Kokoro voice to one of the Mac’s', async () => {
+  it('moves a project to another voice', async () => {
     const onChange = vi.fn()
-    render(<VoicePicker ariaLabel="Voice for this project" value="af_heart" voices={BOTH} onChange={onChange} />)
+    render(<VoicePicker ariaLabel="Voice for this project" value="af_heart" voices={VOICES} onChange={onChange} />)
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Voice for this project' }), 'Samantha')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Voice for this project' }), 'bm_george')
 
-    expect(onChange).toHaveBeenCalledWith('Samantha')
+    expect(onChange).toHaveBeenCalledWith('bm_george')
   })
 
-  it('shows a voice this Mac cannot read as what it is, rather than as the first in the list', () => {
+  it('shows a voice that is not ready as what it is, rather than as the first in the list', () => {
     // A Studio cloned onto a Mac without Kokoro downloaded: its project is still in af_heart.
     render(
       <VoicePicker
         ariaLabel="Voice for this project"
         value="af_heart"
-        voices={[voice('Samantha', 'system')]}
+        voices={[voice('bm_george', 'en_GB')]}
         onChange={() => undefined}
         defaultOption={{ label: 'App default' }}
       />
@@ -41,13 +42,6 @@ describe('the voice picker', () => {
 
     const picker = screen.getByRole('combobox', { name: 'Voice for this project' }) as HTMLSelectElement
     expect(picker.value).toBe('af_heart')
-    expect(screen.getByRole('option', { name: 'af_heart (not ready on this Mac)' })).toBeInTheDocument()
-  })
-
-  it('lists the one engine’s voices by language alone, as Settings does', () => {
-    render(<VoicePicker ariaLabel="Default voice" value={FOLLOWS_DEFAULT} voices={[{ name: 'Samantha', locale: 'en_US', sample: '', novelty: false }]} onChange={() => undefined} />)
-
-    const label = within(screen.getByRole('combobox', { name: 'Default voice' })).getByRole('group').getAttribute('label')
-    expect(label).not.toContain('·')
+    expect(screen.getByRole('option', { name: 'af_heart (not ready)' })).toBeInTheDocument()
   })
 })

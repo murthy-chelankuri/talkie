@@ -50,7 +50,7 @@ export const meetTalkie: Story = {
     shot('write', 'Press Write the words, and your AI drafts the narration for every scene.')
     shot('written', 'The script shows it all in one column. The numbers in brackets are timings: each line is spoken at that second of its scene.')
 
-    shot('voice', 'Choose a voice — the Mac’s own, or Kokoro, built in and close to a person — and press Speak.')
+    shot('voice', 'Choose a voice — Kokoro, built in and close to a person — and press Speak.')
     shot('voiced', 'Every scene gets its own take, and the scene is sized to fit it.')
 
     shot('slide', 'Not every scene is a recording. Add one from the gallery of templates, and change its words in a simple form.')
@@ -61,7 +61,7 @@ export const meetTalkie: Story = {
 
     shot(
       'settings',
-      'Settings decide who writes and who speaks — Claude, Copilot or a local model; the Mac’s voices or Kokoro. Recording sets the click highlight, Export can burn in captions, and System lets AI agents connect.'
+      'Settings decide who writes and who speaks — Claude, Copilot or a local model; Kokoro reads it aloud. Recording sets the click highlight, Export can burn in captions, and System lets AI agents connect.'
     )
     shot('theme', 'A theme is a company’s look. Give Talkie a website, and it reads the real colours, fonts and logo.')
     shot('theme-made', 'Every colour is checked so text stays readable.')
